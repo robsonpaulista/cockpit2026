@@ -727,6 +727,22 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
 }
 
+.wr-status-bar__item--desempenho-ativo {
+  background: color-mix(in srgb, var(--wr-gold) 16%, var(--wr-white));
+}
+
+.wr-status-bar__item--desempenho-ativo .wr-status-bar__label {
+  color: color-mix(in srgb, var(--wr-gold) 72%, var(--wr-black));
+}
+
+.wr-status-bar__item--desempenho-ativo .wr-status-bar__value {
+  color: color-mix(in srgb, var(--wr-gold) 55%, var(--wr-black));
+}
+
+.wr-status-bar__item--desempenho-ativo:hover {
+  background: color-mix(in srgb, var(--wr-gold) 22%, var(--wr-white));
+}
+
 .wr-status-bar__label {
   font-size: 9px;
   font-weight: 600;

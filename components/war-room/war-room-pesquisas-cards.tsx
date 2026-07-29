@@ -24,6 +24,7 @@ import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
+import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { cn } from '@/lib/utils'
 
@@ -74,15 +75,29 @@ function andamentoAtivos(rows: WarRoomPesquisaAndamento[]): WarRoomPesquisaAndam
 
 /** Pesquisas consolidadas — filtros clean + finalizadas / em andamento / desempenho. */
 export function WarRoomPesquisasConsolidadasCard({ className }: { className?: string }) {
-  const { register } = useWarRoomRefresh()
+  const { register, reportChange } = useWarRoomRefresh()
   const change = useWarRoomCardChange('pesquisas')
+  const { isDesempenho, setViewMode } = useWarRoomViewMode()
   const [rows, setRows] = useState<WarRoomPesquisaConsolidadaReal[]>([])
   const [pollsRaw, setPollsRaw] = useState<PollIptRow[]>([])
   const [candidatoFoco, setCandidatoFoco] = useState(() => resolveCandidatoIpt())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filtro, setFiltro] = useState<PesquisaFiltro>('finalizadas')
+  const [localFiltro, setLocalFiltro] = useState<PesquisaFiltro>('finalizadas')
+  const filtro: PesquisaFiltro = isDesempenho ? 'desempenho' : localFiltro
   const [rankingModal, setRankingModal] = useState<WarRoomPesquisaConsolidadaReal | null>(null)
+
+  const selectFiltro = useCallback(
+    (id: PesquisaFiltro) => {
+      if (id === 'desempenho') {
+        setViewMode('desempenho')
+        return
+      }
+      setViewMode('padrao')
+      setLocalFiltro(id)
+    },
+    [setViewMode],
+  )
 
   const andamentoRows = useMemo(
     () => andamentoAtivos(WAR_ROOM_PESQUISAS_ANDAMENTO),
@@ -133,27 +148,27 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     )
   }, [pollsRaw, candidatoFoco])
 
-  const snapshotLines = useMemo(() => {
-    if (filtro === 'desempenho') {
-      return desempenhoKpis.map(
-        (k) => `desempenho\t${k.id}\t${k.valueLabel}\t${k.detail ?? ''}`,
-      )
-    }
-    return rows.map(
-      (r) =>
-        `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
-    )
-  }, [filtro, desempenhoKpis, rows])
+  // Snapshot só dos dados — não muda com a aba (evita pintar tudo como "alterado").
+  const snapshotLines = useMemo(
+    () =>
+      rows.map(
+        (r) =>
+          `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
+      ),
+    [rows],
+  )
 
   const { changedKeys } = useWarRoomSnapshot({
     cardId: 'pesquisas',
-    lines:
-      loading && rows.length === 0 && desempenhoKpis.length === 0
-        ? null
-        : snapshotLines,
-    noun: filtro === 'desempenho' ? 'indicador' : 'pesquisa',
-    ready: !loading || rows.length > 0 || desempenhoKpis.length > 0,
+    lines: loading && rows.length === 0 ? null : snapshotLines,
+    noun: 'pesquisa',
+    ready: !loading || rows.length > 0,
   })
+
+  useEffect(() => {
+    reportChange('pesquisas', null)
+  }, [isDesempenho, reportChange])
+
   const changedSet = useMemo(() => new Set(changedKeys), [changedKeys])
 
   const highlights = useMemo(() => rows.slice(0, HIGHLIGHTS_COUNT), [rows])
@@ -204,7 +219,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                 'wr-pesquisas-clean__filtro',
                 filtro === opcao.id && 'wr-pesquisas-clean__filtro--ativo',
               )}
-              onClick={() => setFiltro(opcao.id)}
+              onClick={() => selectFiltro(opcao.id)}
             >
               {opcao.label}
             </button>

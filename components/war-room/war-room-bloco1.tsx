@@ -14,6 +14,7 @@ import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
+import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { useIpt } from '@/hooks/use-ipt'
 import { usePermissions } from '@/hooks/use-permissions'
@@ -207,14 +208,16 @@ function ExpectativaItem({
 /** Card Expectativa de Votos — mesmo design clean da fila de decisões. */
 export function WarRoomExpectativaCard({ className }: Props) {
   const { loading, error, municipios, recarregar } = useIpt()
-  const { register } = useWarRoomRefresh()
+  const { register, reportChange } = useWarRoomRefresh()
   const change = useWarRoomCardChange('expectativa')
   const { isAdmin, canAccess } = usePermissions()
   const podeVerExpectativa =
     isAdmin || canAccess('territorio') || canAccess('ipt')
   const { municipio: selecionado, setMunicipio: setSelecionado } =
     useWarRoomCidade()
-  const [visao, setVisao] = useState<VisaoId>('ranking')
+  const { isDesempenho, setViewMode } = useWarRoomViewMode()
+  const [localVisao, setLocalVisao] = useState<VisaoId>('ranking')
+  const visao: VisaoId = isDesempenho ? 'desempenho' : localVisao
   const [metaFiltro, setMetaFiltro] = useState<MetaFiltro>('todos')
   const [page, setPage] = useState(0)
   const [visitaModalMunicipio, setVisitaModalMunicipio] = useState<string | null>(null)
@@ -223,6 +226,18 @@ export function WarRoomExpectativaCard({ className }: Props) {
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
+
+  const selectVisao = useCallback(
+    (id: VisaoId) => {
+      if (id === 'desempenho') {
+        setViewMode('desempenho')
+        return
+      }
+      setViewMode('padrao')
+      setLocalVisao(id)
+    },
+    [setViewMode],
+  )
 
   const loadAgendaProximos = useCallback(async () => {
     try {
@@ -317,24 +332,25 @@ export function WarRoomExpectativaCard({ className }: Props) {
     )
   }, [municipios, podeVerExpectativa, agendaPorMunicipio])
 
-  const snapshotLines = useMemo(() => {
-    if (visao === 'desempenho') {
-      return desempenhoKpis.map(
-        (k) => `desempenho\t${k.id}\t${k.valueLabel}\t${k.detail ?? ''}`,
-      )
-    }
-    return universo.map(
-      (m, index) =>
-        `${m.municipio}\t${index + 1}\t${m.expectativaVotos}`,
-    )
-  }, [visao, desempenhoKpis, universo])
+  const snapshotLines = useMemo(
+    () =>
+      universo.map(
+        (m, index) =>
+          `${m.municipio}\t${index + 1}\t${m.expectativaVotos}`,
+      ),
+    [universo],
+  )
 
   useWarRoomSnapshot({
     cardId: 'expectativa',
-    lines: loading && universo.length === 0 && desempenhoKpis.length === 0 ? null : snapshotLines,
-    noun: visao === 'desempenho' ? 'indicador' : 'município',
-    ready: !loading || universo.length > 0 || desempenhoKpis.length > 0,
+    lines: loading && universo.length === 0 ? null : snapshotLines,
+    noun: 'município',
+    ready: !loading || universo.length > 0,
   })
+
+  useEffect(() => {
+    reportChange('expectativa', null)
+  }, [isDesempenho, reportChange])
 
   useEffect(() => {
     if (universo.length === 0) return
@@ -384,7 +400,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
                 'wr-expectativa-clean__filtro',
                 visao === opcao.id && 'wr-expectativa-clean__filtro--ativo',
               )}
-              onClick={() => setVisao(opcao.id)}
+              onClick={() => selectVisao(opcao.id)}
             >
               {opcao.label}
             </button>

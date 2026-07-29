@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  IconMessageCircle,
+  IconChartBar,
   IconSunHigh,
 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
@@ -13,9 +13,9 @@ const NEXT_REFRESH_MINUTES = Math.round(WAR_ROOM_AUTO_REFRESH_MS / 60_000)
 
 type Props = {
   alertCount: number
-  criticalMessages?: number
   lastRefreshAt: number | null
-  onJump?: (target: 'crm' | 'agenda' | 'mobilizacao' | 'alertas') => void
+  desempenhoActive?: boolean
+  onToggleDesempenho?: () => void
   className?: string
 }
 
@@ -54,9 +54,9 @@ function resolveAlertLevel(alertCount: number): {
 /** Barra de status operacional — 6 segmentos clean. */
 export function WarRoomOpsBar({
   alertCount,
-  criticalMessages = 3,
   lastRefreshAt,
-  onJump,
+  desempenhoActive = false,
+  onToggleDesempenho,
   className,
 }: Props) {
   const [nowLabel, setNowLabel] = useState(() => formatDateTime())
@@ -119,13 +119,17 @@ export function WarRoomOpsBar({
 
       <button
         type="button"
-        className="wr-status-bar__item wr-status-bar__item--action"
-        onClick={() => onJump?.('alertas')}
+        className={cn(
+          'wr-status-bar__item wr-status-bar__item--action',
+          desempenhoActive && 'wr-status-bar__item--desempenho-ativo',
+        )}
+        aria-pressed={desempenhoActive}
+        onClick={() => onToggleDesempenho?.()}
       >
-        <span className="wr-status-bar__label">Mensagens críticas</span>
+        <span className="wr-status-bar__label">Desempenho</span>
         <span className="wr-status-bar__value">
-          <IconMessageCircle className="wr-status-bar__icon" stroke={1.75} aria-hidden />
-          {criticalMessages} não lida{criticalMessages === 1 ? '' : 's'}
+          <IconChartBar className="wr-status-bar__icon" stroke={1.75} aria-hidden />
+          {desempenhoActive ? 'Ativo' : 'Padrão'}
         </span>
       </button>
     </div>

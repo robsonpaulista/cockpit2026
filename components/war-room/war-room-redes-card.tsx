@@ -22,6 +22,7 @@ import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
+import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import {
   WarRoomPostagensDiaModal,
@@ -149,9 +150,11 @@ function audiencePct(part: number, total: number): number | null {
 
 /** Redes sociais — postagens top engajamento e desempenho por tema (últimos 7 dias). */
 export function WarRoomRedesCard({ className }: Props) {
-  const { register } = useWarRoomRefresh()
+  const { register, reportChange } = useWarRoomRefresh()
   const change = useWarRoomCardChange('redes')
-  const [filtro, setFiltro] = useState<FiltroId>('postagens')
+  const { isDesempenho, setViewMode } = useWarRoomViewMode()
+  const [localFiltro, setLocalFiltro] = useState<FiltroId>('postagens')
+  const filtro: FiltroId = isDesempenho ? 'desempenho' : localFiltro
   const [metrics, setMetrics] = useState<InstagramMetrics | null>(null)
   const [history, setHistory] = useState<InstagramHistoryResponse | null>(null)
   const [manualVisitsByDate, setManualVisitsByDate] = useState<Record<string, number>>({})
@@ -160,6 +163,18 @@ export function WarRoomRedesCard({ className }: Props) {
   const [configured, setConfigured] = useState(false)
   const [classifications, setClassifications] = useState<Record<string, PostClassification>>({})
   const [postagensModalAberto, setPostagensModalAberto] = useState(false)
+
+  const selectFiltro = useCallback(
+    (id: FiltroId) => {
+      if (id === 'desempenho') {
+        setViewMode('desempenho')
+        return
+      }
+      setViewMode('padrao')
+      setLocalFiltro(id)
+    },
+    [setViewMode],
+  )
 
   const loadClassifications = async () => {
     try {
@@ -506,7 +521,6 @@ export function WarRoomRedesCard({ className }: Props) {
   const snapshotLines = useMemo(() => {
     if (!metrics) return null
     return [
-      `filtro\t${filtro}`,
       ...desempenhoKpis.map(
         (k) =>
           `desempenho\t${k.id}\t${k.total}\t${k.deltaPct ?? ''}\t${k.followersPct ?? ''}`,
@@ -515,7 +529,7 @@ export function WarRoomRedesCard({ className }: Props) {
       ...postsAnteriores.map((p) => `post\t${p.id}\t${p.engagement}\t${p.header}`),
       ...themeRows.map((t) => `tema\t${t.label}\t${t.avgEngagement}\t${t.posts}`),
     ]
-  }, [metrics, filtro, desempenhoKpis, postsHoje, postsAnteriores, themeRows])
+  }, [metrics, desempenhoKpis, postsHoje, postsAnteriores, themeRows])
 
   useWarRoomSnapshot({
     cardId: 'redes',
@@ -523,6 +537,10 @@ export function WarRoomRedesCard({ className }: Props) {
     noun: 'indicador',
     ready: !loading || metrics != null,
   })
+
+  useEffect(() => {
+    reportChange('redes', null)
+  }, [isDesempenho, reportChange])
 
   const visitDayKeys = useMemo(() => listDayKeys(LOOKBACK_DAYS), [])
 
@@ -576,7 +594,7 @@ export function WarRoomRedesCard({ className }: Props) {
                 'wr-redes-clean__filtro',
                 filtro === opcao.id && 'wr-redes-clean__filtro--ativo',
               )}
-              onClick={() => setFiltro(opcao.id)}
+              onClick={() => selectFiltro(opcao.id)}
             >
               {opcao.label}
             </button>

@@ -38,6 +38,10 @@ import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
+import {
+  WarRoomViewModeProvider,
+  useWarRoomViewMode,
+} from '@/components/war-room/war-room-view-mode-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import {
   WarRoomPesquisasConsolidadasCard,
@@ -112,7 +116,9 @@ export function WarRoomPanel() {
   return (
     <WarRoomCidadeProvider>
       <WarRoomRefreshProvider>
-        <WarRoomPanelInner />
+        <WarRoomViewModeProvider>
+          <WarRoomPanelInner />
+        </WarRoomViewModeProvider>
       </WarRoomRefreshProvider>
     </WarRoomCidadeProvider>
   )
@@ -126,6 +132,7 @@ function WarRoomPanelInner() {
   const [agendaError, setAgendaError] = useState<string | null>(null)
 
   const { register, refreshAll, refreshing, lastRefreshAt } = useWarRoomRefresh()
+  const { isDesempenho, toggleDesempenho } = useWarRoomViewMode()
   const agendaChange = useWarRoomCardChange('agenda')
 
   const loadAgenda = useCallback(async (opts?: { silent?: boolean }) => {
@@ -314,21 +321,9 @@ function WarRoomPanelInner() {
         <div className="wr-page-canvas">
           <WarRoomOpsBar
             alertCount={alertCount}
-            criticalMessages={3}
             lastRefreshAt={lastRefreshAt}
-            onJump={(target) => {
-              const id =
-                target === 'crm'
-                  ? 'wr-crm'
-                  : target === 'mobilizacao'
-                    ? 'wr-mobilizacao'
-                    : target === 'agenda'
-                      ? 'wr-agenda'
-                      : target === 'alertas'
-                        ? 'wr-decisoes'
-                        : 'wr-expectativa'
-              document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
+            desempenhoActive={isDesempenho}
+            onToggleDesempenho={toggleDesempenho}
           />
 
           <div className="wr-layout">
