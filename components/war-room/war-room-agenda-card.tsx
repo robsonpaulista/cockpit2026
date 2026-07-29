@@ -70,6 +70,23 @@ export function resolveAgendaLiveStatus(
   return result
 }
 
+/**
+ * Índice do compromisso em foco na hora atual:
+ * ao vivo → próximo → último (se tudo já passou).
+ */
+export function resolveAgendaFocusIndex(
+  itemsSorted: WarRoomAgendaItem[],
+  nowMinutes: number,
+): number {
+  if (itemsSorted.length === 0) return 0
+  const statuses = resolveAgendaLiveStatus(itemsSorted, nowMinutes)
+  const liveIdx = itemsSorted.findIndex((item) => statuses.get(item.id) === 'ao_vivo')
+  if (liveIdx >= 0) return liveIdx
+  const nextIdx = itemsSorted.findIndex((item) => statuses.get(item.id) === 'proximo')
+  if (nextIdx >= 0) return nextIdx
+  return itemsSorted.length - 1
+}
+
 function AgendaTimeline({
   items,
   allItems,
@@ -145,6 +162,22 @@ export function WarRoomAgendaCard({
     () => [...items].sort((a, b) => a.horario.localeCompare(b.horario, 'pt-BR')),
     [items],
   )
+
+  const focusItemId = useMemo(() => {
+    const idx = resolveAgendaFocusIndex(sorted, nowMinutes)
+    return sorted[idx]?.id ?? null
+  }, [sorted, nowMinutes])
+
+  /** Acompanha a hora atual: página do compromisso ao vivo (ou do próximo). */
+  useEffect(() => {
+    if (!focusItemId) {
+      setPage(0)
+      return
+    }
+    const idx = sorted.findIndex((item) => item.id === focusItemId)
+    if (idx < 0) return
+    setPage(Math.floor(idx / PAGE_SIZE))
+  }, [focusItemId, sorted])
 
   useEffect(() => {
     const pages = warRoomPageCount(sorted.length, PAGE_SIZE)

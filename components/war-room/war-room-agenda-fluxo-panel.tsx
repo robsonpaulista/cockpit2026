@@ -28,6 +28,8 @@ import {
   listDisparosAgendaFluxo,
   listEmendasAgendaFluxo,
   mapDemandasAgendaFluxo,
+  groupDemandasAgendaFluxoPorStatus,
+  groupEmendasAgendaFluxoPorAno,
   loadAgendaFluxoState,
   mergeAgendaFluxoState,
   saveAgendaFluxoState,
@@ -182,6 +184,16 @@ export function WarRoomAgendaFluxoPanel({
   const disparosMunicipio = useMemo(
     () => listDisparosAgendaFluxo(municipio, WAR_ROOM_DISPAROS),
     [municipio],
+  )
+
+  const demandasPorStatus = useMemo(
+    () => groupDemandasAgendaFluxoPorStatus(demandas),
+    [demandas],
+  )
+
+  const emendasPorAno = useMemo(
+    () => groupEmendasAgendaFluxoPorAno(emendas),
+    [emendas],
   )
 
   const seed = useMemo(
@@ -390,17 +402,32 @@ export function WarRoomAgendaFluxoPanel({
             ) : demandasErro ? (
               <p className="wr-agenda-fluxo__empty">{demandasErro}</p>
             ) : demandas.length > 0 ? (
-              <ul className="wr-agenda-fluxo__obras wr-agenda-fluxo__obras--scroll">
-                {demandas.map((demanda) => (
-                  <li key={demanda.id} className="wr-agenda-fluxo__obra">
-                    <p className="wr-agenda-fluxo__obra-titulo">{demanda.titulo}</p>
-                    <p className="wr-agenda-fluxo__obra-meta">
-                      {[demanda.status, demanda.lideranca].filter(Boolean).join(' · ') ||
-                        'Cadastro de Demandas'}
+              <div
+                className="wr-agenda-fluxo__obras-board"
+                role="list"
+                aria-label="Obras por status"
+              >
+                {demandasPorStatus.map((coluna) => (
+                  <section
+                    key={coluna.key}
+                    className="wr-agenda-fluxo__obras-col"
+                    role="list"
+                    aria-label={`${coluna.label} (${coluna.itens.length})`}
+                  >
+                    <p className="wr-agenda-fluxo__obras-col-head">
+                      <span>{coluna.label}</span>
+                      <span className="tabular-nums">{coluna.itens.length}</span>
                     </p>
-                  </li>
+                    <ul className="wr-agenda-fluxo__obras wr-agenda-fluxo__obras--col">
+                      {coluna.itens.map((demanda) => (
+                        <li key={demanda.id} className="wr-agenda-fluxo__obra">
+                          <p className="wr-agenda-fluxo__obra-titulo">{demanda.titulo}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
             ) : (
               <p className="wr-agenda-fluxo__empty">
                 Nenhuma demanda deste município na planilha Cadastro de Demandas.
@@ -414,23 +441,37 @@ export function WarRoomAgendaFluxoPanel({
             ) : emendasErro ? (
               <p className="wr-agenda-fluxo__empty">{emendasErro}</p>
             ) : emendas.length > 0 ? (
-              <ul className="wr-agenda-fluxo__obras">
-                {emendas.slice(0, 6).map((emenda) => (
-                  <li key={emenda.id} className="wr-agenda-fluxo__obra">
-                    <p className="wr-agenda-fluxo__obra-titulo">{emenda.titulo}</p>
-                    <p className="wr-agenda-fluxo__obra-meta">
-                      {[emenda.status, emenda.meta].filter(Boolean).join(' · ') ||
-                        'Cadastro Emendas'}
+              <div
+                className="wr-agenda-fluxo__obras-board"
+                role="list"
+                aria-label="Emendas por ano"
+              >
+                {emendasPorAno.map((coluna) => (
+                  <section
+                    key={coluna.key}
+                    className="wr-agenda-fluxo__obras-col"
+                    role="list"
+                    aria-label={`${coluna.label} (${coluna.itens.length})`}
+                  >
+                    <p className="wr-agenda-fluxo__obras-col-head">
+                      <span>{coluna.label}</span>
+                      <span className="tabular-nums">{coluna.itens.length}</span>
                     </p>
-                  </li>
+                    <ul className="wr-agenda-fluxo__obras wr-agenda-fluxo__obras--col">
+                      {coluna.itens.map((emenda) => (
+                        <li key={emenda.id} className="wr-agenda-fluxo__obra">
+                          <p className="wr-agenda-fluxo__obra-titulo">{emenda.titulo}</p>
+                          {emenda.valor ? (
+                            <p className="wr-agenda-fluxo__obra-meta tabular-nums">
+                              {emenda.valor}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-                {emendas.length > 6 ? (
-                  <li className="wr-agenda-fluxo__obra-more">
-                    +{emendas.length - 6} emenda
-                    {emendas.length - 6 === 1 ? '' : 's'}
-                  </li>
-                ) : null}
-              </ul>
+              </div>
             ) : (
               <p className="wr-agenda-fluxo__empty">
                 Nenhuma emenda destinada a este município no cadastro Emendas.

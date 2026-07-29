@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logger, logError } from '@/lib/logger'
+import { fetchInstagramAudienceSplit } from '@/lib/instagram-audience-split'
 
 // Interface para os dados do Instagram
 interface InstagramMetrics {
@@ -40,6 +41,18 @@ interface InstagramMetrics {
     totalViews: number
     totalInteractions: number
     totalReach: number
+    audienceSplit?: {
+      views?: {
+        total: number
+        followers: number
+        nonFollowers: number
+      }
+      reach?: {
+        total: number
+        followers: number
+        nonFollowers: number
+      }
+    }
     periodMetrics?: {
       startDate: string
       endDate: string
@@ -521,6 +534,27 @@ export async function POST(request: Request) {
     const websiteClicks = getInsightValue('website_clicks')
     const impressions = getInsightValue('impressions')
 
+    // Split seguidor × não-seguidor (views + reach)
+    let audienceSplit: InstagramMetrics['insights']['audienceSplit']
+    try {
+      const split = await fetchInstagramAudienceSplit({
+        igUserId: instagramBusinessId,
+        accessToken: token,
+        timeRange: typeof timeRange === 'string' ? timeRange : '30d',
+        cacheBuster,
+      })
+      if (split.views || split.reach) {
+        audienceSplit = {
+          ...(split.views ? { views: split.views } : {}),
+          ...(split.reach ? { reach: split.reach } : {}),
+        }
+      }
+    } catch (err) {
+      logger.warn('audienceSplit indisponível', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+
     // Criar objeto de resposta
     const instagramMetrics: InstagramMetrics = {
       username: instagramData.username || '',
@@ -538,16 +572,17 @@ export async function POST(request: Request) {
         impressions: impressions,
         profileViews: profileViews,
         websiteClicks: websiteClicks,
-        totalViews: impressions,
+        totalViews: audienceSplit?.views?.total || impressions,
         totalInteractions: getInsightValue('total_interactions'),
-        totalReach: getInsightValue('reach'),
+        totalReach: audienceSplit?.reach?.total || getInsightValue('reach'),
+        audienceSplit,
         periodMetrics: {
           startDate: periodStart.toISOString().split('T')[0],
           endDate: new Date().toISOString().split('T')[0],
           newFollowers: 0,
-          totalReach: getInsightValue('reach'),
+          totalReach: audienceSplit?.reach?.total || getInsightValue('reach'),
           totalInteractions: getInsightValue('total_interactions'),
-          totalViews: impressions,
+          totalViews: audienceSplit?.views?.total || impressions,
           linkClicks: websiteClicks,
         },
       },

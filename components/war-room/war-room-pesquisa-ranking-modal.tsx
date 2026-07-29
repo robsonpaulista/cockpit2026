@@ -76,7 +76,8 @@ export function WarRoomPesquisaRankingModal({ pesquisa, onClose }: Props) {
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">
-                {pesquisa.cenario} · {pesquisa.instituto} · {pesquisa.dataLabel}
+                {pesquisa.cenario} · Votos válidos · {pesquisa.instituto} ·{' '}
+                {pesquisa.dataLabel}
               </p>
               <h2 id={tituloId} className="wr-visita-modal__title truncate">
                 {pesquisa.cidade}

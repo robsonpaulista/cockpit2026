@@ -3,21 +3,13 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  IconAlertTriangleFilled,
   IconChevronDown,
   IconChevronRight,
-  IconFileText,
-  IconFlag,
-  IconInfoCircle,
   IconListDetails,
-  IconMessageCircle,
   IconX,
-  type Icon,
 } from '@tabler/icons-react'
 import type {
   WarRoomDecisao,
-  WarRoomDecisaoIcone,
-  WarRoomDecisaoPrioridade,
 } from '@/lib/war-room/decisoes'
 import { cn } from '@/lib/utils'
 
@@ -25,14 +17,6 @@ type Props = {
   items: WarRoomDecisao[]
   onClose: () => void
   onActivate?: (decisao: WarRoomDecisao) => void
-}
-
-const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
-  critica: 'Crítica',
-  alta: 'Alta',
-  media: 'Média',
-  baixa: 'Baixa',
-  info: 'Info',
 }
 
 /** Ordem dos grupos = cards de origem na War Room. */
@@ -43,12 +27,25 @@ const CATEGORIA_ORDER: string[] = [
   'Redes sociais',
 ]
 
-const ICON_BY_TIPO: Record<WarRoomDecisaoIcone, Icon> = {
-  alerta: IconAlertTriangleFilled,
-  mensagem: IconMessageCircle,
-  bandeira: IconFlag,
-  documento: IconFileText,
-  info: IconInfoCircle,
+const CATEGORIA_BADGE_LABEL: Record<string, string> = {
+  'Visita agendada': 'Viagens',
+  Pesquisas: 'Pesquisas',
+  Notícias: 'Notícias',
+  'Redes sociais': 'Redes Sociais',
+}
+
+function categoriaBadgeLabel(categoria: string): string {
+  const key = categoria.trim()
+  return CATEGORIA_BADGE_LABEL[key] ?? (key || 'Outros')
+}
+
+function categoriaBadgeClassName(categoria: string): string {
+  return `wr-decisoes-badge--${categoria
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')}`
 }
 
 type Grupo = {
@@ -204,14 +201,12 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
                       role="list"
                     >
                       {grupo.items.map((decisao) => {
-                        const ItemIcon = ICON_BY_TIPO[decisao.icone]
                         const canActivate =
                           Boolean(onActivate) &&
                           (decisao.categoria === 'Visita agendada' ||
                             Boolean(decisao.href))
                         const quando = decisao.prazo || decisao.hora || null
                         const metaParts = [
-                          PRIORIDADE_LABEL[decisao.prioridade],
                           decisao.acao,
                           decisao.responsavel
                             ? `Resp.: ${decisao.responsavel}`
@@ -220,20 +215,21 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
 
                         const body = (
                           <>
-                            <span
-                              className={cn(
-                                'wr-decisoes-modal__icon',
-                                decisao.destaque && 'wr-decisoes-modal__icon--alerta',
-                              )}
-                              aria-hidden
-                            >
-                              <ItemIcon className="h-3.5 w-3.5" stroke={1.6} />
-                            </span>
                             <div className="wr-decisoes-modal__content min-w-0 flex-1">
                               <div className="wr-decisoes-modal__row">
-                                <p className="wr-decisoes-modal__title truncate">
-                                  {decisao.problema}
-                                </p>
+                                <div className="wr-decisoes-modal__title-wrap min-w-0 flex-1">
+                                  <span
+                                    className={cn(
+                                      'wr-decisoes-badge',
+                                      categoriaBadgeClassName(decisao.categoria),
+                                    )}
+                                  >
+                                    {categoriaBadgeLabel(decisao.categoria)}
+                                  </span>
+                                  <p className="wr-decisoes-modal__title truncate">
+                                    {decisao.problema.trim()}
+                                  </p>
+                                </div>
                                 {quando ? (
                                   <time
                                     className="wr-decisoes-modal__hora shrink-0 tabular-nums"

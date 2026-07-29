@@ -26,6 +26,8 @@ export type WarRoomDisparoStatus = 'ok' | 'atencao' | 'critico'
 
 export type WarRoomDisparo = {
   campanha: string
+  /** ID externo da campanha no Fluxo (quando houver). */
+  campanhaId?: string | null
   publico: string
   enviados: number
   entregues?: number

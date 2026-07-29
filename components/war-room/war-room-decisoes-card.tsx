@@ -3,27 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  IconAlertTriangleFilled,
   IconChevronRight,
-  IconFileText,
-  IconFlag,
-  IconInfoCircle,
   IconLoader2,
-  IconMessageCircle,
-  type Icon,
 } from '@tabler/icons-react'
 import {
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
-import {
-  WarRoomMiniPager,
-  warRoomPageCount,
-} from '@/components/war-room/war-room-mini-pager'
 import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
 import type {
   WarRoomDecisao,
-  WarRoomDecisaoIcone,
   WarRoomDecisaoPrioridade,
 } from '@/lib/war-room/decisoes'
 import {
@@ -51,18 +40,9 @@ import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
-const PAGE_SIZE = 4
 const NOTICIAS_LOOKBACK_DAYS = 7
 const NOTICIAS_FETCH_LIMIT = 500
 const HIDDEN_NOTICIAS_SLUGS = new Set(['instagram-causa-animal'])
-
-const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
-  critica: 'Crítica',
-  alta: 'Alta',
-  media: 'Média',
-  baixa: 'Baixa',
-  info: 'Info',
-}
 
 const PRIORIDADE_RANK: Record<WarRoomDecisaoPrioridade, number> = {
   critica: 0,
@@ -72,12 +52,16 @@ const PRIORIDADE_RANK: Record<WarRoomDecisaoPrioridade, number> = {
   info: 4,
 }
 
-const ICON_BY_TIPO: Record<WarRoomDecisaoIcone, Icon> = {
-  alerta: IconAlertTriangleFilled,
-  mensagem: IconMessageCircle,
-  bandeira: IconFlag,
-  documento: IconFileText,
-  info: IconInfoCircle,
+const CATEGORIA_BADGE_LABEL: Record<string, string> = {
+  'Visita agendada': 'Viagens',
+  Pesquisas: 'Pesquisas',
+  Notícias: 'Notícias',
+  'Redes sociais': 'Redes Sociais',
+}
+
+function categoriaBadgeLabel(categoria: string): string {
+  const key = categoria.trim()
+  return CATEGORIA_BADGE_LABEL[key] ?? (key || 'Outros')
 }
 
 type ApiPayload = {
@@ -106,26 +90,28 @@ function DecisaoItem({
   decisao: WarRoomDecisao
   onActivate?: (decisao: WarRoomDecisao) => void
 }) {
-  const ItemIcon = ICON_BY_TIPO[decisao.icone]
   const content = (
     <>
-      <span
-        className={cn(
-          'wr-decisoes-fila__icon',
-          decisao.destaque && 'wr-decisoes-fila__icon--alerta',
-        )}
-        aria-hidden
-      >
-        <ItemIcon className="h-[18px] w-[18px]" stroke={1.6} />
-      </span>
-
       <div className="wr-decisoes-fila__body min-w-0 flex-1">
-        <p className="wr-decisoes-fila__title">{decisao.problema}</p>
-        <p className="wr-decisoes-fila__meta">
-          Prioridade: {PRIORIDADE_LABEL[decisao.prioridade]}
-          <span aria-hidden> • </span>
-          {decisao.acao || decisao.categoria}
-        </p>
+        <div className="wr-decisoes-fila__title-row">
+          <span
+            className={cn(
+              'wr-decisoes-badge',
+              `wr-decisoes-badge--${decisao.categoria
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')}`,
+            )}
+          >
+            {categoriaBadgeLabel(decisao.categoria)}
+          </span>
+          <p className="wr-decisoes-fila__title">{decisao.problema.trim()}</p>
+        </div>
+        {decisao.acao?.trim() ? (
+          <p className="wr-decisoes-fila__meta">{decisao.acao.trim()}</p>
+        ) : null}
       </div>
 
       <time
@@ -182,7 +168,6 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   const [redesItems, setRedesItems] = useState<WarRoomDecisao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
 
   /** Mesmo universo do card Expectativa de votos (onde o ícone de agenda aparece). */
@@ -384,16 +369,6 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
     [visitaItems, pesquisaItems, noticiaItems, redesItems, apiItems],
   )
 
-  useEffect(() => {
-    const pages = warRoomPageCount(fila.length, PAGE_SIZE)
-    if (page > pages - 1) setPage(Math.max(0, pages - 1))
-  }, [fila.length, page])
-
-  const items = useMemo(() => {
-    const start = page * PAGE_SIZE
-    return fila.slice(start, start + PAGE_SIZE)
-  }, [fila, page])
-
   const total =
     visitaItems.length +
     pesquisaItems.length +
@@ -460,8 +435,8 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       ) : fila.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhuma decisão pendente no momento.</p>
       ) : (
-        <ul className="wr-decisoes-fila__list">
-          {items.map((decisao) => (
+        <ul className="wr-decisoes-fila__list" aria-label="Alertas da fila">
+          {fila.map((decisao) => (
             <DecisaoItem
               key={decisao.id}
               decisao={decisao}
@@ -476,13 +451,6 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       )}
 
       <div className="wr-decisoes-fila__footer-bar">
-        <WarRoomMiniPager
-          page={page}
-          total={fila.length}
-          pageSize={PAGE_SIZE}
-          onChange={setPage}
-          className="wr-decisoes-fila__pager"
-        />
         <button
           type="button"
           className="wr-decisoes-fila__footer"

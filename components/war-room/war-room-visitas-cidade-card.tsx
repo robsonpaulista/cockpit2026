@@ -14,6 +14,7 @@ import {
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
+import { formatUltimaVisitaCurta } from '@/lib/war-room/expectativa-visita-alerta'
 import { cn } from '@/lib/utils'
 
 const LOOKBACK_DAYS = 7
@@ -22,11 +23,13 @@ const PAGE_SIZE = 6
 type MunicipioVisitas = {
   municipio: string
   visitas: number
+  ultimaVisita?: string | null
 }
 
 type ForaDoMapa = {
   cidade: string
   visitas: number
+  ultimaVisita?: string | null
 }
 
 type VisitasResumoPayload = {
@@ -40,6 +43,7 @@ type CidadeRow = {
   key: string
   cidade: string
   visitas: number
+  ultimaVisita: string | null
 }
 
 type Props = {
@@ -79,6 +83,7 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
           key,
           cidade: m.municipio.trim(),
           visitas: m.visitas,
+          ultimaVisita: m.ultimaVisita ?? null,
         })
       }
       for (const f of data.foraDoMapaTd ?? []) {
@@ -86,10 +91,15 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
         const cidade = f.cidade.trim()
         const key = cidade.toLocaleLowerCase('pt-BR')
         const prev = byCity.get(key)
+        const datas = [prev?.ultimaVisita, f.ultimaVisita].filter(
+          (v): v is string => Boolean(v),
+        )
+        const ultima = datas.length > 0 ? datas.sort().at(-1) ?? null : null
         byCity.set(key, {
           key,
           cidade: prev?.cidade ?? cidade,
           visitas: (prev?.visitas ?? 0) + f.visitas,
+          ultimaVisita: ultima,
         })
       }
 
@@ -137,7 +147,7 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
   }, [page, rows])
 
   const snapshotLines = useMemo(
-    () => rows.map((r) => `${r.key}\t${r.visitas}\t${r.cidade}`),
+    () => rows.map((r) => `${r.key}\t${r.visitas}\t${r.cidade}\t${r.ultimaVisita ?? ''}`),
     [rows],
   )
 
@@ -187,27 +197,34 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
         <ul className="wr-visitas-cidade__list" aria-label="Visitas por cidade">
           <li className="wr-visitas-cidade__row wr-visitas-cidade__row--head" aria-hidden>
             <span>Cidade</span>
-            <span className="text-right">Visitas</span>
+            <span>Última</span>
+            <span>Visitas</span>
           </li>
-          {pagina.map((row) => (
-            <li
-              key={row.key}
-              className="wr-visitas-cidade__row"
-              title={`${row.cidade} · ${formatWarRoomNumber(row.visitas)} visitas`}
-            >
-              <span className="wr-visitas-cidade__cidade truncate">
-                <IconMapPin
-                  className="h-3 w-3 shrink-0 opacity-60"
-                  stroke={1.75}
-                  aria-hidden
-                />
-                {row.cidade}
-              </span>
-              <span className="wr-visitas-cidade__count tabular-nums">
-                {formatWarRoomNumber(row.visitas)}
-              </span>
-            </li>
-          ))}
+          {pagina.map((row) => {
+            const ultimaLabel = formatUltimaVisitaCurta(row.ultimaVisita)
+            return (
+              <li
+                key={row.key}
+                className="wr-visitas-cidade__row"
+                title={`${row.cidade} · ${formatWarRoomNumber(row.visitas)} visitas${ultimaLabel ? ` · última ${ultimaLabel}` : ''}`}
+              >
+                <span className="wr-visitas-cidade__cidade truncate">
+                  <IconMapPin
+                    className="h-3 w-3 shrink-0 opacity-60"
+                    stroke={1.75}
+                    aria-hidden
+                  />
+                  {row.cidade}
+                </span>
+                <span className="wr-visitas-cidade__data tabular-nums">
+                  {ultimaLabel ?? '—'}
+                </span>
+                <span className="wr-visitas-cidade__count tabular-nums">
+                  {formatWarRoomNumber(row.visitas)}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
 

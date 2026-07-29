@@ -13,6 +13,7 @@ export type WarRoomCardId =
   | 'instagram-radar'
   | 'visitas-cidade'
   | 'decisoes'
+  | 'disparos'
 
 export type WarRoomCardChange = {
   summary: string

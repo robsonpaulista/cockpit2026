@@ -136,7 +136,7 @@ export function buildDecisaoPostEngajamentoDestaque(
   return {
     id: `redes-outlier:${best.post.id}`,
     prioridade,
-    problema: `Destaque de engajamento · ${header}`,
+    problema: `Destaque: ${header}`,
     categoria: 'Redes sociais',
     hora: formatHora(best.post.postedAt),
     icone: 'mensagem',

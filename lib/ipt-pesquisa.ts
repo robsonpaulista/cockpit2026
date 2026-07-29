@@ -189,7 +189,7 @@ function mediaCandidatoNasOndas(
   return round1(sum / count)
 }
 
-function top5MediasNasOndas(ondas: OndaMunicipio[]): IptPesquisaTopItem[] {
+function rankingMediasNasOndas(ondas: OndaMunicipio[]): IptPesquisaTopItem[] {
   const agg = new Map<string, { nome: string; sum: number; count: number }>()
   for (const onda of ondas) {
     for (const [nk, row] of onda.porCandidato) {
@@ -209,7 +209,10 @@ function top5MediasNasOndas(ondas: OndaMunicipio[]): IptPesquisaTopItem[] {
         ? b.mediaPct - a.mediaPct
         : a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
     )
-    .slice(0, 5)
+}
+
+function top5MediasNasOndas(ondas: OndaMunicipio[]): IptPesquisaTopItem[] {
+  return rankingMediasNasOndas(ondas).slice(0, 5)
 }
 
 function composicaoDasOndas(ondas: OndaMunicipio[]): IptPesquisaComposicao {
@@ -378,4 +381,76 @@ export function posicaoCandidatoNoTop5(
   const alvo = candidatoNormalizado(candidato)
   const idx = top5.findIndex((c) => candidatoNormalizado(c.nome) === alvo)
   return idx >= 0 ? idx + 1 : null
+}
+
+/** Posição (1–N) no ranking completo de médias (votos válidos). */
+export function posicaoCandidatoNoRanking(
+  ranking: IptPesquisaTopItem[],
+  candidato: string,
+): number | null {
+  const alvo = candidatoNormalizado(candidato)
+  const idx = ranking.findIndex((c) => candidatoNormalizado(c.nome) === alvo)
+  return idx >= 0 ? idx + 1 : null
+}
+
+export type PesquisaPosicaoMunicipio = {
+  munKey: string
+  /** Nome de exibição (primeiro visto nos polls). */
+  cidade: string
+  /** Posição no ranking completo; null se o candidato não aparece. */
+  posicao: number | null
+  /** Média % votos válidos do candidato na base da cidade; null se ausente. */
+  mediaPct: number | null
+  emTop5: boolean
+  base: 'estimulada' | 'espontanea'
+}
+
+/**
+ * Por município com pesquisa: posição do candidato (média estimulada;
+ * se não houver, espontânea) em votos válidos.
+ */
+export function buildPosicoesPesquisaPorMunicipio(
+  polls: PollIptRow[],
+  candidato: string,
+): PesquisaPosicaoMunicipio[] {
+  const ondasEst = buildOndasValidosPorMunicipio(polls, 'estimulada')
+  const ondasEsp = buildOndasValidosPorMunicipio(polls, 'espontanea')
+  const munKeys = new Set([...ondasEst.keys(), ...ondasEsp.keys()])
+  const alvo = candidatoNormalizado(candidato)
+
+  const cidadeLabel = new Map<string, string>()
+  for (const poll of polls) {
+    const cidade = nomeCidadePoll(poll)
+    if (!cidade) continue
+    const key = normalizeIptMunicipio(cidade)
+    if (!cidadeLabel.has(key)) cidadeLabel.set(key, cidade)
+  }
+
+  const out: PesquisaPosicaoMunicipio[] = []
+  for (const key of munKeys) {
+    const est = ondasEst.get(key) ?? []
+    const esp = ondasEsp.get(key) ?? []
+    const base: 'estimulada' | 'espontanea' | null =
+      est.length > 0 ? 'estimulada' : esp.length > 0 ? 'espontanea' : null
+    if (base == null) continue
+    const ondas = base === 'estimulada' ? est : esp
+    const ranking = rankingMediasNasOndas(ondas)
+    if (ranking.length === 0) continue
+    const posicao = posicaoCandidatoNoRanking(ranking, candidato)
+    const mediaPct =
+      ranking.find((c) => candidatoNormalizado(c.nome) === alvo)?.mediaPct ?? null
+    out.push({
+      munKey: key,
+      cidade: cidadeLabel.get(key) ?? key,
+      posicao,
+      mediaPct,
+      emTop5: posicao != null && posicao <= 5,
+      base,
+    })
+  }
+
+  out.sort((a, b) =>
+    a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' }),
+  )
+  return out
 }

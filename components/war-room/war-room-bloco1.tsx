@@ -19,14 +19,24 @@ import { useIpt } from '@/hooks/use-ipt'
 import { usePermissions } from '@/hooks/use-permissions'
 import {
   filtrarMunicipiosVisaoUniverso,
-  municipioCobertoCampo,
   ordenarMunicipiosMissao,
 } from '@/lib/ipt-missoes'
 import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
+import {
+  buildExpectativaDesempenhoKpis,
+  calcExpectativaDesempenho,
+} from '@/lib/war-room/expectativa-desempenho'
+import {
+  precisaVisitaAltaExpectativa,
+  formatUltimaVisitaCurta,
+  WR_VISITA_ALERTA_DIAS,
+  WR_VISITA_ALERTA_EXPECTATIVA_MIN,
+} from '@/lib/war-room/expectativa-visita-alerta'
 import { WarRoomUltimaVisitaModal } from '@/components/war-room/war-room-ultima-visita-modal'
 import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
+import { WarRoomExpectativaDesempenhoView } from '@/components/war-room/war-room-expectativa-desempenho-view'
 import {
   WarRoomAgendaProximosModal,
 } from '@/components/war-room/war-room-agenda-proximos-modal'
@@ -42,10 +52,16 @@ import {
 } from '@/components/war-room/war-room-mini-pager'
 import { cn } from '@/lib/utils'
 
+type VisaoId = 'ranking' | 'desempenho'
 type MetaFiltro = 'todos' | 'com' | 'sem'
 
 /** Ranking paginado — 10 municípios por página. */
 const PAGE_SIZE = 8
+
+const VISAO_OPCOES: Array<{ id: VisaoId; label: string }> = [
+  { id: 'ranking', label: 'Ranking' },
+  { id: 'desempenho', label: 'Desempenho' },
+]
 
 const META_FILTRO_OPCOES: Array<{ id: MetaFiltro; label: string }> = [
   { id: 'todos', label: 'Todos' },
@@ -83,7 +99,9 @@ function ExpectativaItem({
   onOpenVisita: () => void
   onOpenAgenda: () => void
 }) {
-  const semVisita15d = !municipioCobertoCampo(municipio)
+  const precisaVisita = precisaVisitaAltaExpectativa(municipio)
+  const visitaAlertaTitle = `Sem visita há ${WR_VISITA_ALERTA_DIAS}+ dias · expectativa ≥ ${WR_VISITA_ALERTA_EXPECTATIVA_MIN.toLocaleString('pt-BR')}`
+  const ultimaVisitaLabel = formatUltimaVisitaCurta(municipio.ultimaVisita)
 
   return (
     <li>
@@ -138,12 +156,12 @@ function ExpectativaItem({
             </button>
           ) : null}
 
-          {semVisita15d ? (
+          {precisaVisita ? (
             <button
               type="button"
               className="wr-expectativa-clean__visita-alerta"
-              title="Ver última visita"
-              aria-label={`Ver última visita em ${municipio.municipio}`}
+              title={visitaAlertaTitle}
+              aria-label={`${visitaAlertaTitle} em ${municipio.municipio}`}
               onClick={(e) => {
                 e.stopPropagation()
                 onSelect()
@@ -152,11 +170,23 @@ function ExpectativaItem({
             >
               <IconPlane className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
             </button>
-          ) : null}
-
-          {!temAgendaProxima && !semVisita15d ? (
+          ) : ultimaVisitaLabel ? (
+            <button
+              type="button"
+              className="wr-expectativa-clean__visita-data"
+              title={`Última visita · ${ultimaVisitaLabel}`}
+              aria-label={`Última visita em ${municipio.municipio}: ${ultimaVisitaLabel}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect()
+                onOpenVisita()
+              }}
+            >
+              <span className="tabular-nums">{ultimaVisitaLabel}</span>
+            </button>
+          ) : (
             <span className="wr-expectativa-clean__visita-slot" aria-hidden />
-          ) : null}
+          )}
         </span>
 
         <span className="wr-expectativa-clean__votos shrink-0 tabular-nums">
@@ -184,6 +214,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
     isAdmin || canAccess('territorio') || canAccess('ipt')
   const { municipio: selecionado, setMunicipio: setSelecionado } =
     useWarRoomCidade()
+  const [visao, setVisao] = useState<VisaoId>('ranking')
   const [metaFiltro, setMetaFiltro] = useState<MetaFiltro>('todos')
   const [page, setPage] = useState(0)
   const [visitaModalMunicipio, setVisitaModalMunicipio] = useState<string | null>(null)
@@ -277,20 +308,32 @@ export function WarRoomExpectativaCard({ className }: Props) {
     return universo.slice(start, start + PAGE_SIZE)
   }, [universo, page])
 
-  const snapshotLines = useMemo(
-    () =>
-      universo.map(
-        (m, index) =>
-          `${m.municipio}\t${index + 1}\t${m.expectativaVotos}`,
-      ),
-    [universo],
-  )
+  const desempenhoKpis = useMemo(() => {
+    if (!podeVerExpectativa) return []
+    return buildExpectativaDesempenhoKpis(
+      calcExpectativaDesempenho(municipios, {
+        agendaMunicipioKeys: agendaPorMunicipio.keys(),
+      }),
+    )
+  }, [municipios, podeVerExpectativa, agendaPorMunicipio])
+
+  const snapshotLines = useMemo(() => {
+    if (visao === 'desempenho') {
+      return desempenhoKpis.map(
+        (k) => `desempenho\t${k.id}\t${k.valueLabel}\t${k.detail ?? ''}`,
+      )
+    }
+    return universo.map(
+      (m, index) =>
+        `${m.municipio}\t${index + 1}\t${m.expectativaVotos}`,
+    )
+  }, [visao, desempenhoKpis, universo])
 
   useWarRoomSnapshot({
     cardId: 'expectativa',
-    lines: loading && universo.length === 0 ? null : snapshotLines,
-    noun: 'município',
-    ready: !loading || universo.length > 0,
+    lines: loading && universo.length === 0 && desempenhoKpis.length === 0 ? null : snapshotLines,
+    noun: visao === 'desempenho' ? 'indicador' : 'município',
+    ready: !loading || universo.length > 0 || desempenhoKpis.length > 0,
   })
 
   useEffect(() => {
@@ -318,28 +361,50 @@ export function WarRoomExpectativaCard({ className }: Props) {
           <div>
             <h2 className="wr-decisoes-fila__heading">Expectativa de votos</h2>
             <p className="wr-decisoes-fila__sub">
-              {universo.length > 0
-                ? `${universo.length} municípios · ${PAGE_SIZE} por página`
-                : 'Top municípios do recorte'}
+              {visao === 'desempenho'
+                ? 'Cobertura · campo · eleitorado'
+                : universo.length > 0
+                  ? `${universo.length} municípios · ${PAGE_SIZE} por página`
+                  : 'Top municípios do recorte'}
             </p>
           </div>
           {change ? <WarRoomChangeBadge change={change} /> : null}
         </div>
-        <div className="wr-expectativa-clean__filtros" role="group" aria-label="Filtrar por expectativa">
-          {META_FILTRO_OPCOES.map((opcao) => (
+        <div
+          className="wr-expectativa-clean__filtros"
+          role="group"
+          aria-label="Visão e filtros da expectativa"
+        >
+          {VISAO_OPCOES.map((opcao) => (
             <button
               key={opcao.id}
               type="button"
-              aria-pressed={metaFiltro === opcao.id}
+              aria-pressed={visao === opcao.id}
               className={cn(
                 'wr-expectativa-clean__filtro',
-                metaFiltro === opcao.id && 'wr-expectativa-clean__filtro--ativo',
+                visao === opcao.id && 'wr-expectativa-clean__filtro--ativo',
               )}
-              onClick={() => setMetaFiltro(opcao.id)}
+              onClick={() => setVisao(opcao.id)}
             >
               {opcao.label}
             </button>
           ))}
+          {visao === 'ranking'
+            ? META_FILTRO_OPCOES.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  aria-pressed={metaFiltro === opcao.id}
+                  className={cn(
+                    'wr-expectativa-clean__filtro',
+                    metaFiltro === opcao.id && 'wr-expectativa-clean__filtro--ativo',
+                  )}
+                  onClick={() => setMetaFiltro(opcao.id)}
+                >
+                  {opcao.label}
+                </button>
+              ))
+            : null}
         </div>
       </header>
 
@@ -349,6 +414,14 @@ export function WarRoomExpectativaCard({ className }: Props) {
         </div>
       ) : error ? (
         <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
+      ) : visao === 'desempenho' ? (
+        !podeVerExpectativa ? (
+          <p className="wr-decisoes-fila__empty">
+            Sem permissão para ver os indicadores de expectativa.
+          </p>
+        ) : (
+          <WarRoomExpectativaDesempenhoView kpis={desempenhoKpis} />
+        )
       ) : pagina.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhum município no recorte atual.</p>
       ) : (
@@ -374,27 +447,29 @@ export function WarRoomExpectativaCard({ className }: Props) {
         </ul>
       )}
 
-      <div className="wr-expectativa-clean__footer-bar">
-        <WarRoomMiniPager
-          page={page}
-          total={universo.length}
-          pageSize={PAGE_SIZE}
-          onChange={setPage}
-          className="wr-expectativa-clean__pager"
-        />
-        <button
-          type="button"
-          className="wr-decisoes-fila__footer wr-expectativa-clean__footer-link"
-          onClick={() => setRankingModalOpen(true)}
-          disabled={universo.length === 0}
-        >
-          <span>
-            Ver ranking completo
-            {universo.length > 0 ? ` (${universo.length})` : ''}
-          </span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-        </button>
-      </div>
+      {visao === 'ranking' ? (
+        <div className="wr-expectativa-clean__footer-bar">
+          <WarRoomMiniPager
+            page={page}
+            total={universo.length}
+            pageSize={PAGE_SIZE}
+            onChange={setPage}
+            className="wr-expectativa-clean__pager"
+          />
+          <button
+            type="button"
+            className="wr-decisoes-fila__footer wr-expectativa-clean__footer-link"
+            onClick={() => setRankingModalOpen(true)}
+            disabled={universo.length === 0}
+          >
+            <span>
+              Ver ranking completo
+              {universo.length > 0 ? ` (${universo.length})` : ''}
+            </span>
+            <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          </button>
+        </div>
+      ) : null}
 
       {rankingModalOpen ? (
         <WarRoomExpectativaRankingModal

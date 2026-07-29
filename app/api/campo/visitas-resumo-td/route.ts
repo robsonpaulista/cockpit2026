@@ -119,6 +119,7 @@ export async function GET(request: Request) {
 
     const visitCountByNorm = new Map<string, number>()
     const displayNameByNorm = new Map<string, string>()
+    const ultimaVisitaByNorm = new Map<string, string>()
 
     for (const row of agendasRaw ?? []) {
       const ag = row as { status?: unknown; date?: unknown; cities?: unknown; visits?: unknown }
@@ -127,6 +128,7 @@ export async function GET(request: Request) {
       const visitsArr = extrairVisitasAgenda(ag.visits)
       const agendaDate = String(ag.date ?? '')
       let checkinsNoRecorte = 0
+      let ultimaNoRecorte = ''
       for (const v of visitsArr) {
         if (v.checkin_time == null || String(v.checkin_time).length === 0) continue
         const refDate = parseDateOnly(String(v.checkin_time)) || parseDateOnly(agendaDate)
@@ -138,6 +140,9 @@ export async function GET(request: Request) {
           }
         }
         checkinsNoRecorte += 1
+        if (refDate && (!ultimaNoRecorte || refDate > ultimaNoRecorte)) {
+          ultimaNoRecorte = refDate
+        }
       }
       if (checkinsNoRecorte === 0) continue
 
@@ -152,6 +157,12 @@ export async function GET(request: Request) {
         displayNameByNorm.set(norm, cityName.trim())
       }
       visitCountByNorm.set(norm, (visitCountByNorm.get(norm) ?? 0) + checkinsNoRecorte)
+      if (ultimaNoRecorte) {
+        const prev = ultimaVisitaByNorm.get(norm)
+        if (!prev || ultimaNoRecorte > prev) {
+          ultimaVisitaByNorm.set(norm, ultimaNoRecorte)
+        }
+      }
     }
 
     const oficialNorm = new Set<string>()
@@ -171,26 +182,34 @@ export async function GET(request: Request) {
       }
     )
 
-    const municipios: { territorio: TerritorioDesenvolvimentoPI; municipio: string; visitas: number }[] = []
+    const municipios: {
+      territorio: TerritorioDesenvolvimentoPI
+      municipio: string
+      visitas: number
+      ultimaVisita: string | null
+    }[] = []
     for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
       const munis = [...getMunicipiosPorTerritorioDesenvolvimentoPI(td)].sort((a, b) =>
         a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
       )
       for (const mun of munis) {
+        const norm = normalizeMunicipioNome(mun)
         municipios.push({
           territorio: td,
           municipio: mun,
-          visitas: visitCountByNorm.get(normalizeMunicipioNome(mun)) ?? 0,
+          visitas: visitCountByNorm.get(norm) ?? 0,
+          ultimaVisita: ultimaVisitaByNorm.get(norm) ?? null,
         })
       }
     }
 
-    const foraDoMapaTd: { cidade: string; visitas: number }[] = []
+    const foraDoMapaTd: { cidade: string; visitas: number; ultimaVisita: string | null }[] = []
     for (const [norm, n] of visitCountByNorm) {
       if (oficialNorm.has(norm)) continue
       foraDoMapaTd.push({
         cidade: displayNameByNorm.get(norm) ?? norm,
         visitas: n,
+        ultimaVisita: ultimaVisitaByNorm.get(norm) ?? null,
       })
     }
     foraDoMapaTd.sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' }))

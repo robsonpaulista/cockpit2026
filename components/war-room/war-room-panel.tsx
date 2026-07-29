@@ -46,7 +46,7 @@ import { WarRoomDecisoesCard } from '@/components/war-room/war-room-decisoes-car
 import { WarRoomAgendaCard, parseAgendaMinutes } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomCrmCard } from '@/components/war-room/war-room-crm-card'
 import { WarRoomDisparosCard } from '@/components/war-room/war-room-disparos-card'
-import { WarRoomFeedCard } from '@/components/war-room/war-room-feed-card'
+// Oculto por hora: WarRoomFeedCard (Linha viva)
 import { WarRoomRedesCard } from '@/components/war-room/war-room-redes-card'
 import { WarRoomInstagramRadarCard } from '@/components/war-room/war-room-instagram-radar-card'
 import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas-cidade-card'
@@ -361,9 +361,9 @@ function WarRoomPanelInner() {
                 {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
               </div>
 
-              <div className="wr-board-stack wr-cell--prioridades" aria-label="Prioridades e linha viva">
+              <div className="wr-board-stack wr-cell--prioridades" aria-label="Fila de decisões">
                 <WarRoomDecisoesCard onTotalChange={setDecisoesTotal} />
-                <WarRoomFeedCard />
+                {/* Oculto por hora: <WarRoomFeedCard /> (Linha viva) */}
               </div>
             </div>
           </div>

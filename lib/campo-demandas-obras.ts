@@ -22,9 +22,10 @@ export type CampoDemandaObraRow = {
   }
 }
 
-/** Termos excluídos (Demandas + Mapa de Obras). */
+/** Termos excluídos (Demandas + Mapa de Obras + fluxo Agenda). */
 export const DEMANDAS_TERMOS_EXCLUIDOS = [
   'espaco',
+  'custeio',
   'recurso',
   'transferencia especial',
   'transferencias especiais',
@@ -32,6 +33,7 @@ export const DEMANDAS_TERMOS_EXCLUIDOS = [
   'transf especiais',
   'transf. especial',
   'transf especial',
+  'transferencia',
 ] as const
 
 export function normalizarTextoDemanda(value: string): string {

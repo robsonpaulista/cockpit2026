@@ -9,8 +9,10 @@ import {
 } from '@tabler/icons-react'
 import {
   fetchInstagramData,
+  fetchInstagramHistory,
   loadInstagramConfig,
   loadInstagramConfigAsync,
+  type InstagramHistoryResponse,
   type InstagramMetrics,
 } from '@/lib/instagramApi'
 import { instagramCaptionHeader } from '@/lib/instagram-caption-municipio'
@@ -25,6 +27,15 @@ import {
   WarRoomPostagensDiaModal,
   type WarRoomPostagemDiaItem,
 } from '@/components/war-room/war-room-postagens-dia-modal'
+import {
+  WarRoomRedesDesempenhoView,
+  type WarRoomDesempenhoKpi,
+} from '@/components/war-room/war-room-redes-desempenho-view'
+import { WarRoomRedesVisitasManualForm } from '@/components/war-room/war-room-redes-visitas-manual'
+import {
+  fetchInstagramProfileVisitsManual,
+  type InstagramProfileVisitManual,
+} from '@/lib/instagram-profile-visits-manual'
 import { cn } from '@/lib/utils'
 
 const WAR_ROOM_TZ = 'America/Sao_Paulo'
@@ -32,11 +43,12 @@ const LOOKBACK_DAYS = 7
 const POSTS_VISIBLE = 5
 const THEMES_VISIBLE = 6
 
-type FiltroId = 'postagens' | 'temas'
+type FiltroId = 'postagens' | 'temas' | 'desempenho'
 
 const FILTRO_OPCOES: Array<{ id: FiltroId; label: string }> = [
   { id: 'postagens', label: 'Postagens' },
   { id: 'temas', label: 'Temas' },
+  { id: 'desempenho', label: 'Desempenho' },
 ]
 
 type PostClassification = {
@@ -105,6 +117,21 @@ function cutoffKeyDaysAgo(days: number, timeZone: string = WAR_ROOM_TZ): string 
   return calendarDateInTz(cutoff, timeZone)
 }
 
+/** Lista YYYY-MM-DD dos últimos `days` dias (hoje incluso), ordem crescente. */
+function listDayKeys(days: number, timeZone: string = WAR_ROOM_TZ): string[] {
+  const today = todayKeyInTz(timeZone)
+  const [y, m, d] = today.split('-').map((p) => Number.parseInt(p, 10))
+  if (!y || !m || !d) return []
+  const base = new Date(Date.UTC(y, m - 1, d))
+  const out: string[] = []
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const dt = new Date(base)
+    dt.setUTCDate(base.getUTCDate() - i)
+    out.push(dt.toISOString().slice(0, 10))
+  }
+  return out
+}
+
 function getPostIdentifier(post: { id: string; postedAt?: string; caption?: string }): string {
   if (post.id) return post.id
   if (post.postedAt && post.caption) {
@@ -115,12 +142,19 @@ function getPostIdentifier(post: { id: string; postedAt?: string; caption?: stri
   return `post_${Date.now()}`
 }
 
+function audiencePct(part: number, total: number): number | null {
+  if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) return null
+  return (part / total) * 100
+}
+
 /** Redes sociais — postagens top engajamento e desempenho por tema (últimos 7 dias). */
 export function WarRoomRedesCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('redes')
   const [filtro, setFiltro] = useState<FiltroId>('postagens')
   const [metrics, setMetrics] = useState<InstagramMetrics | null>(null)
+  const [history, setHistory] = useState<InstagramHistoryResponse | null>(null)
+  const [manualVisitsByDate, setManualVisitsByDate] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [configured, setConfigured] = useState(false)
@@ -173,17 +207,18 @@ export function WarRoomRedesCard({ className }: Props) {
         setConfigured(false)
         if (!silent) {
           setMetrics(null)
+          setHistory(null)
+          setManualVisitsByDate({})
           setError('Instagram Pessoal não configurado')
         }
         return
       }
       setConfigured(true)
-      const data = await fetchInstagramData(
-        cfg.token,
-        cfg.businessAccountId,
-        '7d',
-        forceRefresh,
-      )
+      const [data, hist, visitsManual] = await Promise.all([
+        fetchInstagramData(cfg.token, cfg.businessAccountId, '7d', forceRefresh),
+        fetchInstagramHistory(LOOKBACK_DAYS),
+        fetchInstagramProfileVisitsManual(LOOKBACK_DAYS),
+      ])
       if (!data) {
         if (!silent) {
           setError('Não foi possível carregar o Instagram')
@@ -192,11 +227,15 @@ export function WarRoomRedesCard({ className }: Props) {
         return
       }
       setMetrics(data)
+      setHistory(hist)
+      setManualVisitsByDate(visitsManual.byDate)
       await loadClassifications()
     } catch (err) {
       if (!silent) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar Instagram')
         setMetrics(null)
+        setHistory(null)
+        setManualVisitsByDate({})
       }
     } finally {
       if (!silent) setLoading(false)
@@ -305,15 +344,178 @@ export function WarRoomRedesCard({ className }: Props) {
       .sort((a, b) => b.engagement - a.engagement)
   }, [todayPosts, classifications])
 
+  const audienceSplit = metrics?.insights?.audienceSplit ?? null
+
+  const desempenhoKpis = useMemo((): WarRoomDesempenhoKpi[] => {
+    const rows = [...(history?.history ?? [])].sort((a, b) =>
+      a.snapshot_date.localeCompare(b.snapshot_date),
+    )
+    const seriesOf = (pick: (row: (typeof rows)[number]) => number) =>
+      rows.map((row) => ({
+        date: row.snapshot_date,
+        label: formatDataCurta(`${row.snapshot_date}T12:00:00`),
+        value: pick(row),
+      }))
+
+    const deltaOf = (series: Array<{ value: number }>): number | null => {
+      if (series.length < 2) return null
+      const first = series[0]?.value ?? 0
+      const last = series[series.length - 1]?.value ?? 0
+      if (first === 0) return last === 0 ? 0 : null
+      return ((last - first) / Math.abs(first)) * 100
+    }
+
+    const first = rows[0]
+    const last = rows[rows.length - 1]
+    const viewsSeries = seriesOf((r) => r.impressions || 0)
+    const reachSeries = seriesOf((r) => r.reach || 0)
+    const interactionsSeries = seriesOf((r) => r.total_interactions || 0)
+    const historyViewsByDate = new Map(
+      rows.map((r) => [r.snapshot_date, r.profile_views || 0] as const),
+    )
+    const dayKeys = listDayKeys(LOOKBACK_DAYS)
+    // Visitas: prioriza lançamento manual (API Meta não entrega mais profile_views).
+    const visitsSeries = dayKeys.map((date) => ({
+      date,
+      label: formatDataCurta(`${date}T12:00:00`),
+      value: manualVisitsByDate[date] ?? historyViewsByDate.get(date) ?? 0,
+    }))
+    const visitsTotal = visitsSeries.reduce((sum, p) => sum + p.value, 0)
+    // Ganho líquido diário (estilo Meta Desempenho), não o estoque total.
+    const followersSeries = rows.map((row, i) => {
+      const prev = i > 0 ? rows[i - 1]?.followers_count || 0 : row.followers_count || 0
+      const curr = row.followers_count || 0
+      return {
+        date: row.snapshot_date,
+        label: formatDataCurta(`${row.snapshot_date}T12:00:00`),
+        value: i === 0 ? 0 : curr - prev,
+      }
+    })
+    const followersNet =
+      first && last ? (last.followers_count || 0) - (first.followers_count || 0) : 0
+    let followersDeltaPct: number | null = null
+    if (rows.length >= 4 && first && last) {
+      const mid = Math.floor(rows.length / 2)
+      const midRow = rows[mid]
+      const midPrev = rows[mid - 1]
+      if (midRow && midPrev) {
+        const firstHalf = (midPrev.followers_count || 0) - (first.followers_count || 0)
+        const secondHalf = (last.followers_count || 0) - (midRow.followers_count || 0)
+        if (firstHalf !== 0) {
+          followersDeltaPct = ((secondHalf - firstHalf) / Math.abs(firstHalf)) * 100
+        } else if (secondHalf !== 0) {
+          followersDeltaPct = null
+        } else {
+          followersDeltaPct = 0
+        }
+      }
+    }
+
+    const viewsTotal =
+      audienceSplit?.views?.total ||
+      metrics?.insights?.totalViews ||
+      last?.impressions ||
+      0
+    const reachTotal =
+      audienceSplit?.reach?.total ||
+      metrics?.insights?.totalReach ||
+      last?.reach ||
+      0
+
+    const viewsFollowersPct = audiencePct(
+      audienceSplit?.views?.followers ?? 0,
+      audienceSplit?.views?.total ?? 0,
+    )
+    const viewsNonPct = audiencePct(
+      audienceSplit?.views?.nonFollowers ?? 0,
+      audienceSplit?.views?.total ?? 0,
+    )
+    const reachFollowersPct = audiencePct(
+      audienceSplit?.reach?.followers ?? 0,
+      audienceSplit?.reach?.total ?? 0,
+    )
+    const reachNonPct = audiencePct(
+      audienceSplit?.reach?.nonFollowers ?? 0,
+      audienceSplit?.reach?.total ?? 0,
+    )
+
+    return [
+      {
+        id: 'views',
+        label: 'Visualizações',
+        total: viewsTotal,
+        deltaPct: deltaOf(viewsSeries),
+        series: viewsSeries,
+        followersPct: viewsFollowersPct,
+        nonFollowersPct: viewsNonPct,
+        legend: 'Conteúdo Instagram',
+      },
+      {
+        id: 'reach',
+        label: 'Alcance',
+        total: reachTotal,
+        deltaPct: deltaOf(reachSeries),
+        series: reachSeries,
+        followersPct: reachFollowersPct,
+        nonFollowersPct: reachNonPct,
+        legend: 'Contas únicas',
+      },
+      {
+        id: 'interactions',
+        label: 'Interações',
+        total: metrics?.insights?.totalInteractions || last?.total_interactions || 0,
+        deltaPct: deltaOf(interactionsSeries),
+        series: interactionsSeries,
+        legend: 'Com o conteúdo',
+      },
+      {
+        id: 'visits',
+        label: 'Visitas',
+        total: visitsTotal,
+        deltaPct: deltaOf(visitsSeries),
+        series: visitsSeries,
+        legend: 'Perfil · lançamento manual',
+      },
+      {
+        id: 'followers',
+        label: 'Seguidores',
+        total: followersNet,
+        deltaPct: followersDeltaPct,
+        series: followersSeries,
+        legend: 'Ganho líquido no período',
+      },
+      ...(visitsTotal > 0
+        ? [
+            {
+              id: 'conversion',
+              label: 'Visita → seguidor',
+              total: (followersNet / visitsTotal) * 100,
+              deltaPct: null as number | null,
+              series: visitsSeries,
+              valueLabel: `${((followersNet / visitsTotal) * 100).toLocaleString('pt-BR', {
+                maximumFractionDigits: 1,
+                minimumFractionDigits: 0,
+              })}%`,
+              legend: 'Ganho de seguidores ÷ visitas',
+            } satisfies WarRoomDesempenhoKpi,
+          ]
+        : []),
+    ].filter((kpi) => kpi.id === 'conversion' || kpi.total !== 0 || kpi.series.some((p) => p.value !== 0))
+  }, [history, metrics, audienceSplit, manualVisitsByDate])
+
   const snapshotLines = useMemo(() => {
     if (!metrics) return null
     return [
       `filtro\t${filtro}`,
+      ...desempenhoKpis.map(
+        (k) =>
+          `desempenho\t${k.id}\t${k.total}\t${k.deltaPct ?? ''}\t${k.followersPct ?? ''}`,
+      ),
       ...postsHoje.map((p) => `hoje\t${p.id}\t${p.engagement}\t${p.header}`),
       ...postsAnteriores.map((p) => `post\t${p.id}\t${p.engagement}\t${p.header}`),
       ...themeRows.map((t) => `tema\t${t.label}\t${t.avgEngagement}\t${t.posts}`),
     ]
-  }, [metrics, filtro, postsHoje, postsAnteriores, themeRows])
+  }, [metrics, filtro, desempenhoKpis, postsHoje, postsAnteriores, themeRows])
 
   useWarRoomSnapshot({
     cardId: 'redes',
@@ -322,8 +524,25 @@ export function WarRoomRedesCard({ className }: Props) {
     ready: !loading || metrics != null,
   })
 
+  const visitDayKeys = useMemo(() => listDayKeys(LOOKBACK_DAYS), [])
+
+  const handleManualVisitsSaved = useCallback((rows: InstagramProfileVisitManual[]) => {
+    setManualVisitsByDate((prev) => {
+      const next = { ...prev }
+      for (const row of rows) {
+        next[row.date] = row.visits
+      }
+      return next
+    })
+  }, [])
+
+  const formatVisitDayLabel = useCallback((dateKey: string) => {
+    return formatDataCurta(`${dateKey}T12:00:00`)
+  }, [])
+
   const initialLoading = loading && !metrics
   const showPostagens = filtro === 'postagens'
+  const showDesempenho = filtro === 'desempenho'
 
   return (
     <section
@@ -336,9 +555,11 @@ export function WarRoomRedesCard({ className }: Props) {
           <div>
             <h2 className="wr-redes-clean__heading">Redes sociais</h2>
             <p className="wr-redes-clean__sub">
-              {showPostagens
-                ? `Últimos ${LOOKBACK_DAYS} dias`
-                : `Média por post · últimos ${LOOKBACK_DAYS} dias`}
+              {showDesempenho
+                ? `Indicadores · últimos ${LOOKBACK_DAYS} dias`
+                : showPostagens
+                  ? `Últimos ${LOOKBACK_DAYS} dias`
+                  : `Média por post · últimos ${LOOKBACK_DAYS} dias`}
             </p>
           </div>
           {change ? (
@@ -375,8 +596,18 @@ export function WarRoomRedesCard({ className }: Props) {
             Abrir Instagram
           </Link>
         </p>
-      ) : error && topPosts.length === 0 && themeRows.length === 0 ? (
+      ) : error && topPosts.length === 0 && themeRows.length === 0 && desempenhoKpis.length === 0 ? (
         <p className="wr-redes-clean__state wr-redes-clean__state--erro">{error}</p>
+      ) : showDesempenho ? (
+        <div className="wr-redes-desempenho-wrap">
+          <WarRoomRedesDesempenhoView kpis={desempenhoKpis} />
+          <WarRoomRedesVisitasManualForm
+            dates={visitDayKeys}
+            initialByDate={manualVisitsByDate}
+            formatDateLabel={formatVisitDayLabel}
+            onSaved={handleManualVisitsSaved}
+          />
+        </div>
       ) : showPostagens ? (
         topPosts.length === 0 ? (
           <p className="wr-redes-clean__state">

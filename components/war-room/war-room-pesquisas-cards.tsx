@@ -13,8 +13,13 @@ import {
   type WarRoomPesquisaConsolidadaReal,
 } from '@/lib/war-room/pesquisas-consolidadas'
 import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
+import {
+  buildPesquisasDesempenhoKpis,
+  calcPesquisasDesempenho,
+} from '@/lib/war-room/pesquisas-desempenho'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
+import { WarRoomPesquisasDesempenhoView } from '@/components/war-room/war-room-pesquisas-desempenho-view'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
@@ -25,11 +30,12 @@ import { cn } from '@/lib/utils'
 const HIGHLIGHTS_COUNT = 3
 const LIST_VISIBLE = 8
 
-type PesquisaFiltro = 'finalizadas' | 'andamento'
+type PesquisaFiltro = 'finalizadas' | 'andamento' | 'desempenho'
 
 const FILTRO_OPCOES: Array<{ id: PesquisaFiltro; label: string }> = [
   { id: 'finalizadas', label: 'Finalizadas' },
   { id: 'andamento', label: 'Em andamento' },
+  { id: 'desempenho', label: 'Desempenho' },
 ]
 
 const ANDAMENTO_STATUS_LABEL: Record<WarRoomPesquisaAndamentoStatus, string> = {
@@ -66,11 +72,13 @@ function andamentoAtivos(rows: WarRoomPesquisaAndamento[]): WarRoomPesquisaAndam
   return rows.filter((r) => r.status !== 'entregue')
 }
 
-/** Pesquisas consolidadas — filtros clean + finalizadas / em andamento. */
+/** Pesquisas consolidadas — filtros clean + finalizadas / em andamento / desempenho. */
 export function WarRoomPesquisasConsolidadasCard({ className }: { className?: string }) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('pesquisas')
   const [rows, setRows] = useState<WarRoomPesquisaConsolidadaReal[]>([])
+  const [pollsRaw, setPollsRaw] = useState<PollIptRow[]>([])
+  const [candidatoFoco, setCandidatoFoco] = useState(() => resolveCandidatoIpt())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<PesquisaFiltro>('finalizadas')
@@ -89,18 +97,18 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     }
     try {
       const foco = resolveCandidatoIpt()
+      setCandidatoFoco(foco)
       const res = await fetch('/api/pesquisa?limit=5000', { cache: 'no-store' })
       if (!res.ok) throw new Error('pesquisa')
       const data = (await res.json()) as PollIptRow[]
-      const built = buildWarRoomPesquisasConsolidadas(
-        Array.isArray(data) ? data : [],
-        foco,
-        200,
-      )
+      const polls = Array.isArray(data) ? data : []
+      setPollsRaw(polls)
+      const built = buildWarRoomPesquisasConsolidadas(polls, foco, 200)
       setRows(built)
     } catch {
       if (!silent) {
         setRows([])
+        setPollsRaw([])
         setError('Não foi possível carregar as pesquisas.')
       }
     } finally {
@@ -118,20 +126,33 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     })
   }, [register, load])
 
-  const snapshotLines = useMemo(
-    () =>
-      rows.map(
-        (r) =>
-          `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
-      ),
-    [rows],
-  )
+  const desempenhoKpis = useMemo(() => {
+    if (pollsRaw.length === 0) return []
+    return buildPesquisasDesempenhoKpis(
+      calcPesquisasDesempenho(pollsRaw, candidatoFoco),
+    )
+  }, [pollsRaw, candidatoFoco])
+
+  const snapshotLines = useMemo(() => {
+    if (filtro === 'desempenho') {
+      return desempenhoKpis.map(
+        (k) => `desempenho\t${k.id}\t${k.valueLabel}\t${k.detail ?? ''}`,
+      )
+    }
+    return rows.map(
+      (r) =>
+        `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
+    )
+  }, [filtro, desempenhoKpis, rows])
 
   const { changedKeys } = useWarRoomSnapshot({
     cardId: 'pesquisas',
-    lines: loading && rows.length === 0 ? null : snapshotLines,
-    noun: 'pesquisa',
-    ready: !loading || rows.length > 0,
+    lines:
+      loading && rows.length === 0 && desempenhoKpis.length === 0
+        ? null
+        : snapshotLines,
+    noun: filtro === 'desempenho' ? 'indicador' : 'pesquisa',
+    ready: !loading || rows.length > 0 || desempenhoKpis.length > 0,
   })
   const changedSet = useMemo(() => new Set(changedKeys), [changedKeys])
 
@@ -145,6 +166,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
 
   const showFinalizadas = filtro === 'finalizadas'
   const showAndamento = filtro === 'andamento'
+  const showDesempenho = filtro === 'desempenho'
   const showKpis = filtro === 'finalizadas'
 
   const emptyFinalizadas = !loading && rows.length === 0
@@ -160,7 +182,11 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         <div className="wr-pesquisas-clean__title-row">
           <div>
             <h2 className="wr-pesquisas-clean__heading">Pesquisas eleitorais</h2>
-            <p className="wr-pesquisas-clean__sub">Resultados e campo</p>
+            <p className="wr-pesquisas-clean__sub">
+              {showDesempenho
+                ? 'Cobertura · top 5 · eleitorado · votos válidos'
+                : 'Resultados e campo · Votos válidos'}
+            </p>
           </div>
           {change ? <WarRoomChangeBadge change={change} /> : null}
         </div>
@@ -190,6 +216,14 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         <div className="wr-pesquisas-clean__state">
           <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
         </div>
+      ) : showDesempenho ? (
+        pollsRaw.length === 0 ? (
+          <p className="wr-pesquisas-clean__state">
+            {error ?? 'Nenhuma pesquisa para calcular o desempenho.'}
+          </p>
+        ) : (
+          <WarRoomPesquisasDesempenhoView kpis={desempenhoKpis} />
+        )
       ) : emptyFinalizadas && filtro === 'finalizadas' ? (
         <p className="wr-pesquisas-clean__state">
           {error ?? 'Nenhuma pesquisa finalizada no momento.'}
@@ -235,7 +269,10 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                 {andamentoRows.length > 0 ? ` (${andamentoRows.length})` : ''}
               </p>
               <ul className="wr-pesquisas-clean__list" aria-label="Pesquisas em andamento">
-                <li className="wr-pesquisas-clean__row wr-pesquisas-clean__row--head wr-pesquisas-clean__row--andamento" aria-hidden>
+                <li
+                  className="wr-pesquisas-clean__row wr-pesquisas-clean__row--head wr-pesquisas-clean__row--andamento"
+                  aria-hidden
+                >
                   <span>Município</span>
                   <span className="wr-col-hide-sm">Instituto</span>
                   <span>Entrega</span>
@@ -291,7 +328,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                       'wr-pesquisas-clean__row wr-pesquisas-clean__row--clickable',
                       changedSet.has(row.id) && 'wr-row--changed',
                     )}
-                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel} · ${row.cenario} · duplo clique para ver ranking`}
+                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel} · ${row.cenario} · votos válidos · duplo clique para ver ranking`}
                     onDoubleClick={() => setRankingModal(row)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') setRankingModal(row)
@@ -316,10 +353,12 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         </>
       )}
 
-      <Link href="/dashboard/pesquisa" className="wr-pesquisas-clean__footer">
-        <span>Ver todas as pesquisas</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      {!showDesempenho ? (
+        <Link href="/dashboard/pesquisa" className="wr-pesquisas-clean__footer">
+          <span>Ver todas as pesquisas</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      ) : null}
 
       {rankingModal ? (
         <WarRoomPesquisaRankingModal

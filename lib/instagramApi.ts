@@ -35,6 +35,21 @@ export interface InstagramMetrics {
     totalViews: number
     totalInteractions: number
     totalReach: number
+    /**
+     * Split seguidor × não-seguidor (Graph Insights · breakdown follow_type / follower_type).
+     */
+    audienceSplit?: {
+      views?: {
+        total: number
+        followers: number
+        nonFollowers: number
+      }
+      reach?: {
+        total: number
+        followers: number
+        nonFollowers: number
+      }
+    }
     periodMetrics?: {
       startDate: string
       endDate: string

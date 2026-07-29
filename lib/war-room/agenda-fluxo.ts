@@ -1,5 +1,9 @@
 import { normalizeIptMunicipio } from '@/lib/ipt'
 import {
+  demandaExcluidaPorTermo,
+  type CampoDemandaObraRow,
+} from '@/lib/campo-demandas-obras'
+import {
   emendaEstaPaga,
   filtrarEmendasPorMunicipio,
   type EmendaRegistro,
@@ -50,6 +54,16 @@ export type AgendaFluxoEmendaItem = {
   titulo: string
   status: string | null
   meta: string | null
+  /** Valor formatado (indicado / empenhado / pago). */
+  valor: string | null
+  /** Exercício da emenda (ano). */
+  ano: number | null
+}
+
+export type AgendaFluxoEmendaColuna = {
+  key: string
+  label: string
+  itens: AgendaFluxoEmendaItem[]
 }
 
 export type AgendaFluxoDisparoItem = {
@@ -160,22 +174,14 @@ function storageKey(municipio: string, dataKey: string): string {
   return `wr-agenda-fluxo:${normalizeIptMunicipio(municipio)}:${dataKey}`
 }
 
-/** Normaliza texto para filtro (minúsculas, sem acento). */
-function normalizeDemandaFiltroTexto(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-}
-
-/** Exclui demandas cujo título/descrição contenham Recurso ou Transferência. */
+/** @deprecated Use `demandaExcluidaPorTermo` (mesmo filtro da Base Eleitoral · Demandas). */
 export function demandaAgendaFluxoExcluidaPorTermo(
   ...partes: Array<string | null | undefined>
 ): boolean {
-  const texto = normalizeDemandaFiltroTexto(partes.filter(Boolean).join(' '))
-  if (!texto) return false
-  return texto.includes('recurso') || texto.includes('transferencia')
+  const row: CampoDemandaObraRow = {
+    title: partes.filter(Boolean).join(' '),
+  }
+  return demandaExcluidaPorTermo(row)
 }
 
 /** Normaliza resposta de `/api/campo/demands` para o fluxo da agenda. */
@@ -200,18 +206,98 @@ export function mapDemandasAgendaFluxo(raw: unknown[]): AgendaFluxoDemandaItem[]
         typeof row.status === 'string' && row.status.trim()
           ? row.status.trim()
           : null
+      const theme =
+        typeof row.theme === 'string' && row.theme.trim() ? row.theme.trim() : null
       const lideranca =
         (typeof row.lideranca === 'string' && row.lideranca.trim()) ||
         (typeof row.liderança === 'string' && row.liderança.trim()) ||
         null
+      const sheetsData =
+        row.sheets_data && typeof row.sheets_data === 'object'
+          ? (row.sheets_data as CampoDemandaObraRow['sheets_data'])
+          : undefined
 
-      if (demandaAgendaFluxoExcluidaPorTermo(titulo, descricao, status, lideranca)) {
-        return null
+      const demandaRow: CampoDemandaObraRow = {
+        id,
+        title: titulo,
+        description: descricao,
+        status,
+        theme,
+        lideranca,
+        from_sheets: row.from_sheets === true,
+        sheets_data: sheetsData,
       }
+
+      // Mesmo filtro da Base Eleitoral · Demandas (custeio, recurso, transferência…).
+      if (demandaExcluidaPorTermo(demandaRow)) return null
 
       return { id, titulo, status, lideranca }
     })
     .filter((item): item is AgendaFluxoDemandaItem => item !== null)
+}
+
+export type AgendaFluxoDemandaColuna = {
+  key: string
+  label: string
+  itens: AgendaFluxoDemandaItem[]
+}
+
+function normalizeStatusDemanda(status: string | null | undefined): string {
+  return (status ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .trim()
+}
+
+function metaColunaStatusDemanda(status: string | null | undefined): {
+  key: string
+  label: string
+  order: number
+} {
+  const raw = (status ?? '').trim()
+  const n = normalizeStatusDemanda(raw)
+  if (!n) return { key: 'sem_status', label: 'Sem status', order: 90 }
+  if (n.includes('andamento') || n.includes('progresso')) {
+    return { key: 'em_andamento', label: raw || 'Em andamento', order: 10 }
+  }
+  if (n.includes('encaminhad')) {
+    return { key: 'encaminhada', label: raw || 'Encaminhada', order: 20 }
+  }
+  if (n.includes('finaliz') || n.includes('conclu') || n.includes('resolvid')) {
+    return { key: 'finalizada', label: raw || 'Finalizada', order: 30 }
+  }
+  if (n.includes('pendente') || n.includes('aguard')) {
+    return { key: 'pendente', label: raw || 'Pendente', order: 40 }
+  }
+  return { key: `outro:${n}`, label: raw, order: 50 }
+}
+
+/** Agrupa demandas em colunas por status (ordem: andamento → demais → finalizada). */
+export function groupDemandasAgendaFluxoPorStatus(
+  demandas: AgendaFluxoDemandaItem[],
+): AgendaFluxoDemandaColuna[] {
+  const map = new Map<string, AgendaFluxoDemandaColuna & { order: number }>()
+  for (const item of demandas) {
+    const meta = metaColunaStatusDemanda(item.status)
+    const prev = map.get(meta.key)
+    if (prev) {
+      prev.itens.push(item)
+    } else {
+      map.set(meta.key, {
+        key: meta.key,
+        label: meta.label,
+        order: meta.order,
+        itens: [item],
+      })
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order
+      return a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' })
+    })
+    .map(({ order: _order, ...col }) => col)
 }
 
 function formatValorEmenda(n: number | null | undefined): string | null {
@@ -279,21 +365,43 @@ export function listEmendasAgendaFluxo(
       formatValorEmenda(e.valor_indicado) ||
       formatValorEmenda(e.valor_empenhado) ||
       formatValorEmenda(e.valor_pago)
-    const meta = [
-      e.exercicio != null ? String(e.exercicio) : null,
-      e.emenda.trim() || null,
-      valor,
-      e.bloco,
-    ]
-      .filter(Boolean)
-      .join(' · ')
+    const ano =
+      e.exercicio != null && Number.isFinite(e.exercicio) ? Math.trunc(e.exercicio) : null
+    const meta = [e.emenda.trim() || null, valor, e.bloco].filter(Boolean).join(' · ')
     return {
       id: e.id,
       titulo,
       status: emendaEstaPaga(e) ? 'Paga' : 'Em aberto',
       meta: meta || null,
+      valor,
+      ano,
     }
   })
+}
+
+/** Agrupa emendas em colunas por ano (mais recente primeiro). */
+export function groupEmendasAgendaFluxoPorAno(
+  emendas: AgendaFluxoEmendaItem[],
+): AgendaFluxoEmendaColuna[] {
+  const map = new Map<string, AgendaFluxoEmendaColuna & { order: number }>()
+  for (const item of emendas) {
+    const temAno = item.ano != null && Number.isFinite(item.ano)
+    const key = temAno ? String(item.ano) : 'sem_ano'
+    const label = temAno ? String(item.ano) : 'Sem ano'
+    const order = temAno ? -(item.ano as number) : 1
+    const prev = map.get(key)
+    if (prev) {
+      prev.itens.push(item)
+    } else {
+      map.set(key, { key, label, order, itens: [item] })
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order
+      return a.label.localeCompare(b.label, 'pt-BR')
+    })
+    .map(({ order: _order, ...col }) => col)
 }
 
 /** Disparos recentes associados ao município (campo cidade ou nome na campanha). */
