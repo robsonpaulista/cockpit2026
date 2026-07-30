@@ -9,35 +9,96 @@ import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface ObrasImportModalProps {
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (tipoAba: string) => void
+}
+
+const ABAS_PROTEGIDAS = new Set(['pavimentação', 'obras diversas'])
+
+function sugerirNomeAba(fileName: string): string {
+  return fileName
+    .replace(/\.xlsx$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
 }
 
 export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) {
   const { theme } = useTheme()
   const isCockpit = false
   const [file, setFile] = useState<File | null>(null)
+  const [sheetNames, setSheetNames] = useState<string[]>([])
+  const [selectedSheet, setSelectedSheet] = useState('')
+  const [tabName, setTabName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
+  const [importedTab, setImportedTab] = useState('')
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-          selectedFile.name.endsWith('.xlsx')) {
-        setFile(selectedFile)
-        setError(null)
-      } else {
-        setError('Por favor, selecione um arquivo Excel (.xlsx)')
-        setFile(null)
+    if (!selectedFile) return
+    if (
+      selectedFile.type !==
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' &&
+      !selectedFile.name.endsWith('.xlsx')
+    ) {
+      setError('Por favor, selecione um arquivo Excel (.xlsx)')
+      setFile(null)
+      setSheetNames([])
+      setSelectedSheet('')
+      return
+    }
+
+    setFile(selectedFile)
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = ev.target?.result
+        if (!(data instanceof ArrayBuffer)) {
+          setError('Erro ao ler arquivo')
+          return
+        }
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
+        const names = workbook.SheetNames ?? []
+        setSheetNames(names)
+        const preferred =
+          names.find((n) => n.trim() === '2026') ||
+          names.find((n) => /2026/i.test(n)) ||
+          names[0] ||
+          ''
+        setSelectedSheet(preferred)
+        const base = sugerirNomeAba(selectedFile.name)
+        const sugestao = preferred ? `Recap ${preferred}` : base
+        setTabName((prev) => prev.trim() || sugestao)
+      } catch (err) {
+        console.error(err)
+        setError('Não foi possível ler as abas do Excel')
       }
     }
+    reader.readAsArrayBuffer(selectedFile)
   }
 
   const handleImport = async () => {
     if (!file) {
       setError('Por favor, selecione um arquivo')
+      return
+    }
+    if (!selectedSheet) {
+      setError('Selecione a aba da planilha (ex.: 2026)')
+      return
+    }
+
+    const tipoAba = tabName.trim().replace(/\s+/g, ' ')
+    if (!tipoAba) {
+      setError('Informe o nome da nova aba (ex.: Recap 2026)')
+      return
+    }
+    if (ABAS_PROTEGIDAS.has(tipoAba.toLowerCase())) {
+      setError(
+        'Use outro nome de aba. Pavimentação e Obras diversas não são alteradas pela importação.',
+      )
       return
     }
 
@@ -79,9 +140,10 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
             return
           }
           
-          // Pegar primeira planilha
-          const firstSheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[firstSheetName]
+          const sheetName =
+            workbook.SheetNames.find((n) => n === selectedSheet) ||
+            workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[sheetName]
           
           if (!worksheet) {
             setError('Erro ao acessar planilha do arquivo')
@@ -161,11 +223,15 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
             }
           }
 
-          // Enviar para API
-          const response = await fetch('/api/obras/import', {
+          // Storage local (JSON) — sem Supabase
+          const response = await fetch('/api/obras/recap/import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ obras: jsonData }),
+            body: JSON.stringify({
+              obras: jsonData,
+              tipo: tipoAba,
+              replace: true,
+            }),
           })
 
           const result = await response.json()
@@ -173,8 +239,9 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
           if (response.ok) {
             setSuccess(true)
             setImportedCount(result.imported || jsonData.length)
+            setImportedTab(result.tipo || tipoAba)
             setTimeout(() => {
-              onSuccess()
+              onSuccess(result.tipo || tipoAba)
               onClose()
             }, 1500)
           } else {
@@ -216,7 +283,7 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-accent-gold" />
-            Importar Obras do Excel
+            Importar para storage local
           </h2>
           <button
             onClick={onClose}
@@ -231,11 +298,12 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-text-primary mb-2">Importação concluída!</h3>
             <p className="text-sm text-secondary mb-6">
-              {importedCount} obra(s) importada(s) com sucesso.
+              {importedCount} obra(s) importada(s) na aba{' '}
+              <strong className="text-text-primary">{importedTab}</strong>.
             </p>
             <button
               onClick={() => {
-                onSuccess()
+                onSuccess(importedTab)
                 onClose()
               }}
               className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-6')}
@@ -245,6 +313,53 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
           </div>
         ) : (
           <>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-text-primary mb-2" htmlFor="obra-import-tab">
+                Nome da nova aba
+              </label>
+              <input
+                id="obra-import-tab"
+                type="text"
+                value={tabName}
+                onChange={(e) => setTabName(e.target.value)}
+                placeholder="Ex.: Recap 2026"
+                className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              />
+              <p className="mt-1.5 text-xs text-secondary">
+                A planilha cria/atualiza só esta aba. Pavimentação e Obras diversas não são alteradas.
+              </p>
+            </div>
+
+            {sheetNames.length > 0 ? (
+              <div className="mb-4">
+                <label
+                  className="block text-sm font-medium text-text-primary mb-2"
+                  htmlFor="obra-import-sheet"
+                >
+                  Aba do Excel
+                </label>
+                <select
+                  id="obra-import-sheet"
+                  value={selectedSheet}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setSelectedSheet(next)
+                    setTabName((prev) => {
+                      if (!prev.trim() || /^Recap\s+/i.test(prev)) return `Recap ${next}`
+                      return prev
+                    })
+                  }}
+                  className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                >
+                  {sheetNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-text-primary mb-2">
                 Selecione o arquivo Excel (.xlsx)
@@ -281,9 +396,11 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
                 <strong>Formato esperado do Excel:</strong>
               </p>
               <ul className="text-xs text-secondary space-y-1 list-disc list-inside">
-                <li>Colunas: Município, Obra, Órgão, SEI, SEI MEDIÇÃO, Status, PUBLICAÇÃO DA OS, Solicitação Medição, Data Medição, Status Medição, Valor Total</li>
+                <li>Colunas: Município, Obra, Órgão, SEI, Valor (ou Valor Total), Status…</li>
                 <li>Primeira linha deve conter os cabeçalhos das colunas</li>
                 <li>Arquivo deve estar no formato .xlsx</li>
+                <li>Os registros vão para a aba informada acima</li>
+                <li>Salvo em arquivo local (data/obras-recap.json), sem Supabase</li>
               </ul>
             </div>
 

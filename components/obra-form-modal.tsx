@@ -33,6 +33,7 @@ export interface ObraFormData {
 interface ObraFormModalProps {
   obra?: ObraFormData | null
   defaultTipo?: string
+  extraTipos?: string[]
   onClose: () => void
   onSuccess: () => void
 }
@@ -44,7 +45,7 @@ function toYyyyMmDd(dateString?: string): string {
   return m ? m[0] : ''
 }
 
-export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFormModalProps) {
+export function ObraFormModal({ obra, defaultTipo, extraTipos = [], onClose, onSuccess }: ObraFormModalProps) {
   const { theme } = useTheme()
   const isCockpit = false
   const isEdit = Boolean(obra?.id)
@@ -73,6 +74,18 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
     () => [...municipiosPiaui].map((m) => m.nome).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     []
   )
+
+  const tipoOptions = useMemo(() => {
+    const set = new Set<string>([...OBRAS_TIPOS, ...extraTipos])
+    const current = (form.tipo ?? '').trim()
+    if (current) set.add(current)
+    if (defaultTipo?.trim()) set.add(defaultTipo.trim())
+    const base = [...OBRAS_TIPOS]
+    const extras = [...set]
+      .filter((t) => !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return [...base, ...extras]
+  }, [extraTipos, form.tipo, defaultTipo])
 
   useEffect(() => {
     if (obra) {
@@ -257,7 +270,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
                 className="w-full px-3 py-2 border border-card rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Selecione o tipo</option>
-                {OBRAS_TIPOS.map((t) => (
+                {tipoOptions.map((t) => (
                   <option key={t} value={t}>
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </option>

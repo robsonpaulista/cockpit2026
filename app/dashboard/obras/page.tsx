@@ -7,7 +7,11 @@ import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
 
-type ObraTipoAba = 'pavimentação' | 'obras diversas'
+type ObraTipoAba = string
+
+function normalizeObraTipo(tipo: string | null | undefined): string {
+  return (tipo ?? '').trim() || 'obras diversas'
+}
 
 interface Obra {
   id: string
@@ -36,12 +40,28 @@ interface Obra {
   data_pagamento?: string
   nro_doc?: string
   imagem_url?: string | null
+  doe_edicao?: string | null
+  doe_resumo?: string | null
+  doe_pdf_url?: string | null
+  doe_nota_uuid?: string | null
+  doe_encontrados?: number | null
+  doe_registros?: Array<{
+    edicao: string
+    titulo?: string | null
+    dia?: string | null
+    resumo: string
+    pdfUrl?: string | null
+    notaUuid: string
+  }> | null
+  doe_consultado_em?: string | null
   created_at?: string
   updated_at?: string
 }
 
 export default function ObrasPage() {
   const [obras, setObras] = useState<Obra[]>([])
+  const [recapObras, setRecapObras] = useState<Obra[]>([])
+  const [recapTabs, setRecapTabs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterMunicipio, setFilterMunicipio] = useState('')
@@ -65,11 +85,12 @@ export default function ObrasPage() {
   const [savingCell, setSavingCell] = useState(false)
   const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
   const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
-  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
-  const TABLE_COLUMNS: SortColumn[] = ['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'status', 'publicacao_os', 'data_medicao', 'status_medicao']
+  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'doe_edicao' | 'doe_resumo' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
+  const TABLE_COLUMNS: SortColumn[] = ['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'doe_edicao', 'doe_resumo', 'status', 'publicacao_os', 'data_medicao', 'status_medicao']
   const COLUMN_LABELS: Record<SortColumn, string> = {
     municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
     valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI', sei_ultimo_status: 'Últ. Status SEI',
+    doe_edicao: 'DOE edição', doe_resumo: 'DOE resumo',
     status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
   }
   const [visibleColumns, setVisibleColumns] = useState<Record<SortColumn, boolean>>(() => {
@@ -91,7 +112,13 @@ export default function ObrasPage() {
 
   useEffect(() => {
     fetchObras()
+    void fetchRecap()
   }, [filterMunicipio, filterStatus, filterStatusMedicao, filterOrgao])
+
+  const isRecapTab = useMemo(
+    () => recapTabs.includes(activeTab),
+    [recapTabs, activeTab],
+  )
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -142,7 +169,18 @@ export default function ObrasPage() {
           const dataStr = col === 'sei_ultimo_andamento' ? o.sei_ultimo_andamento_data : o.sei_ultimo_status_data
           const dataFmt = dataStr && typeof dataStr === 'string' ? (() => { try { const d = new Date(dataStr); return Number.isNaN(d.getTime()) ? dataStr : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch { return dataStr; } })() : ''
           row[label] = [dataFmt, (v && String(v)) || ''].filter(Boolean).join(' — ') || '-'
-        } else row[label] = v != null ? String(v) : ''
+        } else if (col === 'doe_edicao') {
+          row[label] =
+            o.doe_encontrados === 0
+              ? 'Sem ocorrência'
+              : typeof v === 'string'
+                ? v
+                : ''
+        } else if (col === 'doe_resumo') {
+          row[label] = typeof v === 'string' ? v : ''
+        } else {
+          row[label] = v != null ? String(v) : ''
+        }
       })
       return row
     })
@@ -185,6 +223,70 @@ export default function ObrasPage() {
   }
 
   const SEI_ANDAMENTO_DELAY_MS = 3500
+  const DOE_BUSCA_DELAY_MS = 2500
+  const [doeUpdating, setDoeUpdating] = useState(false)
+  const [doeProgress, setDoeProgress] = useState({ current: 0, total: 0, lastError: '' })
+
+  const handleConsultarDoe = async () => {
+    if (!isRecapTab) {
+      alert('A consulta DOE funciona nas abas importadas (storage local).')
+      return
+    }
+    const alvos = filteredObras.filter((o) => (o.sei ?? '').trim())
+    if (alvos.length === 0) {
+      alert('Nenhuma obra com SEI na aba atual.')
+      return
+    }
+    if (
+      !window.confirm(
+        `Consultar Diário Oficial do PI para ${alvos.length} SEI(s) da aba "${activeTab}"?\nCada SEI será buscado em diario.pi.gov.br e o resumo será salvo no storage local.`,
+      )
+    ) {
+      return
+    }
+    setDoeUpdating(true)
+    setDoeProgress({ current: 0, total: alvos.length, lastError: '' })
+    let ok = 0
+    let lastError = ''
+    for (let i = 0; i < alvos.length; i++) {
+      const obra = alvos[i]
+      setDoeProgress({ current: i + 1, total: alvos.length, lastError })
+      try {
+        const res = await fetch('/api/obras/doe-busca', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            obraId: obra.id,
+            sei: obra.sei,
+            tabName: activeTab,
+            persist: true,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.obra) {
+          ok++
+          const updated = { ...data.obra, tipo: data.obra.tipo ?? activeTab }
+          setRecapObras((prev) =>
+            prev.map((o) => (o.id === obra.id ? { ...o, ...updated } : o)),
+          )
+        } else {
+          lastError = data.error || `Status ${res.status}`
+          setDoeProgress((p) => ({ ...p, lastError }))
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : 'Erro de rede'
+        setDoeProgress((p) => ({ ...p, lastError }))
+      }
+      if (i < alvos.length - 1) {
+        await new Promise((r) => setTimeout(r, DOE_BUSCA_DELAY_MS))
+      }
+    }
+    setDoeProgress((p) => ({ ...p, lastError }))
+    setDoeUpdating(false)
+    alert(
+      `DOE: ${ok} de ${alvos.length} consultados.${lastError ? ` Último erro: ${lastError}` : ''}`,
+    )
+  }
 
   const handleAtualizarAndamentosSei = async () => {
     // Buscar TODAS as obras (sem filtros) para incluir as de qualquer aba/filtro
@@ -407,10 +509,47 @@ export default function ObrasPage() {
     }
   }
 
+  const fetchRecap = async () => {
+    try {
+      const response = await fetch('/api/obras/recap', { cache: 'no-store' })
+      if (!response.ok) return
+      const data = (await response.json()) as {
+        tabs?: string[]
+        obras?: Obra[]
+      }
+      setRecapTabs(Array.isArray(data.tabs) ? data.tabs : [])
+      setRecapObras(
+        (Array.isArray(data.obras) ? data.obras : []).map((o) => ({
+          ...o,
+          tipo: o.tipo ?? null,
+        })),
+      )
+    } catch (error) {
+      console.error('Erro ao buscar recap storage:', error)
+    }
+  }
+
+  const tabs = useMemo(() => {
+    const base = [...OBRAS_TIPOS]
+    const extras = new Set<string>(recapTabs)
+    for (const obra of obras) {
+      const t = normalizeObraTipo(obra.tipo)
+      if (!(OBRAS_TIPOS as readonly string[]).includes(t)) {
+        extras.add(t)
+      }
+    }
+    return [
+      ...base,
+      ...[...extras]
+        .filter((t) => !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    ]
+  }, [obras, recapTabs])
+
   const filteredObras = useMemo(() => {
-    let items = obras.filter((obra) => {
-      const t = (obra.tipo ?? '').trim() || 'obras diversas'
-      return t === activeTab
+    const source = isRecapTab ? recapObras : obras
+    let items = source.filter((obra) => {
+      return normalizeObraTipo(obra.tipo) === activeTab
     })
     if (filterPagamento === 'pago') {
       items = items.filter((o) => o.valor_pago && o.valor_pago > 0)
@@ -428,7 +567,7 @@ export default function ObrasPage() {
         obra.sei_medicao?.toLowerCase().includes(term)
       )
     })
-  }, [obras, searchTerm, activeTab, filterPagamento])
+  }, [obras, recapObras, isRecapTab, searchTerm, activeTab, filterPagamento])
 
   const toggleSort = (col: SortColumn) => {
     if (sortColumn === col) {
@@ -450,6 +589,8 @@ export default function ObrasPage() {
         case 'valor_total': return o.valor_total ?? 0
         case 'sei_ultimo_andamento': return o.sei_ultimo_andamento_data ? new Date(o.sei_ultimo_andamento_data).getTime() : 0
         case 'sei_ultimo_status': return o.sei_ultimo_status_data ? new Date(o.sei_ultimo_status_data).getTime() : (o.sei_ultimo_status ?? '').toLowerCase()
+        case 'doe_edicao': return (o.doe_edicao ?? '').toLowerCase()
+        case 'doe_resumo': return (o.doe_resumo ?? '').toLowerCase()
         case 'status': return (o.status ?? '').toLowerCase()
         case 'publicacao_os': {
           const d = parseDateOnly(o.publicacao_os ?? '')
@@ -622,7 +763,7 @@ export default function ObrasPage() {
 
         {/* Estatísticas */}
         {(() => {
-          const tipoNorm = (t: string | null | undefined) => ((t ?? '').trim() || 'obras diversas') as ObraTipoAba
+          const tipoNorm = normalizeObraTipo
           const totalPavimentacao = obras.filter((o) => tipoNorm(o.tipo) === 'pavimentação').reduce((s, o) => s + (o.valor_total || 0), 0)
           const totalObrasDiversas = obras.filter((o) => tipoNorm(o.tipo) === 'obras diversas').reduce((s, o) => s + (o.valor_total || 0), 0)
           const totalGeral = obras.reduce((s, o) => s + (o.valor_total || 0), 0)
@@ -699,7 +840,10 @@ export default function ObrasPage() {
                 Nova obra
               </button>
               <button
-                onClick={() => fetchObras()}
+                onClick={() => {
+                  void fetchObras()
+                  void fetchRecap()
+                }}
                 disabled={loading}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Atualizar lista"
@@ -710,6 +854,7 @@ export default function ObrasPage() {
               <button
                 onClick={() => setShowImportModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
+                title="Importa planilha para storage local (data/obras-recap.json)"
               >
                 <Upload className="w-4 h-4" />
                 Importar
@@ -722,6 +867,25 @@ export default function ObrasPage() {
               >
                 <FileSearch className={`w-4 h-4 ${seiStatusUpdating ? 'animate-pulse' : ''}`} />
                 {seiStatusUpdating ? `SEI (${seiStatusProgress.current}/${seiStatusProgress.total})` : 'Andamentos SEI'}
+              </button>
+              <button
+                onClick={() => void handleConsultarDoe()}
+                disabled={
+                  doeUpdating ||
+                  !isRecapTab ||
+                  filteredObras.filter((o) => (o.sei ?? '').trim()).length === 0
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title={
+                  isRecapTab
+                    ? 'Buscar cada SEI no Diário Oficial do PI e salvar o resumo no storage local'
+                    : 'Disponível nas abas importadas (storage local)'
+                }
+              >
+                <FileSearch className={`w-4 h-4 ${doeUpdating ? 'animate-pulse' : ''}`} />
+                {doeUpdating
+                  ? `DOE (${doeProgress.current}/${doeProgress.total})`
+                  : 'Consultar DOE'}
               </button>
               <div className="relative" ref={columnPickerRef}>
                 <button
@@ -763,13 +927,13 @@ export default function ObrasPage() {
             </div>
           </div>
 
-          {/* Abas por tipo */}
-          <div className="flex border-b border-border-card">
-            {(OBRAS_TIPOS as readonly string[]).map((tipo) => (
+          {/* Abas por tipo (fixas + abas criadas por importação) */}
+          <div className="flex flex-wrap border-b border-border-card">
+            {tabs.map((tipo) => (
               <button
                 key={tipo}
                 type="button"
-                onClick={() => setActiveTab(tipo as ObraTipoAba)}
+                onClick={() => setActiveTab(tipo)}
                 className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
                   activeTab === tipo
                     ? 'border-accent-gold text-accent-gold'
@@ -778,7 +942,11 @@ export default function ObrasPage() {
               >
                 {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
                 <span className="ml-2 text-xs text-text-secondary">
-                  ({obras.filter((o) => ((o.tipo ?? '').trim() || 'obras diversas') === tipo).length})
+                  (
+                  {(OBRAS_TIPOS as readonly string[]).includes(tipo as (typeof OBRAS_TIPOS)[number])
+                    ? obras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
+                    : recapObras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length}
+                  )
                 </span>
               </button>
             ))}
@@ -795,7 +963,7 @@ export default function ObrasPage() {
               <p className="text-sm text-secondary">
                 {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao || filterPagamento
                   ? 'Nenhuma obra encontrada com os filtros aplicados'
-                  : `Nenhuma obra do tipo "${activeTab === 'pavimentação' ? 'Pavimentação' : 'Obras diversas'}" cadastrada.`}
+                  : `Nenhuma obra do tipo "${activeTab}" cadastrada.`}
               </p>
             </div>
           ) : (
@@ -984,6 +1152,95 @@ export default function ObrasPage() {
                           <span className="text-sm text-text-secondary">—</span>
                         )}
                       </td>
+                      )}
+                      {visibleColumns.doe_edicao && (
+                        <td
+                          className={`px-6 py-4 max-w-[220px] ${
+                            visibleColsList[0] === 'doe_edicao'
+                              ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card'
+                              : ''
+                          }`}
+                        >
+                          {obra.doe_encontrados != null ? (
+                            <div className="text-sm space-y-1">
+                              {obra.doe_encontrados === 0 ? (
+                                <span className="text-text-secondary">Sem ocorrência</span>
+                              ) : (
+                                <>
+                                  <div className="text-xs font-semibold text-accent-gold">
+                                    {obra.doe_encontrados} registro
+                                    {obra.doe_encontrados === 1 ? '' : 's'}
+                                  </div>
+                                  {(obra.doe_registros?.length
+                                    ? obra.doe_registros
+                                    : [{ edicao: obra.doe_edicao || '—', pdfUrl: obra.doe_pdf_url }]
+                                  ).map((reg, idx) => (
+                                    <div key={`${obra.id}-ed-${idx}`} className="text-text-primary">
+                                      <div className="line-clamp-2" title={reg.edicao}>
+                                        {reg.edicao}
+                                      </div>
+                                      {reg.pdfUrl ? (
+                                        <a
+                                          href={reg.pdfUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-accent-gold hover:underline"
+                                        >
+                                          PDF edição
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-text-secondary">—</span>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.doe_resumo && (
+                        <td
+                          className={`px-6 py-4 max-w-[360px] ${
+                            visibleColsList[0] === 'doe_resumo'
+                              ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card'
+                              : ''
+                          }`}
+                        >
+                          {obra.doe_registros && obra.doe_registros.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-auto pr-1">
+                              {obra.doe_registros.map((reg, idx) => (
+                                <div
+                                  key={`${obra.id}-res-${reg.notaUuid || idx}`}
+                                  className="text-sm border border-border-card/70 rounded-lg p-2 bg-background/60"
+                                >
+                                  <div className="text-[11px] font-semibold text-accent-gold mb-1">
+                                    Resumo {idx + 1}
+                                    {obra.doe_registros && obra.doe_registros.length > 1
+                                      ? `/${obra.doe_registros.length}`
+                                      : ''}
+                                    {reg.titulo ? ` · ${reg.titulo}` : ''}
+                                  </div>
+                                  <div
+                                    className="text-text-primary whitespace-pre-wrap line-clamp-6"
+                                    title={reg.resumo}
+                                  >
+                                    {reg.resumo}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : obra.doe_resumo ? (
+                            <div
+                              className="text-sm text-text-primary line-clamp-6 whitespace-pre-wrap"
+                              title={obra.doe_resumo}
+                            >
+                              {obra.doe_resumo}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-text-secondary">—</span>
+                          )}
+                        </td>
                       )}
                       {visibleColumns.status && (
                       <td
@@ -1207,8 +1464,9 @@ export default function ObrasPage() {
       {showImportModal && (
         <ObrasImportModal
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => {
-            fetchObras()
+          onSuccess={(tipoAba) => {
+            void fetchRecap()
+            if (tipoAba?.trim()) setActiveTab(tipoAba.trim())
             setShowImportModal(false)
           }}
         />
@@ -1219,6 +1477,7 @@ export default function ObrasPage() {
         <ObraFormModal
           obra={formObra}
           defaultTipo={formObra ? undefined : activeTab}
+          extraTipos={tabs.filter((t) => !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]))}
           onClose={() => {
             setShowFormModal(false)
             setFormObra(null)

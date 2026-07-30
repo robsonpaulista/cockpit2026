@@ -15,7 +15,34 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { obras } = body
+    const { obras, tipo: tipoRaw } = body as {
+      obras?: unknown
+      tipo?: unknown
+    }
+
+    const tipoAba =
+      typeof tipoRaw === 'string' ? tipoRaw.trim().replace(/\s+/g, ' ') : ''
+
+    if (!tipoAba) {
+      return NextResponse.json(
+        {
+          error:
+            'Informe o nome da aba de destino. A importação não altera Pavimentação nem Obras diversas.',
+        },
+        { status: 400 },
+      )
+    }
+
+    const tipoLower = tipoAba.toLowerCase()
+    if (tipoLower === 'pavimentação' || tipoLower === 'obras diversas') {
+      return NextResponse.json(
+        {
+          error:
+            'Escolha outro nome de aba. A importação não pode gravar em Pavimentação nem Obras diversas.',
+        },
+        { status: 400 },
+      )
+    }
 
     if (!obras || !Array.isArray(obras) || obras.length === 0) {
       return NextResponse.json(
@@ -91,6 +118,7 @@ export async function POST(request: Request) {
       const mapped = {
         municipio: getValue(['Município', 'Municipio', 'município', 'municipio', 'MUNICÍPIO', 'MUNICIPIO']),
         obra: getValue(['Obra', 'obra', 'OBRA', 'Nome', 'nome', 'Nome da Obra', 'nome_obra']) || '',
+        tipo: tipoAba,
         orgao: getValue(['Órgão', 'Orgão', 'Orgao', 'orgão', 'orgao', 'ORGÃO', 'ORGAO']),
         sei: getValue(['SEI', 'sei', 'Sei']),
         sei_medicao: getValue(['SEI MEDIÇÃO', 'SEI MEDICAO', 'SEI Medição', 'SEI Medicao', 'sei medição', 'sei medicao', 'SEI_MEDIÇÃO', 'SEI_MEDICAO']),
@@ -99,7 +127,8 @@ export async function POST(request: Request) {
         solicitacao_medicao: getValue(['Solicitação Medição', 'Solicitação Medicao', 'Solicitacao Medição', 'Solicitacao Medicao', 'solicitação medicação', 'solicitacao medicao']),
         data_medicao: getValue(['Data Medição', 'Data Medicao', 'data medicação', 'data medicao', 'Data_Medição', 'Data_Medicao']),
         status_medicao: getValue(['Status Medição', 'Status Medicao', 'status medicação', 'status medicao', 'Status_Medição', 'Status_Medicao']),
-        valor_total: getValue(['Valor Total', 'Valor Total', 'valor total', 'Valor_Total', 'valor_total', 'ValorTotal']),
+        valor_total: getValue(['Valor Total', 'Valor Total', 'valor total', 'Valor_Total', 'valor_total', 'ValorTotal', 'Valor', 'valor', 'VALOR']),
+        valor_pago: getValue(['Valor Pago', 'valor pago', 'Valor_Pago', 'valor_pago', 'ValorPago']),
       }
 
       // Validar obra obrigatória
@@ -107,6 +136,24 @@ export async function POST(request: Request) {
         console.warn(`Obra na linha ${index + 2} sem nome, será ignorada`)
         return null
       }
+
+      const parseMoney = (v: unknown): number | null => {
+        if (v == null || v === '') return null
+        if (typeof v === 'number' && Number.isFinite(v)) return v
+        const s = String(v).trim().replace(/[R$\s]/g, '')
+        let n = NaN
+        if (s.includes(',') && s.includes('.')) {
+          n = Number(s.replace(/\./g, '').replace(',', '.'))
+        } else if (s.includes(',')) {
+          n = Number(s.replace(',', '.'))
+        } else {
+          n = Number(s)
+        }
+        return Number.isFinite(n) ? n : null
+      }
+
+      mapped.valor_total = parseMoney(mapped.valor_total)
+      mapped.valor_pago = parseMoney(mapped.valor_pago)
 
       return mapped
     }).filter((obra: any) => obra !== null) // Filtrar obras inválidas
@@ -141,6 +188,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       imported: data.length,
+      tipo: tipoAba,
       obras: data,
     })
   } catch (error: unknown) {

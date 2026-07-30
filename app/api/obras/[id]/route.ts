@@ -51,6 +51,12 @@ export async function PATCH(
       territorio,
       parceiro,
       descricao_obra,
+      doe_edicao,
+      doe_resumo,
+      doe_pdf_url,
+      doe_nota_uuid,
+      doe_encontrados,
+      doe_consultado_em,
     } = body
 
     const updates: Record<string, unknown> = {}
@@ -84,6 +90,12 @@ export async function PATCH(
     if (territorio !== undefined) updates.territorio = territorio ?? null
     if (parceiro !== undefined) updates.parceiro = parceiro ?? null
     if (descricao_obra !== undefined) updates.descricao_obra = descricao_obra ?? null
+    if (doe_edicao !== undefined) updates.doe_edicao = doe_edicao ?? null
+    if (doe_resumo !== undefined) updates.doe_resumo = doe_resumo ?? null
+    if (doe_pdf_url !== undefined) updates.doe_pdf_url = doe_pdf_url ?? null
+    if (doe_nota_uuid !== undefined) updates.doe_nota_uuid = doe_nota_uuid ?? null
+    if (doe_encontrados !== undefined) updates.doe_encontrados = doe_encontrados ?? null
+    if (doe_consultado_em !== undefined) updates.doe_consultado_em = doe_consultado_em ?? null
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })
