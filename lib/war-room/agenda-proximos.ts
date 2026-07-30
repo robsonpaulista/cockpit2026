@@ -97,6 +97,19 @@ export function municipioFromAgendaEvent(event: CalendarEventRow): {
   return null
 }
 
+/**
+ * Eventos só informativos (ex.: agenda do governador) — não entram
+ * na fila de decisões / alertas da War Room.
+ */
+export function isAgendaParaConhecimento(summaryOrTitle: string): boolean {
+  const text = summaryOrTitle
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toLocaleUpperCase('pt-BR')
+  return text.startsWith('PARA CONHECIMENTO')
+}
+
 export function buildAgendaProximosPorMunicipio(
   events: CalendarEventRow[],
   opts?: { janelaDias?: number; hojeKey?: string },

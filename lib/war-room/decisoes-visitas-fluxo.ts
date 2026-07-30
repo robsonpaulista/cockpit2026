@@ -1,5 +1,6 @@
 import {
   agendaFluxoKeyForVisita,
+  isAgendaParaConhecimento,
   listAgendaVisitasProximas,
   todayKeyInTz,
   type WarRoomAgendaVisita,
@@ -61,7 +62,7 @@ export function decisaoFromVisitaFluxoIncompleto(
   return {
     id: `visita-fluxo:${visita.municipioKey}:${fluxoKey}`,
     prioridade,
-    problema: `Fluxo incompleto · ${opts.municipioLabel}`,
+    problema: `Ver cidade ${opts.municipioLabel}`,
     categoria: 'Visita agendada',
     hora: `${visita.dataLabel} ${visita.horario}`,
     icone: 'bandeira',
@@ -95,7 +96,10 @@ export function buildDecisoesVisitasFluxoIncompleto(
   if (opts.municipiosExpectativa.size === 0) return []
 
   const hojeKey = opts.hojeKey ?? todayKeyInTz()
-  const visitas = listAgendaVisitasProximas(events, { hojeKey }).filter((v) =>
+  const eventsFiltrados = events.filter(
+    (event) => !isAgendaParaConhecimento(event.summary || ''),
+  )
+  const visitas = listAgendaVisitasProximas(eventsFiltrados, { hojeKey }).filter((v) =>
     opts.municipiosExpectativa.has(v.municipioKey),
   )
 

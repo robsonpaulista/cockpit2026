@@ -23,7 +23,10 @@
     "processos-dimensao:json": "node scripts/xlsx-to-json-processos-dimensao.mjs",
     "kokoro:assets": "mkdir -p public/kokoro && cp node_modules/kokoro-js/dist/kokoro.web.js public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm public/kokoro/",
     "postinstall": "npm run kokoro:assets",
-    "recface:server": "bash scripts/run-recface-server.sh"
+    "recface:server": "bash scripts/run-recface-server.sh",
+    "db:backup": "node scripts/backup-supabase.mjs",
+    "db:backup:full": "node scripts/backup-supabase.mjs --full",
+    "db:backup:upload": "node scripts/backup-supabase.mjs --upload"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

@@ -127,9 +127,16 @@ function AgendaTimeline({
               </span>
             </div>
 
-            <div className="wr-agenda-dia__body">
-              <p className="wr-agenda-dia__title">{item.titulo}</p>
-              <p className="wr-agenda-dia__meta">{item.municipio}</p>
+            <div
+              className="wr-agenda-dia__body"
+              title={[item.horario, item.titulo, item.municipio].filter(Boolean).join(' · ')}
+            >
+              <p className="wr-agenda-dia__title" title={item.titulo}>
+                {item.titulo}
+              </p>
+              <p className="wr-agenda-dia__meta" title={item.municipio || undefined}>
+                {item.municipio}
+              </p>
             </div>
           </li>
         )

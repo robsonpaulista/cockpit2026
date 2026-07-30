@@ -2,63 +2,58 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { IconChevronRight, IconLoader2, IconMapPin } from '@tabler/icons-react'
+import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
-import {
-  WarRoomMiniPager,
-  warRoomPageCount,
-} from '@/components/war-room/war-room-mini-pager'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
-import { formatUltimaVisitaCurta } from '@/lib/war-room/expectativa-visita-alerta'
 import { cn } from '@/lib/utils'
 
-const LOOKBACK_DAYS = 7
-const PAGE_SIZE = 6
+/** Comparativo geral de viagens — 3 semanas (21 dias). */
+const WEEK_COUNT = 3
+const LOOKBACK_DAYS = WEEK_COUNT * 7
 
-type MunicipioVisitas = {
-  municipio: string
-  visitas: number
-  ultimaVisita?: string | null
-}
-
-type ForaDoMapa = {
-  cidade: string
-  visitas: number
-  ultimaVisita?: string | null
-}
+/** Ordem de exibição: da mais antiga → atual. API: índice 0 = semana atual. */
+const WEEK_CARDS = [
+  { label: 'Há 2 sem.', short: '−2', apiIndex: 2 },
+  { label: 'Há 1 sem.', short: '−1', apiIndex: 1 },
+  { label: 'Esta sem.', short: 'Atual', apiIndex: 0 },
+] as const
 
 type VisitasResumoPayload = {
   error?: string
-  municipios?: MunicipioVisitas[]
-  foraDoMapaTd?: ForaDoMapa[]
   totalVisitas?: number
-}
-
-type CidadeRow = {
-  key: string
-  cidade: string
-  visitas: number
-  ultimaVisita: string | null
+  totalPorSemana?: number[] | null
 }
 
 type Props = {
   className?: string
 }
 
-/** Visitas (check-ins) realizadas nos últimos 7 dias, agregadas por cidade. */
+function emptyWeeks(): number[] {
+  return Array.from({ length: WEEK_COUNT }, () => 0)
+}
+
+function deltaLabel(atual: number, anterior: number): string | null {
+  if (anterior <= 0 && atual <= 0) return null
+  if (anterior <= 0) return atual > 0 ? '+100%' : null
+  const pct = ((atual - anterior) / anterior) * 100
+  const rounded = Math.round(pct)
+  if (rounded === 0) return '0%'
+  return `${rounded > 0 ? '+' : ''}${rounded}%`
+}
+
+/** Comparativo geral de check-ins nas últimas 3 semanas (não por cidade). */
 export function WarRoomVisitasCidadeCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('visitas-cidade')
-  const [rows, setRows] = useState<CidadeRow[]>([])
   const [totalVisitas, setTotalVisitas] = useState(0)
+  const [totalPorSemana, setTotalPorSemana] = useState<number[]>(emptyWeeks)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
 
   const loadVisitas = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -67,59 +62,32 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
       setError(null)
     }
     try {
-      const res = await fetch(`/api/campo/visitas-resumo-td?days=${LOOKBACK_DAYS}`, {
-        cache: 'no-store',
-      })
+      const res = await fetch(
+        `/api/campo/visitas-resumo-td?weeks=${WEEK_COUNT}`,
+        { cache: 'no-store' },
+      )
       const data = (await res.json()) as VisitasResumoPayload
       if (!res.ok) {
         throw new Error(data.error || 'Não foi possível carregar as visitas')
       }
 
-      const byCity = new Map<string, CidadeRow>()
-      for (const m of data.municipios ?? []) {
-        if (!m.visitas || m.visitas <= 0) continue
-        const key = m.municipio.trim().toLocaleLowerCase('pt-BR')
-        byCity.set(key, {
-          key,
-          cidade: m.municipio.trim(),
-          visitas: m.visitas,
-          ultimaVisita: m.ultimaVisita ?? null,
-        })
-      }
-      for (const f of data.foraDoMapaTd ?? []) {
-        if (!f.visitas || f.visitas <= 0) continue
-        const cidade = f.cidade.trim()
-        const key = cidade.toLocaleLowerCase('pt-BR')
-        const prev = byCity.get(key)
-        const datas = [prev?.ultimaVisita, f.ultimaVisita].filter(
-          (v): v is string => Boolean(v),
-        )
-        const ultima = datas.length > 0 ? datas.sort().at(-1) ?? null : null
-        byCity.set(key, {
-          key,
-          cidade: prev?.cidade ?? cidade,
-          visitas: (prev?.visitas ?? 0) + f.visitas,
-          ultimaVisita: ultima,
-        })
-      }
-
-      const sorted = [...byCity.values()].sort((a, b) => {
-        if (b.visitas !== a.visitas) return b.visitas - a.visitas
-        return a.cidade.localeCompare(b.cidade, 'pt-BR', { sensitivity: 'base' })
-      })
-
-      setRows(sorted)
-      setTotalVisitas(
+      const semanas =
+        Array.isArray(data.totalPorSemana) && data.totalPorSemana.length === WEEK_COUNT
+          ? data.totalPorSemana
+          : emptyWeeks()
+      const total =
         typeof data.totalVisitas === 'number'
           ? data.totalVisitas
-          : sorted.reduce((acc, r) => acc + r.visitas, 0),
-      )
+          : semanas.reduce((a, b) => a + b, 0)
+
+      setTotalPorSemana(semanas)
+      setTotalVisitas(total)
       setError(null)
     } catch (err) {
       if (!silent) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar visitas')
-        setRows([])
         setTotalVisitas(0)
+        setTotalPorSemana(emptyWeeks())
       }
     } finally {
       if (!silent) setLoading(false)
@@ -136,44 +104,42 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
     })
   }, [register, loadVisitas])
 
-  useEffect(() => {
-    const pages = warRoomPageCount(rows.length, PAGE_SIZE)
-    if (page > pages - 1) setPage(Math.max(0, pages - 1))
-  }, [page, rows.length])
-
-  const pagina = useMemo(() => {
-    const start = page * PAGE_SIZE
-    return rows.slice(start, start + PAGE_SIZE)
-  }, [page, rows])
-
   const snapshotLines = useMemo(
-    () => rows.map((r) => `${r.key}\t${r.visitas}\t${r.cidade}\t${r.ultimaVisita ?? ''}`),
-    [rows],
+    () => [
+      `total\t${totalVisitas}`,
+      ...WEEK_CARDS.map(
+        (w) => `sem:${w.apiIndex}\t${totalPorSemana[w.apiIndex] ?? 0}`,
+      ),
+    ],
+    [totalPorSemana, totalVisitas],
   )
 
   useWarRoomSnapshot({
     cardId: 'visitas-cidade',
-    lines: loading && rows.length === 0 ? null : snapshotLines,
-    noun: 'cidade',
-    ready: !loading || rows.length > 0 || error != null,
+    lines: loading && totalVisitas === 0 && !error ? null : snapshotLines,
+    noun: 'viagem',
+    ready: !loading || totalVisitas > 0 || error != null,
   })
 
-  const initialLoading = loading && rows.length === 0 && !error
+  const inicial = loading && totalVisitas === 0 && !error
+  const atual = totalPorSemana[0] ?? 0
+  const anterior = totalPorSemana[1] ?? 0
+  const vsAnterior = deltaLabel(atual, anterior)
 
   return (
     <section
       id="wr-visitas-cidade"
       className={cn('wr-visitas-cidade', 'wr-cell--visitas-cidade', className)}
-      aria-label="Visitas por cidade"
+      aria-label="Comparativo de viagens"
     >
       <header className="wr-visitas-cidade__header">
         <div className="wr-visitas-cidade__title-row">
           <div>
-            <h2 className="wr-visitas-cidade__heading">Visitas por cidade</h2>
+            <h2 className="wr-visitas-cidade__heading">Visitas</h2>
             <p className="wr-visitas-cidade__sub">
               {totalVisitas > 0
-                ? `${formatWarRoomNumber(totalVisitas)} check-ins · últimos ${LOOKBACK_DAYS} dias`
-                : `Últimos ${LOOKBACK_DAYS} dias`}
+                ? `${formatWarRoomNumber(totalVisitas)} viagens · 3 semanas (${LOOKBACK_DAYS}d)`
+                : `Comparativo geral · 3 semanas (${LOOKBACK_DAYS} dias)`}
             </p>
           </div>
           {change ? (
@@ -182,60 +148,64 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
         </div>
       </header>
 
-      {initialLoading ? (
+      {inicial ? (
         <div className="wr-visitas-cidade__state">
           <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
           Carregando visitas…
         </div>
-      ) : error && rows.length === 0 ? (
+      ) : error && totalVisitas === 0 ? (
         <p className="wr-visitas-cidade__state wr-visitas-cidade__state--erro">{error}</p>
-      ) : rows.length === 0 ? (
+      ) : totalVisitas === 0 ? (
         <p className="wr-visitas-cidade__state">
-          Nenhuma visita nos últimos {LOOKBACK_DAYS} dias.
+          Nenhuma viagem nos últimos {LOOKBACK_DAYS} dias.
         </p>
       ) : (
-        <ul className="wr-visitas-cidade__list" aria-label="Visitas por cidade">
-          <li className="wr-visitas-cidade__row wr-visitas-cidade__row--head" aria-hidden>
-            <span>Cidade</span>
-            <span>Última</span>
-            <span>Visitas</span>
-          </li>
-          {pagina.map((row) => {
-            const ultimaLabel = formatUltimaVisitaCurta(row.ultimaVisita)
+        <div
+          className="wr-visitas-cidade__kpis"
+          aria-label="Comparativo de viagens por semana"
+        >
+          {WEEK_CARDS.map((week, idx) => {
+            const value = totalPorSemana[week.apiIndex] ?? 0
+            const isAtual = week.apiIndex === 0
             return (
-              <li
-                key={row.key}
-                className="wr-visitas-cidade__row"
-                title={`${row.cidade} · ${formatWarRoomNumber(row.visitas)} visitas${ultimaLabel ? ` · última ${ultimaLabel}` : ''}`}
+              <div
+                key={week.short}
+                className={cn(
+                  'wr-visitas-cidade__kpi',
+                  isAtual && 'wr-visitas-cidade__kpi--atual',
+                )}
+                title={`${week.label}: ${formatWarRoomNumber(value)} viagens`}
               >
-                <span className="wr-visitas-cidade__cidade truncate">
-                  <IconMapPin
-                    className="h-3 w-3 shrink-0 opacity-60"
-                    stroke={1.75}
-                    aria-hidden
-                  />
-                  {row.cidade}
+                <span className="wr-visitas-cidade__kpi-value tabular-nums">
+                  {formatWarRoomNumber(value)}
                 </span>
-                <span className="wr-visitas-cidade__data tabular-nums">
-                  {ultimaLabel ?? '—'}
-                </span>
-                <span className="wr-visitas-cidade__count tabular-nums">
-                  {formatWarRoomNumber(row.visitas)}
-                </span>
-              </li>
+                <span className="wr-visitas-cidade__kpi-label">{week.label}</span>
+                {isAtual && vsAnterior ? (
+                  <span
+                    className={cn(
+                      'wr-visitas-cidade__kpi-delta tabular-nums',
+                      atual > anterior && 'wr-visitas-cidade__kpi-delta--up',
+                      atual < anterior && 'wr-visitas-cidade__kpi-delta--down',
+                    )}
+                  >
+                    {vsAnterior} vs sem. ant.
+                  </span>
+                ) : idx === 0 ? (
+                  <span className="wr-visitas-cidade__kpi-delta wr-visitas-cidade__kpi-delta--muted">
+                    14–20 dias
+                  </span>
+                ) : (
+                  <span className="wr-visitas-cidade__kpi-delta wr-visitas-cidade__kpi-delta--muted">
+                    7–13 dias
+                  </span>
+                )}
+              </div>
             )
           })}
-        </ul>
+        </div>
       )}
 
       <div className="wr-visitas-cidade__footer-bar">
-        <WarRoomMiniPager
-          page={page}
-          total={rows.length}
-          pageSize={PAGE_SIZE}
-          onChange={setPage}
-          className="wr-visitas-cidade__pager"
-        />
         <Link href="/dashboard/campo" className="wr-visitas-cidade__footer">
           <span>Abrir Campo</span>
           <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />

@@ -77,4 +77,7 @@ piaui_mandatos_instagram_2024.xlsx
 scripts/db_cluster-*.backup.gz
 database/restore-from-backup-public-data-extracted.sql
 
+# Backups lógicos do Supabase (npm run db:backup)
+/backups/
+
 .env*

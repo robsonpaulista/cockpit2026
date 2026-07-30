@@ -64,6 +64,17 @@ function categoriaBadgeLabel(categoria: string): string {
   return CATEGORIA_BADGE_LABEL[key] ?? (key || 'Outros')
 }
 
+function categoriaSlug(categoria: string): string {
+  const slug = categoria
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return slug || 'outros'
+}
+
 type ApiPayload = {
   error?: string
   decisoes?: WarRoomDecisao[]
@@ -90,21 +101,13 @@ function DecisaoItem({
   decisao: WarRoomDecisao
   onActivate?: (decisao: WarRoomDecisao) => void
 }) {
+  const catSlug = categoriaSlug(decisao.categoria)
+
   const content = (
     <>
       <div className="wr-decisoes-fila__body min-w-0 flex-1">
         <div className="wr-decisoes-fila__title-row">
-          <span
-            className={cn(
-              'wr-decisoes-badge',
-              `wr-decisoes-badge--${decisao.categoria
-                .trim()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')}`,
-            )}
-          >
+          <span className={cn('wr-decisoes-badge', `wr-decisoes-badge--${catSlug}`)}>
             {categoriaBadgeLabel(decisao.categoria)}
           </span>
           <p className="wr-decisoes-fila__title">{decisao.problema.trim()}</p>
@@ -125,7 +128,7 @@ function DecisaoItem({
 
   const itemClass = cn(
     'wr-decisoes-fila__item',
-    decisao.destaque && 'wr-decisoes-fila__item--destaque',
+    `wr-decisoes-fila__item--${catSlug}`,
   )
 
   if (onActivate) {

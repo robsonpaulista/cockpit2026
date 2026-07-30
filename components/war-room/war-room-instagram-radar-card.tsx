@@ -20,11 +20,14 @@ import {
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
+import { WarRoomInstagramRadarDesempenhoView } from '@/components/war-room/war-room-instagram-radar-desempenho-view'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
+import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
+import { buildInstagramRankingMovimentacao } from '@/lib/war-room/instagram-radar-desempenho'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
 
@@ -129,6 +132,7 @@ function buildActiveAdsRows(compare: MetaAdsCompareActorRow[]): AnuncioRow[] {
 export function WarRoomInstagramRadarCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('instagram-radar')
+  const { isDesempenho } = useWarRoomViewMode()
   const [filtro, setFiltro] = useState<FiltroId>('engajamento')
 
   const [igActors, setIgActors] = useState<PoliticalActorWithTerms[]>([])
@@ -256,6 +260,15 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     }))
   }, [igActors, igPosts])
 
+  const movimentacaoRows = useMemo(() => {
+    const visibleActors = igActors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug))
+    return buildInstagramRankingMovimentacao(
+      visibleActors,
+      igPosts,
+      IG_LOOKBACK_DAYS,
+    )
+  }, [igActors, igPosts])
+
   const anuncioRows = useMemo(() => {
     const visibleActors = adsActors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug))
     return buildActiveAdsRows(buildMetaAdsCompareRows(visibleActors, ads))
@@ -274,8 +287,14 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     return { candidatos, anuncios, spendLabel: spend.spendLabel }
   }, [anuncioRows, ads])
 
-  const snapshotLines = useMemo(
-    () => [
+  const snapshotLines = useMemo(() => {
+    if (isDesempenho) {
+      return movimentacaoRows.map(
+        (r) =>
+          `mov\t${r.slug}\t${r.rankInicio}\t${r.rankFim}\t${r.deltaPosicoes}`,
+      )
+    }
+    return [
       ...engajamentoRows.map(
         (r) =>
           `ig\t${r.slug}\t${r.avgEngagement}\t${r.topEngagement ?? ''}`,
@@ -283,9 +302,8 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
       ...anuncioRows.map(
         (r) => `ads\t${r.slug}\t${r.activeCount}\t${r.spendLabel}`,
       ),
-    ],
-    [engajamentoRows, anuncioRows],
-  )
+    ]
+  }, [anuncioRows, engajamentoRows, isDesempenho, movimentacaoRows])
 
   useWarRoomSnapshot({
     cardId: 'instagram-radar',
@@ -297,7 +315,8 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     ready: !igLoading || !adsLoading || igActors.length > 0 || adsActors.length > 0,
   })
 
-  const showEngajamento = filtro === 'engajamento'
+  const showEngajamento = !isDesempenho && filtro === 'engajamento'
+  const showAnuncios = !isDesempenho && filtro === 'anuncios'
   const igInitial = igLoading && igActors.length === 0 && igPosts.length === 0
   const adsInitial = adsLoading && adsActors.length === 0 && ads.length === 0
 
@@ -312,38 +331,67 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
           <div>
             <h2 className="wr-ig-radar__heading">Comparativo Candidatos</h2>
             <p className="wr-ig-radar__sub">
-              {showEngajamento
-                ? `Instagram · últimos ${IG_LOOKBACK_DAYS} dias`
-                : `Meta Ads · anúncios ativos · ${ADS_LOOKBACK_DAYS} dias`}
+              {isDesempenho
+                ? `Início da semana → ranking acumulado · ${IG_LOOKBACK_DAYS}d`
+                : showEngajamento
+                  ? `Instagram · últimos ${IG_LOOKBACK_DAYS} dias`
+                  : `Meta Ads · anúncios ativos · ${ADS_LOOKBACK_DAYS} dias`}
             </p>
           </div>
           {change ? (
             <WarRoomChangeBadge change={change} className="wr-ig-radar__badge" />
           ) : null}
         </div>
-        <div
-          className="wr-ig-radar__filtros"
-          role="group"
-          aria-label="Filtrar comparativo"
-        >
-          {FILTRO_OPCOES.map((opcao) => (
-            <button
-              key={opcao.id}
-              type="button"
-              aria-pressed={filtro === opcao.id}
-              className={cn(
-                'wr-ig-radar__filtro',
-                filtro === opcao.id && 'wr-ig-radar__filtro--ativo',
-              )}
-              onClick={() => setFiltro(opcao.id)}
-            >
-              {opcao.label}
-            </button>
-          ))}
-        </div>
+        {!isDesempenho ? (
+          <div
+            className="wr-ig-radar__filtros"
+            role="group"
+            aria-label="Filtrar comparativo"
+          >
+            {FILTRO_OPCOES.map((opcao) => (
+              <button
+                key={opcao.id}
+                type="button"
+                aria-pressed={filtro === opcao.id}
+                className={cn(
+                  'wr-ig-radar__filtro',
+                  filtro === opcao.id && 'wr-ig-radar__filtro--ativo',
+                )}
+                onClick={() => setFiltro(opcao.id)}
+              >
+                {opcao.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
-      {showEngajamento ? (
+      {isDesempenho ? (
+        igInitial ? (
+          <div className="wr-ig-radar__state">
+            <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+            Carregando movimentação…
+          </div>
+        ) : igErro ? (
+          <p className="wr-ig-radar__state wr-ig-radar__state--erro">{igErro}</p>
+        ) : igActors.length === 0 ? (
+          <p className="wr-ig-radar__state">
+            Cadastre candidatos no Radar Eleitoral para ver o comparativo.
+          </p>
+        ) : (
+          <div className="wr-ig-radar__body">
+            <WarRoomInstagramRadarDesempenhoView
+              rows={movimentacaoRows.slice(0, LIST_VISIBLE)}
+            />
+            {movimentacaoRows.length > LIST_VISIBLE ? (
+              <p className="wr-ig-radar__more">
+                +{movimentacaoRows.length - LIST_VISIBLE} candidato
+                {movimentacaoRows.length - LIST_VISIBLE === 1 ? '' : 's'}
+              </p>
+            ) : null}
+          </div>
+        )
+      ) : showEngajamento ? (
         igInitial ? (
           <div className="wr-ig-radar__state">
             <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />

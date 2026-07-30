@@ -17,8 +17,8 @@ body[data-war-room-clean] {
   --wr-slate: #424e5c;
   --wr-gold: #f4b43e;
   --wr-mist: #e4e5e3;
-  /* Texto principal: cinza quase preto (suaviza contraste vs #000) */
-  --wr-black: #1a1a1a;
+  /* Texto principal: slate suave (menos “preto denso” na página) */
+  --wr-black: #3a4552;
   --wr-white: #ffffff;
 
   /* --- Canvas & surfaces (clean light) -------------------------------- */
@@ -29,15 +29,15 @@ body[data-war-room-clean] {
   --wr-surface: var(--wr-white);
   --wr-surface-inner: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
   --wr-surface-hover: color-mix(in srgb, var(--wr-mist) 70%, var(--wr-white));
-  --wr-border: color-mix(in srgb, var(--wr-slate) 14%, var(--wr-mist));
-  --wr-border-strong: color-mix(in srgb, var(--wr-slate) 28%, var(--wr-mist));
+  --wr-border: color-mix(in srgb, var(--wr-slate) 12%, var(--wr-mist));
+  --wr-border-strong: color-mix(in srgb, var(--wr-slate) 22%, var(--wr-mist));
 
   /* --- Text ------------------------------------------------------------ */
-  --wr-text: var(--wr-black);
-  --wr-text-secondary: var(--wr-slate);
-  --wr-muted: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
-  --wr-soft: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
-  --wr-disabled: color-mix(in srgb, var(--wr-slate) 40%, var(--wr-mist));
+  --wr-text: color-mix(in srgb, var(--wr-slate) 86%, var(--wr-mist));
+  --wr-text-secondary: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
+  --wr-muted: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
+  --wr-soft: color-mix(in srgb, var(--wr-slate) 48%, var(--wr-mist));
+  --wr-disabled: color-mix(in srgb, var(--wr-slate) 36%, var(--wr-mist));
 
   /* --- Signature accents (gold + semantic status) ----------------------- */
   --wr-teal: var(--wr-gold);
@@ -87,36 +87,36 @@ body[data-war-room-clean] {
    */
   --wr-font: var(--font-sans), var(--font-sans-fallback), 'Source Sans 3', 'Inter', sans-serif;
   --wr-type-heading-size: 11px;
-  --wr-type-heading-weight: 700;
-  --wr-type-heading-tracking: 0.06em;
-  --wr-type-heading-color: var(--wr-black);
+  --wr-type-heading-weight: 600;
+  --wr-type-heading-tracking: 0.05em;
+  --wr-type-heading-color: color-mix(in srgb, var(--wr-slate) 68%, var(--wr-mist));
   --wr-type-sub-size: 11px;
   --wr-type-sub-weight: 400;
-  --wr-type-sub-color: color-mix(in srgb, var(--wr-slate) 68%, var(--wr-mist));
+  --wr-type-sub-color: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
   --wr-type-row-size: 13px;
-  --wr-type-row-weight: 700;
-  --wr-type-row-color: var(--wr-black);
+  --wr-type-row-weight: 600;
+  --wr-type-row-color: color-mix(in srgb, var(--wr-slate) 84%, var(--wr-mist));
   --wr-type-meta-size: 12px;
   --wr-type-meta-weight: 400;
-  --wr-type-meta-color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
+  --wr-type-meta-color: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
   --wr-type-value-size: 13px;
-  --wr-type-value-weight: 700;
-  --wr-type-value-color: var(--wr-black);
+  --wr-type-value-weight: 600;
+  --wr-type-value-color: color-mix(in srgb, var(--wr-slate) 82%, var(--wr-mist));
   --wr-type-soft-size: 12px;
-  --wr-type-soft-weight: 600;
-  --wr-type-soft-color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
+  --wr-type-soft-weight: 500;
+  --wr-type-soft-color: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
   --wr-type-thead-size: 10px;
-  --wr-type-thead-weight: 700;
+  --wr-type-thead-weight: 600;
   --wr-type-thead-tracking: 0.04em;
-  --wr-type-thead-color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+  --wr-type-thead-color: color-mix(in srgb, var(--wr-slate) 48%, var(--wr-mist));
   --wr-type-filter-size: 11px;
-  --wr-type-filter-weight: 600;
-  --wr-type-filter-color: color-mix(in srgb, var(--wr-slate) 70%, var(--wr-mist));
+  --wr-type-filter-weight: 500;
+  --wr-type-filter-color: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
   --wr-type-footer-size: 12px;
-  --wr-type-footer-weight: 600;
-  --wr-type-footer-color: var(--wr-slate);
+  --wr-type-footer-weight: 500;
+  --wr-type-footer-color: color-mix(in srgb, var(--wr-slate) 62%, var(--wr-mist));
   --wr-type-state-size: 12px;
-  --wr-type-state-color: color-mix(in srgb, var(--wr-slate) 70%, var(--wr-mist));
+  --wr-type-state-color: color-mix(in srgb, var(--wr-slate) 58%, var(--wr-mist));
   --wr-type-rank-size: 12px;
   --wr-type-rank-weight: 700;
   --wr-type-rank-color: var(--wr-slate);
@@ -260,8 +260,8 @@ body[data-war-room-clean] .wr-page-canvas :is(
   .wr-noticias-clean__filtro--ativo,
   .wr-ig-radar__filtro--ativo
 ) {
-  color: var(--wr-black);
-  font-weight: 700;
+  color: color-mix(in srgb, var(--wr-slate) 82%, var(--wr-mist));
+  font-weight: 600;
 }
 
 /* Texto principal da linha */
@@ -278,7 +278,8 @@ body[data-war-room-clean] .wr-page-canvas :is(
   .wr-meta-ads-clean__label,
   .wr-mob-funil__legend-label,
   .wr-ig-radar__handle,
-  .wr-noticias-clean__heatmap .pmh-name
+  .wr-noticias-clean__heatmap .pmh-name,
+  .wr-noticias-desempenho__nome
 ) {
   font-family: var(--wr-font);
   font-size: var(--wr-type-row-size);
@@ -335,13 +336,15 @@ body[data-war-room-clean] .wr-page-canvas :is(
 body[data-war-room-clean] .wr-page-canvas :is(
   .wr-expectativa-clean__votos,
   .wr-visitas-cidade__count,
+  .wr-visitas-cidade__kpi-value,
   .wr-pesquisas-clean__pct,
   .wr-redes-clean__eng,
   .wr-crm-funil__value,
   .wr-disparos-clean__value,
   .wr-meta-ads-clean__value,
   .wr-mob-funil__legend-value,
-  .wr-ig-radar__avg
+  .wr-ig-radar__avg,
+  .wr-noticias-desempenho__qtde
 ) {
   font-family: var(--wr-font);
   font-size: var(--wr-type-value-size);
@@ -727,6 +730,77 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
 }
 
+.wr-status-bar__item--countdown {
+  background: color-mix(in srgb, var(--wr-gold) 10%, var(--wr-white));
+}
+
+.wr-status-bar__countdown {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--wr-gold) 55%, var(--wr-black));
+}
+
+.wr-chrono {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.wr-chrono__unit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 1.55em;
+}
+
+.wr-chrono__digits {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--wr-gold) 55%, var(--wr-black));
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-chrono__unit-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.wr-chrono__sep {
+  align-self: flex-start;
+  padding-top: 1px;
+  font-size: 13px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--wr-gold) 45%, var(--wr-slate));
+  opacity: 0.85;
+  animation: wr-chrono-blink 1s steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-chrono__sep {
+    animation: none;
+  }
+}
+
+@keyframes wr-chrono-blink {
+  0%,
+  49% {
+    opacity: 0.85;
+  }
+  50%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
 .wr-status-bar__item--desempenho-ativo {
   background: color-mix(in srgb, var(--wr-gold) 16%, var(--wr-white));
 }
@@ -757,9 +831,9 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   gap: 5px;
   min-width: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.15;
-  color: var(--wr-black);
+  color: color-mix(in srgb, var(--wr-slate) 82%, var(--wr-mist));
 }
 
 .wr-status-bar__dot {
@@ -889,6 +963,12 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   min-height: 0;
 }
 
+.wr-col--lead > .wr-visitas-cidade {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .wr-aside {
   display: flex;
   flex-direction: column;
@@ -905,6 +985,7 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
     position: sticky;
     top: 12px;
     align-self: start;
+    height: var(--wr-board-h);
     max-height: var(--wr-board-h);
     overflow: auto;
   }
@@ -1055,7 +1136,8 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   .wr-board-stack .wr-crm-funil__list,
   .wr-board-stack .wr-disparos-clean__list,
   .wr-board-stack .wr-ig-radar__body,
-  .wr-board-stack .wr-noticias-clean__body {
+  .wr-board-stack .wr-noticias-clean__body,
+  .wr-board-stack .wr-noticias-desempenho__list {
     overflow-y: auto;
     min-height: 0;
   }
@@ -2233,6 +2315,46 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   border-top: 1px solid color-mix(in srgb, var(--wr-slate) 8%, var(--wr-mist));
 }
 
+.wr-ig-radar__row--mov {
+  grid-template-columns: minmax(0, 1.3fr) 2.4rem 2.4rem 2.6rem;
+  column-gap: 6px;
+}
+
+.wr-ig-radar__row--mov > span:nth-child(2),
+.wr-ig-radar__row--mov > span:nth-child(3),
+.wr-ig-radar__row--mov > span:nth-child(4) {
+  text-align: right;
+}
+
+.wr-ig-radar__rank {
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-value-size);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-ig-radar__rank--fim {
+  font-weight: 700;
+  color: var(--wr-type-value-color);
+}
+
+.wr-ig-radar__delta {
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-value-size);
+  font-weight: 700;
+  color: color-mix(in srgb, var(--wr-slate) 62%, var(--wr-mist));
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-ig-radar__delta--up {
+  color: color-mix(in srgb, #1a7f4b 85%, var(--wr-slate));
+}
+
+.wr-ig-radar__delta--down {
+  color: color-mix(in srgb, #b42318 80%, var(--wr-slate));
+}
+
 .wr-ig-radar__row--head {
   border-top: 0;
   padding-top: 2px;
@@ -2350,6 +2472,7 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
 
 .wr-visitas-cidade {
   container-type: inline-size;
+  container-name: wr-visitas;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -2364,6 +2487,18 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
 .wr-visitas-cidade__header {
   flex-shrink: 0;
   padding: 10px 14px 6px;
+}
+
+.wr-visitas-cidade__state {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px 16px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
 }
 
 .wr-visitas-cidade__title-row {
@@ -2391,16 +2526,6 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
 
 .wr-visitas-cidade__badge {
   flex-shrink: 0;
-}
-
-.wr-visitas-cidade__state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 12px 14px 16px;
-  font-size: 12px;
-  color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
 }
 
 .wr-visitas-cidade__state--erro {
@@ -2443,6 +2568,80 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
 .wr-visitas-cidade__row--head > span:nth-child(2),
 .wr-visitas-cidade__row--head > span:nth-child(3) {
   text-align: right;
+}
+
+.wr-visitas-cidade__kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 8px;
+  flex: 1 1 auto;
+  align-content: stretch;
+  align-items: stretch;
+  padding: 6px 12px 12px;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wr-visitas-cidade__kpi {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
+  text-align: center;
+}
+
+.wr-visitas-cidade__kpi--atual {
+  background: color-mix(in srgb, var(--wr-gold) 16%, var(--wr-white));
+}
+
+.wr-visitas-cidade__kpi-value {
+  font-family: var(--wr-font);
+  font-size: clamp(28px, 4.5cqi, 40px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--wr-black);
+  font-variant-numeric: tabular-nums;
+}
+
+.wr-visitas-cidade__kpi-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 70%, var(--wr-mist));
+}
+
+.wr-visitas-cidade__kpi-delta {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--wr-slate) 62%, var(--wr-mist));
+}
+
+.wr-visitas-cidade__kpi-delta--muted {
+  font-weight: 500;
+}
+
+.wr-visitas-cidade__kpi-delta--up {
+  color: color-mix(in srgb, #1a7f4b 85%, var(--wr-slate));
+}
+
+.wr-visitas-cidade__kpi-delta--down {
+  color: color-mix(in srgb, #b42318 80%, var(--wr-slate));
 }
 
 .wr-visitas-cidade__cidade {
@@ -3161,22 +3360,56 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   cursor: pointer;
   color: inherit;
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .wr-decisoes-fila__item:hover {
-  background: color-mix(in srgb, var(--wr-mist) 45%, var(--wr-white));
+  background: color-mix(in srgb, var(--wr-mist) 28%, transparent);
 }
 
-.wr-decisoes-fila__item--destaque {
-  margin: 6px 10px;
-  padding: 11px 12px;
+/* Só na fila de decisões: cards com borda da classificação (sem fill). */
+#wr-decisoes .wr-decisoes-fila__list {
+  gap: 8px;
+  padding: 4px 10px 10px;
+}
+
+#wr-decisoes .wr-decisoes-fila__list > li {
+  border-bottom: 0;
+}
+
+#wr-decisoes .wr-decisoes-fila__item {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid color-mix(in srgb, var(--wr-slate) 18%, var(--wr-mist));
+  border-radius: 10px;
+  background: transparent;
+}
+
+#wr-decisoes .wr-decisoes-fila__item--visita-agendada {
+  border-color: #f2a962;
+}
+
+#wr-decisoes .wr-decisoes-fila__item--pesquisas {
+  border-color: #f4c86f;
+}
+
+#wr-decisoes .wr-decisoes-fila__item--noticias {
+  border-color: #efb85a;
+}
+
+#wr-decisoes .wr-decisoes-fila__item--redes-sociais {
+  border-color: #8fb3ff;
+}
+
+#wr-decisoes .wr-decisoes-fila__item--outros {
+  border-color: #ced9e6;
+}
+
+.wr-expectativa-clean__item.wr-decisoes-fila__item--destaque {
+  margin: 2px 8px;
+  padding: 4px 10px;
   border-radius: 10px;
   background: #f2eee6;
-}
-
-.wr-decisoes-fila__item--destaque:hover {
-  background: #ebe6db;
 }
 
 .wr-decisoes-fila__icon {
@@ -3436,8 +3669,19 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
 .wr-expectativa-clean__item {
   align-items: center;
   gap: 8px;
-  padding: 4px 14px;
+  padding: 3px 14px;
+  min-height: 0;
   cursor: pointer;
+}
+
+#wr-expectativa .wr-decisoes-fila__item {
+  padding: 3px 14px;
+  border: 0;
+  border-radius: 0;
+}
+
+#wr-expectativa .wr-decisoes-fila__item:hover {
+  background: color-mix(in srgb, var(--wr-mist) 35%, transparent);
 }
 
 .wr-expectativa-clean__select {
@@ -3453,11 +3697,6 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   outline: 2px solid color-mix(in srgb, var(--wr-gold) 45%, transparent);
   outline-offset: 2px;
   border-radius: 6px;
-}
-
-.wr-expectativa-clean__item.wr-decisoes-fila__item--destaque {
-  margin: 2px 8px;
-  padding: 4px 10px;
 }
 
 .wr-expectativa-clean__visita-alerta {
@@ -5306,6 +5545,70 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
 }
 
+.wr-noticias-desempenho__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 6px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wr-noticias-desempenho__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) 2.6rem minmax(0, 1.2fr);
+  align-items: center;
+  column-gap: 10px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--wr-black);
+}
+
+.wr-noticias-desempenho__row--head {
+  padding-top: 2px;
+  padding-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 62%, var(--wr-mist));
+}
+
+.wr-noticias-desempenho__row--head > span:nth-child(2) {
+  text-align: right;
+}
+
+.wr-noticias-desempenho__nome {
+  min-width: 0;
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-row-size);
+  font-weight: var(--wr-type-row-weight);
+  color: var(--wr-type-row-color);
+}
+
+.wr-noticias-desempenho__qtde {
+  display: block;
+  width: 100%;
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-value-size);
+  font-weight: var(--wr-type-value-weight);
+  color: var(--wr-type-value-color);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wr-noticias-desempenho__portal {
+  min-width: 0;
+  font-family: var(--wr-font);
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--wr-slate) 72%, var(--wr-mist));
+}
+
 /* ==========================================================================
    21b. Pesquisas consolidadas — clean (KPIs em linha + lista)
    ========================================================================== */
@@ -6468,7 +6771,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 }
 
 .wr-decisoes-modal__item--destaque {
-  background: color-mix(in srgb, var(--wr-gold) 8%, var(--wr-white));
+  background: transparent;
 }
 
 .wr-decisoes-modal__item--action {
@@ -6481,7 +6784,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 }
 
 .wr-decisoes-modal__item--action.wr-decisoes-modal__item--destaque:hover {
-  background: color-mix(in srgb, var(--wr-gold) 14%, var(--wr-white));
+  background: color-mix(in srgb, var(--wr-mist) 45%, var(--wr-white));
 }
 
 .wr-decisoes-modal__icon {

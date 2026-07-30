@@ -5,15 +5,18 @@ import Link from 'next/link'
 import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
+import { WarRoomNoticiasDesempenhoView } from '@/components/war-room/war-room-noticias-desempenho-view'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
+import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { HeatmapScaleMode } from '@/lib/monitoramento-heatmap-colors'
 import { buildGoogleNewsRelatedHeatmap } from '@/lib/monitoramento-panorama-charts'
 import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
+import { buildNoticiasDesempenhoRows } from '@/lib/war-room/noticias-desempenho'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +65,7 @@ type Props = {
 export function WarRoomNoticiasCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('noticias')
+  const { isDesempenho } = useWarRoomViewMode()
   const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
   const [mentions, setMentions] = useState<GoogleNewsMentionWithActor[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,12 +120,14 @@ export function WarRoomNoticiasCard({ className }: Props) {
     })
   }, [register, carregar])
 
-  const columns = useMemo(
-    () =>
-      buildPanoramaHeatmapActorColumns(
-        actors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug)),
-      ),
+  const actorsVisiveis = useMemo(
+    () => actors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug)),
     [actors],
+  )
+
+  const columns = useMemo(
+    () => buildPanoramaHeatmapActorColumns(actorsVisiveis),
+    [actorsVisiveis],
   )
 
   const heatmap = useMemo(
@@ -129,13 +135,21 @@ export function WarRoomNoticiasCard({ className }: Props) {
     [columns, mentions],
   )
 
-  const snapshotLines = useMemo(
-    () =>
-      heatmap.rows.flatMap((row) =>
-        row.values.map((value, i) => `${row.slug}|${heatmap.dates[i]}\t${value}`),
-      ),
-    [heatmap],
+  const desempenhoRows = useMemo(
+    () => buildNoticiasDesempenhoRows(actorsVisiveis, mentions),
+    [actorsVisiveis, mentions],
   )
+
+  const snapshotLines = useMemo(() => {
+    if (isDesempenho) {
+      return desempenhoRows.map(
+        (row) => `${row.slug}\t${row.qtde}\t${row.portal}`,
+      )
+    }
+    return heatmap.rows.flatMap((row) =>
+      row.values.map((value, i) => `${row.slug}|${heatmap.dates[i]}\t${value}`),
+    )
+  }, [desempenhoRows, heatmap, isDesempenho])
 
   useWarRoomSnapshot({
     cardId: 'noticias',
@@ -145,7 +159,8 @@ export function WarRoomNoticiasCard({ className }: Props) {
   })
 
   const initialLoading = loading && actors.length === 0 && mentions.length === 0
-  const showHeatmap = !initialLoading && !erro && columns.length > 0 && !heatmap.empty
+  const showHeatmap =
+    !isDesempenho && !initialLoading && !erro && columns.length > 0 && !heatmap.empty
 
   return (
     <section
@@ -158,7 +173,9 @@ export function WarRoomNoticiasCard({ className }: Props) {
           <div>
             <h2 className="wr-noticias-clean__heading">Notícias relacionadas</h2>
             <p className="wr-noticias-clean__sub">
-              Menções por dia · {LOOKBACK_DAYS} dias
+              {isDesempenho
+                ? `Nome · qtde · portal · ${LOOKBACK_DAYS} dias`
+                : `Menções por dia · ${LOOKBACK_DAYS} dias`}
             </p>
           </div>
           {change ? (
@@ -201,6 +218,10 @@ export function WarRoomNoticiasCard({ className }: Props) {
         <p className="wr-noticias-clean__state">
           Cadastre candidatos no Radar Eleitoral para ver o comparativo.
         </p>
+      ) : isDesempenho ? (
+        <div className="wr-noticias-clean__body">
+          <WarRoomNoticiasDesempenhoView rows={desempenhoRows} />
+        </div>
       ) : heatmap.empty ? (
         <p className="wr-noticias-clean__state">
           Nenhuma menção nos últimos {LOOKBACK_DAYS} dias.
