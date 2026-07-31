@@ -199,3 +199,25 @@ export function buildWarRoomPesquisasConsolidadas(
   if (!Number.isFinite(limit) || limit <= 0) return rows
   return rows.slice(0, Math.max(1, limit))
 }
+
+/**
+ * Última onda por município (data desc). Mesmo critério do card
+ * Pesquisas eleitorais / alertas fora do top 5.
+ */
+export function mapUltimaPesquisaPorMunicipio(
+  rows: WarRoomPesquisaConsolidadaReal[],
+): Map<string, WarRoomPesquisaConsolidadaReal> {
+  const sorted = [...rows].sort((a, b) => {
+    const byDate = b.data.localeCompare(a.data)
+    if (byDate !== 0) return byDate
+    return a.cidade.localeCompare(b.cidade, 'pt-BR')
+  })
+
+  const latest = new Map<string, WarRoomPesquisaConsolidadaReal>()
+  for (const row of sorted) {
+    const cidadeKey = normalizeIptMunicipio(row.cidade)
+    if (!cidadeKey || latest.has(cidadeKey)) continue
+    latest.set(cidadeKey, row)
+  }
+  return latest
+}

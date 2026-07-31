@@ -1,6 +1,8 @@
-import { normalizeIptMunicipio } from '@/lib/ipt'
 import type { WarRoomDecisao, WarRoomDecisaoPrioridade } from '@/lib/war-room/decisoes'
-import type { WarRoomPesquisaConsolidadaReal } from '@/lib/war-room/pesquisas-consolidadas'
+import {
+  mapUltimaPesquisaPorMunicipio,
+  type WarRoomPesquisaConsolidadaReal,
+} from '@/lib/war-room/pesquisas-consolidadas'
 
 const TOP_N = 5
 
@@ -19,28 +21,6 @@ function prioridadePorPosicao(posicao: number): WarRoomDecisaoPrioridade {
 }
 
 /**
- * Última onda por cidade (data desc). Ondas mais antigas da mesma
- * cidade são ignoradas — mesmo que tenham sido fora do top N.
- */
-function ultimaOndaPorCidade(
-  rows: WarRoomPesquisaConsolidadaReal[],
-): Map<string, WarRoomPesquisaConsolidadaReal> {
-  const sorted = [...rows].sort((a, b) => {
-    const byDate = b.data.localeCompare(a.data)
-    if (byDate !== 0) return byDate
-    return a.cidade.localeCompare(b.cidade, 'pt-BR')
-  })
-
-  const latest = new Map<string, WarRoomPesquisaConsolidadaReal>()
-  for (const row of sorted) {
-    const cidadeKey = normalizeIptMunicipio(row.cidade)
-    if (!cidadeKey || latest.has(cidadeKey)) continue
-    latest.set(cidadeKey, row)
-  }
-  return latest
-}
-
-/**
  * Alertas da fila: só a pesquisa mais atual de cada cidade.
  * Se nessa onda o candidato foco (Jadyel) está fora do top 5 → alerta.
  * Se já recuperou o top 5 numa onda mais nova, a antiga fora do top 5
@@ -54,7 +34,7 @@ export function buildDecisoesPesquisasForaTop5(
   const candidatoLabel = (opts?.candidatoLabel ?? 'Jadyel').trim() || 'Jadyel'
   const out: WarRoomDecisao[] = []
 
-  for (const [cidadeKey, row] of ultimaOndaPorCidade(rows)) {
+  for (const [cidadeKey, row] of mapUltimaPesquisaPorMunicipio(rows)) {
     const posicao = row.jadyelPosicao
     if (posicao == null || !Number.isFinite(posicao) || posicao <= topN) continue
 

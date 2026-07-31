@@ -13,16 +13,19 @@ import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
 import type {
   WarRoomDecisao,
-  WarRoomDecisaoPrioridade,
 } from '@/lib/war-room/decisoes'
 import {
   AGENDA_FLUXO_CHANGED_EVENT,
   WR_OPEN_AGENDA_FLUXO_EVENT,
 } from '@/lib/war-room/agenda-fluxo'
-import { buildDecisoesVisitasFluxoIncompleto } from '@/lib/war-room/decisoes-visitas-fluxo'
+import {
+  buildDecisoesVisitasFluxoIncompleto,
+  WR_DECISOES_VIAGENS_JANELA_DIAS,
+} from '@/lib/war-room/decisoes-visitas-fluxo'
 import { buildDecisoesPesquisasForaTop5 } from '@/lib/war-room/decisoes-pesquisas'
 import { buildDecisaoNoticiasLiderPeriodo } from '@/lib/war-room/decisoes-noticias'
 import { buildDecisaoPostEngajamentoDestaque } from '@/lib/war-room/decisoes-redes-engajamento'
+import { groupDecisoesPorSecao } from '@/lib/war-room/decisoes-secoes'
 import { buildWarRoomPesquisasConsolidadas } from '@/lib/war-room/pesquisas-consolidadas'
 import { WAR_ROOM_DISPAROS } from '@/lib/war-room/mock-data'
 import {
@@ -43,14 +46,6 @@ import { cn } from '@/lib/utils'
 const NOTICIAS_LOOKBACK_DAYS = 7
 const NOTICIAS_FETCH_LIMIT = 500
 const HIDDEN_NOTICIAS_SLUGS = new Set(['instagram-causa-animal'])
-
-const PRIORIDADE_RANK: Record<WarRoomDecisaoPrioridade, number> = {
-  critica: 0,
-  alta: 1,
-  media: 2,
-  baixa: 3,
-  info: 4,
-}
 
 const CATEGORIA_BADGE_LABEL: Record<string, string> = {
   'Visita agendada': 'Viagens',
@@ -81,17 +76,6 @@ type ApiPayload = {
   total?: number
   pendingMigration?: boolean
   message?: string
-}
-
-function sortFila(a: WarRoomDecisao, b: WarRoomDecisao): number {
-  const aVisita = a.categoria === 'Visita agendada' ? 0 : 1
-  const bVisita = b.categoria === 'Visita agendada' ? 0 : 1
-  if (aVisita !== bVisita) return aVisita - bVisita
-  const rank =
-    (PRIORIDADE_RANK[a.prioridade] ?? 99) - (PRIORIDADE_RANK[b.prioridade] ?? 99)
-  if (rank !== 0) return rank
-  if (Boolean(a.destaque) !== Boolean(b.destaque)) return a.destaque ? -1 : 1
-  return (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
 }
 
 function DecisaoItem({
@@ -200,6 +184,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       setVisitaItems(
         buildDecisoesVisitasFluxoIncompleto(data.events ?? [], WAR_ROOM_DISPAROS, {
           municipiosExpectativa,
+          janelaDias: WR_DECISOES_VIAGENS_JANELA_DIAS,
         }),
       )
     } catch {
@@ -361,15 +346,23 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   }, [carregarVisitasFluxo])
 
   const fila = useMemo(
-    () =>
-      [
-        ...visitaItems,
-        ...pesquisaItems,
-        ...noticiaItems,
-        ...redesItems,
-        ...apiItems,
-      ].sort(sortFila),
+    () => [...visitaItems, ...pesquisaItems, ...noticiaItems, ...redesItems, ...apiItems],
     [visitaItems, pesquisaItems, noticiaItems, redesItems, apiItems],
+  )
+
+  /** Card principal: só Urgente / Atenção / Verificar (esconde vazias e Outros). */
+  const secoesCard = useMemo(
+    () =>
+      groupDecisoesPorSecao(fila, { includeOutros: false }).filter(
+        (s) => s.items.length > 0,
+      ),
+    [fila],
+  )
+
+  /** Modal: mesmas seções + Outros (notícias / API). */
+  const secoesModal = useMemo(
+    () => groupDecisoesPorSecao(fila, { includeOutros: true }),
+    [fila],
   )
 
   const total =
@@ -424,7 +417,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       <header className="wr-decisoes-fila__header">
         <h2 className="wr-decisoes-fila__heading">Fila de decisões / alertas</h2>
         <p className="wr-decisoes-fila__sub">
-          Visitas, pesquisas, notícias e redes
+          Urgente · Atenção · Verificar
         </p>
       </header>
 
@@ -435,22 +428,41 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
         </div>
       ) : error && fila.length === 0 ? (
         <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
-      ) : fila.length === 0 ? (
+      ) : secoesCard.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhuma decisão pendente no momento.</p>
       ) : (
-        <ul className="wr-decisoes-fila__list" aria-label="Alertas da fila">
-          {fila.map((decisao) => (
-            <DecisaoItem
-              key={decisao.id}
-              decisao={decisao}
-              onActivate={
-                decisao.categoria === 'Visita agendada' || decisao.href
-                  ? onActivate
-                  : undefined
-              }
-            />
+        <div className="wr-decisoes-fila__secoes" aria-label="Alertas por seção">
+          {secoesCard.map((secao) => (
+            <section
+              key={secao.id}
+              className={cn(
+                'wr-decisoes-fila__secao',
+                `wr-decisoes-fila__secao--${secao.id}`,
+              )}
+              aria-label={`${secao.label}: ${secao.items.length}`}
+            >
+              <header className="wr-decisoes-fila__secao-head">
+                <h3 className="wr-decisoes-fila__secao-label">{secao.label}</h3>
+                <span className="wr-decisoes-fila__secao-count tabular-nums">
+                  {secao.items.length}
+                </span>
+              </header>
+              <ul className="wr-decisoes-fila__list">
+                {secao.items.map((decisao) => (
+                  <DecisaoItem
+                    key={decisao.id}
+                    decisao={decisao}
+                    onActivate={
+                      decisao.categoria === 'Visita agendada' || decisao.href
+                        ? onActivate
+                        : undefined
+                    }
+                  />
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       <div className="wr-decisoes-fila__footer-bar">
@@ -467,7 +479,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
 
       {modalOpen ? (
         <WarRoomDecisoesModal
-          items={fila}
+          secoes={secoesModal}
           onClose={() => setModalOpen(false)}
           onActivate={onActivate}
         />

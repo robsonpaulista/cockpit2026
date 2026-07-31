@@ -30,6 +30,7 @@ import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useSetDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { WarRoomExpectativaCard } from '@/components/war-room/war-room-bloco1'
 import { WarRoomOpsBar } from '@/components/war-room/war-room-ops-bar'
+import { WarRoomTopbarCountdown } from '@/components/war-room/war-room-topbar-countdown'
 import { WarRoomCidadeProvider } from '@/components/war-room/war-room-cidade-context'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import { WarRoomNoticiasCard } from '@/components/war-room/war-room-noticias-card'
@@ -265,6 +266,7 @@ function WarRoomPanelInner() {
   const topbarExtras = useMemo(() => {
     if (!topbarVisible) return null
     return {
+      description: <WarRoomTopbarCountdown />,
       actions: (
         <>
           <label className="wr-topbar-clean__search">

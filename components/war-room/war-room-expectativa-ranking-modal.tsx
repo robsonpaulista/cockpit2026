@@ -35,8 +35,15 @@ import {
 } from '@/components/territorio-campo/territorio-sortable-header'
 import { WarRoomMunicipioEmendasModal } from '@/components/war-room/war-room-municipio-emendas-modal'
 import { WarRoomMunicipioObrasModal } from '@/components/war-room/war-room-municipio-obras-modal'
+import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
+import {
+  buildWarRoomPesquisasConsolidadas,
+  mapUltimaPesquisaPorMunicipio,
+  type WarRoomPesquisaConsolidadaReal,
+} from '@/lib/war-room/pesquisas-consolidadas'
+import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
 import { cn } from '@/lib/utils'
 
 type SortCol =
@@ -47,6 +54,7 @@ type SortCol =
   | 'eleitores'
   | 'ultimaVisita'
   | 'proxVisita'
+  | 'pesquisa'
 
 type FiltroExpectativa = 'todos' | 'gt0' | 'eq0'
 type FiltroBinario = 'todos' | 'com' | 'sem'
@@ -63,6 +71,9 @@ type RankingRow = {
   proxVisitaSort: string
   temEmendas: boolean
   temObras: boolean
+  /** Posição do candidato foco na última pesquisa consolidada. */
+  pesquisaPosicao: number | null
+  pesquisa: WarRoomPesquisaConsolidadaReal | null
 }
 
 type Props = {
@@ -109,6 +120,11 @@ function formatPesoPct(value: number): string {
 function formatInt(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return Math.round(value).toLocaleString('pt-BR')
+}
+
+function formatPosicaoPesquisa(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value < 1) return '—'
+  return `${Math.round(value)}º`
 }
 
 function normalizarBusca(value: string): string {
@@ -162,6 +178,12 @@ export function WarRoomExpectativaRankingModal({
   const [obrasAll, setObrasAll] = useState<ObraMapaRow[] | null>(null)
   const [recapObras, setRecapObras] = useState<ObraRecapMatchSource[] | null>(null)
   const [loadingObras, setLoadingObras] = useState(false)
+  const [pesquisaByMun, setPesquisaByMun] = useState<
+    Map<string, WarRoomPesquisaConsolidadaReal>
+  >(() => new Map())
+  const [loadingPesquisas, setLoadingPesquisas] = useState(true)
+  const [pesquisaDetalhe, setPesquisaDetalhe] =
+    useState<WarRoomPesquisaConsolidadaReal | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -220,6 +242,36 @@ export function WarRoomExpectativaRankingModal({
       cancelled = true
     }
   }, [municipios])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoadingPesquisas(true)
+      try {
+        const foco = resolveCandidatoIpt()
+        const res = await fetch('/api/pesquisa?limit=5000', { cache: 'no-store' })
+        if (!res.ok) {
+          if (!cancelled) setPesquisaByMun(new Map())
+          return
+        }
+        const data = (await res.json()) as PollIptRow[]
+        const built = buildWarRoomPesquisasConsolidadas(
+          Array.isArray(data) ? data : [],
+          foco,
+          5000,
+        )
+        if (!cancelled) setPesquisaByMun(mapUltimaPesquisaPorMunicipio(built))
+      } catch {
+        if (!cancelled) setPesquisaByMun(new Map())
+      } finally {
+        if (!cancelled) setLoadingPesquisas(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (detalhe?.tipo !== 'obras') return
@@ -285,6 +337,7 @@ export function WarRoomExpectativaRankingModal({
       const populacao =
         demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
       const prox = proxVisitaDe(agendaPorMunicipio.get(key))
+      const pesquisa = pesquisaByMun.get(key) ?? null
       return {
         municipio: m.municipio,
         expectativa: m.expectativaVotos,
@@ -298,9 +351,11 @@ export function WarRoomExpectativaRankingModal({
         temEmendas: emendasKeys.has(key),
         temObras:
           m.sinais.obras === 'bem' || (m.detalhes.obrasQuantidade ?? 0) > 0,
+        pesquisaPosicao: pesquisa?.jadyelPosicao ?? null,
+        pesquisa,
       }
     })
-  }, [agendaPorMunicipio, emendasKeys, municipios])
+  }, [agendaPorMunicipio, emendasKeys, municipios, pesquisaByMun])
 
   const filtradas = useMemo(() => {
     const termo = normalizarBusca(busca)
@@ -348,6 +403,15 @@ export function WarRoomExpectativaRankingModal({
         if (by !== 0) return by
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
+      if (sortCol === 'pesquisa') {
+        const by = compareTerritorioNumber(
+          a.pesquisaPosicao ?? 999,
+          b.pesquisaPosicao ?? 999,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
       const by = compareTerritorioText(a.proxVisitaSort, b.proxVisitaSort, sortAsc)
       if (by !== 0) return by
       return compareTerritorioText(a.municipio, b.municipio, true)
@@ -381,6 +445,7 @@ export function WarRoomExpectativaRankingModal({
     let comProxVisita = 0
     let comEmendas = 0
     let comObras = 0
+    let comPesquisa = 0
     for (const row of filtradas) {
       expectativa += row.expectativa
       peso += row.peso
@@ -390,6 +455,7 @@ export function WarRoomExpectativaRankingModal({
       if (row.proxVisitaSort) comProxVisita += 1
       if (row.temEmendas) comEmendas += 1
       if (row.temObras) comObras += 1
+      if (row.pesquisaPosicao != null) comPesquisa += 1
     }
     return {
       expectativa,
@@ -400,6 +466,7 @@ export function WarRoomExpectativaRankingModal({
       comProxVisita,
       comEmendas,
       comObras,
+      comPesquisa,
     }
   }, [filtradas])
 
@@ -407,9 +474,21 @@ export function WarRoomExpectativaRankingModal({
     if (filtradas.length === 0 || exportBusy !== 'idle') return
     setExportBusy(formato)
     try {
-      if (formato === 'csv') exportExpectativaRankingCsv(filtradas, totais)
-      else if (formato === 'xlsx') exportExpectativaRankingXlsx(filtradas, totais)
-      else exportExpectativaRankingPdf(filtradas, totais)
+      const exportRows = filtradas.map((row) => ({
+        municipio: row.municipio,
+        expectativa: row.expectativa,
+        peso: row.peso,
+        populacao: row.populacao,
+        eleitores: row.eleitores,
+        ultimaVisitaLabel: row.ultimaVisitaLabel,
+        proxVisitaLabel: row.proxVisitaLabel,
+        temEmendas: row.temEmendas,
+        temObras: row.temObras,
+        pesquisaPosicaoLabel: formatPosicaoPesquisa(row.pesquisaPosicao),
+      }))
+      if (formato === 'csv') exportExpectativaRankingCsv(exportRows, totais)
+      else if (formato === 'xlsx') exportExpectativaRankingXlsx(exportRows, totais)
+      else exportExpectativaRankingPdf(exportRows, totais)
     } finally {
       setExportBusy('idle')
     }
@@ -421,6 +500,11 @@ export function WarRoomExpectativaRankingModal({
 
   const abrirObras = (municipio: string) => {
     setDetalhe({ tipo: 'obras', municipio })
+  }
+
+  const abrirPesquisa = (pesquisa: WarRoomPesquisaConsolidadaReal | null) => {
+    if (!pesquisa) return
+    setPesquisaDetalhe(pesquisa)
   }
 
   if (!mounted) return null
@@ -656,6 +740,16 @@ export function WarRoomExpectativaRankingModal({
                 </th>
                 <th>Emendas</th>
                 <th>Obras</th>
+                <th>
+                  <TerritorioSortableHeaderButton
+                    label="Pesquisas"
+                    active={sortCol === 'pesquisa'}
+                    asc={sortAsc}
+                    onClick={() => alternarSort('pesquisa')}
+                    align="right"
+                    compact
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -716,6 +810,38 @@ export function WarRoomExpectativaRankingModal({
                       {row.temObras ? 'Sim' : 'Não'}
                     </button>
                   </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {row.pesquisa ? (
+                      <button
+                        type="button"
+                        className={cn(
+                          'wr-expectativa-ranking-modal__flag',
+                          'wr-expectativa-ranking-modal__flag--btn',
+                          'wr-expectativa-ranking-modal__flag--pesquisa',
+                          row.pesquisaPosicao != null &&
+                            row.pesquisaPosicao > 5 &&
+                            'wr-expectativa-ranking-modal__flag--alerta',
+                        )}
+                        aria-label={`Ver ranking da pesquisa em ${row.municipio}`}
+                        title={
+                          row.pesquisa
+                            ? `${formatPosicaoPesquisa(row.pesquisaPosicao)} · ${row.pesquisa.instituto} · ${row.pesquisa.dataLabel}`
+                            : undefined
+                        }
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          abrirPesquisa(row.pesquisa)
+                        }}
+                      >
+                        {formatPosicaoPesquisa(row.pesquisaPosicao)}
+                      </button>
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                        {loadingPesquisas ? '…' : '—'}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -749,6 +875,9 @@ export function WarRoomExpectativaRankingModal({
                   <td className="tabular-nums">
                     {totais.comObras.toLocaleString('pt-BR')} sim
                   </td>
+                  <td className="tabular-nums">
+                    {totais.comPesquisa.toLocaleString('pt-BR')} c/
+                  </td>
                 </tr>
               </tfoot>
             ) : null}
@@ -775,6 +904,13 @@ export function WarRoomExpectativaRankingModal({
           recapObras={recapObras}
           loading={loadingObras && obrasAll == null}
           onClose={() => setDetalhe(null)}
+        />
+      ) : null}
+
+      {pesquisaDetalhe ? (
+        <WarRoomPesquisaRankingModal
+          pesquisa={pesquisaDetalhe}
+          onClose={() => setPesquisaDetalhe(null)}
         />
       ) : null}
     </>,

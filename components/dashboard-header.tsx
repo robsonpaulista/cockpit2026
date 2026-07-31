@@ -159,35 +159,52 @@ export function DashboardHeader() {
             |
           </span>
           <div className="min-w-0 flex-1">
-            {topbarExtras?.hidePageTitle ? null : (
-              <h1
-                className={cn(
-                  'truncate font-bold tracking-tight',
-                  isWarRoom
-                    ? 'wr-topbar-clean__title text-base uppercase text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]'
-                    : 'text-sm sm:text-base',
-                  lightBrand ? 'text-white max-lg:hidden' : !isWarRoom && 'text-text-primary',
-                  mobileAmberHeader && 'max-lg:text-white/95',
+            {isWarRoom ? (
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                {topbarExtras?.hidePageTitle ? null : (
+                  <h1
+                    className="wr-topbar-clean__title shrink-0 truncate font-bold uppercase tracking-tight text-base text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]"
+                    title={pageTitle}
+                  >
+                    {pageTitle}
+                  </h1>
                 )}
-                title={pageTitle}
-              >
-                {pageTitle}
-              </h1>
-            )}
-            {topbarExtras?.description && !isWarRoom ? (
-              <div
-                className={cn(
-                  'truncate',
-                  topbarExtras.hidePageTitle
-                    ? 'block text-[13px] sm:text-sm'
-                    : 'mt-0.5 hidden text-[12px] lg:block',
-                  lightBrand ? 'text-white/65' : 'text-text-muted',
-                  mobileAmberHeader && 'max-lg:text-white/75',
-                )}
-              >
-                {topbarExtras.description}
+                {topbarExtras?.description ? (
+                  <div className="min-w-0 shrink-0 truncate leading-none">
+                    {topbarExtras.description}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            ) : (
+              <>
+                {topbarExtras?.hidePageTitle ? null : (
+                  <h1
+                    className={cn(
+                      'truncate font-bold tracking-tight text-sm sm:text-base',
+                      lightBrand ? 'text-white max-lg:hidden' : 'text-text-primary',
+                      mobileAmberHeader && 'max-lg:text-white/95',
+                    )}
+                    title={pageTitle}
+                  >
+                    {pageTitle}
+                  </h1>
+                )}
+                {topbarExtras?.description ? (
+                  <div
+                    className={cn(
+                      'truncate',
+                      topbarExtras.hidePageTitle
+                        ? 'block text-[13px] sm:text-sm'
+                        : 'mt-0.5 hidden text-[12px] lg:block',
+                      lightBrand ? 'text-white/65' : 'text-text-muted',
+                      mobileAmberHeader && 'max-lg:text-white/75',
+                    )}
+                  >
+                    {topbarExtras.description}
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">

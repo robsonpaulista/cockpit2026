@@ -8,24 +8,15 @@ import {
   IconListDetails,
   IconX,
 } from '@tabler/icons-react'
-import type {
-  WarRoomDecisao,
-} from '@/lib/war-room/decisoes'
+import type { WarRoomDecisao } from '@/lib/war-room/decisoes'
+import type { WarRoomDecisaoSecao } from '@/lib/war-room/decisoes-secoes'
 import { cn } from '@/lib/utils'
 
 type Props = {
-  items: WarRoomDecisao[]
+  secoes: WarRoomDecisaoSecao[]
   onClose: () => void
   onActivate?: (decisao: WarRoomDecisao) => void
 }
-
-/** Ordem dos grupos = cards de origem na War Room. */
-const CATEGORIA_ORDER: string[] = [
-  'Visita agendada',
-  'Pesquisas',
-  'Notícias',
-  'Redes sociais',
-]
 
 const CATEGORIA_BADGE_LABEL: Record<string, string> = {
   'Visita agendada': 'Viagens',
@@ -48,42 +39,22 @@ function categoriaBadgeClassName(categoria: string): string {
     .replace(/[^a-z0-9]+/g, '-')}`
 }
 
-type Grupo = {
-  categoria: string
-  items: WarRoomDecisao[]
-}
-
-function groupByCategoria(items: WarRoomDecisao[]): Grupo[] {
-  const map = new Map<string, WarRoomDecisao[]>()
-  for (const item of items) {
-    const key = item.categoria?.trim() || 'Outros'
-    const list = map.get(key)
-    if (list) list.push(item)
-    else map.set(key, [item])
-  }
-
-  const keys = [...map.keys()].sort((a, b) => {
-    const ia = CATEGORIA_ORDER.indexOf(a)
-    const ib = CATEGORIA_ORDER.indexOf(b)
-    const ra = ia === -1 ? 1000 : ia
-    const rb = ib === -1 ? 1000 : ib
-    if (ra !== rb) return ra - rb
-    return a.localeCompare(b, 'pt-BR')
-  })
-
-  return keys.map((categoria) => ({
-    categoria,
-    items: map.get(categoria) ?? [],
-  }))
-}
-
-/** Modal com todos os alertas da fila, agrupados pelo card de origem. */
-export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
+/** Modal com todos os alertas da fila, agrupados por Urgente / Atenção / Verificar. */
+export function WarRoomDecisoesModal({ secoes, onClose, onActivate }: Props) {
   const tituloId = useId()
   const [mounted, setMounted] = useState(false)
-  const grupos = useMemo(() => groupByCategoria(items), [items])
-  /** Origens expandidas — inicia tudo recolhido. */
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const secoesComItens = useMemo(
+    () => secoes.filter((s) => s.items.length > 0),
+    [secoes],
+  )
+  const total = useMemo(
+    () => secoesComItens.reduce((n, s) => n + s.items.length, 0),
+    [secoesComItens],
+  )
+  /** Seções expandidas — Urgente/Atenção/Verificar abertas; Outros fechado. */
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(secoes.filter((s) => s.id !== 'outros').map((s) => s.id)),
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -99,11 +70,11 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
     }
   }, [onClose])
 
-  const toggleGrupo = (categoria: string) => {
+  const toggleSecao = (id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(categoria)) next.delete(categoria)
-      else next.add(categoria)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -132,7 +103,7 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">War Room · Alertas</p>
               <h2 id={tituloId} className="wr-visita-modal__title truncate">
-                Fila de decisões ({items.length})
+                Fila de decisões ({total})
               </h2>
             </div>
           </div>
@@ -147,37 +118,33 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
         </header>
 
         <p className="wr-visita-modal__lead">
-          Todos os registros pendentes, agrupados pelo card de origem.
+          Urgente (hoje + 2 dias) · Atenção (pesquisas) · Verificar (redes).
         </p>
 
-        {items.length === 0 ? (
+        {total === 0 ? (
           <p className="wr-visita-modal__state">Nenhuma decisão pendente no momento.</p>
         ) : (
           <div className="wr-decisoes-modal__body">
-            {grupos.map((grupo) => {
-              const aberto = expanded.has(grupo.categoria)
-              const panelId = `wr-decisoes-grupo-${grupo.categoria
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '')}`
+            {secoesComItens.map((secao) => {
+              const aberto = expanded.has(secao.id)
+              const panelId = `wr-decisoes-secao-${secao.id}`
 
               return (
                 <section
-                  key={grupo.categoria}
+                  key={secao.id}
                   className={cn(
                     'wr-decisoes-modal__group',
+                    `wr-decisoes-modal__group--${secao.id}`,
                     !aberto && 'wr-decisoes-modal__group--collapsed',
                   )}
-                  aria-label={grupo.categoria}
+                  aria-label={secao.label}
                 >
                   <button
                     type="button"
                     className="wr-decisoes-modal__group-head"
                     aria-expanded={aberto}
                     aria-controls={panelId}
-                    onClick={() => toggleGrupo(grupo.categoria)}
+                    onClick={() => toggleSecao(secao.id)}
                   >
                     <IconChevronDown
                       className={cn(
@@ -187,20 +154,19 @@ export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
                       stroke={1.75}
                       aria-hidden
                     />
-                    <h3 className="wr-decisoes-modal__group-title min-w-0 flex-1 text-left">
-                      {grupo.categoria}
-                    </h3>
+                    <div className="min-w-0 flex-1 text-left">
+                      <h3 className="wr-decisoes-modal__group-title">{secao.label}</h3>
+                      {secao.hint ? (
+                        <p className="wr-decisoes-modal__group-hint">{secao.hint}</p>
+                      ) : null}
+                    </div>
                     <span className="wr-decisoes-modal__group-count tabular-nums">
-                      {grupo.items.length}
+                      {secao.items.length}
                     </span>
                   </button>
                   {aberto ? (
-                    <ul
-                      id={panelId}
-                      className="wr-decisoes-modal__list"
-                      role="list"
-                    >
-                      {grupo.items.map((decisao) => {
+                    <ul id={panelId} className="wr-decisoes-modal__list" role="list">
+                      {secao.items.map((decisao) => {
                         const canActivate =
                           Boolean(onActivate) &&
                           (decisao.categoria === 'Visita agendada' ||

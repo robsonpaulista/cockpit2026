@@ -12,6 +12,8 @@ export type ExpectativaRankingExportRow = {
   proxVisitaLabel: string
   temEmendas: boolean
   temObras: boolean
+  /** Posição do candidato foco na última pesquisa (ex.: "3º"); "—" se não houver. */
+  pesquisaPosicaoLabel: string
 }
 
 export type ExpectativaRankingExportTotais = {
@@ -23,6 +25,7 @@ export type ExpectativaRankingExportTotais = {
   comProxVisita: number
   comEmendas: number
   comObras: number
+  comPesquisa: number
 }
 
 const HEADERS = [
@@ -35,6 +38,7 @@ const HEADERS = [
   'Próx. visita',
   'Emendas',
   'Obras',
+  'Pesquisas',
 ] as const
 
 let jspdfAutotableApplied = false
@@ -83,6 +87,7 @@ function cellRow(row: ExpectativaRankingExportRow): (string | number)[] {
     row.proxVisitaLabel,
     row.temEmendas ? 'Sim' : 'Não',
     row.temObras ? 'Sim' : 'Não',
+    row.pesquisaPosicaoLabel,
   ]
 }
 
@@ -100,6 +105,7 @@ function totaisRow(
     `${totais.comProxVisita} com`,
     `${totais.comEmendas} sim`,
     `${totais.comObras} sim`,
+    `${totais.comPesquisa} c/`,
   ]
 }
 
@@ -138,6 +144,7 @@ export function exportExpectativaRankingXlsx(
     { wch: 12 },
     { wch: 14 },
     { wch: 16 },
+    { wch: 10 },
     { wch: 10 },
     { wch: 10 },
   ]

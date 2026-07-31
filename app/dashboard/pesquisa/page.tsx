@@ -1427,14 +1427,14 @@ export default function PesquisaPage() {
               </button>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-3">
               <TendenciaTemporalPanel
                 pesquisaData={pesquisaData}
                 candidatos={candidatos}
                 candidatoPadrao={candidatoPadrao}
                 resumoLegendaPorCandidato={resumoLegendaPorCandidato}
                 showHeader={false}
-                chartHeight={640}
+                fillAvailable
                 loading={loading}
                 emptyMessage={emptyGraficoMessage}
                 className="flex h-full min-h-0 flex-1 flex-col border-none p-2 sm:p-3"

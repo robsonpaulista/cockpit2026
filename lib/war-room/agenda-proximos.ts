@@ -50,6 +50,45 @@ export function addDaysToKey(dayKey: string, days: number): string {
   return dt.toISOString().slice(0, 10)
 }
 
+/** Dias civis de `fromKey` até `toKey` (0 = mesmo dia; negativo = passado). */
+export function diffDayKeys(fromKey: string, toKey: string): number {
+  const [y1, m1, d1] = fromKey.split('-').map(Number)
+  const [y2, m2, d2] = toKey.split('-').map(Number)
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return Number.NaN
+  const a = Date.UTC(y1, m1 - 1, d1)
+  const b = Date.UTC(y2, m2 - 1, d2)
+  return Math.round((b - a) / 86_400_000)
+}
+
+/**
+ * Janela inclusiva: hoje (dias=0) até hoje+(janelaDias-1).
+ * Ex.: janelaDias=3 → hoje, amanhã e depois de amanhã.
+ */
+export function isDayKeyInJanela(
+  dayKey: string,
+  hojeKey: string,
+  janelaDias: number,
+): boolean {
+  const dias = diffDayKeys(hojeKey, dayKey)
+  if (!Number.isFinite(dias)) return false
+  return dias >= 0 && dias < janelaDias
+}
+
+/**
+ * Dia civil do evento no fuso da War Room.
+ * All-day usa `start.date` (YYYY-MM-DD do Google); timed usa America/Sao_Paulo.
+ */
+export function eventCalendarDayKey(event: CalendarEventRow): string {
+  if (event.start?.date && !event.start?.dateTime) {
+    return event.start.date.slice(0, 10)
+  }
+  if (event.start?.dateTime) {
+    return calendarDateInTz(event.start.dateTime)
+  }
+  const date = getCalendarEventDate(event)
+  return date ? calendarDateInTz(date) : ''
+}
+
 export function formatDataLabelBr(dayKey: string): string {
   const [y, m, d] = dayKey.split('-')
   if (!y || !m || !d) return dayKey
@@ -127,22 +166,19 @@ export function buildAgendaProximosPorMunicipio(
   return byCity
 }
 
-/** Lista plana de visitas na janela (hoje → +N dias), ordenada por data/hora. */
+/** Lista plana de visitas na janela (hoje incluso → +N−1 dias), ordenada por data/hora. */
 export function listAgendaVisitasProximas(
   events: CalendarEventRow[],
   opts?: { janelaDias?: number; hojeKey?: string },
 ): WarRoomAgendaVisita[] {
-  const janela = opts?.janelaDias ?? AGENDA_PROXIMOS_JANELA_DIAS
+  const janela = Math.max(1, opts?.janelaDias ?? AGENDA_PROXIMOS_JANELA_DIAS)
   const today = opts?.hojeKey ?? todayKeyInTz()
-  const endKey = addDaysToKey(today, janela - 1)
   const out: WarRoomAgendaVisita[] = []
 
   for (const event of events) {
     if (event.status === 'cancelled') continue
-    const date = getCalendarEventDate(event)
-    if (!date) continue
-    const dayKey = calendarDateInTz(date)
-    if (!dayKey || dayKey < today || dayKey > endKey) continue
+    const dayKey = eventCalendarDayKey(event)
+    if (!dayKey || !isDayKeyInJanela(dayKey, today, janela)) continue
 
     const mun = municipioFromAgendaEvent(event)
     if (!mun) continue

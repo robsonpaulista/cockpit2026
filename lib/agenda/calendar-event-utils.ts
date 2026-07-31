@@ -35,8 +35,10 @@ export function formatAgendaTimePt(event: CalendarEventRow): string {
   const date = getCalendarEventDate(event)
   if (!date) return '—'
   return date.toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     hour: '2-digit',
     minute: '2-digit',
+    hourCycle: 'h23',
   })
 }
 

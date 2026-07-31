@@ -236,5 +236,6 @@ export function isNsoCandidate(nome: string): boolean {
 }
 
 export function legendDisplayName(nome: string): string {
-  return isNaoSabeOuNaoOpinaNome(nome) ? 'Referência — indecisão' : nome
+  if (isNaoSabeOuNaoOpinaNome(nome)) return 'Não sabe / Não opina'
+  return nome
 }

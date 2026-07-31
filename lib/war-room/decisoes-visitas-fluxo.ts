@@ -1,10 +1,14 @@
 import {
   agendaFluxoKeyForVisita,
+  diffDayKeys,
   isAgendaParaConhecimento,
   listAgendaVisitasProximas,
   todayKeyInTz,
   type WarRoomAgendaVisita,
 } from '@/lib/war-room/agenda-proximos'
+
+/** Urgente: hoje + 2 dias seguintes (3 dias civis, hoje incluso). */
+export const WR_DECISOES_VIAGENS_JANELA_DIAS = 3
 import {
   countAgendaFluxoProgress,
   isAgendaFluxoIncompleto,
@@ -16,12 +20,8 @@ import type { WarRoomDisparo } from '@/lib/war-room/mock-data'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 
 function diasAteVisita(dataKey: string, hojeKey: string): number {
-  const [y1, m1, d1] = hojeKey.split('-').map(Number)
-  const [y2, m2, d2] = dataKey.split('-').map(Number)
-  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return 99
-  const a = Date.UTC(y1, m1 - 1, d1)
-  const b = Date.UTC(y2, m2 - 1, d2)
-  return Math.round((b - a) / 86_400_000)
+  const dias = diffDayKeys(hojeKey, dataKey)
+  return Number.isFinite(dias) ? dias : 99
 }
 
 function prioridadePorProximidade(dias: number): WarRoomDecisaoPrioridade {
@@ -78,6 +78,11 @@ export function decisaoFromVisitaFluxoIncompleto(
 export type BuildDecisoesVisitasOpts = {
   hojeKey?: string
   /**
+   * Dias civis a partir de hoje (incluso).
+   * Default {@link WR_DECISOES_VIAGENS_JANELA_DIAS} = hoje + amanhã + depois.
+   */
+  janelaDias?: number
+  /**
    * Universo da Expectativa de votos: chave normalizada → nome oficial.
    * Só entram visitas cujo município casa com esse mapa (mesmo match do ícone de agenda).
    */
@@ -86,7 +91,7 @@ export type BuildDecisoesVisitasOpts = {
 
 /**
  * Alertas da fila: cidades da Expectativa com agendamento na janela
- * e fluxo operacional incompleto (1 item por cidade — próxima visita).
+ * (hoje incluso) e fluxo operacional incompleto (1 item por cidade — próxima visita).
  */
 export function buildDecisoesVisitasFluxoIncompleto(
   events: CalendarEventRow[],
@@ -96,12 +101,17 @@ export function buildDecisoesVisitasFluxoIncompleto(
   if (opts.municipiosExpectativa.size === 0) return []
 
   const hojeKey = opts.hojeKey ?? todayKeyInTz()
+  const janelaDias = Math.max(
+    1,
+    opts.janelaDias ?? WR_DECISOES_VIAGENS_JANELA_DIAS,
+  )
   const eventsFiltrados = events.filter(
     (event) => !isAgendaParaConhecimento(event.summary || ''),
   )
-  const visitas = listAgendaVisitasProximas(eventsFiltrados, { hojeKey }).filter((v) =>
-    opts.municipiosExpectativa.has(v.municipioKey),
-  )
+  const visitas = listAgendaVisitasProximas(eventsFiltrados, {
+    hojeKey,
+    janelaDias,
+  }).filter((v) => opts.municipiosExpectativa.has(v.municipioKey))
 
   // Uma entrada por cidade: a visita mais próxima com fluxo incompleto.
   const porCidade = new Map<string, WarRoomDecisao>()

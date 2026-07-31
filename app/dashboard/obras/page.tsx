@@ -1045,7 +1045,7 @@ export default function ObrasPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="obras-table w-full text-[13px]">
                 <thead className="bg-background border-b border-card">
                   <tr>
                     {visibleColsList.map((col) => {
@@ -1053,9 +1053,21 @@ export default function ObrasPage() {
                       const isFirstVisible = visibleColsList[0] === col
                       const stickyClass = isFirstVisible ? 'sticky left-0 z-10 bg-background border-r border-card' : ''
                       const thClass = [
-                        'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider',
+                        'px-2.5 py-1.5 text-left text-[11px] font-medium text-secondary uppercase tracking-wider',
                         stickyClass,
-                        col === 'municipio' ? 'min-w-[120px]' : col === 'obra' ? 'min-w-[320px]' : (col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status') ? 'min-w-[200px]' : '',
+                        col === 'municipio'
+                          ? 'w-px whitespace-nowrap'
+                          : col === 'obra'
+                            ? 'w-full min-w-[14rem]'
+                            : col === 'orgao' || col === 'sei' || col === 'valor_total' || col === 'status' || col === 'publicacao_os' || col === 'data_medicao' || col === 'status_medicao'
+                              ? 'w-px whitespace-nowrap'
+                              : col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status'
+                                ? 'min-w-[10rem] max-w-[14rem]'
+                                : col === 'sei_plano_trabalho_url' || col === 'doe_edicao'
+                                  ? 'w-px whitespace-nowrap'
+                                  : col === 'doe_resumo'
+                                    ? 'min-w-[10rem] max-w-[16rem]'
+                                    : 'w-px whitespace-nowrap',
                       ].filter(Boolean).join(' ')
                       return (
                         <th key={col} className={thClass}>
@@ -1066,12 +1078,12 @@ export default function ObrasPage() {
                             title={`Ordenar ${COLUMN_LABELS[col]} (${sortColumn === col && !sortAsc ? 'A→Z' : 'Z→A'})`}
                           >
                             {COLUMN_LABELS[col]}
-                            {isActive ? (sortAsc ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
+                            {isActive ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                           </button>
                         </th>
                       )
                     })}
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider w-28">
+                    <th className="px-2.5 py-1.5 text-left text-[11px] font-medium text-secondary uppercase tracking-wider w-px whitespace-nowrap">
                       Ações
                     </th>
                   </tr>
@@ -1082,28 +1094,28 @@ export default function ObrasPage() {
                     return (
                     <tr key={obra.id} className={cn('group transition-colors', isPago && 'obras-row-pago')}>
                       {visibleColumns.municipio && (
-                        <td className={`px-6 py-4 whitespace-nowrap min-w-[120px] ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                          <div className="text-sm font-semibold text-text-primary">{obra.municipio || '-'}</div>
+                        <td className={`px-2.5 py-1.5 w-px whitespace-nowrap ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <div className="font-medium text-text-primary">{obra.municipio || '-'}</div>
                         </td>
                       )}
                       {visibleColumns.obra && (
-                        <td className={`px-6 py-4 whitespace-nowrap min-w-[320px] ${visibleColsList[0] === 'obra' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                          <span className="text-sm font-semibold text-text-primary">{obra.obra}</span>
+                        <td className={`px-2.5 py-1.5 w-full min-w-[14rem] max-w-[28rem] ${visibleColsList[0] === 'obra' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <span className="font-medium leading-snug text-text-primary line-clamp-2" title={obra.obra}>{obra.obra}</span>
                         </td>
                       )}
                       {visibleColumns.orgao && (
-                        <td className={`px-6 py-4 whitespace-nowrap ${visibleColsList[0] === 'orgao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                          <span className="text-sm text-secondary">{obra.orgao || '-'}</span>
+                        <td className={`px-2.5 py-1.5 w-px whitespace-nowrap ${visibleColsList[0] === 'orgao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <span className="text-secondary">{obra.orgao || '-'}</span>
                         </td>
                       )}
                       {visibleColumns.sei && (
                       <td
-                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top min-w-[280px] ${visibleColsList[0] === 'sei' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
+                        className={`px-2.5 py-1.5 w-px whitespace-nowrap cursor-pointer align-middle ${visibleColsList[0] === 'sei' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => handleSeiCellDoubleClick(obra)}
                         title="Duplo clique para definir link do SEI no site do governo"
                       >
                         {editingSeiObraId === obra.id ? (
-                          <div className="flex flex-col gap-2 min-w-[280px]">
+                          <div className="flex min-w-[16rem] flex-col gap-1.5">
                             <input
                               type="url"
                               value={editingSeiUrl}
@@ -1141,21 +1153,21 @@ export default function ObrasPage() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-sm text-secondary font-mono">{obra.sei || '-'}</span>
+                          <span className="text-[13px] text-secondary font-mono tabular-nums">{obra.sei || '-'}</span>
                         )}
                       </td>
                       )}
                       {visibleColumns.valor_total && (
-                      <td className={`px-6 py-4 whitespace-nowrap ${visibleColsList[0] === 'valor_total' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                        <div className="text-sm font-semibold text-text-primary">
+                      <td className={`px-2.5 py-1.5 w-px whitespace-nowrap tabular-nums ${visibleColsList[0] === 'valor_total' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                        <div className="font-medium text-text-primary">
                           {formatCurrency(obra.valor_total)}
                         </div>
                       </td>
                       )}
                       {visibleColumns.sei_ultimo_andamento && (
-                      <td className={`px-6 py-4 max-w-[280px] ${visibleColsList[0] === 'sei_ultimo_andamento' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                      <td className={`px-2.5 py-1.5 max-w-[14rem] ${visibleColsList[0] === 'sei_ultimo_andamento' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         {obra.sei_ultimo_andamento || obra.sei_ultimo_andamento_data ? (
-                          <div className="text-sm">
+                          <div className="text-[12px] leading-snug">
                             {obra.sei_todos_andamentos_concluidos && (
                               <div className="flex items-center gap-1 text-emerald-600 mb-1" title="Todos os protocolos foram concluídos. Exibindo o último andamento.">
                                 <CheckCircle className="w-4 h-4 shrink-0" />
@@ -1206,9 +1218,9 @@ export default function ObrasPage() {
                       </td>
                       )}
                       {visibleColumns.sei_ultimo_status && (
-                      <td className={`px-6 py-4 max-w-[220px] ${visibleColsList[0] === 'sei_ultimo_status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                      <td className={`px-2.5 py-1.5 max-w-[12rem] ${visibleColsList[0] === 'sei_ultimo_status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         {obra.sei_ultimo_status || obra.sei_ultimo_status_data ? (
-                          <div className="text-sm">
+                          <div className="text-[12px] leading-snug">
                             {obra.sei_ultimo_status_data && (
                               <div className="text-text-secondary font-mono text-xs mb-0.5">
                                 {(() => {
@@ -1231,7 +1243,7 @@ export default function ObrasPage() {
                       </td>
                       )}
                       {visibleColumns.sei_plano_trabalho_url && (
-                      <td className={`px-6 py-4 max-w-[220px] ${visibleColsList[0] === 'sei_plano_trabalho_url' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                      <td className={`px-2.5 py-1.5 max-w-[12rem] ${visibleColsList[0] === 'sei_plano_trabalho_url' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         {obra.sei_plano_trabalho_url ? (
                           <div className="text-sm">
                             {obra.sei_plano_trabalho_tipo && (
@@ -1256,7 +1268,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.doe_edicao && (
                         <td
-                          className={`px-6 py-4 max-w-[220px] ${
+                          className={`px-2.5 py-1.5 max-w-[10rem] ${
                             visibleColsList[0] === 'doe_edicao'
                               ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card'
                               : ''
@@ -1302,7 +1314,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.doe_resumo && (
                         <td
-                          className={`px-6 py-4 max-w-[360px] ${
+                          className={`px-2.5 py-1.5 max-w-[16rem] ${
                             visibleColsList[0] === 'doe_resumo'
                               ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card'
                               : ''
@@ -1345,7 +1357,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.status && (
                       <td
-                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
+                        className={`px-2.5 py-1.5 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'status')}
                         title="Duplo clique para editar"
                       >
@@ -1386,7 +1398,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.publicacao_os && (
                       <td
-                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'publicacao_os' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
+                        className={`px-2.5 py-1.5 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'publicacao_os' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'publicacao_os')}
                         title="Duplo clique para editar"
                       >
@@ -1420,7 +1432,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.data_medicao && (
                       <td
-                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'data_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
+                        className={`px-2.5 py-1.5 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'data_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'data_medicao')}
                         title="Duplo clique para editar"
                       >
@@ -1451,7 +1463,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.status_medicao && (
                       <td
-                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
+                        className={`px-2.5 py-1.5 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'status_medicao')}
                         title="Duplo clique para editar"
                       >
@@ -1488,11 +1500,11 @@ export default function ObrasPage() {
                         )}
                       </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
+                      <td className="px-2.5 py-1.5 w-px whitespace-nowrap">
+                        <div className="flex items-center gap-0.5">
                           {isPago && (
-                            <span className="mr-1" title={`Pago: ${formatCurrency(obra.valor_pago)}${obra.data_pagamento ? ' em ' + formatDateFull(obra.data_pagamento) : ''}${obra.nro_doc ? ' — Doc: ' + obra.nro_doc : ''}`}>
-                              <BadgeDollarSign className="w-4 h-4 text-emerald-600" />
+                            <span className="mr-0.5" title={`Pago: ${formatCurrency(obra.valor_pago)}${obra.data_pagamento ? ' em ' + formatDateFull(obra.data_pagamento) : ''}${obra.nro_doc ? ' — Doc: ' + obra.nro_doc : ''}`}>
+                              <BadgeDollarSign className="w-3.5 h-3.5 text-emerald-600" />
                             </span>
                           )}
                           {(obra.sei_url?.trim() ||
@@ -1501,10 +1513,10 @@ export default function ObrasPage() {
                               type="button"
                               onClick={() => handleAtualizarAndamentoSeiUnico(obra)}
                               disabled={updatingSeiObraId === obra.id || seiStatusUpdating}
-                              className="p-2 rounded-lg hover:bg-background transition-colors disabled:opacity-50"
+                              className="rounded-md p-1.5 hover:bg-background transition-colors disabled:opacity-50"
                               title="Atualizar andamento SEI desta obra"
                             >
-                              <RefreshCw className={`w-4 h-4 text-secondary ${updatingSeiObraId === obra.id ? 'animate-spin' : ''}`} />
+                              <RefreshCw className={`w-3.5 h-3.5 text-secondary ${updatingSeiObraId === obra.id ? 'animate-spin' : ''}`} />
                             </button>
                           )}
                           <button
@@ -1513,19 +1525,19 @@ export default function ObrasPage() {
                               setFormObra(obra)
                               setShowFormModal(true)
                             }}
-                            className="p-2 rounded-lg hover:bg-background transition-colors"
+                            className="rounded-md p-1.5 hover:bg-background transition-colors"
                             title="Editar"
                           >
-                            <Edit className="w-4 h-4 text-secondary" />
+                            <Edit className="w-3.5 h-3.5 text-secondary" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteObra(obra)}
                             disabled={deletingId === obra.id}
-                            className="p-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                            className="rounded-md p-1.5 hover:bg-red-50 transition-colors disabled:opacity-50"
                             title="Excluir"
                           >
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
                           </button>
                         </div>
                       </td>
