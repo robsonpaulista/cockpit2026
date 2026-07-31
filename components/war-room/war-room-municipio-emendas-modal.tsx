@@ -1,0 +1,148 @@
+'use client'
+
+import { useEffect, useId, useMemo } from 'react'
+import { IconFileSpreadsheet, IconX } from '@tabler/icons-react'
+import {
+  emendaEstaPaga,
+  filtrarEmendasPorMunicipio,
+  totaisEmendas,
+  type EmendaRegistro,
+} from '@/lib/emendas-filtro'
+
+type Props = {
+  municipio: string
+  emendas: EmendaRegistro[]
+  onClose: () => void
+}
+
+function formatBrl(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  return n.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  })
+}
+
+function tituloEmenda(e: EmendaRegistro): string {
+  return e.objeto?.trim() || e.emenda.trim() || 'Emenda sem objeto'
+}
+
+/** Modal de emendas do município — aberto a partir do ranking da Expectativa. */
+export function WarRoomMunicipioEmendasModal({
+  municipio,
+  emendas,
+  onClose,
+}: Props) {
+  const tituloId = useId()
+
+  const lista = useMemo(
+    () =>
+      filtrarEmendasPorMunicipio(emendas, municipio)
+        .slice()
+        .sort((a, b) => {
+          const anoA = a.exercicio ?? 0
+          const anoB = b.exercicio ?? 0
+          if (anoB !== anoA) return anoB - anoA
+          const va = a.valor_indicado ?? a.valor_empenhado ?? a.valor_pago ?? 0
+          const vb = b.valor_indicado ?? b.valor_empenhado ?? b.valor_pago ?? 0
+          if (vb !== va) return vb - va
+          return tituloEmenda(a).localeCompare(tituloEmenda(b), 'pt-BR')
+        }),
+    [emendas, municipio],
+  )
+
+  const totais = useMemo(() => totaisEmendas(lista), [lista])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose])
+
+  return (
+    <div className="wr-visita-modal wr-visita-modal--nested" role="presentation">
+      <button
+        type="button"
+        className="wr-visita-modal__backdrop"
+        aria-label="Fechar"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="wr-visita-modal__panel wr-municipio-detalhe-modal__panel"
+      >
+        <header className="wr-visita-modal__head">
+          <div className="wr-visita-modal__head-main min-w-0">
+            <span className="wr-visita-modal__icon" aria-hidden>
+              <IconFileSpreadsheet className="h-4 w-4" stroke={1.75} />
+            </span>
+            <div className="min-w-0">
+              <p className="wr-visita-modal__eyebrow">War Room · Emendas</p>
+              <h2 id={tituloId} className="wr-visita-modal__title truncate">
+                Emendas em {municipio}
+              </h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="wr-visita-modal__close"
+            aria-label="Fechar"
+            onClick={onClose}
+          >
+            <IconX className="h-4 w-4" stroke={1.75} />
+          </button>
+        </header>
+
+        <p className="wr-visita-modal__lead">
+          {lista.length === 0
+            ? 'Nenhuma emenda destinada a este município no cadastro.'
+            : `${lista.length.toLocaleString('pt-BR')} emenda${
+                lista.length === 1 ? '' : 's'
+              } · indicado ${formatBrl(totais.valorIndicado)}.`}
+        </p>
+
+        {lista.length === 0 ? (
+          <p className="wr-visita-modal__state">Sem emendas para listar.</p>
+        ) : (
+          <ul className="wr-municipio-detalhe-modal__lista">
+            {lista.map((emenda) => {
+              const valor =
+                emenda.valor_indicado ??
+                emenda.valor_empenhado ??
+                emenda.valor_pago
+              const paga = emendaEstaPaga(emenda)
+              return (
+                <li key={emenda.id}>
+                  <div className="wr-municipio-detalhe-modal__item-top">
+                    <strong>{tituloEmenda(emenda)}</strong>
+                    <span className="tabular-nums">{formatBrl(valor)}</span>
+                  </div>
+                  <div className="wr-municipio-detalhe-modal__item-meta">
+                    {emenda.exercicio != null ? <em>{emenda.exercicio}</em> : null}
+                    {emenda.emenda.trim() ? <em>{emenda.emenda.trim()}</em> : null}
+                    <em
+                      className={
+                        paga ? 'wr-municipio-detalhe-modal__status--ok' : undefined
+                      }
+                    >
+                      {paga ? 'Paga' : 'Em aberto'}
+                    </em>
+                    {emenda.bloco?.trim() ? <em>{emenda.bloco.trim()}</em> : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}

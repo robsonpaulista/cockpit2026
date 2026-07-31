@@ -1,0 +1,184 @@
+/**
+ * Visual clean — Obras (/dashboard/obras)
+ * Identidade leve alinhada ao IPT / Pesquisa / Base Eleitoral.
+ */
+
+body[data-obras-clean] {
+  --obras-page-bg: #f6f5f2;
+  --obras-surface: #ffffff;
+  --obras-surface-muted: #fafaf8;
+  --obras-border: #ebe8e4;
+  --obras-text: #1c1917;
+  --obras-muted: #78716c;
+  --obras-soft: #a8a29e;
+}
+
+body[data-obras-clean] main {
+  --page-bg: var(--obras-page-bg);
+  --surface: var(--obras-surface);
+  --surface-muted: var(--obras-surface-muted);
+  --border: var(--obras-border);
+  --border-strong: #ddd9d3;
+  --text: var(--obras-text);
+  --text-muted: var(--obras-muted);
+  --text-soft: var(--obras-soft);
+
+  --ipt-gray: #78716c;
+  --ipt-gray-mid: #a8a29e;
+  --ipt-gray-soft: #f3f1ec;
+  --ipt-gray-border: #ebe8e4;
+
+  --bg-app: 246 245 242;
+  --bg-surface: 255 255 255;
+  --text-primary: 28 25 23;
+  --text-secondary: 120 113 108;
+  --text-muted: 120 113 108;
+  --color-border-tertiary: 235 232 228;
+  --color-border-secondary: 221 217 211;
+  --color-background-tertiary: 250 250 248;
+
+  background-color: var(--obras-page-bg) !important;
+}
+
+body[data-obras-clean] main .flex.min-h-0.flex-1.flex-col.overflow-hidden.bg-bg-surface {
+  background-color: var(--obras-page-bg) !important;
+}
+
+body[data-obras-clean] main .border-b.bg-bg-surface,
+body[data-obras-clean] main .border-b.bg-bg-app {
+  background-color: #ffffff !important;
+  border-color: var(--obras-border) !important;
+}
+
+body[data-obras-clean] main .flex.min-h-0.flex-1.flex-col.gap-4.overflow-y-auto {
+  gap: 1.25rem;
+  padding-top: 1.125rem;
+}
+
+body[data-obras-clean] main .text-text-muted,
+body[data-obras-clean] main .text-secondary {
+  color: var(--obras-muted) !important;
+}
+
+body[data-obras-clean] main .text-text-secondary {
+  color: #57534e !important;
+}
+
+body[data-obras-clean] main .text-text-primary {
+  color: var(--obras-text) !important;
+}
+
+body[data-obras-clean] main h1 {
+  color: var(--obras-text);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+body[data-obras-clean] main h2,
+body[data-obras-clean] main h3 {
+  letter-spacing: -0.01em;
+}
+
+body[data-obras-clean] main .uppercase.tracking-wide,
+body[data-obras-clean] main .uppercase.tracking-wider {
+  color: var(--obras-soft) !important;
+  font-weight: 500 !important;
+}
+
+/* Cards / painéis */
+body[data-obras-clean] main .rounded-xl.border,
+body[data-obras-clean] main .rounded-2xl.border,
+body[data-obras-clean] main article.rounded-xl {
+  border-color: var(--obras-border) !important;
+  border-radius: 18px !important;
+  background: var(--obras-surface) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-obras-clean] main .bg-bg-app {
+  background-color: var(--obras-surface-muted) !important;
+}
+
+body[data-obras-clean] main .bg-bg-surface {
+  background-color: var(--obras-surface) !important;
+}
+
+/* Filtros / inputs */
+body[data-obras-clean] main input,
+body[data-obras-clean] main select {
+  border-color: var(--obras-border) !important;
+}
+
+body[data-obras-clean] main .rounded-\[99px\],
+body[data-obras-clean] main .rounded-full {
+  box-shadow: none;
+}
+
+/* Tabelas */
+body[data-obras-clean] main table thead th {
+  color: var(--obras-muted) !important;
+  font-weight: 500 !important;
+  border-color: var(--obras-border) !important;
+  letter-spacing: 0.04em;
+}
+
+body[data-obras-clean] main table tbody td {
+  border-color: #f3f1ec !important;
+  color: var(--obras-text);
+}
+
+body[data-obras-clean] main table tbody tr:hover td {
+  background: #fafaf8 !important;
+}
+
+body[data-obras-clean] main .sticky.bg-bg-surface,
+body[data-obras-clean] main .sticky.bg-surface,
+body[data-obras-clean] main .sticky.bg-background {
+  background: var(--obras-surface) !important;
+}
+
+/* Avisos / callouts */
+body[data-obras-clean] main .border-amber-200,
+body[data-obras-clean] main .bg-amber-50,
+body[data-obras-clean] main .border-l-2.border-amber-500 {
+  border-color: #f0e6d4 !important;
+  background: #fffdf8 !important;
+  color: #57534e !important;
+  border-radius: 12px;
+}
+
+body[data-obras-clean] main .text-amber-900 {
+  color: #57534e !important;
+}
+
+/* Empty / dashed */
+body[data-obras-clean] main .border-dashed {
+  border-color: var(--obras-border) !important;
+  background: var(--obras-surface) !important;
+  border-radius: 18px !important;
+}
+
+/* Abas */
+body[data-obras-clean] main nav[aria-label='Seções'] button {
+  color: var(--obras-muted);
+}
+
+body[data-obras-clean] main nav[aria-label='Seções'] button[aria-current='page'] {
+  color: var(--obras-text) !important;
+}
+
+/* Sombras */
+body[data-obras-clean] main .shadow-sm,
+body[data-obras-clean] main .shadow-card {
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+/* Linha paga: destaque suave */
+body[data-obras-clean] main tr.obras-row-pago {
+  background: #f7fbf7 !important;
+  box-shadow: inset 3px 0 0 #86a88a;
+}
+
+body[data-obras-clean] main tr.obras-row-pago:hover td {
+  background: #f3f8f3 !important;
+}

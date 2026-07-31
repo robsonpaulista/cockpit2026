@@ -192,6 +192,103 @@ function parseUltimoStatusTblDocumentos(html: string): {
   }
 }
 
+const SEI_DOC_BASE =
+  'https://sei.pi.gov.br/sei/modulos/pesquisa/'
+
+/** Prioridade: Plano de Trabalho > Projeto Básico > Plano > Projeto > Relatório. */
+function scoreTipoPlanoTrabalho(tipo: string): number {
+  const t = tipo
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!t) return 0
+  if (t.includes('plano de trabalho')) return 100
+  if (t.includes('projeto basico')) return 85
+  if (/(^|[^a-z])plano([^a-z]|$)/i.test(t) || t.includes('plano')) return 70
+  if (t.includes('projeto')) return 55
+  if (t.includes('relatorio')) return 40
+  return 0
+}
+
+/**
+ * Na Lista de Protocolos (tblDocumentos), captura o link do documento
+ * cujo Tipo contém "PLANO DE TRABALHO", "PROJETO BÁSICO", "PLANO",
+ * "PROJETO" ou "RELATÓRIO".
+ */
+function parsePlanoTrabalhoFromTblDocumentos(html: string): {
+  sei_plano_trabalho_url: string | null
+  sei_plano_trabalho_tipo: string | null
+  sei_plano_trabalho_numero: string | null
+} {
+  const empty = {
+    sei_plano_trabalho_url: null,
+    sei_plano_trabalho_tipo: null,
+    sei_plano_trabalho_numero: null,
+  }
+  let tableContent = extractTableById(html, 'tblDocumentos')
+  if (!tableContent) {
+    tableContent = extractTableByCaptionOrSummary(
+      html,
+      'Lista de Protocolos',
+      'Lista de Documentos',
+    )
+  }
+  if (!tableContent) return empty
+
+  const rows = tableContent.match(
+    /<tr[^>]*class=["'][^"']*infraTr(?:Clara|Escura)[^"']*["'][^>]*>[\s\S]*?<\/tr>/gi,
+  )
+  if (!rows?.length) return empty
+
+  type Cand = {
+    score: number
+    url: string
+    tipo: string
+    numero: string
+    order: number
+  }
+  const cands: Cand[] = []
+
+  rows.forEach((rowHtml, order) => {
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi
+    const cellsHtml: string[] = []
+    let td: RegExpExecArray | null
+    while ((td = tdRegex.exec(rowHtml)) !== null) cellsHtml.push(td[1])
+    if (cellsHtml.length < 3) return
+
+    const tipo = stripHtml(cellsHtml[2] ?? '').trim()
+    const score = scoreTipoPlanoTrabalho(tipo)
+    if (score <= 0) return
+
+    const numero = stripHtml(cellsHtml[1] ?? '').trim()
+    const openMatch = rowHtml.match(
+      /window\.open\(\s*['"]([^'"]*md_pesq_documento_consulta_externa\.php\?[^'"]+)['"]/i,
+    )
+    const hrefMatch = rowHtml.match(
+      /href=["']([^"']*md_pesq_documento_consulta_externa\.php\?[^"']+)["']/i,
+    )
+    const rel = (openMatch?.[1] || hrefMatch?.[1] || '').trim()
+    if (!rel) return
+    const url = rel.startsWith('http')
+      ? rel
+      : SEI_DOC_BASE + rel.replace(/^\.?\//, '')
+
+    cands.push({ score, url, tipo, numero, order })
+  })
+
+  if (cands.length === 0) return empty
+  // Maior prioridade; em empate, o mais recente (última linha da lista).
+  cands.sort((a, b) => b.score - a.score || b.order - a.order)
+  const best = cands[0]
+  return {
+    sei_plano_trabalho_url: best.url,
+    sei_plano_trabalho_tipo: best.tipo || null,
+    sei_plano_trabalho_numero: best.numero || null,
+  }
+}
+
 /**
  * Parse "DD/MM/YYYY HH:mm" (horário Brasília, UTC-3) para ISO string (UTC) para TIMESTAMPTZ.
  * O SEI exibe datas no fuso do Brasil; o servidor (ex. Vercel) roda em UTC.
@@ -382,9 +479,114 @@ function extractCellsFromRow(rowContent: string): {
   return { data, dataIso, descricao }
 }
 
+async function buscarAndamentoSeiPorUrl(url: string): Promise<{
+  ok: boolean
+  status: number
+  body: Record<string, unknown>
+}> {
+  const fullUrl = url.startsWith('http') ? url : `https://${url}`
+
+  let res: Response
+  try {
+    res = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': BROWSER_USER_AGENT,
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    })
+  } catch (fetchError: unknown) {
+    const msg = fetchError instanceof Error ? fetchError.message : 'Erro ao acessar a URL'
+    return {
+      ok: false,
+      status: 502,
+      body: {
+        error:
+          'Não foi possível acessar a página do SEI. O site pode estar bloqueando acesso automático.',
+        details: msg,
+        manualHint:
+          'Use a extração manual: abra o link no navegador, F12 > Console, cole o script de extração e importe o JSON na tela de Obras.',
+      },
+    }
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: 502,
+      body: {
+        error: `O site retornou status ${res.status}. Acesso automático pode estar bloqueado.`,
+        manualHint:
+          'Use a extração manual (abrir link no navegador, extrair com script no Console e importar na tela de Obras).',
+      },
+    }
+  }
+
+  const buf = await res.arrayBuffer()
+  let html = new TextDecoder('utf-8').decode(buf)
+  let parsed = parseAndamentoAbertoFromHtml(html)
+  let ultimoStatus = parseUltimoStatusTblDocumentos(html)
+  let planoDoc = parsePlanoTrabalhoFromTblDocumentos(html)
+  if (!ultimoStatus.sei_ultimo_status && !ultimoStatus.sei_ultimo_status_data) {
+    const htmlLatin1 = new TextDecoder('iso-8859-1').decode(buf)
+    const statusLatin1 = parseUltimoStatusTblDocumentos(htmlLatin1)
+    if (statusLatin1.sei_ultimo_status || statusLatin1.sei_ultimo_status_data) {
+      ultimoStatus = statusLatin1
+      html = htmlLatin1
+    }
+    if (!parsed && htmlLatin1 !== html) {
+      parsed = parseAndamentoAbertoFromHtml(htmlLatin1)
+      if (parsed) html = htmlLatin1
+    }
+  }
+  if (!planoDoc.sei_plano_trabalho_url) {
+    const htmlLatin1 = new TextDecoder('iso-8859-1').decode(buf)
+    const planoLatin1 = parsePlanoTrabalhoFromTblDocumentos(htmlLatin1)
+    if (planoLatin1.sei_plano_trabalho_url) {
+      planoDoc = planoLatin1
+      html = htmlLatin1
+    }
+  }
+
+  if (!parsed) {
+    return {
+      ok: false,
+      status: 200,
+      body: {
+        found: false,
+        error:
+          'Não foi possível encontrar o andamento aberto na página (tabela Histórico de Andamentos). A página pode ser carregada por JavaScript ou a estrutura do SEI mudou.',
+        ...planoDoc,
+      },
+    }
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    body: {
+      found: true,
+      data: parsed.data,
+      dataIso: parsed.dataIso,
+      descricao: parsed.descricao,
+      alerta_andamento_desatualizado: parsed.alerta_andamento_desatualizado ?? false,
+      sei_data_mais_recente_concluido: parsed.sei_data_mais_recente_concluido ?? null,
+      sei_descricao_mais_recente_concluido:
+        parsed.sei_descricao_mais_recente_concluido ?? null,
+      todos_andamentos_concluidos: parsed.todos_andamentos_concluidos ?? false,
+      sei_ultimo_status: ultimoStatus.sei_ultimo_status ?? null,
+      sei_ultimo_status_data: ultimoStatus.sei_ultimo_status_data ?? null,
+      ...planoDoc,
+    },
+  }
+}
+
 /**
  * POST { url: string } — Busca a página SEI e retorna o último andamento.
- * POST { updates: { obraId, sei_ultimo_andamento?, sei_ultimo_andamento_data? }[] } — Atualiza andamentos em lote (importação manual).
+ * POST { updates: [...] } — Atualiza andamentos em lote (importação manual).
  */
 export async function POST(request: Request) {
   try {
@@ -448,79 +650,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const fullUrl = url.startsWith('http') ? url : `https://${url}`
-
-    let res: Response
-    try {
-      res = await fetch(fullUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'text/html,application/xhtml+xml',
-          'User-Agent': BROWSER_USER_AGENT,
-          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-        },
-        redirect: 'follow',
-        signal: AbortSignal.timeout(15000),
-      })
-    } catch (fetchError: unknown) {
-      const msg = fetchError instanceof Error ? fetchError.message : 'Erro ao acessar a URL'
-      return NextResponse.json(
-        {
-          error: 'Não foi possível acessar a página do SEI. O site pode estar bloqueando acesso automático.',
-          details: msg,
-          manualHint: 'Use a extração manual: abra o link no navegador, F12 > Console, cole o script de extração e importe o JSON na tela de Obras.',
-        },
-        { status: 502 }
-      )
-    }
-
-    if (!res.ok) {
-      return NextResponse.json(
-        {
-          error: `O site retornou status ${res.status}. Acesso automático pode estar bloqueado.`,
-          manualHint: 'Use a extração manual (abrir link no navegador, extrair com script no Console e importar na tela de Obras).',
-        },
-        { status: 502 }
-      )
-    }
-
-    const buf = await res.arrayBuffer()
-    let html = new TextDecoder('utf-8').decode(buf)
-    let parsed = parseAndamentoAbertoFromHtml(html)
-    let ultimoStatus = parseUltimoStatusTblDocumentos(html)
-    // Se Últ. Status veio vazio, tentar página em Latin-1 (comum em portais gov).
-    if (!ultimoStatus.sei_ultimo_status && !ultimoStatus.sei_ultimo_status_data) {
-      const htmlLatin1 = new TextDecoder('iso-8859-1').decode(buf)
-      const statusLatin1 = parseUltimoStatusTblDocumentos(htmlLatin1)
-      if (statusLatin1.sei_ultimo_status || statusLatin1.sei_ultimo_status_data) {
-        ultimoStatus = statusLatin1
-        html = htmlLatin1
-      }
-      if (!parsed && htmlLatin1 !== html) {
-        parsed = parseAndamentoAbertoFromHtml(htmlLatin1)
-        if (parsed) html = htmlLatin1
-      }
-    }
-
-    if (!parsed) {
-      return NextResponse.json({
-        found: false,
-        error: 'Não foi possível encontrar o andamento aberto na página (tabela Histórico de Andamentos). A página pode ser carregada por JavaScript ou a estrutura do SEI mudou.',
-      })
-    }
-
-    return NextResponse.json({
-      found: true,
-      data: parsed.data,
-      dataIso: parsed.dataIso,
-      descricao: parsed.descricao,
-      alerta_andamento_desatualizado: parsed.alerta_andamento_desatualizado ?? false,
-      sei_data_mais_recente_concluido: parsed.sei_data_mais_recente_concluido ?? null,
-      sei_descricao_mais_recente_concluido: parsed.sei_descricao_mais_recente_concluido ?? null,
-      todos_andamentos_concluidos: parsed.todos_andamentos_concluidos ?? false,
-      sei_ultimo_status: ultimoStatus.sei_ultimo_status ?? null,
-      sei_ultimo_status_data: ultimoStatus.sei_ultimo_status_data ?? null,
-    })
+    const result = await buscarAndamentoSeiPorUrl(url)
+    return NextResponse.json(result.body, { status: result.status })
   } catch {
     return NextResponse.json(
       { error: 'Erro interno ao processar página SEI' },

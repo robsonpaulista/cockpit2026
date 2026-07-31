@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Building2, MapPin, DollarSign, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown, BadgeDollarSign } from 'lucide-react'
+import { Building2, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown, BadgeDollarSign, HardHat } from 'lucide-react'
 import * as XLSX from 'xlsx'
-import { formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
+import { ObrasShell } from '@/components/obras/obras-shell'
+import { ghostButtonClass, primaryButtonClass } from '@/lib/premium-ui-classes'
+import { typographySectionTitleClass, typographySectionLeadClass } from '@/lib/typography-chrome'
 
 type ObraTipoAba = string
 
@@ -26,6 +29,9 @@ interface Obra {
   sei_ultimo_andamento_data?: string | null
   sei_ultimo_status?: string | null
   sei_ultimo_status_data?: string | null
+  sei_plano_trabalho_url?: string | null
+  sei_plano_trabalho_tipo?: string | null
+  sei_plano_trabalho_numero?: string | null
   sei_alerta_andamento_desatualizado?: boolean
   sei_data_mais_recente_concluido?: string | null
   sei_descricao_mais_recente_concluido?: string | null
@@ -69,7 +75,7 @@ export default function ObrasPage() {
   const [filterStatusMedicao, setFilterStatusMedicao] = useState('')
   const [filterOrgao, setFilterOrgao] = useState('')
   const [filterPagamento, setFilterPagamento] = useState<'' | 'pago' | 'nao_pago'>('')
-  const [activeTab, setActiveTab] = useState<ObraTipoAba>('pavimentação')
+  const [activeTab, setActiveTab] = useState<ObraTipoAba>('Recap 2026')
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [formObra, setFormObra] = useState<Obra | null>(null)
@@ -85,11 +91,12 @@ export default function ObrasPage() {
   const [savingCell, setSavingCell] = useState(false)
   const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
   const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
-  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'doe_edicao' | 'doe_resumo' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
-  const TABLE_COLUMNS: SortColumn[] = ['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'doe_edicao', 'doe_resumo', 'status', 'publicacao_os', 'data_medicao', 'status_medicao']
+  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'sei_plano_trabalho_url' | 'doe_edicao' | 'doe_resumo' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
+  const TABLE_COLUMNS: SortColumn[] = ['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'sei_plano_trabalho_url', 'doe_edicao', 'doe_resumo', 'status', 'publicacao_os', 'data_medicao', 'status_medicao']
   const COLUMN_LABELS: Record<SortColumn, string> = {
     municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
     valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI', sei_ultimo_status: 'Últ. Status SEI',
+    sei_plano_trabalho_url: 'Plano / Relatório',
     doe_edicao: 'DOE edição', doe_resumo: 'DOE resumo',
     status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
   }
@@ -119,6 +126,13 @@ export default function ObrasPage() {
     () => recapTabs.includes(activeTab),
     [recapTabs, activeTab],
   )
+
+  useEffect(() => {
+    if (recapTabs.length === 0) return
+    if (!recapTabs.includes(activeTab)) {
+      setActiveTab(recapTabs.includes('Recap 2026') ? 'Recap 2026' : recapTabs[0])
+    }
+  }, [recapTabs, activeTab])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -289,6 +303,68 @@ export default function ObrasPage() {
   }
 
   const handleAtualizarAndamentosSei = async () => {
+    if (isRecapTab) {
+      const alvos = filteredObras.filter(
+        (o) => (o.sei ?? '').trim() || (o.sei_url ?? '').trim(),
+      )
+      if (alvos.length === 0) {
+        alert('Nenhuma obra Recap com número SEI nesta aba.')
+        return
+      }
+      if (
+        !window.confirm(
+          `Atualizar andamentos SEI de ${alvos.length} obra(s) da aba "${activeTab}"?\n` +
+            'Resolve o link do processo na Pesquisa Pública e grava o andamento no banco.',
+        )
+      ) {
+        return
+      }
+      setSeiStatusUpdating(true)
+      setSeiStatusProgress({ current: 0, total: alvos.length, lastError: '' })
+      let ok = 0
+      let lastError = ''
+      for (let i = 0; i < alvos.length; i++) {
+        const obra = alvos[i]
+        setSeiStatusProgress({ current: i + 1, total: alvos.length, lastError })
+        try {
+          const res = await fetch('/api/obras/recap/sei-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              obraId: obra.id,
+              tabName: activeTab,
+              sei: obra.sei,
+              url: obra.sei_url,
+            }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (res.ok && data.obra) {
+            ok++
+            setRecapObras((prev) =>
+              prev.map((o) =>
+                o.id === obra.id ? { ...o, ...data.obra, tipo: activeTab } : o,
+              ),
+            )
+          } else {
+            lastError = data.error || data.details || `Status ${res.status}`
+            setSeiStatusProgress((p) => ({ ...p, lastError }))
+          }
+        } catch (e) {
+          lastError = e instanceof Error ? e.message : 'Erro de rede'
+          setSeiStatusProgress((p) => ({ ...p, lastError }))
+        }
+        if (i < alvos.length - 1) {
+          await new Promise((r) => setTimeout(r, SEI_ANDAMENTO_DELAY_MS))
+        }
+      }
+      setSeiStatusProgress((p) => ({ ...p, lastError }))
+      setSeiStatusUpdating(false)
+      alert(
+        `Recap SEI: ${ok} de ${alvos.length} atualizados.${lastError ? ` Último erro: ${lastError}` : ''}`,
+      )
+      return
+    }
+
     // Buscar TODAS as obras (sem filtros) para incluir as de qualquer aba/filtro
     let todasObras: Obra[] = []
     try {
@@ -337,6 +413,9 @@ export default function ObrasPage() {
               sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
               sei_ultimo_status: data.sei_ultimo_status ?? null,
               sei_ultimo_status_data: data.sei_ultimo_status_data ?? null,
+              sei_plano_trabalho_url: data.sei_plano_trabalho_url ?? null,
+              sei_plano_trabalho_tipo: data.sei_plano_trabalho_tipo ?? null,
+              sei_plano_trabalho_numero: data.sei_plano_trabalho_numero ?? null,
             }),
           })
           if (patchRes.ok) {
@@ -364,6 +443,38 @@ export default function ObrasPage() {
   const [updatingSeiObraId, setUpdatingSeiObraId] = useState<string | null>(null)
 
   const handleAtualizarAndamentoSeiUnico = async (obra: Obra) => {
+    if (isRecapTab) {
+      if (!(obra.sei ?? '').trim() && !(obra.sei_url ?? '').trim()) return
+      setUpdatingSeiObraId(obra.id)
+      try {
+        const res = await fetch('/api/obras/recap/sei-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            obraId: obra.id,
+            tabName: activeTab,
+            sei: obra.sei,
+            url: obra.sei_url,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.obra) {
+          setRecapObras((prev) =>
+            prev.map((o) =>
+              o.id === obra.id ? { ...o, ...data.obra, tipo: activeTab } : o,
+            ),
+          )
+        } else {
+          alert(data.error || data.details || 'Erro ao atualizar andamento SEI.')
+        }
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'Erro de rede')
+      } finally {
+        setUpdatingSeiObraId(null)
+      }
+      return
+    }
+
     if (!obra.sei_url?.trim()) return
     const url = obra.sei_url.startsWith('http') ? obra.sei_url : 'https://' + obra.sei_url
     setUpdatingSeiObraId(obra.id)
@@ -387,6 +498,9 @@ export default function ObrasPage() {
             sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
             sei_ultimo_status: data.sei_ultimo_status ?? null,
             sei_ultimo_status_data: data.sei_ultimo_status_data ?? null,
+            sei_plano_trabalho_url: data.sei_plano_trabalho_url ?? null,
+            sei_plano_trabalho_tipo: data.sei_plano_trabalho_tipo ?? null,
+            sei_plano_trabalho_numero: data.sei_plano_trabalho_numero ?? null,
           }),
         })
         if (patchRes.ok) {
@@ -468,6 +582,39 @@ export default function ObrasPage() {
     }
     setSavingSeiUrl(true)
     try {
+      if (isRecapTab) {
+        const obra = recapObras.find((o) => o.id === editingSeiObraId)
+        if (!obra?.sei?.trim()) {
+          alert('Obra Recap sem número SEI — não é possível salvar o link no banco.')
+          return
+        }
+        const res = await fetch('/api/obras/recap/sei-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            obraId: obra.id,
+            tabName: activeTab,
+            sei: obra.sei,
+            url,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok) {
+          const savedUrl = (data.sei_url as string) || url
+          setRecapObras((prev) =>
+            prev.map((o) =>
+              o.id === editingSeiObraId
+                ? { ...o, sei_url: savedUrl, tipo: activeTab }
+                : o,
+            ),
+          )
+          window.open(savedUrl, '_blank', 'noopener,noreferrer')
+        } else {
+          alert(data.error || 'Erro ao salvar link SEI.')
+        }
+        return
+      }
+
       const res = await fetch(`/api/obras/${editingSeiObraId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -530,7 +677,7 @@ export default function ObrasPage() {
   }
 
   const tabs = useMemo(() => {
-    const base = [...OBRAS_TIPOS]
+    // Pavimentação e Obras diversas ficam ocultas; mostra só abas Recap / importadas.
     const extras = new Set<string>(recapTabs)
     for (const obra of obras) {
       const t = normalizeObraTipo(obra.tipo)
@@ -538,12 +685,7 @@ export default function ObrasPage() {
         extras.add(t)
       }
     }
-    return [
-      ...base,
-      ...[...extras]
-        .filter((t) => !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]))
-        .sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    ]
+    return [...extras].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   }, [obras, recapTabs])
 
   const filteredObras = useMemo(() => {
@@ -589,6 +731,7 @@ export default function ObrasPage() {
         case 'valor_total': return o.valor_total ?? 0
         case 'sei_ultimo_andamento': return o.sei_ultimo_andamento_data ? new Date(o.sei_ultimo_andamento_data).getTime() : 0
         case 'sei_ultimo_status': return o.sei_ultimo_status_data ? new Date(o.sei_ultimo_status_data).getTime() : (o.sei_ultimo_status ?? '').toLowerCase()
+        case 'sei_plano_trabalho_url': return (o.sei_plano_trabalho_tipo ?? o.sei_plano_trabalho_numero ?? o.sei_plano_trabalho_url ?? '').toLowerCase()
         case 'doe_edicao': return (o.doe_edicao ?? '').toLowerCase()
         case 'doe_resumo': return (o.doe_resumo ?? '').toLowerCase()
         case 'status': return (o.status ?? '').toLowerCase()
@@ -639,10 +782,21 @@ export default function ObrasPage() {
     }).format(value)
   }
 
-  const formatPercent = (value?: number) => {
-    if (!value) return '-'
-    return `${value.toFixed(1)}%`
-  }
+  const hubTabs = useMemo(
+    () =>
+      tabs.map((tipo) => {
+        const count = (OBRAS_TIPOS as readonly string[]).includes(tipo as (typeof OBRAS_TIPOS)[number])
+          ? obras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
+          : recapObras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
+        const label = tipo.charAt(0).toUpperCase() + tipo.slice(1)
+        return {
+          id: tipo,
+          label: count > 0 ? `${label} (${count})` : label,
+          icon: HardHat,
+        }
+      }),
+    [tabs, obras, recapObras],
+  )
 
   const formatDateFull = (dateString?: string) => {
     if (!dateString) return '-'
@@ -655,312 +809,235 @@ export default function ObrasPage() {
     })
   }
 
+  const selectClass =
+    'h-9 w-full rounded-lg border border-card bg-background px-3 text-xs text-text-primary outline-none focus:border-[#ff9800]'
+
   const obrasMainContent = (
-    <>
-      {/* Filtros e Busca */}
-      <div className="mb-6 bg-surface rounded-xl border border-card p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Busca */}
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, localização, cidade..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                />
-              </div>
-            </div>
-
-            {/* Filtro Município */}
-            <div>
-              <select
-                value={filterMunicipio}
-                onChange={(e) => setFilterMunicipio(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-              >
-                <option value="">Todos os municípios</option>
-                {municipios.map((municipio) => (
-                  <option key={municipio} value={municipio}>
-                    {municipio}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Status */}
-            <div>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-              >
-                <option value="">Todos os status</option>
-                {statusList.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Status Medição */}
-            <div>
-              <select
-                value={filterStatusMedicao}
-                onChange={(e) => setFilterStatusMedicao(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-              >
-                <option value="">Todos os status de medição</option>
-                {statusMedicaoList.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Filtro Órgão */}
-            <div>
-              <select
-                value={filterOrgao}
-                onChange={(e) => setFilterOrgao(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-              >
-                <option value="">Todos os órgãos</option>
-                {orgaos.map((orgao) => (
-                  <option key={orgao} value={orgao}>
-                    {orgao}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Pagamento */}
-            <div>
-              <select
-                value={filterPagamento}
-                onChange={(e) => setFilterPagamento(e.target.value as '' | 'pago' | 'nao_pago')}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft ${
-                  filterPagamento === 'pago'
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                    : filterPagamento === 'nao_pago'
-                    ? 'border-amber-300 bg-amber-50 text-amber-800'
-                    : 'border-card bg-background text-text-primary'
-                }`}
-              >
-                <option value="">Todos (pagos e não pagos)</option>
-                <option value="pago">Somente pagos</option>
-                <option value="nao_pago">Somente não pagos</option>
-              </select>
-            </div>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className={cn(typographySectionTitleClass, 'flex items-center gap-2 text-base')}>
+            <HardHat className="h-4 w-4 text-[#ff9800]" aria-hidden />
+            Lista de obras
+          </h2>
+          <p className={cn(typographySectionLeadClass, 'mt-1')}>
+            {filteredObras.length} registro{filteredObras.length !== 1 ? 's' : ''} em {activeTab}
+            {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao || filterPagamento
+              ? ' · filtros ativos'
+              : ''}
+          </p>
         </div>
-
-        {/* Estatísticas */}
-        {(() => {
-          const tipoNorm = normalizeObraTipo
-          const totalPavimentacao = obras.filter((o) => tipoNorm(o.tipo) === 'pavimentação').reduce((s, o) => s + (o.valor_total || 0), 0)
-          const totalObrasDiversas = obras.filter((o) => tipoNorm(o.tipo) === 'obras diversas').reduce((s, o) => s + (o.valor_total || 0), 0)
-          const totalGeral = obras.reduce((s, o) => s + (o.valor_total || 0), 0)
-          const totalPago = obras.reduce((s, o) => s + (o.valor_pago || 0), 0)
-          const obrasPagas = obras.filter((o) => o.valor_pago && o.valor_pago > 0).length
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Building2 className="w-4 h-4 text-accent-gold shrink-0" />
-                  <span className="text-xs font-medium text-text-secondary truncate">Total de Obras</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFormObra(null)
+              setShowFormModal(true)
+            }}
+            className={cn(primaryButtonClass, 'h-9 px-3')}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Nova obra
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void fetchObras()
+              void fetchRecap()
+            }}
+            disabled={loading}
+            className={cn(ghostButtonClass, 'h-9 disabled:opacity-50')}
+            title="Atualizar lista"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            Atualizar
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className={cn(ghostButtonClass, 'h-9')}
+            title="Importa planilha para storage local (data/obras-recap.json)"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Importar
+          </button>
+          <button
+            type="button"
+            onClick={handleAtualizarAndamentosSei}
+            disabled={
+              seiStatusUpdating ||
+              (isRecapTab
+                ? filteredObras.filter(
+                    (o) => (o.sei ?? '').trim() || (o.sei_url ?? '').trim(),
+                  ).length === 0
+                : obras.filter((o) => o.sei_url?.trim()).length === 0)
+            }
+            className={cn(ghostButtonClass, 'h-9 disabled:opacity-50')}
+            title={
+              isRecapTab
+                ? 'Resolve o link do processo pelo número SEI e grava o andamento no banco'
+                : 'Buscar último andamento (andamento/Aberto) em cada link SEI'
+            }
+          >
+            <FileSearch className={cn('h-3.5 w-3.5', seiStatusUpdating && 'animate-pulse')} />
+            {seiStatusUpdating
+              ? `SEI (${seiStatusProgress.current}/${seiStatusProgress.total})`
+              : 'Andamentos SEI'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConsultarDoe()}
+            disabled={
+              doeUpdating ||
+              !isRecapTab ||
+              filteredObras.filter((o) => (o.sei ?? '').trim()).length === 0
+            }
+            className={cn(ghostButtonClass, 'h-9 disabled:opacity-50')}
+            title={
+              isRecapTab
+                ? 'Buscar cada SEI no Diário Oficial do PI e salvar o resumo no storage local'
+                : 'Disponível nas abas importadas (storage local)'
+            }
+          >
+            <FileSearch className={cn('h-3.5 w-3.5', doeUpdating && 'animate-pulse')} />
+            {doeUpdating ? `DOE (${doeProgress.current}/${doeProgress.total})` : 'Consultar DOE'}
+          </button>
+          <div className="relative" ref={columnPickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowColumnPicker((v) => !v)}
+              className={cn(ghostButtonClass, 'h-9')}
+              title="Mostrar ou ocultar colunas"
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Colunas
+            </button>
+            {showColumnPicker && (
+              <div className="absolute right-0 top-full z-20 mt-1 min-w-[200px] rounded-xl border border-card bg-surface py-2 shadow-sm">
+                <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.05em] text-text-muted">
+                  Colunas visíveis
                 </div>
-                <p className="text-xl font-bold text-text-primary">{obras.length}</p>
+                {TABLE_COLUMNS.map((col) => (
+                  <label
+                    key={col}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-bg-app"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[col]}
+                      onChange={() => toggleColumn(col)}
+                      className="rounded border-card"
+                    />
+                    <span className="text-xs">{COLUMN_LABELS[col]}</span>
+                  </label>
+                ))}
               </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
-                  <span className="text-xs font-medium text-text-secondary truncate">Total Pavimentação</span>
-                </div>
-                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalPavimentacao)}>{formatCurrency(totalPavimentacao)}</p>
-              </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
-                  <span className="text-xs font-medium text-text-secondary truncate">Total Obras Diversas</span>
-                </div>
-                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalObrasDiversas)}>{formatCurrency(totalObrasDiversas)}</p>
-              </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
-                  <span className="text-xs font-medium text-text-secondary truncate">Total Geral</span>
-                </div>
-                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalGeral)}>{formatCurrency(totalGeral)}</p>
-              </div>
-              <div className="bg-bg-surface rounded-xl border border-emerald-200 shadow-card p-3 min-w-0 col-span-2 md:col-span-1">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <BadgeDollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-xs font-medium text-text-secondary truncate">Total Pago</span>
-                </div>
-                <p className="text-lg xl:text-xl font-bold text-emerald-700 truncate" title={formatCurrency(totalPago)}>{formatCurrency(totalPago)}</p>
-                <p className="text-xs text-text-secondary mt-0.5">{obrasPagas} obra{obrasPagas !== 1 ? 's' : ''} paga{obrasPagas !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* Tabela de Obras */}
-        <div className="bg-bg-surface rounded-2xl border border-border-card shadow-card overflow-hidden">
-          <div className="p-4 lg:p-6 border-b border-border-card space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-accent-gold" />
-                Lista de Obras ({filteredObras.length})
-              </h3>
-              <button
-                onClick={() => setFullscreen((f) => !f)}
-                className="flex items-center gap-2 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
-                title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-              >
-                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                <span className="hidden sm:inline">{fullscreen ? 'Sair' : 'Tela cheia'}</span>
-              </button>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  setFormObra(null)
-                  setShowFormModal(true)
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Nova obra
-              </button>
-              <button
-                onClick={() => {
-                  void fetchObras()
-                  void fetchRecap()
-                }}
-                disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Atualizar lista"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </button>
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
-                title="Importa planilha para storage local (data/obras-recap.json)"
-              >
-                <Upload className="w-4 h-4" />
-                Importar
-              </button>
-              <button
-                onClick={handleAtualizarAndamentosSei}
-                disabled={seiStatusUpdating || obras.filter((o) => o.sei_url?.trim()).length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Buscar último andamento (andamento/Aberto) em cada link SEI"
-              >
-                <FileSearch className={`w-4 h-4 ${seiStatusUpdating ? 'animate-pulse' : ''}`} />
-                {seiStatusUpdating ? `SEI (${seiStatusProgress.current}/${seiStatusProgress.total})` : 'Andamentos SEI'}
-              </button>
-              <button
-                onClick={() => void handleConsultarDoe()}
-                disabled={
-                  doeUpdating ||
-                  !isRecapTab ||
-                  filteredObras.filter((o) => (o.sei ?? '').trim()).length === 0
-                }
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title={
-                  isRecapTab
-                    ? 'Buscar cada SEI no Diário Oficial do PI e salvar o resumo no storage local'
-                    : 'Disponível nas abas importadas (storage local)'
-                }
-              >
-                <FileSearch className={`w-4 h-4 ${doeUpdating ? 'animate-pulse' : ''}`} />
-                {doeUpdating
-                  ? `DOE (${doeProgress.current}/${doeProgress.total})`
-                  : 'Consultar DOE'}
-              </button>
-              <div className="relative" ref={columnPickerRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowColumnPicker((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
-                  title="Mostrar ou ocultar colunas"
-                >
-                  <Columns3 className="w-4 h-4" />
-                  Colunas
-                </button>
-                {showColumnPicker && (
-                  <div className="absolute right-0 top-full mt-1 z-20 min-w-[200px] py-2 bg-bg-surface border border-border-card rounded-lg shadow-lg">
-                    <div className="px-3 py-1.5 text-xs font-semibold text-secondary uppercase">Colunas visíveis</div>
-                    {TABLE_COLUMNS.map((col) => (
-                      <label key={col} className="flex items-center gap-2 px-3 py-1.5 hover:bg-background cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={visibleColumns[col]}
-                          onChange={() => toggleColumn(col)}
-                          className="rounded border-card"
-                        />
-                        <span className="text-sm">{COLUMN_LABELS[col]}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                disabled={sortedObras.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Exportar lista visível para Excel"
-              >
-                <FileDown className="w-4 h-4" />
-                Exportar
-              </button>
-            </div>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={sortedObras.length === 0}
+            className={cn(ghostButtonClass, 'h-9 disabled:opacity-50')}
+            title="Exportar lista visível para Excel"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Exportar
+          </button>
+          <button
+            type="button"
+            onClick={() => setFullscreen((f) => !f)}
+            className={cn(ghostButtonClass, 'h-9')}
+            title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          >
+            {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{fullscreen ? 'Sair' : 'Tela cheia'}</span>
+          </button>
+        </div>
+      </div>
 
-          {/* Abas por tipo (fixas + abas criadas por importação) */}
-          <div className="flex flex-wrap border-b border-border-card">
-            {tabs.map((tipo) => (
-              <button
-                key={tipo}
-                type="button"
-                onClick={() => setActiveTab(tipo)}
-                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  activeTab === tipo
-                    ? 'border-accent-gold text-accent-gold'
-                    : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                <span className="ml-2 text-xs text-text-secondary">
-                  (
-                  {(OBRAS_TIPOS as readonly string[]).includes(tipo as (typeof OBRAS_TIPOS)[number])
-                    ? obras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
-                    : recapObras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length}
-                  )
-                </span>
-              </button>
+      <div className="rounded-xl border border-card bg-surface p-3 shadow-sm">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="relative xl:col-span-2">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
+            <input
+              type="text"
+              placeholder="Buscar por nome, município, órgão, SEI…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9 w-full rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#ff9800]"
+            />
+          </div>
+          <select
+            value={filterMunicipio}
+            onChange={(e) => setFilterMunicipio(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Todos os municípios</option>
+            {municipios.map((municipio) => (
+              <option key={municipio} value={municipio}>
+                {municipio}
+              </option>
             ))}
-          </div>
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Todos os status</option>
+            {statusList.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterStatusMedicao}
+            onChange={(e) => setFilterStatusMedicao(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Status de medição</option>
+            {statusMedicaoList.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterOrgao}
+            onChange={(e) => setFilterOrgao(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">Todos os órgãos</option>
+            {orgaos.map((orgao) => (
+              <option key={orgao} value={orgao}>
+                {orgao}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterPagamento}
+            onChange={(e) => setFilterPagamento(e.target.value as '' | 'pago' | 'nao_pago')}
+            className={selectClass}
+          >
+            <option value="">Pagamento: todos</option>
+            <option value="pago">Somente pagos</option>
+            <option value="nao_pago">Somente não pagos</option>
+          </select>
+        </div>
+      </div>
 
+      <article className="overflow-hidden rounded-xl border border-card bg-surface shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
-              <span className="ml-2 text-sm text-secondary">Carregando obras...</span>
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" />
+              <span className="ml-2 text-sm text-text-secondary">Carregando obras...</span>
             </div>
           ) : filteredObras.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 text-secondary mx-auto mb-4 opacity-50" />
-              <p className="text-sm text-secondary">
+            <div className="px-4 py-16 text-center">
+              <Building2 className="mx-auto mb-3 h-12 w-12 text-text-muted opacity-40" />
+              <p className="text-sm text-text-secondary">
                 {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao || filterPagamento
                   ? 'Nenhuma obra encontrada com os filtros aplicados'
                   : `Nenhuma obra do tipo "${activeTab}" cadastrada.`}
@@ -1003,7 +1080,7 @@ export default function ObrasPage() {
                   {sortedObras.map((obra) => {
                     const isPago = Boolean(obra.valor_pago && obra.valor_pago > 0)
                     return (
-                    <tr key={obra.id} className={`group hover:bg-background/50 transition-colors ${isPago ? 'bg-emerald-50/40 border-l-4 border-l-emerald-500' : ''}`}>
+                    <tr key={obra.id} className={cn('group transition-colors', isPago && 'obras-row-pago')}>
                       {visibleColumns.municipio && (
                         <td className={`px-6 py-4 whitespace-nowrap min-w-[120px] ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                           <div className="text-sm font-semibold text-text-primary">{obra.municipio || '-'}</div>
@@ -1038,7 +1115,7 @@ export default function ObrasPage() {
                                   setEditingSeiUrl('')
                                 }
                               }}
-                              placeholder="Cole o link do SEI (site do governo)"
+                              placeholder="Cole o link md_pesq_processo_exibir.php?…"
                               className="px-2 py-1.5 text-sm border border-card rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                               autoFocus
                             />
@@ -1147,6 +1224,30 @@ export default function ObrasPage() {
                             <div className="text-text-primary line-clamp-2" title={obra.sei_ultimo_status ?? undefined}>
                               {obra.sei_ultimo_status || '—'}
                             </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-text-secondary">—</span>
+                        )}
+                      </td>
+                      )}
+                      {visibleColumns.sei_plano_trabalho_url && (
+                      <td className={`px-6 py-4 max-w-[220px] ${visibleColsList[0] === 'sei_plano_trabalho_url' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                        {obra.sei_plano_trabalho_url ? (
+                          <div className="text-sm">
+                            {obra.sei_plano_trabalho_tipo && (
+                              <div className="text-text-secondary text-xs mb-0.5 line-clamp-1" title={obra.sei_plano_trabalho_tipo}>
+                                {obra.sei_plano_trabalho_tipo}
+                              </div>
+                            )}
+                            <a
+                              href={obra.sei_plano_trabalho_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent-gold hover:underline font-mono text-xs"
+                              title={obra.sei_plano_trabalho_url}
+                            >
+                              {obra.sei_plano_trabalho_numero || 'Abrir documento'}
+                            </a>
                           </div>
                         ) : (
                           <span className="text-sm text-text-secondary">—</span>
@@ -1394,7 +1495,8 @@ export default function ObrasPage() {
                               <BadgeDollarSign className="w-4 h-4 text-emerald-600" />
                             </span>
                           )}
-                          {obra.sei_url?.trim() && (
+                          {(obra.sei_url?.trim() ||
+                            (isRecapTab && (obra.sei ?? '').trim())) && (
                             <button
                               type="button"
                               onClick={() => handleAtualizarAndamentoSeiUnico(obra)}
@@ -1434,33 +1536,37 @@ export default function ObrasPage() {
               </table>
             </div>
           )}
-        </div>
-    </>
+      </article>
+    </div>
   )
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       {fullscreen ? (
-        <div className="fixed inset-0 z-50 bg-bg-app overflow-y-auto">
-          <div className="sticky top-0 z-10 bg-bg-surface border-b border-border-card px-4 lg:px-6 py-3 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-text-primary">Obras — Tela cheia</h2>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#f6f5f2]">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ebe8e4] bg-white px-4 py-3 lg:px-6">
+            <h2 className="text-base font-semibold tracking-tight text-text-primary">Obras — Tela cheia</h2>
             <button
+              type="button"
               onClick={() => setFullscreen(false)}
-              className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
+              className={cn(ghostButtonClass, 'h-9')}
             >
-              <Minimize2 className="w-4 h-4" />
+              <Minimize2 className="h-3.5 w-3.5" />
               Sair da tela cheia
             </button>
           </div>
           <div className="px-4 py-6 lg:px-6">{obrasMainContent}</div>
         </div>
       ) : (
-        <>
-          <div className="px-4 py-6 lg:px-6">{obrasMainContent}</div>
-        </>
+        <ObrasShell
+          tabs={hubTabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        >
+          {obrasMainContent}
+        </ObrasShell>
       )}
 
-      {/* Modal de Importação */}
       {showImportModal && (
         <ObrasImportModal
           onClose={() => setShowImportModal(false)}
@@ -1472,7 +1578,6 @@ export default function ObrasPage() {
         />
       )}
 
-      {/* Modal de formulário (criar / editar obra) */}
       {showFormModal && (
         <ObraFormModal
           obra={formObra}
@@ -1489,6 +1594,6 @@ export default function ObrasPage() {
           }}
         />
       )}
-    </div>
+    </>
   )
 }

@@ -36,6 +36,9 @@ export async function PATCH(
       sei_todos_andamentos_concluidos,
       sei_ultimo_status,
       sei_ultimo_status_data,
+      sei_plano_trabalho_url,
+      sei_plano_trabalho_tipo,
+      sei_plano_trabalho_numero,
       status,
       publicacao_os,
       solicitacao_medicao,
@@ -75,6 +78,9 @@ export async function PATCH(
     if (sei_todos_andamentos_concluidos !== undefined) updates.sei_todos_andamentos_concluidos = Boolean(sei_todos_andamentos_concluidos)
     if (sei_ultimo_status !== undefined) updates.sei_ultimo_status = sei_ultimo_status ?? null
     if (sei_ultimo_status_data !== undefined) updates.sei_ultimo_status_data = sei_ultimo_status_data ?? null
+    if (sei_plano_trabalho_url !== undefined) updates.sei_plano_trabalho_url = sei_plano_trabalho_url ?? null
+    if (sei_plano_trabalho_tipo !== undefined) updates.sei_plano_trabalho_tipo = sei_plano_trabalho_tipo ?? null
+    if (sei_plano_trabalho_numero !== undefined) updates.sei_plano_trabalho_numero = sei_plano_trabalho_numero ?? null
     if (status !== undefined) updates.status = status ?? null
     if (publicacao_os !== undefined) updates.publicacao_os = publicacao_os || null
     if (solicitacao_medicao !== undefined) updates.solicitacao_medicao = solicitacao_medicao || null

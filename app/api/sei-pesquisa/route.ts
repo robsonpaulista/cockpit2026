@@ -57,12 +57,16 @@ export async function POST(request: Request) {
     const params = new URLSearchParams()
     params.set('acao_ajax_externo', 'protocolo_pesquisar')
     params.set('id_orgao_acesso_externo', '0')
-    params.set('isPaginacao', 'false')
+    // A página oficial usa isPaginacao=true; false retorna "Identificação não informada"
+    params.set('isPaginacao', 'true')
     params.set('inicio', String(inicio))
     params.set('rowsSolr', String(rowsSolr))
 
     const form = new URLSearchParams()
-    if (txtProtocoloPesquisa) form.set('txtProtocoloPesquisa', txtProtocoloPesquisa)
+    if (txtProtocoloPesquisa) {
+      form.set('txtProtocoloPesquisa', txtProtocoloPesquisa)
+      if (!q) form.set('q', txtProtocoloPesquisa)
+    }
     if (q) form.set('q', q)
     if (chkSinProcessos) form.set('chkSinProcessos', chkSinProcessos)
     if (chkSinDocumentosGerados) form.set('chkSinDocumentosGerados', chkSinDocumentosGerados)

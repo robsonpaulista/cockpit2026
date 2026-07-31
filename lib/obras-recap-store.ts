@@ -11,6 +11,7 @@ export type ObrasRecapItem = {
   status?: string | null
   valor_total?: number | null
   valor_pago?: number | null
+  /** DOE — único dado de consulta persistido no JSON local. */
   doe_edicao?: string | null
   doe_resumo?: string | null
   doe_pdf_url?: string | null
@@ -75,6 +76,41 @@ export function getRecapTabItems(
   return store.tabs[tabName]?.items ?? []
 }
 
+function recapMatchKey(item: {
+  sei?: string | null
+  obra: string
+  municipio?: string | null
+}): string {
+  const sei = (item.sei ?? '').trim().replace(/\s+/g, '')
+  if (sei) return `sei:${sei}`
+  return `obra:${(item.municipio ?? '').trim().toLowerCase()}|${item.obra.trim().toLowerCase()}`
+}
+
+/** Campos DOE preservados no reimport da planilha (SEI andamento fica no banco). */
+function pickDoePreservado(
+  prev: ObrasRecapItem | undefined,
+  item: Partial<ObrasRecapItem>,
+): Pick<
+  ObrasRecapItem,
+  | 'doe_edicao'
+  | 'doe_resumo'
+  | 'doe_pdf_url'
+  | 'doe_nota_uuid'
+  | 'doe_encontrados'
+  | 'doe_registros'
+  | 'doe_consultado_em'
+> {
+  return {
+    doe_edicao: item.doe_edicao ?? prev?.doe_edicao ?? null,
+    doe_resumo: item.doe_resumo ?? prev?.doe_resumo ?? null,
+    doe_pdf_url: item.doe_pdf_url ?? prev?.doe_pdf_url ?? null,
+    doe_nota_uuid: item.doe_nota_uuid ?? prev?.doe_nota_uuid ?? null,
+    doe_encontrados: item.doe_encontrados ?? prev?.doe_encontrados ?? null,
+    doe_registros: item.doe_registros ?? prev?.doe_registros ?? null,
+    doe_consultado_em: item.doe_consultado_em ?? prev?.doe_consultado_em ?? null,
+  }
+}
+
 export async function importRecapItems(opts: {
   tabName: string
   items: Array<Omit<ObrasRecapItem, 'id' | 'created_at' | 'updated_at'> & { id?: string }>
@@ -86,27 +122,27 @@ export async function importRecapItems(opts: {
 
   const now = new Date().toISOString()
   const store = await readObrasRecapStore()
-  const nextItems: ObrasRecapItem[] = opts.items.map((item) => ({
-    id: item.id?.trim() || randomUUID(),
-    municipio: item.municipio ?? null,
-    obra: item.obra,
-    orgao: item.orgao ?? null,
-    sei: item.sei ?? null,
-    status: item.status ?? null,
-    valor_total: item.valor_total ?? null,
-    valor_pago: item.valor_pago ?? null,
-    doe_edicao: item.doe_edicao ?? null,
-    doe_resumo: item.doe_resumo ?? null,
-    doe_pdf_url: item.doe_pdf_url ?? null,
-    doe_nota_uuid: item.doe_nota_uuid ?? null,
-    doe_encontrados: item.doe_encontrados ?? null,
-    doe_registros: item.doe_registros ?? null,
-    doe_consultado_em: item.doe_consultado_em ?? null,
-    created_at: now,
-    updated_at: now,
-  }))
-
   const existing = store.tabs[tabName]?.items ?? []
+  const existingByKey = new Map(existing.map((row) => [recapMatchKey(row), row]))
+
+  const nextItems: ObrasRecapItem[] = opts.items.map((item) => {
+    const prev = existingByKey.get(recapMatchKey(item))
+    const doe = pickDoePreservado(prev, item)
+    return {
+      id: item.id?.trim() || prev?.id || randomUUID(),
+      municipio: item.municipio ?? null,
+      obra: item.obra,
+      orgao: item.orgao ?? null,
+      sei: item.sei ?? null,
+      status: item.status ?? null,
+      valor_total: item.valor_total ?? null,
+      valor_pago: item.valor_pago ?? null,
+      ...doe,
+      created_at: prev?.created_at ?? now,
+      updated_at: now,
+    }
+  })
+
   const items = opts.replace === false ? [...existing, ...nextItems] : nextItems
 
   store.tabs[tabName] = {

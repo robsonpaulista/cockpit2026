@@ -33,6 +33,10 @@ import {
   TerritorioSortableHeaderButton,
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
+import { WarRoomMunicipioEmendasModal } from '@/components/war-room/war-room-municipio-emendas-modal'
+import { WarRoomMunicipioObrasModal } from '@/components/war-room/war-room-municipio-obras-modal'
+import type { ObraMapaRow } from '@/lib/obras-mapa'
+import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
 import { cn } from '@/lib/utils'
 
 type SortCol =
@@ -146,24 +150,37 @@ export function WarRoomExpectativaRankingModal({
   const [sortCol, setSortCol] = useState<SortCol>('expectativa')
   const [sortAsc, setSortAsc] = useState(false)
   const [emendasKeys, setEmendasKeys] = useState<Set<string>>(() => new Set())
+  const [emendasAll, setEmendasAll] = useState<EmendaRegistro[]>([])
   const [loadingEmendas, setLoadingEmendas] = useState(true)
   const [exportBusy, setExportBusy] = useState<'idle' | 'csv' | 'xlsx' | 'pdf'>(
     'idle',
   )
+  const [detalhe, setDetalhe] = useState<null | {
+    tipo: 'emendas' | 'obras'
+    municipio: string
+  }>(null)
+  const [obrasAll, setObrasAll] = useState<ObraMapaRow[] | null>(null)
+  const [recapObras, setRecapObras] = useState<ObraRecapMatchSource[] | null>(null)
+  const [loadingObras, setLoadingObras] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      if (detalhe) {
+        setDetalhe(null)
+        return
+      }
+      onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
-  }, [onClose])
+  }, [onClose, detalhe])
 
   useEffect(() => {
     let cancelled = false
@@ -172,18 +189,28 @@ export function WarRoomExpectativaRankingModal({
       try {
         const res = await fetch('/api/emendas', { cache: 'no-store' })
         if (!res.ok) {
-          if (!cancelled) setEmendasKeys(new Set())
+          if (!cancelled) {
+            setEmendasKeys(new Set())
+            setEmendasAll([])
+          }
           return
         }
         const json = (await res.json()) as { emendas?: EmendaRegistro[] }
+        const todas = json.emendas ?? []
         const keys = new Set<string>()
         for (const m of municipios) {
-          const list = filtrarEmendasPorMunicipio(json.emendas ?? [], m.municipio)
+          const list = filtrarEmendasPorMunicipio(todas, m.municipio)
           if (list.length > 0) keys.add(normalizeIptMunicipio(m.municipio))
         }
-        if (!cancelled) setEmendasKeys(keys)
+        if (!cancelled) {
+          setEmendasKeys(keys)
+          setEmendasAll(todas)
+        }
       } catch {
-        if (!cancelled) setEmendasKeys(new Set())
+        if (!cancelled) {
+          setEmendasKeys(new Set())
+          setEmendasAll([])
+        }
       } finally {
         if (!cancelled) setLoadingEmendas(false)
       }
@@ -193,6 +220,63 @@ export function WarRoomExpectativaRankingModal({
       cancelled = true
     }
   }, [municipios])
+
+  useEffect(() => {
+    if (detalhe?.tipo !== 'obras') return
+    if (obrasAll != null && recapObras != null) return
+
+    let cancelled = false
+    const load = async () => {
+      setLoadingObras(true)
+      try {
+        const [mapaRes, recapRes] = await Promise.all([
+          obrasAll != null
+            ? Promise.resolve(null)
+            : fetch('/api/obras/mapa?escopo=lista', { cache: 'no-store' }),
+          recapObras != null
+            ? Promise.resolve(null)
+            : fetch('/api/obras/recap', { cache: 'no-store' }),
+        ])
+
+        if (cancelled) return
+
+        if (mapaRes) {
+          const json = (await mapaRes.json().catch(() => null)) as {
+            obras?: ObraMapaRow[]
+            error?: string
+          } | null
+          if (!mapaRes.ok) {
+            setObrasAll([])
+          } else {
+            setObrasAll(Array.isArray(json?.obras) ? json.obras : [])
+          }
+        }
+
+        if (recapRes) {
+          const json = (await recapRes.json().catch(() => null)) as {
+            obras?: ObraRecapMatchSource[]
+            error?: string
+          } | null
+          if (!recapRes.ok) {
+            setRecapObras([])
+          } else {
+            setRecapObras(Array.isArray(json?.obras) ? json.obras : [])
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          if (obrasAll == null) setObrasAll([])
+          if (recapObras == null) setRecapObras([])
+        }
+      } finally {
+        if (!cancelled) setLoadingObras(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [detalhe, obrasAll, recapObras])
 
   const rows = useMemo<RankingRow[]>(() => {
     return municipios.map((m) => {
@@ -331,22 +415,31 @@ export function WarRoomExpectativaRankingModal({
     }
   }
 
+  const abrirEmendas = (municipio: string) => {
+    setDetalhe({ tipo: 'emendas', municipio })
+  }
+
+  const abrirObras = (municipio: string) => {
+    setDetalhe({ tipo: 'obras', municipio })
+  }
+
   if (!mounted) return null
 
   return createPortal(
-    <div className="wr-visita-modal" role="presentation">
-      <button
-        type="button"
-        className="wr-visita-modal__backdrop"
-        aria-label="Fechar"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={tituloId}
-        className="wr-visita-modal__panel wr-expectativa-ranking-modal__panel"
-      >
+    <>
+      <div className="wr-visita-modal" role="presentation">
+        <button
+          type="button"
+          className="wr-visita-modal__backdrop"
+          aria-label="Fechar"
+          onClick={onClose}
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={tituloId}
+          className="wr-visita-modal__panel wr-expectativa-ranking-modal__panel"
+        >
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
@@ -584,28 +677,44 @@ export function WarRoomExpectativaRankingModal({
                   <td className="tabular-nums">{row.ultimaVisitaLabel}</td>
                   <td>{row.proxVisitaLabel}</td>
                   <td>
-                    <span
+                    <button
+                      type="button"
                       className={cn(
                         'wr-expectativa-ranking-modal__flag',
+                        'wr-expectativa-ranking-modal__flag--btn',
                         row.temEmendas
                           ? 'wr-expectativa-ranking-modal__flag--sim'
                           : 'wr-expectativa-ranking-modal__flag--nao',
                       )}
+                      aria-label={`Ver emendas de ${row.municipio}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        abrirEmendas(row.municipio)
+                      }}
                     >
                       {row.temEmendas ? 'Sim' : 'Não'}
-                    </span>
+                    </button>
                   </td>
                   <td>
-                    <span
+                    <button
+                      type="button"
                       className={cn(
                         'wr-expectativa-ranking-modal__flag',
+                        'wr-expectativa-ranking-modal__flag--btn',
                         row.temObras
                           ? 'wr-expectativa-ranking-modal__flag--sim'
                           : 'wr-expectativa-ranking-modal__flag--nao',
                       )}
+                      aria-label={`Ver obras de ${row.municipio}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        abrirObras(row.municipio)
+                      }}
                     >
                       {row.temObras ? 'Sim' : 'Não'}
-                    </span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -649,7 +758,26 @@ export function WarRoomExpectativaRankingModal({
           ) : null}
         </div>
       </div>
-    </div>,
+      </div>
+
+      {detalhe?.tipo === 'emendas' ? (
+        <WarRoomMunicipioEmendasModal
+          municipio={detalhe.municipio}
+          emendas={emendasAll}
+          onClose={() => setDetalhe(null)}
+        />
+      ) : null}
+
+      {detalhe?.tipo === 'obras' ? (
+        <WarRoomMunicipioObrasModal
+          municipio={detalhe.municipio}
+          obras={obrasAll}
+          recapObras={recapObras}
+          loading={loadingObras && obrasAll == null}
+          onClose={() => setDetalhe(null)}
+        />
+      ) : null}
+    </>,
     document.body,
   )
 }
