@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Download,
   Loader2,
   MapPin,
   RefreshCw,
@@ -15,6 +16,7 @@ import {
   TerritorioSortableHeaderButton,
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
+import { DemandasObrasExportModal } from '@/components/territorio-campo/demandas-obras-export-modal'
 import {
   cidadeDaDemanda,
   filtrarDemandasObrasSheets,
@@ -74,6 +76,7 @@ export function DemandasObrasPanel() {
     () => new Set(),
   )
   const [initializedCollapse, setInitializedCollapse] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -154,6 +157,11 @@ export function DemandasObrasPanel() {
     [grupos],
   )
 
+  const rowsFiltradas = useMemo(
+    () => grupos.flatMap((grupo) => grupo.rows),
+    [grupos],
+  )
+
   const todasRecolhidas =
     grupos.length > 0 &&
     grupos.every((grupo) => cidadesRecolhidas.has(grupo.cidadeKey))
@@ -178,6 +186,15 @@ export function DemandasObrasPanel() {
       todasRecolhidas ? new Set() : new Set(grupos.map((g) => g.cidadeKey)),
     )
   }
+
+  const filtrosExportResumo = useMemo(
+    () =>
+      [
+        busca.trim() ? `Busca: ${busca.trim()}` : null,
+        `Ordenação da lista: ${sortCol === 'obras' ? 'qtd. obras' : 'cidade'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
+      ].filter((v): v is string => Boolean(v)),
+    [busca, sortAsc, sortCol],
+  )
 
   return (
     <div className="space-y-4">
@@ -208,6 +225,16 @@ export function DemandasObrasPanel() {
               className="h-9 w-[220px] rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#ff9800]"
             />
           </label>
+          <button
+            type="button"
+            onClick={() => setExportModalOpen(true)}
+            disabled={rowsFiltradas.length === 0}
+            title="Exportar seleção filtrada (CSV, Excel ou PDF)"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-card bg-background px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Exportar
+          </button>
           <button
             type="button"
             onClick={alternarTodas}
@@ -351,6 +378,14 @@ export function DemandasObrasPanel() {
           })}
         </div>
       )}
+
+      <DemandasObrasExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        rows={rowsFiltradas}
+        cidadesCount={grupos.length}
+        filtrosResumo={filtrosExportResumo}
+      />
     </div>
   )
 }

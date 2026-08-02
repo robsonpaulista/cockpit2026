@@ -12,8 +12,18 @@ import { typographySectionTitleClass, typographySectionLeadClass } from '@/lib/t
 
 type ObraTipoAba = string
 
+/** Aba única na UI que agrupa Recap 2025 + Recap 2026 (e outras abas Recap do storage). */
+const RECAP_UI_TAB = 'Recap'
+
 function normalizeObraTipo(tipo: string | null | undefined): string {
   return (tipo ?? '').trim() || 'obras diversas'
+}
+
+/** Nome da aba no JSON local (Recap 2025 / Recap 2026) — necessário para APIs de storage. */
+function recapStorageTabOf(obra: { tipo?: string | null }, fallback?: string): string {
+  const t = normalizeObraTipo(obra.tipo)
+  if (/^recap\b/i.test(t)) return t
+  return fallback?.trim() || t
 }
 
 interface Obra {
@@ -75,7 +85,7 @@ export default function ObrasPage() {
   const [filterStatusMedicao, setFilterStatusMedicao] = useState('')
   const [filterOrgao, setFilterOrgao] = useState('')
   const [filterPagamento, setFilterPagamento] = useState<'' | 'pago' | 'nao_pago'>('')
-  const [activeTab, setActiveTab] = useState<ObraTipoAba>('Recap 2026')
+  const [activeTab, setActiveTab] = useState<ObraTipoAba>(RECAP_UI_TAB)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [formObra, setFormObra] = useState<Obra | null>(null)
@@ -120,17 +130,18 @@ export default function ObrasPage() {
   useEffect(() => {
     fetchObras()
     void fetchRecap()
-  }, [filterMunicipio, filterStatus, filterStatusMedicao, filterOrgao])
+  }, [])
 
   const isRecapTab = useMemo(
-    () => recapTabs.includes(activeTab),
+    () => activeTab === RECAP_UI_TAB || recapTabs.includes(activeTab),
     [recapTabs, activeTab],
   )
 
   useEffect(() => {
     if (recapTabs.length === 0) return
-    if (!recapTabs.includes(activeTab)) {
-      setActiveTab(recapTabs.includes('Recap 2026') ? 'Recap 2026' : recapTabs[0])
+    if (activeTab === RECAP_UI_TAB) return
+    if (recapTabs.includes(activeTab)) {
+      setActiveTab(RECAP_UI_TAB)
     }
   }, [recapTabs, activeTab])
 
@@ -253,7 +264,7 @@ export default function ObrasPage() {
     }
     if (
       !window.confirm(
-        `Consultar Diário Oficial do PI para ${alvos.length} SEI(s) da aba "${activeTab}"?\nCada SEI será buscado em diario.pi.gov.br e o resumo será salvo no storage local.`,
+        `Consultar Diário Oficial do PI para ${alvos.length} SEI(s) do Recap?\nCada SEI será buscado em diario.pi.gov.br e o resumo será salvo no storage local.`,
       )
     ) {
       return
@@ -264,6 +275,7 @@ export default function ObrasPage() {
     let lastError = ''
     for (let i = 0; i < alvos.length; i++) {
       const obra = alvos[i]
+      const tabName = recapStorageTabOf(obra)
       setDoeProgress({ current: i + 1, total: alvos.length, lastError })
       try {
         const res = await fetch('/api/obras/doe-busca', {
@@ -272,14 +284,14 @@ export default function ObrasPage() {
           body: JSON.stringify({
             obraId: obra.id,
             sei: obra.sei,
-            tabName: activeTab,
+            tabName,
             persist: true,
           }),
         })
         const data = await res.json().catch(() => ({}))
         if (res.ok && data.obra) {
           ok++
-          const updated = { ...data.obra, tipo: data.obra.tipo ?? activeTab }
+          const updated = { ...data.obra, tipo: data.obra.tipo ?? tabName }
           setRecapObras((prev) =>
             prev.map((o) => (o.id === obra.id ? { ...o, ...updated } : o)),
           )
@@ -313,7 +325,7 @@ export default function ObrasPage() {
       }
       if (
         !window.confirm(
-          `Atualizar andamentos SEI de ${alvos.length} obra(s) da aba "${activeTab}"?\n` +
+          `Atualizar andamentos SEI de ${alvos.length} obra(s) do Recap?\n` +
             'Resolve o link do processo na Pesquisa Pública e grava o andamento no banco.',
         )
       ) {
@@ -325,6 +337,7 @@ export default function ObrasPage() {
       let lastError = ''
       for (let i = 0; i < alvos.length; i++) {
         const obra = alvos[i]
+        const tabName = recapStorageTabOf(obra)
         setSeiStatusProgress({ current: i + 1, total: alvos.length, lastError })
         try {
           const res = await fetch('/api/obras/recap/sei-status', {
@@ -332,7 +345,7 @@ export default function ObrasPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               obraId: obra.id,
-              tabName: activeTab,
+              tabName,
               sei: obra.sei,
               url: obra.sei_url,
             }),
@@ -342,7 +355,7 @@ export default function ObrasPage() {
             ok++
             setRecapObras((prev) =>
               prev.map((o) =>
-                o.id === obra.id ? { ...o, ...data.obra, tipo: activeTab } : o,
+                o.id === obra.id ? { ...o, ...data.obra, tipo: tabName } : o,
               ),
             )
           } else {
@@ -445,6 +458,7 @@ export default function ObrasPage() {
   const handleAtualizarAndamentoSeiUnico = async (obra: Obra) => {
     if (isRecapTab) {
       if (!(obra.sei ?? '').trim() && !(obra.sei_url ?? '').trim()) return
+      const tabName = recapStorageTabOf(obra)
       setUpdatingSeiObraId(obra.id)
       try {
         const res = await fetch('/api/obras/recap/sei-status', {
@@ -452,7 +466,7 @@ export default function ObrasPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             obraId: obra.id,
-            tabName: activeTab,
+            tabName,
             sei: obra.sei,
             url: obra.sei_url,
           }),
@@ -461,7 +475,7 @@ export default function ObrasPage() {
         if (res.ok && data.obra) {
           setRecapObras((prev) =>
             prev.map((o) =>
-              o.id === obra.id ? { ...o, ...data.obra, tipo: activeTab } : o,
+              o.id === obra.id ? { ...o, ...data.obra, tipo: tabName } : o,
             ),
           )
         } else {
@@ -588,12 +602,13 @@ export default function ObrasPage() {
           alert('Obra Recap sem número SEI — não é possível salvar o link no banco.')
           return
         }
+        const tabName = recapStorageTabOf(obra)
         const res = await fetch('/api/obras/recap/sei-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             obraId: obra.id,
-            tabName: activeTab,
+            tabName,
             sei: obra.sei,
             url,
           }),
@@ -604,7 +619,7 @@ export default function ObrasPage() {
           setRecapObras((prev) =>
             prev.map((o) =>
               o.id === editingSeiObraId
-                ? { ...o, sei_url: savedUrl, tipo: activeTab }
+                ? { ...o, sei_url: savedUrl, tipo: tabName }
                 : o,
             ),
           )
@@ -638,13 +653,7 @@ export default function ObrasPage() {
   const fetchObras = async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (filterMunicipio) params.append('municipio', filterMunicipio)
-      if (filterStatus) params.append('status', filterStatus)
-      if (filterStatusMedicao) params.append('status_medicao', filterStatusMedicao)
-      if (filterOrgao) params.append('orgao', filterOrgao)
-
-      const response = await fetch(`/api/obras?${params.toString()}`)
+      const response = await fetch('/api/obras')
       if (response.ok) {
         const data = await response.json()
         setObras(data.obras || [])
@@ -677,22 +686,43 @@ export default function ObrasPage() {
   }
 
   const tabs = useMemo(() => {
-    // Pavimentação e Obras diversas ficam ocultas; mostra só abas Recap / importadas.
-    const extras = new Set<string>(recapTabs)
+    // Pavimentação e Obras diversas ficam ocultas; Recap 2025/2026 viram uma aba única.
+    const extras = new Set<string>()
+    if (recapTabs.length > 0) extras.add(RECAP_UI_TAB)
     for (const obra of obras) {
       const t = normalizeObraTipo(obra.tipo)
-      if (!(OBRAS_TIPOS as readonly string[]).includes(t)) {
-        extras.add(t)
-      }
+      if ((OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number])) continue
+      if (recapTabs.includes(t) || /^recap\b/i.test(t)) continue
+      extras.add(t)
     }
-    return [...extras].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return [...extras].sort((a, b) => {
+      if (a === RECAP_UI_TAB) return -1
+      if (b === RECAP_UI_TAB) return 1
+      return a.localeCompare(b, 'pt-BR')
+    })
   }, [obras, recapTabs])
 
   const filteredObras = useMemo(() => {
     const source = isRecapTab ? recapObras : obras
-    let items = source.filter((obra) => {
-      return normalizeObraTipo(obra.tipo) === activeTab
-    })
+    let items = isRecapTab
+      ? [...source]
+      : source.filter((obra) => normalizeObraTipo(obra.tipo) === activeTab)
+
+    if (filterMunicipio) {
+      const alvo = filterMunicipio.trim().toLowerCase()
+      items = items.filter(
+        (o) => (o.municipio ?? '').trim().toLowerCase() === alvo,
+      )
+    }
+    if (filterStatus) {
+      items = items.filter((o) => (o.status ?? '') === filterStatus)
+    }
+    if (filterStatusMedicao) {
+      items = items.filter((o) => (o.status_medicao ?? '') === filterStatusMedicao)
+    }
+    if (filterOrgao) {
+      items = items.filter((o) => (o.orgao ?? '') === filterOrgao)
+    }
     if (filterPagamento === 'pago') {
       items = items.filter((o) => o.valor_pago && o.valor_pago > 0)
     } else if (filterPagamento === 'nao_pago') {
@@ -709,7 +739,18 @@ export default function ObrasPage() {
         obra.sei_medicao?.toLowerCase().includes(term)
       )
     })
-  }, [obras, recapObras, isRecapTab, searchTerm, activeTab, filterPagamento])
+  }, [
+    obras,
+    recapObras,
+    isRecapTab,
+    searchTerm,
+    activeTab,
+    filterMunicipio,
+    filterStatus,
+    filterStatusMedicao,
+    filterOrgao,
+    filterPagamento,
+  ])
 
   const toggleSort = (col: SortColumn) => {
     if (sortColumn === col) {
@@ -757,22 +798,30 @@ export default function ObrasPage() {
     })
   }, [filteredObras, sortColumn, sortAsc])
 
-  // Obter valores únicos para filtros
+  // Obter valores únicos para filtros a partir da fonte ativa (Recap unificado ou DB)
+  const filterSource = isRecapTab ? recapObras : obras
+
   const municipios = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.municipio).filter(Boolean))).sort()
-  }, [obras])
+    return Array.from(
+      new Set(
+        filterSource
+          .map((o) => (o.municipio ?? '').trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [filterSource])
 
   const statusList = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.status).filter(Boolean))).sort()
-  }, [obras])
+    return Array.from(new Set(filterSource.map((o) => o.status).filter(Boolean))).sort()
+  }, [filterSource])
 
   const statusMedicaoList = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.status_medicao).filter(Boolean))).sort()
-  }, [obras])
+    return Array.from(new Set(filterSource.map((o) => o.status_medicao).filter(Boolean))).sort()
+  }, [filterSource])
 
   const orgaos = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.orgao).filter(Boolean))).sort()
-  }, [obras])
+    return Array.from(new Set(filterSource.map((o) => o.orgao).filter(Boolean))).sort()
+  }, [filterSource])
 
   const formatCurrency = (value?: number) => {
     if (!value) return '-'
@@ -785,9 +834,10 @@ export default function ObrasPage() {
   const hubTabs = useMemo(
     () =>
       tabs.map((tipo) => {
-        const count = (OBRAS_TIPOS as readonly string[]).includes(tipo as (typeof OBRAS_TIPOS)[number])
-          ? obras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
-          : recapObras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
+        const count =
+          tipo === RECAP_UI_TAB
+            ? recapObras.length
+            : obras.filter((o) => normalizeObraTipo(o.tipo) === tipo).length
         const label = tipo.charAt(0).toUpperCase() + tipo.slice(1)
         return {
           id: tipo,
@@ -1096,6 +1146,11 @@ export default function ObrasPage() {
                       {visibleColumns.municipio && (
                         <td className={`px-2.5 py-1.5 w-px whitespace-nowrap ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                           <div className="font-medium text-text-primary">{obra.municipio || '-'}</div>
+                          {isRecapTab && obra.tipo ? (
+                            <div className="mt-0.5 text-[10px] text-text-secondary">
+                              {normalizeObraTipo(obra.tipo)}
+                            </div>
+                          ) : null}
                         </td>
                       )}
                       {visibleColumns.obra && (
@@ -1584,7 +1639,7 @@ export default function ObrasPage() {
           onClose={() => setShowImportModal(false)}
           onSuccess={(tipoAba) => {
             void fetchRecap()
-            if (tipoAba?.trim()) setActiveTab(tipoAba.trim())
+            if (tipoAba?.trim()) setActiveTab(RECAP_UI_TAB)
             setShowImportModal(false)
           }}
         />
@@ -1593,8 +1648,23 @@ export default function ObrasPage() {
       {showFormModal && (
         <ObraFormModal
           obra={formObra}
-          defaultTipo={formObra ? undefined : activeTab}
-          extraTipos={tabs.filter((t) => !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]))}
+          defaultTipo={
+            formObra
+              ? undefined
+              : activeTab === RECAP_UI_TAB
+                ? recapTabs.includes('Recap 2026')
+                  ? 'Recap 2026'
+                  : recapTabs[0] || 'obras diversas'
+                : activeTab
+          }
+          extraTipos={[
+            ...recapTabs,
+            ...tabs.filter(
+              (t) =>
+                t !== RECAP_UI_TAB &&
+                !(OBRAS_TIPOS as readonly string[]).includes(t as (typeof OBRAS_TIPOS)[number]),
+            ),
+          ]}
           onClose={() => {
             setShowFormModal(false)
             setFormObra(null)

@@ -34,7 +34,7 @@ export function ObrasShell({
   const topbarVisible = useDashboardTopbarVisible()
   const pageTitle = 'Obras'
   const descriptionText =
-    'Acompanhamento de obras, andamentos SEI e publicações no Diário Oficial — visão operacional limpa por recap e tipo.'
+    'Acompanhamento de obras, andamentos SEI e publicações no Diário Oficial — visão operacional limpa do Recap.'
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-palette', '')
@@ -48,7 +48,7 @@ export function ObrasShell({
   const hubTabs: DashboardHubTab[] =
     tabs.length > 0
       ? tabs
-      : [{ id: activeTab || 'Recap 2026', label: activeTab || 'Recap 2026', icon: HardHat }]
+      : [{ id: activeTab || 'Recap', label: activeTab || 'Recap', icon: HardHat }]
 
   return (
     <DashboardPageShell>

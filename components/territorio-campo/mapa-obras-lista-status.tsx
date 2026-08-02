@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ExternalLink, Link2, Loader2 } from 'lucide-react'
 import {
   classificarObraFase,
   OBRA_FASE_LABEL,
@@ -8,7 +9,13 @@ import {
   type ObraFaseMapa,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
+import {
+  planoDriveTemArquivo,
+  planoDriveTemNota,
+  type ObraPlanoDriveLink,
+} from '@/lib/obras-mapa-plano-drive'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
+import { chromeButtonClass } from '@/lib/button-chrome'
 import { cn } from '@/lib/utils'
 import {
   compareTerritorioNumber,
@@ -16,6 +23,7 @@ import {
   TerritorioSortableHeaderButton,
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
+import { MapaObrasPlanoDriveModal } from '@/components/territorio-campo/mapa-obras-plano-drive-modal'
 
 type SortObraCol = 'municipio' | 'cota'
 
@@ -48,13 +56,63 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
   const [busca, setBusca] = useState('')
   const [sortCol, setSortCol] = useState<SortObraCol>('municipio')
   const [sortAsc, setSortAsc] = useState(true)
+  const [linksByObra, setLinksByObra] = useState<Record<string, ObraPlanoDriveLink>>({})
+  const [linksLoading, setLinksLoading] = useState(false)
+  const [linksError, setLinksError] = useState<string | null>(null)
+  const [obraParaVincular, setObraParaVincular] = useState<ObraMapaRow | null>(null)
+
+  const carregarLinks = useCallback(async () => {
+    setLinksLoading(true)
+    setLinksError(null)
+    try {
+      const res = await fetch('/api/campo/obras-mapa/plano-drive')
+      const data = (await res.json().catch(() => ({}))) as {
+        links?: ObraPlanoDriveLink[]
+        error?: string
+        setupRequired?: boolean
+      }
+      if (!res.ok) {
+        setLinksError(
+          data.error ||
+            (data.setupRequired
+              ? 'Execute database/create-obras-mapa-plano-drive.sql no Supabase.'
+              : 'Falha ao carregar vínculos Drive'),
+        )
+        setLinksByObra({})
+        return
+      }
+      const next: Record<string, ObraPlanoDriveLink> = {}
+      for (const link of data.links ?? []) {
+        next[link.obra_id] = link
+      }
+      setLinksByObra(next)
+    } catch (e) {
+      setLinksError(e instanceof Error ? e.message : 'Falha de rede')
+      setLinksByObra({})
+    } finally {
+      setLinksLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void carregarLinks()
+  }, [carregarLinks])
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const base = !q
       ? obras
       : obras.filter((obra) => {
-          const blob = [obra.municipio, obra.obra, obra.orgao, obra.status, obra.tipo]
+          const link = linksByObra[obra.id]
+          const blob = [
+            obra.municipio,
+            obra.obra,
+            obra.orgao,
+            obra.status,
+            obra.tipo,
+            link?.drive_file_name,
+            link?.nota_texto,
+          ]
             .filter(Boolean)
             .join(' ')
             .toLowerCase()
@@ -79,13 +137,15 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
       if (byCota !== 0) return byCota
       return compareTerritorioText(a.municipio || '', b.municipio || '', true)
     })
-  }, [busca, obras, sortAsc, sortCol])
+  }, [busca, linksByObra, obras, sortAsc, sortCol])
 
   const alternarSort = (column: SortObraCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, ['municipio'] as const)
     setSortCol(next.column)
     setSortAsc(next.asc)
   }
+
+  const vinculados = Object.keys(linksByObra).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,9 +154,17 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
           Obras da planilha de Demandas
         </h2>
         <p className={cn('mt-1 max-w-3xl', typographyBodyMutedClass)}>
-          Mesma fonte e filtros da guia Demandas (sem espaço, recurso ou transferência
-          especial). Status vem da planilha e alimenta a fase no mapa.
+          Mesma fonte e filtros da guia Demandas. Vincule cada obra ao plano de
+          trabalho na pasta do Drive (compartilhada com a service account).
         </p>
+        <p className="mt-2 text-xs text-text-secondary">
+          {linksLoading
+            ? 'Carregando vínculos Drive…'
+            : `${vinculados.toLocaleString('pt-BR')} plano${vinculados === 1 ? '' : 's'} vinculado${vinculados === 1 ? '' : 's'}`}
+        </p>
+        {linksError ? (
+          <p className="mt-2 text-xs text-status-danger">{linksError}</p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +172,7 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar município, obra, status…"
+          placeholder="Buscar município, obra, status, plano…"
           className="min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs"
         />
         <span className="text-xs text-text-secondary">
@@ -142,11 +210,13 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
                 <th className="px-3 py-2.5">Tema / órgão</th>
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5">Fase no mapa</th>
+                <th className="px-3 py-2.5">Plano Drive</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-card">
               {filtradas.map((obra) => {
                 const fase = classificarObraFase(obra.status) as ObraFaseMapa
+                const link = linksByObra[obra.id]
                 return (
                   <tr key={obra.id} className="align-top hover:bg-bg-app/30">
                     <td className="px-3 py-3 font-medium text-text-primary">
@@ -162,6 +232,64 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
                     <td className="px-3 py-3 text-text-secondary">{obra.orgao ?? '—'}</td>
                     <td className="px-3 py-3 text-text-secondary">{obra.status ?? '—'}</td>
                     <td className="px-3 py-3 text-text-secondary">{OBRA_FASE_LABEL[fase]}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex min-w-[9rem] flex-col gap-1.5">
+                        {link && (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
+                          <>
+                            <span
+                              className="line-clamp-2 text-xs text-text-primary"
+                              title={
+                                planoDriveTemArquivo(link)
+                                  ? link.drive_file_name ?? undefined
+                                  : link.nota_texto ?? undefined
+                              }
+                            >
+                              {planoDriveTemArquivo(link)
+                                ? link.drive_file_name || 'Arquivo vinculado'
+                                : link.nota_texto}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {link.drive_web_view_link ? (
+                                <a
+                                  href={link.drive_web_view_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                                >
+                                  <ExternalLink className="h-3 w-3" aria-hidden />
+                                  Abrir
+                                </a>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => setObraParaVincular(obra)}
+                                className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                              >
+                                <Link2 className="h-3 w-3" aria-hidden />
+                                {planoDriveTemArquivo(link) ? 'Trocar' : 'Editar'}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setObraParaVincular(obra)}
+                            disabled={linksLoading}
+                            className={cn(
+                              chromeButtonClass,
+                              'h-8 px-2 text-[11px] disabled:opacity-50',
+                            )}
+                          >
+                            {linksLoading ? (
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                            ) : (
+                              <Link2 className="h-3 w-3" aria-hidden />
+                            )}
+                            Vincular
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
@@ -174,6 +302,23 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
           </p>
         ) : null}
       </div>
+
+      <MapaObrasPlanoDriveModal
+        isOpen={Boolean(obraParaVincular)}
+        onClose={() => setObraParaVincular(null)}
+        obra={obraParaVincular}
+        linkAtual={obraParaVincular ? linksByObra[obraParaVincular.id] ?? null : null}
+        onLinked={(link) => {
+          if (!obraParaVincular) return
+          const obraId = obraParaVincular.id
+          setLinksByObra((prev) => {
+            const next = { ...prev }
+            if (link) next[obraId] = link
+            else delete next[obraId]
+            return next
+          })
+        }}
+      />
     </div>
   )
 }

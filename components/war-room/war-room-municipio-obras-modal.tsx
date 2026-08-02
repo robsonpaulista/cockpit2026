@@ -230,52 +230,85 @@ export function WarRoomMunicipioObrasModal({
             {obrasMunicipio.length === 0 ? (
               <p className="wr-visita-modal__state">Sem obras para listar.</p>
             ) : (
-              <ul className="wr-municipio-detalhe-modal__lista">
-                {obrasMunicipio.map((obra) => {
-                  const match = matchesById.get(obra.id)
-                  const recap = match?.recap
-                  const seiNumero = (obra.sei?.trim() || recap?.sei?.trim() || '')
-                  const seiUrl =
-                    resolvedSeiUrls[seiNumero] ||
-                    recap?.sei_url?.trim() ||
-                    null
-                  const seiHref = match
-                    ? hrefSeiProcesso(seiNumero, seiUrl)
-                    : null
-                  const andamentoData = formatDataSei(recap?.sei_ultimo_andamento_data)
-                  const andamentoTxt = limparTextoSei(recap?.sei_ultimo_andamento)
-                  const statusTxt = limparTextoSei(recap?.sei_ultimo_status)
-                  const planoLabel =
-                    limparTextoSei(recap?.sei_plano_trabalho_tipo) ||
-                    (recap?.sei_plano_trabalho_numero
-                      ? `Doc. ${recap.sei_plano_trabalho_numero}`
-                      : 'Plano / Relatório')
-                  return (
-                    <li key={obra.id}>
-                      <div className="wr-municipio-detalhe-modal__item-top">
-                        <strong>{tituloObra(obra)}</strong>
-                        <span className="tabular-nums">
-                          {formatBrl(valorExibidoMapaObra(obra))}
-                        </span>
-                      </div>
-                      <div className="wr-municipio-detalhe-modal__item-meta">
-                        {obra.tipo?.trim() ? <em>{obra.tipo.trim()}</em> : null}
-                        {obra.orgao?.trim() ? <em>{obra.orgao.trim()}</em> : null}
-                        {match ? (
-                          <em className="wr-municipio-detalhe-modal__status--ok">
-                            {match.kind === 'sei'
-                              ? 'Match SEI'
-                              : match.kind === 'descricao'
-                                ? 'Match descrição'
-                                : 'Match parcial'}
-                          </em>
-                        ) : null}
-                      </div>
-                      {recap && seiNumero ? (
-                        <div className="wr-municipio-detalhe-modal__recap">
-                          <p className="wr-municipio-detalhe-modal__recap-line">
-                            <span>SEI</span>
-                            {seiHref ? (
+              <div className="wr-municipio-detalhe-modal__table-wrap">
+                <table className="wr-municipio-detalhe-modal__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Obra</th>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Órgão</th>
+                      <th scope="col" className="wr-municipio-detalhe-modal__col-valor">
+                        Valor
+                      </th>
+                      <th scope="col">Match</th>
+                      <th scope="col">SEI</th>
+                      <th scope="col">Andamento</th>
+                      <th scope="col">Status SEI</th>
+                      <th scope="col">Plano</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {obrasMunicipio.map((obra) => {
+                      const match = matchesById.get(obra.id)
+                      const recap = match?.recap
+                      const seiNumero = (obra.sei?.trim() || recap?.sei?.trim() || '')
+                      const seiUrl =
+                        resolvedSeiUrls[seiNumero] ||
+                        recap?.sei_url?.trim() ||
+                        null
+                      const seiHref = match
+                        ? hrefSeiProcesso(seiNumero, seiUrl)
+                        : null
+                      const andamentoData = formatDataSei(
+                        recap?.sei_ultimo_andamento_data,
+                      )
+                      const andamentoTxt = limparTextoSei(recap?.sei_ultimo_andamento)
+                      const andamentoFull = [andamentoData, andamentoTxt]
+                        .filter(Boolean)
+                        .join(' · ')
+                      const statusTxt = limparTextoSei(recap?.sei_ultimo_status)
+                      const planoLabel =
+                        limparTextoSei(recap?.sei_plano_trabalho_tipo) ||
+                        (recap?.sei_plano_trabalho_numero
+                          ? `Doc. ${recap.sei_plano_trabalho_numero}`
+                          : 'Abrir')
+                      const matchLabel = match
+                        ? match.kind === 'sei'
+                          ? 'SEI'
+                          : match.kind === 'descricao'
+                            ? 'Descrição'
+                            : 'Parcial'
+                        : null
+
+                      return (
+                        <tr key={obra.id}>
+                          <td className="wr-municipio-detalhe-modal__col-obra">
+                            <span title={tituloObra(obra)}>{tituloObra(obra)}</span>
+                          </td>
+                          <td>
+                            <span title={obra.tipo?.trim() || undefined}>
+                              {obra.tipo?.trim() || '—'}
+                            </span>
+                          </td>
+                          <td>
+                            <span title={obra.orgao?.trim() || undefined}>
+                              {obra.orgao?.trim() || '—'}
+                            </span>
+                          </td>
+                          <td className="wr-municipio-detalhe-modal__col-valor tabular-nums">
+                            {formatBrl(valorExibidoMapaObra(obra))}
+                          </td>
+                          <td>
+                            {matchLabel ? (
+                              <em className="wr-municipio-detalhe-modal__status--ok">
+                                {matchLabel}
+                              </em>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="wr-municipio-detalhe-modal__col-sei">
+                            {seiNumero && seiHref ? (
                               <a
                                 href={seiHref}
                                 target="_blank"
@@ -286,47 +319,46 @@ export function WarRoomMunicipioObrasModal({
                                     : 'Abrir Pesquisa Pública do SEI'
                                 }
                               >
-                                {seiNumero}
-                                <IconExternalLink className="h-3 w-3" stroke={1.75} />
+                                <span>{seiNumero}</span>
+                                <IconExternalLink className="h-3 w-3 shrink-0" stroke={1.75} />
                               </a>
+                            ) : seiNumero ? (
+                              <code title={seiNumero}>{seiNumero}</code>
                             ) : (
-                              <code>{seiNumero}</code>
+                              '—'
                             )}
-                          </p>
-                          {(andamentoTxt || andamentoData) && (
-                            <p className="wr-municipio-detalhe-modal__recap-line">
-                              <span>Andamento</span>
-                              <em title={andamentoTxt || undefined}>
-                                {andamentoData ? `${andamentoData} · ` : ''}
-                                {andamentoTxt || '—'}
-                              </em>
-                            </p>
-                          )}
-                          {statusTxt ? (
-                            <p className="wr-municipio-detalhe-modal__recap-line">
-                              <span>Status SEI</span>
-                              <em>{statusTxt}</em>
-                            </p>
-                          ) : null}
-                          {recap.sei_plano_trabalho_url?.trim() && (
-                            <p className="wr-municipio-detalhe-modal__recap-line">
-                              <span>Plano</span>
+                          </td>
+                          <td className="wr-municipio-detalhe-modal__col-clip">
+                            {andamentoFull ? (
+                              <span title={andamentoFull}>{andamentoFull}</span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="wr-municipio-detalhe-modal__col-clip">
+                            {statusTxt ? <span title={statusTxt}>{statusTxt}</span> : '—'}
+                          </td>
+                          <td>
+                            {recap?.sei_plano_trabalho_url?.trim() ? (
                               <a
                                 href={recap.sei_plano_trabalho_url.trim()}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                title={planoLabel}
                               >
-                                {planoLabel}
-                                <IconExternalLink className="h-3 w-3" stroke={1.75} />
+                                <span>{planoLabel}</span>
+                                <IconExternalLink className="h-3 w-3 shrink-0" stroke={1.75} />
                               </a>
-                            </p>
-                          )}
-                        </div>
-                      ) : null}
-                    </li>
-                  )
-                })}
-              </ul>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </>
         )}

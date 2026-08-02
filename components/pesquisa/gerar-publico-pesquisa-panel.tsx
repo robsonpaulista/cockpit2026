@@ -62,7 +62,7 @@ type PlanoResponse = {
   }
 }
 
-const OPCOES_N = [400, 500, 600] as const
+const OPCOES_N = [400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500] as const
 
 export function GerarPublicoPesquisaPanel() {
   const [municipios, setMunicipios] = useState<MunicipioOption[]>([])

@@ -91,7 +91,7 @@ export function PlanoAmostragemComoFuncionaModal({
                 <strong className="font-medium text-text-primary">Município</strong> — universo da pesquisa.
               </li>
               <li>
-                <strong className="font-medium text-text-primary">N (400, 500 ou 600)</strong> — quantas entrevistas face a face.
+                <strong className="font-medium text-text-primary">N (400 a 1500, de 100 em 100)</strong> — quantas entrevistas face a face.
               </li>
               <li>
                 <strong className="font-medium text-text-primary">Tipo</strong> — muda quem pesa no mapa:

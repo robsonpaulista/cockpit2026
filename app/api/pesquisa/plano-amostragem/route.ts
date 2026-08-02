@@ -25,7 +25,7 @@ import { VOTACAO_SECAO_ANO_PADRAO } from '@/lib/votacao-secao'
 
 export const dynamic = 'force-dynamic'
 
-const AMOSTRAS_VALIDAS = new Set([400, 500, 600])
+const AMOSTRAS_VALIDAS = new Set([400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500])
 
 export type PesoTerritorialPlano = 'populacao_ibge' | 'eleitorado_tse'
 export type CamadaMapaPlano = 'setores_ibge' | 'locais_tse' | 'hibrido'
