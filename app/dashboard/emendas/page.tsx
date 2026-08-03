@@ -21,6 +21,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  RefreshCw,
 } from 'lucide-react'
 import {
   EMENDAS_LIST_COLUMN_KEYS,
@@ -701,6 +702,24 @@ export default function EmendasPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={loading}
+                title="Recarregar emendas do banco"
+                className={cn(
+                  'flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                  isCockpit
+                    ? 'border-white/20 bg-white/5 text-text-primary hover:bg-white/10'
+                    : 'border-card bg-transparent text-text-primary hover:bg-background',
+                )}
+              >
+                <RefreshCw
+                  className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')}
+                  aria-hidden
+                />
+                Atualizar
+              </button>
               <button
                 type="button"
                 onClick={handleExportXlsx}

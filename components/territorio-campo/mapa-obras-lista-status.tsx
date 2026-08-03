@@ -1,12 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Link2, Loader2 } from 'lucide-react'
+import { Download, ExternalLink, Link2, Loader2, RefreshCw } from 'lucide-react'
 import {
-  classificarObraFase,
-  OBRA_FASE_LABEL,
   valorExibidoMapaObra,
-  type ObraFaseMapa,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
 import {
@@ -24,6 +21,7 @@ import {
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
 import { MapaObrasPlanoDriveModal } from '@/components/territorio-campo/mapa-obras-plano-drive-modal'
+import { MapaObrasListaExportModal } from '@/components/territorio-campo/mapa-obras-lista-export-modal'
 
 type SortObraCol = 'municipio' | 'cota'
 
@@ -41,25 +39,38 @@ function formatCurrency(value?: number | null): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 20,
   }).format(value)
 }
 
 interface MapaObrasListaStatusProps {
   /** Obras já filtradas (mesma fonte do mapa: planilha Demandas). */
   obras: ObraMapaRow[]
+  /** Recarrega obras da planilha (Sheets). */
+  onAtualizar?: () => void | Promise<void>
+  atualizando?: boolean
   onStatusSalvo?: () => void
 }
 
 /** Lista das obras no mapa — mesma planilha Sheets da guia Demandas. */
-export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
+export function MapaObrasListaStatus({
+  obras,
+  onAtualizar,
+  atualizando = false,
+  onStatusSalvo,
+}: MapaObrasListaStatusProps) {
   const [busca, setBusca] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState('')
   const [sortCol, setSortCol] = useState<SortObraCol>('municipio')
   const [sortAsc, setSortAsc] = useState(true)
   const [linksByObra, setLinksByObra] = useState<Record<string, ObraPlanoDriveLink>>({})
   const [linksLoading, setLinksLoading] = useState(false)
   const [linksError, setLinksError] = useState<string | null>(null)
   const [obraParaVincular, setObraParaVincular] = useState<ObraMapaRow | null>(null)
+  const [atualizandoLocal, setAtualizandoLocal] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
 
   const carregarLinks = useCallback(async () => {
     setLinksLoading(true)
@@ -94,30 +105,72 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
     }
   }, [])
 
+  const atualizar = useCallback(async () => {
+    setAtualizandoLocal(true)
+    try {
+      await Promise.all([
+        Promise.resolve(onAtualizar?.() ?? onStatusSalvo?.()),
+        carregarLinks(),
+      ])
+    } finally {
+      setAtualizandoLocal(false)
+    }
+  }, [carregarLinks, onAtualizar, onStatusSalvo])
+
   useEffect(() => {
     void carregarLinks()
   }, [carregarLinks])
 
+  const opcoesTipo = useMemo(() => {
+    const presentes = new Set<string>()
+    for (const obra of obras) {
+      const tipo = (obra.tipo ?? '').trim()
+      if (tipo) presentes.add(tipo)
+    }
+    const ordemConhecida = Object.keys(TIPO_LABEL)
+    const conhecidos = ordemConhecida.filter((id) => presentes.has(id))
+    const extras = [...presentes]
+      .filter((id) => !TIPO_LABEL[id])
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return [...conhecidos, ...extras]
+  }, [obras])
+
+  const opcoesStatus = useMemo(() => {
+    const set = new Set<string>()
+    for (const obra of obras) {
+      const status = (obra.status ?? '').trim()
+      if (status) set.add(status)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+  }, [obras])
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    const base = !q
-      ? obras
-      : obras.filter((obra) => {
-          const link = linksByObra[obra.id]
-          const blob = [
-            obra.municipio,
-            obra.obra,
-            obra.orgao,
-            obra.status,
-            obra.tipo,
-            link?.drive_file_name,
-            link?.nota_texto,
-          ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-          return blob.includes(q)
-        })
+    const base = obras.filter((obra) => {
+      if (filtroTipo) {
+        const tipo = (obra.tipo ?? '').trim()
+        if (tipo !== filtroTipo) return false
+      }
+      if (filtroStatus) {
+        const status = (obra.status ?? '').trim()
+        if (status !== filtroStatus) return false
+      }
+      if (!q) return true
+      const link = linksByObra[obra.id]
+      const blob = [
+        obra.municipio,
+        obra.obra,
+        obra.orgao,
+        obra.status,
+        obra.tipo,
+        link?.drive_file_name,
+        link?.nota_texto,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return blob.includes(q)
+    })
 
     return [...base].sort((a, b) => {
       if (sortCol === 'municipio') {
@@ -137,7 +190,47 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
       if (byCota !== 0) return byCota
       return compareTerritorioText(a.municipio || '', b.municipio || '', true)
     })
-  }, [busca, linksByObra, obras, sortAsc, sortCol])
+  }, [busca, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
+
+  const totais = useMemo(() => {
+    let valor = 0
+    let comValor = 0
+    let comPlano = 0
+    const municipios = new Set<string>()
+    for (const obra of filtradas) {
+      const mun = (obra.municipio || '').trim()
+      if (mun) municipios.add(mun)
+      const v = valorExibidoMapaObra(obra)
+      if (v != null && Number.isFinite(v)) {
+        valor += v
+        comValor += 1
+      }
+      const link = linksByObra[obra.id]
+      if (link && (planoDriveTemArquivo(link) || planoDriveTemNota(link))) {
+        comPlano += 1
+      }
+    }
+    return {
+      obras: filtradas.length,
+      municipios: municipios.size,
+      valor,
+      comValor,
+      comPlano,
+    }
+  }, [filtradas, linksByObra])
+
+  const filtrosExportResumo = useMemo(
+    () =>
+      [
+        busca.trim() ? `Busca: ${busca.trim()}` : null,
+        filtroTipo
+          ? `Tipo: ${TIPO_LABEL[filtroTipo] ?? filtroTipo}`
+          : null,
+        filtroStatus ? `Status: ${filtroStatus}` : null,
+        `Ordenação: ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
+      ].filter((v): v is string => Boolean(v)),
+    [busca, filtroStatus, filtroTipo, sortAsc, sortCol],
+  )
 
   const alternarSort = (column: SortObraCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, ['municipio'] as const)
@@ -175,6 +268,68 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
           placeholder="Buscar município, obra, status, plano…"
           className="min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs"
         />
+        <select
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          title="Filtrar por tipo"
+          className="rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+        >
+          <option value="">Todos os tipos</option>
+          {opcoesTipo.map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {TIPO_LABEL[tipo] ?? tipo}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filtroStatus}
+          onChange={(e) => setFiltroStatus(e.target.value)}
+          title="Filtrar por status"
+          className="max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+        >
+          <option value="">Todos os status</option>
+          {opcoesStatus.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+        {(filtroTipo || filtroStatus) && (
+          <button
+            type="button"
+            onClick={() => {
+              setFiltroTipo('')
+              setFiltroStatus('')
+            }}
+            className={cn(chromeButtonClass, 'h-8 px-2 text-[11px]')}
+          >
+            Limpar filtros
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => void atualizar()}
+          disabled={atualizando || atualizandoLocal || linksLoading}
+          title="Recarregar obras da planilha e vínculos do Drive"
+          className={cn(chromeButtonClass, 'h-8 px-2 text-[11px] disabled:opacity-50')}
+        >
+          {atualizando || atualizandoLocal ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+          )}
+          Atualizar
+        </button>
+        <button
+          type="button"
+          onClick={() => setExportModalOpen(true)}
+          disabled={filtradas.length === 0}
+          title="Exportar seleção filtrada (CSV, Excel ou PDF)"
+          className={cn(chromeButtonClass, 'h-8 px-2 text-[11px] disabled:opacity-50')}
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          Exportar
+        </button>
         <span className="text-xs text-text-secondary">
           {filtradas.length.toLocaleString('pt-BR')} obra
           {filtradas.length === 1 ? '' : 's'}
@@ -207,15 +362,12 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
                     compact
                   />
                 </th>
-                <th className="px-3 py-2.5">Tema / órgão</th>
                 <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5">Fase no mapa</th>
                 <th className="px-3 py-2.5">Plano Drive</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-card">
               {filtradas.map((obra) => {
-                const fase = classificarObraFase(obra.status) as ObraFaseMapa
                 const link = linksByObra[obra.id]
                 return (
                   <tr key={obra.id} className="align-top hover:bg-bg-app/30">
@@ -229,9 +381,7 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
                     <td className="px-3 py-3 tabular-nums text-text-secondary">
                       {formatCurrency(valorExibidoMapaObra(obra))}
                     </td>
-                    <td className="px-3 py-3 text-text-secondary">{obra.orgao ?? '—'}</td>
                     <td className="px-3 py-3 text-text-secondary">{obra.status ?? '—'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{OBRA_FASE_LABEL[fase]}</td>
                     <td className="px-3 py-3">
                       <div className="flex min-w-[9rem] flex-col gap-1.5">
                         {link && (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
@@ -294,6 +444,29 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
                 )
               })}
             </tbody>
+            {filtradas.length > 0 ? (
+              <tfoot className="border-t-2 border-card bg-bg-app/80 text-sm font-semibold text-text-primary">
+                <tr>
+                  <td className="px-3 py-3" colSpan={3}>
+                    Total
+                    <span className="ml-2 font-normal text-text-secondary">
+                      {totais.obras.toLocaleString('pt-BR')} obra
+                      {totais.obras === 1 ? '' : 's'} ·{' '}
+                      {totais.municipios.toLocaleString('pt-BR')} município
+                      {totais.municipios === 1 ? '' : 's'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 tabular-nums">
+                    {formatCurrency(totais.comValor > 0 ? totais.valor : null)}
+                  </td>
+                  <td className="px-3 py-3" />
+                  <td className="px-3 py-3 text-xs font-normal text-text-secondary">
+                    {totais.comPlano.toLocaleString('pt-BR')} plano
+                    {totais.comPlano === 1 ? '' : 's'}
+                  </td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
         {filtradas.length === 0 ? (
@@ -318,6 +491,14 @@ export function MapaObrasListaStatus({ obras }: MapaObrasListaStatusProps) {
             return next
           })
         }}
+      />
+
+      <MapaObrasListaExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        obras={filtradas}
+        linksByObra={linksByObra}
+        filtrosResumo={filtrosExportResumo}
       />
     </div>
   )

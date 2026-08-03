@@ -318,7 +318,11 @@ export function MapaObrasPanel() {
       </div>
 
       {visaoPainel === 'lista' ? (
-        <MapaObrasListaStatus obras={obras} onStatusSalvo={() => void carregar()} />
+        <MapaObrasListaStatus
+          obras={obras}
+          atualizando={loading}
+          onAtualizar={() => carregar()}
+        />
       ) : (
         <>
       <section>
