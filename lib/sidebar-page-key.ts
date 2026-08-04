@@ -46,5 +46,6 @@ export function pageKeyForSidebarItem(id: string): string {
   if (id === 'cobertura-campanha' || id === 'fluxo-digital') return 'fluxo-digital'
   if (id === 'war-room') return 'war-room'
   if (id === 'log-system') return 'log_system'
+  if (id === 'backup') return 'backup'
   return id === 'home' ? 'dashboard' : id
 }

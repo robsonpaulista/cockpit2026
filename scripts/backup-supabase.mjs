@@ -63,6 +63,9 @@ const SKIP_UNLESS_FULL = new Set([
   'sync_events',
 ])
 
+/** Sempre fora do backup (planilha importada / volume enorme) — nem com --full */
+const ALWAYS_SKIP = new Set(['votacao_secao_voto'])
+
 const FALLBACK_TABLES = [
   'profiles',
   'permissions',
@@ -122,7 +125,7 @@ function parseArgs(argv) {
       console.log(`Backup Supabase (JSONL.gz)
 
   npm run db:backup
-  npm run db:backup -- --full          # inclui tabelas grandes (radar, votos…)
+  npm run db:backup -- --full          # inclui tabelas grandes (exceto ALWAYS_SKIP)
   npm run db:backup -- --keep=14
   npm run db:backup -- --tables=obras,polls
   npm run db:backup -- --upload        # envia para Storage
@@ -307,6 +310,16 @@ async function main() {
           `Modo padrão: omitindo ${before - tables.length} tabelas grandes (use --full para incluir).`,
         )
       }
+    }
+  }
+
+  {
+    const before = tables.length
+    tables = tables.filter((t) => !ALWAYS_SKIP.has(t))
+    if (before !== tables.length) {
+      console.log(
+        `Sempre omitidas: ${[...ALWAYS_SKIP].join(', ')} (${before - tables.length} tabela(s)).`,
+      )
     }
   }
 

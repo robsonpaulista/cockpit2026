@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/use-permissions'
 const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio', 'ipt', 'fluxo-digital', 'cobertura',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'material-campanha',
-  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'log_system', 'gestao_pesquisas',
+  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'backup', 'log_system', 'gestao_pesquisas',
   'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes', 'arquivos',
   'war-room',
 ])
@@ -99,6 +99,10 @@ export function DashboardPermissionGuard({ children }: { children: React.ReactNo
     if (!key || key === 'dashboard') return
 
     if (key === 'usuarios') {
+      if (!isAdmin) router.replace('/dashboard')
+      return
+    }
+    if (key === 'backup') {
       if (!isAdmin) router.replace('/dashboard')
       return
     }

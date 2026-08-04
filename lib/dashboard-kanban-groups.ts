@@ -26,7 +26,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'administracao',
     label: 'Administração',
-    itemIds: ['jarvis-assistant', 'log-system', 'usuarios'],
+    itemIds: ['jarvis-assistant', 'log-system', 'usuarios', 'backup'],
   },
 ]
 

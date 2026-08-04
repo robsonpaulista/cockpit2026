@@ -607,6 +607,7 @@ export function Sidebar() {
           })
           .filter((item) => {
             if (item.id === 'usuarios') return isAdmin
+            if (item.id === 'backup') return isAdmin
             if (item.id === 'log-system') return isAdmin
             if (item.id === 'ficha-atendimento') {
               return canAccess('ficha-atendimento') || canAccess('territorio')

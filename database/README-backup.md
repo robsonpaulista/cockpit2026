@@ -80,6 +80,8 @@ Tabelas de alto volume (use `--full` ou `?full=1`):
 - `votacao_secao_local`, `federal_2018`
 - fotos / face descriptors (PhotoFinder)
 
+Sempre fora (nem com `--full`): `votacao_secao_voto` (planilha TSE importada — maior tabela).
+
 ## Restore (orientação)
 
 1. Descompacte o `.jsonl.gz` da tabela.

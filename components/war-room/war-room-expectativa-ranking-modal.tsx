@@ -21,6 +21,7 @@ import {
   type EmendaRegistro,
 } from '@/lib/emendas-filtro'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
+import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
 import {
   exportExpectativaRankingCsv,
   exportExpectativaRankingPdf,
@@ -39,6 +40,10 @@ import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesq
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
 import {
+  demandasToObrasMapa,
+  type CampoDemandaObraRow,
+} from '@/lib/campo-demandas-obras'
+import {
   buildWarRoomPesquisasConsolidadas,
   mapUltimaPesquisaPorMunicipio,
   type WarRoomPesquisaConsolidadaReal,
@@ -53,6 +58,7 @@ type SortCol =
   | 'populacao'
   | 'eleitores'
   | 'ultimaVisita'
+  | 'diasVisita'
   | 'proxVisita'
   | 'pesquisa'
 
@@ -67,6 +73,9 @@ type RankingRow = {
   eleitores: number | null
   ultimaVisita: string | null
   ultimaVisitaLabel: string
+  /** Dias corridos desde a última visita até hoje; null se sem visita. */
+  diasDesdeUltimaVisita: number | null
+  diasDesdeLabel: string
   proxVisitaLabel: string
   proxVisitaSort: string
   temEmendas: boolean
@@ -78,6 +87,8 @@ type RankingRow = {
 
 type Props = {
   municipios: IptMunicipio[]
+  /** Obras já convertidas do Cadastro de Demandas (Sheets) — mesma fonte do Mapa. */
+  obras?: ObraMapaRow[] | null
   agendaPorMunicipio: Map<string, WarRoomAgendaProximoItem[]>
   onClose: () => void
 }
@@ -127,6 +138,14 @@ function formatPosicaoPesquisa(value: number | null | undefined): string {
   return `${Math.round(value)}º`
 }
 
+function formatDiasDesdeVisita(dias: number | null): string {
+  if (dias == null || !Number.isFinite(dias)) return '—'
+  if (dias < 0) return '—'
+  if (dias === 0) return 'hoje'
+  if (dias === 1) return '1 dia'
+  return `${dias.toLocaleString('pt-BR')} dias`
+}
+
 function normalizarBusca(value: string): string {
   return value
     .normalize('NFD')
@@ -153,6 +172,7 @@ function proxVisitaDe(
 /** Modal tabular — ranking completo de expectativa (mapa operacional). */
 export function WarRoomExpectativaRankingModal({
   municipios,
+  obras: obrasProp = null,
   agendaPorMunicipio,
   onClose,
 }: Props) {
@@ -281,26 +301,35 @@ export function WarRoomExpectativaRankingModal({
     const load = async () => {
       setLoadingObras(true)
       try {
-        const [mapaRes, recapRes] = await Promise.all([
-          obrasAll != null
-            ? Promise.resolve(null)
-            : fetch('/api/obras/mapa?escopo=lista', { cache: 'no-store' }),
-          recapObras != null
-            ? Promise.resolve(null)
-            : fetch('/api/obras/recap', { cache: 'no-store' }),
+        const needsObras = obrasAll == null
+        const needsRecap = recapObras == null
+
+        // Preferir obras já carregadas pelo IPT (Sheets / Cadastro de Demandas).
+        if (needsObras && Array.isArray(obrasProp)) {
+          if (!cancelled) setObrasAll(obrasProp)
+        }
+
+        const [demandasRes, recapRes] = await Promise.all([
+          needsObras && !Array.isArray(obrasProp)
+            ? fetch('/api/campo/demands', { cache: 'no-store' })
+            : Promise.resolve(null),
+          needsRecap
+            ? fetch('/api/obras/recap', { cache: 'no-store' })
+            : Promise.resolve(null),
         ])
 
         if (cancelled) return
 
-        if (mapaRes) {
-          const json = (await mapaRes.json().catch(() => null)) as {
-            obras?: ObraMapaRow[]
-            error?: string
-          } | null
-          if (!mapaRes.ok) {
+        if (demandasRes) {
+          const json = await demandasRes.json().catch(() => null)
+          if (!demandasRes.ok) {
             setObrasAll([])
           } else {
-            setObrasAll(Array.isArray(json?.obras) ? json.obras : [])
+            setObrasAll(
+              demandasToObrasMapa(
+                Array.isArray(json) ? (json as CampoDemandaObraRow[]) : [],
+              ),
+            )
           }
         }
 
@@ -317,7 +346,7 @@ export function WarRoomExpectativaRankingModal({
         }
       } catch {
         if (!cancelled) {
-          if (obrasAll == null) setObrasAll([])
+          if (obrasAll == null) setObrasAll(Array.isArray(obrasProp) ? obrasProp : [])
           if (recapObras == null) setRecapObras([])
         }
       } finally {
@@ -328,7 +357,7 @@ export function WarRoomExpectativaRankingModal({
     return () => {
       cancelled = true
     }
-  }, [detalhe, obrasAll, recapObras])
+  }, [detalhe, obrasAll, obrasProp, recapObras])
 
   const rows = useMemo<RankingRow[]>(() => {
     return municipios.map((m) => {
@@ -338,6 +367,7 @@ export function WarRoomExpectativaRankingModal({
         demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
       const prox = proxVisitaDe(agendaPorMunicipio.get(key))
       const pesquisa = pesquisaByMun.get(key) ?? null
+      const dias = diasDesdeVisita(m.ultimaVisita ?? null)
       return {
         municipio: m.municipio,
         expectativa: m.expectativaVotos,
@@ -346,6 +376,8 @@ export function WarRoomExpectativaRankingModal({
         eleitores: getEleitoradoByCity(m.municipio),
         ultimaVisita: m.ultimaVisita ?? null,
         ultimaVisitaLabel: formatDataCurta(m.ultimaVisita),
+        diasDesdeUltimaVisita: dias,
+        diasDesdeLabel: formatDiasDesdeVisita(dias),
         proxVisitaLabel: prox.label,
         proxVisitaSort: prox.sort,
         temEmendas: emendasKeys.has(key),
@@ -403,6 +435,15 @@ export function WarRoomExpectativaRankingModal({
         if (by !== 0) return by
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
+      if (sortCol === 'diasVisita') {
+        const by = compareTerritorioNumber(
+          a.diasDesdeUltimaVisita ?? -1,
+          b.diasDesdeUltimaVisita ?? -1,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
       if (sortCol === 'pesquisa') {
         const by = compareTerritorioNumber(
           a.pesquisaPosicao ?? 999,
@@ -430,6 +471,7 @@ export function WarRoomExpectativaRankingModal({
     const next = toggleTerritorioSort(sortCol, sortAsc, column, [
       'cidade',
       'ultimaVisita',
+      'diasVisita',
       'proxVisita',
     ] as const)
     setSortCol(next.column)
@@ -481,6 +523,7 @@ export function WarRoomExpectativaRankingModal({
         populacao: row.populacao,
         eleitores: row.eleitores,
         ultimaVisitaLabel: row.ultimaVisitaLabel,
+        diasDesdeLabel: row.diasDesdeLabel,
         proxVisitaLabel: row.proxVisitaLabel,
         temEmendas: row.temEmendas,
         temObras: row.temObras,
@@ -729,6 +772,16 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
+                <th className="wr-expectativa-ranking-modal__num">
+                  <TerritorioSortableHeaderButton
+                    label="Há quantos dias"
+                    active={sortCol === 'diasVisita'}
+                    asc={sortAsc}
+                    onClick={() => alternarSort('diasVisita')}
+                    align="right"
+                    compact
+                  />
+                </th>
                 <th>
                   <TerritorioSortableHeaderButton
                     label="Próx. visita"
@@ -769,6 +822,9 @@ export function WarRoomExpectativaRankingModal({
                     {formatInt(row.eleitores)}
                   </td>
                   <td className="tabular-nums">{row.ultimaVisitaLabel}</td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {row.diasDesdeLabel}
+                  </td>
                   <td>{row.proxVisitaLabel}</td>
                   <td>
                     <button
@@ -866,6 +922,7 @@ export function WarRoomExpectativaRankingModal({
                   <td className="tabular-nums">
                     {totais.comUltimaVisita.toLocaleString('pt-BR')} c/
                   </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">—</td>
                   <td className="tabular-nums">
                     {totais.comProxVisita.toLocaleString('pt-BR')} c/
                   </td>

@@ -36,6 +36,7 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'sei-pesquisa': 'SEI',
   'gestao-pesquisas-menu': 'Gestão pesq.',
   usuarios: 'Usuários',
+  backup: 'Backup',
   'log-system': 'Log System',
   'jarvis-assistant': 'IA Cockpit',
   chapas: 'Federal',

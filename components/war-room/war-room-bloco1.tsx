@@ -207,7 +207,7 @@ function ExpectativaItem({
 
 /** Card Expectativa de Votos — mesmo design clean da fila de decisões. */
 export function WarRoomExpectativaCard({ className }: Props) {
-  const { loading, error, municipios, recarregar } = useIpt()
+  const { loading, error, municipios, obras, recarregar } = useIpt()
   const { register, reportChange } = useWarRoomRefresh()
   const change = useWarRoomCardChange('expectativa')
   const { isAdmin, canAccess } = usePermissions()
@@ -490,6 +490,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
       {rankingModalOpen ? (
         <WarRoomExpectativaRankingModal
           municipios={universo}
+          obras={obras}
           agendaPorMunicipio={agendaPorMunicipio}
           onClose={() => setRankingModalOpen(false)}
         />

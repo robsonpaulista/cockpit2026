@@ -41,6 +41,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'sei-pesquisa': 'Busca no SEI-PI',
   'gestao-pesquisas-menu': 'App pesquisador de campo',
   usuarios: 'Permissões e contas',
+  backup: 'Backup lógico do banco no Storage',
   'log-system': 'Histórico de perguntas da IA Cockpit',
   'jarvis-assistant': 'Assistente de voz e briefing da campanha',
 }

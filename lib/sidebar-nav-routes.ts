@@ -181,6 +181,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     ],
   },
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
+  { id: 'backup', label: 'Backup', icon: 'Database', href: '/dashboard/backup' },
   { id: 'log-system', label: 'Log System', icon: 'ScrollText', href: '/dashboard/log-system' },
 ]
 
@@ -273,6 +274,7 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'gestao-pesquisas-config': ['config gestao pesquisas', 'configuracoes pesquisas'],
   'gestao-pesquisas-menu': ['gestao pesquisas'],
   usuarios: ['usuarios', 'gestao usuarios', 'gestao de usuarios', 'permissoes'],
+  backup: ['backup', 'backup supabase', 'backup banco', 'db backup'],
   'log-system': ['log system', 'log ia cockpit', 'logs agente', 'historico ia cockpit', 'log jarvis', 'historico jarvis'],
   'territorio-ipt': ['mapa diagnostico campanha', 'mapa diagnostico', 'ipt', 'diagnostico campanha'],
   'fluxo-digital': [

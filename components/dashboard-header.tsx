@@ -47,6 +47,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/obras': 'Obras',
   '/dashboard/proposicoes': 'Proposições',
   '/dashboard/usuarios': 'Gestão de Usuários',
+  '/dashboard/backup': 'Backup Supabase',
   '/dashboard/log-system': 'Log System',
   '/dashboard/arquivos': 'Arquivos',
 }

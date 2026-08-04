@@ -9,6 +9,7 @@ export type ExpectativaRankingExportRow = {
   populacao: number | null
   eleitores: number | null
   ultimaVisitaLabel: string
+  diasDesdeLabel: string
   proxVisitaLabel: string
   temEmendas: boolean
   temObras: boolean
@@ -35,6 +36,7 @@ const HEADERS = [
   'População',
   'Eleitores',
   'Última visita',
+  'Há quantos dias',
   'Próx. visita',
   'Emendas',
   'Obras',
@@ -84,6 +86,7 @@ function cellRow(row: ExpectativaRankingExportRow): (string | number)[] {
     row.populacao ?? '',
     row.eleitores ?? '',
     row.ultimaVisitaLabel,
+    row.diasDesdeLabel,
     row.proxVisitaLabel,
     row.temEmendas ? 'Sim' : 'Não',
     row.temObras ? 'Sim' : 'Não',
@@ -102,6 +105,7 @@ function totaisRow(
     totais.populacao || '',
     totais.eleitores || '',
     `${totais.comUltimaVisita} com`,
+    '',
     `${totais.comProxVisita} com`,
     `${totais.comEmendas} sim`,
     `${totais.comObras} sim`,
@@ -142,6 +146,7 @@ export function exportExpectativaRankingXlsx(
     { wch: 10 },
     { wch: 12 },
     { wch: 12 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 16 },
     { wch: 10 },

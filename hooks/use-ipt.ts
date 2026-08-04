@@ -6,6 +6,10 @@ import { getEleitoradoByCity } from '@/lib/eleitores'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import { valorExibidoMapaObra } from '@/lib/obras-mapa'
 import {
+  demandasToObrasMapa,
+  type CampoDemandaObraRow,
+} from '@/lib/campo-demandas-obras'
+import {
   calcularIptMunicipios,
   calcularIptResumo,
   IPT_VISITAS_COBERTURA_DIAS,
@@ -45,8 +49,8 @@ type PrioridadeRow = {
 
 type ObrasAgg = { count: number; valorTotal: number }
 
-/** Obras do mandato Jadyel (planilhas → data/obras-jadyel.json), mesma fonte do Mapa de Obras. */
-const IPT_OBRAS_API = '/api/obras/mapa?escopo=lista&periodo=todos'
+/** Obras = Cadastro de Demandas (Google Sheets) — mesma fonte de ?tab=demandas e ?tab=mapa-obras. */
+const IPT_DEMANDAS_OBRAS_API = '/api/campo/demands'
 
 function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {
   const map = new Map<string, ObrasAgg>()
@@ -139,7 +143,7 @@ export function useIpt() {
             cache: 'no-store',
           }),
           fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
-          fetch(IPT_OBRAS_API, { cache: 'no-store' }),
+          fetch(IPT_DEMANDAS_OBRAS_API, { cache: 'no-store' }),
           fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
           fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_COBERTURA_DIAS}`, {
             cache: 'no-store',
@@ -166,14 +170,23 @@ export function useIpt() {
         ? ((territorioJson as { prioridadeCampoLista?: PrioridadeRow[] }) ?? {})
         : { prioridadeCampoLista: [] as PrioridadeRow[] }
 
-      const obrasJson = obrasRes.ok
-        ? ((await obrasRes.json()) as { obras?: ObraMapaRow[] })
-        : (await obrasRes.json()) as { retryable?: boolean }
-      if (!obrasRes.ok && (obrasRes.status === 503 || (obrasJson as { retryable?: boolean }).retryable)) {
+      const demandasJson = await obrasRes.json().catch(() => null)
+      if (
+        !obrasRes.ok &&
+        (obrasRes.status === 503 ||
+          (demandasJson &&
+            typeof demandasJson === 'object' &&
+            'retryable' in demandasJson &&
+            (demandasJson as { retryable?: boolean }).retryable))
+      ) {
         instavel = true
       }
       const obrasLista = obrasRes.ok
-        ? ((obrasJson as { obras?: ObraMapaRow[] }).obras ?? [])
+        ? demandasToObrasMapa(
+            Array.isArray(demandasJson)
+              ? (demandasJson as CampoDemandaObraRow[])
+              : [],
+          )
         : []
       setObras(obrasLista)
       const obrasPorMunicipio = obrasRes.ok
