@@ -9,13 +9,15 @@ import {
   type ReactNode,
 } from 'react'
 
-export type WarRoomViewMode = 'padrao' | 'desempenho'
+export type WarRoomViewMode = 'padrao' | 'desempenho' | 'copiloto'
 
 type WarRoomViewModeContextValue = {
   viewMode: WarRoomViewMode
   isDesempenho: boolean
+  isCopiloto: boolean
   setViewMode: (mode: WarRoomViewMode) => void
   toggleDesempenho: () => void
+  toggleCopiloto: () => void
 }
 
 const WarRoomViewModeContext = createContext<WarRoomViewModeContextValue | null>(
@@ -33,14 +35,20 @@ export function WarRoomViewModeProvider({ children }: { children: ReactNode }) {
     setViewModeState((prev) => (prev === 'desempenho' ? 'padrao' : 'desempenho'))
   }, [])
 
+  const toggleCopiloto = useCallback(() => {
+    setViewModeState((prev) => (prev === 'copiloto' ? 'padrao' : 'copiloto'))
+  }, [])
+
   const value = useMemo(
     () => ({
       viewMode,
       isDesempenho: viewMode === 'desempenho',
+      isCopiloto: viewMode === 'copiloto',
       setViewMode,
       toggleDesempenho,
+      toggleCopiloto,
     }),
-    [viewMode, setViewMode, toggleDesempenho],
+    [viewMode, setViewMode, toggleDesempenho, toggleCopiloto],
   )
 
   return (

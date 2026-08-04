@@ -1,11 +1,16 @@
 import type { IptMunicipio } from '@/lib/ipt'
 import { todayKeyInTz } from '@/lib/war-room/agenda-proximos'
 
-/** Limiar de expectativa para alerta de visita na War Room. */
+/** Prioridade alta: expectativa ≥ este limiar. */
 export const WR_VISITA_ALERTA_EXPECTATIVA_MIN = 4000
 
-/** Dias sem visita a partir dos quais o alerta aparece (cidades acima do limiar). */
+/** Prioridade alta: dias sem visita para o bloco ≥ 4.000. */
 export const WR_VISITA_ALERTA_DIAS = 10
+
+/** Regra base: qualquer cidade com expectativa > 0 sem visita há este nº de dias. */
+export const WR_VISITA_ALERTA_BASE_DIAS = 15
+
+export type VisitaAlertaNivel = 'prioridade' | 'base'
 
 function dataCurta(iso: string): string {
   const raw = iso.trim()
@@ -35,18 +40,55 @@ export function diasDesdeVisita(
   return Math.floor((t1 - t0) / (24 * 60 * 60 * 1000))
 }
 
+function semVisitaHa(dias: number | null, limiarDias: number): boolean {
+  if (dias == null) return true
+  return dias >= limiarDias
+}
+
 /**
- * Ícone de necessidade de visita na Expectativa de votos:
- * expectativa ≥ 4.000 e sem visita há 10+ dias (ou nunca visitada).
+ * Nível do alerta de visita (avião):
+ * - prioridade: expectativa ≥ 4.000 e sem visita há 10+ dias (ou nunca)
+ * - base: expectativa > 0 e sem visita há 15+ dias (ou nunca)
+ * A regra de prioridade eleva o bloco ≥ 4.000; ambas mostram o avião.
+ */
+export function nivelVisitaAlerta(
+  m: IptMunicipio,
+  opts?: { hojeKey?: string },
+): VisitaAlertaNivel | null {
+  const expectativa = m.expectativaVotos
+  if (!Number.isFinite(expectativa) || expectativa <= 0) return null
+
+  const dias = diasDesdeVisita(m.ultimaVisita, opts?.hojeKey)
+
+  if (
+    expectativa >= WR_VISITA_ALERTA_EXPECTATIVA_MIN &&
+    semVisitaHa(dias, WR_VISITA_ALERTA_DIAS)
+  ) {
+    return 'prioridade'
+  }
+
+  if (expectativa > 0 && semVisitaHa(dias, WR_VISITA_ALERTA_BASE_DIAS)) {
+    return 'base'
+  }
+
+  return null
+}
+
+/** Título/tooltip do avião conforme o nível. */
+export function tituloVisitaAlerta(nivel: VisitaAlertaNivel): string {
+  if (nivel === 'prioridade') {
+    return `Prioridade · sem visita há ${WR_VISITA_ALERTA_DIAS}+ dias · expectativa ≥ ${WR_VISITA_ALERTA_EXPECTATIVA_MIN.toLocaleString('pt-BR')}`
+  }
+  return `Sem visita há ${WR_VISITA_ALERTA_BASE_DIAS}+ dias · expectativa > 0`
+}
+
+/**
+ * Ícone de necessidade de visita (avião):
+ * prioridade (≥4k / 10+ dias) OU base (>0 / 15+ dias).
  */
 export function precisaVisitaAltaExpectativa(
   m: IptMunicipio,
   opts?: { hojeKey?: string },
 ): boolean {
-  if (!Number.isFinite(m.expectativaVotos) || m.expectativaVotos < WR_VISITA_ALERTA_EXPECTATIVA_MIN) {
-    return false
-  }
-  const dias = diasDesdeVisita(m.ultimaVisita, opts?.hojeKey)
-  if (dias == null) return true
-  return dias >= WR_VISITA_ALERTA_DIAS
+  return nivelVisitaAlerta(m, opts) != null
 }

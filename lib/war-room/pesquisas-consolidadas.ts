@@ -221,3 +221,61 @@ export function mapUltimaPesquisaPorMunicipio(
   }
   return latest
 }
+
+export type WarRoomPesquisaParMunicipio = {
+  ultima: WarRoomPesquisaConsolidadaReal
+  anterior: WarRoomPesquisaConsolidadaReal | null
+}
+
+export type WarRoomPesquisaTendencia = 'alta' | 'baixa' | 'estavel' | null
+
+/** Tolerância (pp) para considerar % estável entre ondas. */
+export const WR_PESQUISA_TENDENCIA_TOL_PP = 0.5
+
+/**
+ * Última e penúltima onda por município (data desc).
+ * Penúltima = próxima pesquisa com data diferente da última.
+ */
+export function mapUltimasDuasPesquisasPorMunicipio(
+  rows: WarRoomPesquisaConsolidadaReal[],
+): Map<string, WarRoomPesquisaParMunicipio> {
+  const sorted = [...rows].sort((a, b) => {
+    const byDate = b.data.localeCompare(a.data)
+    if (byDate !== 0) return byDate
+    return a.cidade.localeCompare(b.cidade, 'pt-BR')
+  })
+
+  const byCity = new Map<string, WarRoomPesquisaParMunicipio>()
+  for (const row of sorted) {
+    const cidadeKey = normalizeIptMunicipio(row.cidade)
+    if (!cidadeKey) continue
+    const cur = byCity.get(cidadeKey)
+    if (!cur) {
+      byCity.set(cidadeKey, { ultima: row, anterior: null })
+      continue
+    }
+    if (cur.anterior) continue
+    if (row.data === cur.ultima.data) continue
+    byCity.set(cidadeKey, { ultima: cur.ultima, anterior: row })
+  }
+  return byCity
+}
+
+/** Tendência do % do candidato foco: última vs anterior. */
+export function tendenciaPctPesquisa(
+  pctUltima: number | null | undefined,
+  pctAnterior: number | null | undefined,
+  tolPp: number = WR_PESQUISA_TENDENCIA_TOL_PP,
+): WarRoomPesquisaTendencia {
+  if (
+    pctUltima == null ||
+    pctAnterior == null ||
+    !Number.isFinite(pctUltima) ||
+    !Number.isFinite(pctAnterior)
+  ) {
+    return null
+  }
+  const delta = pctUltima - pctAnterior
+  if (Math.abs(delta) <= tolPp) return 'estavel'
+  return delta > 0 ? 'alta' : 'baixa'
+}

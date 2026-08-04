@@ -15,6 +15,9 @@ export type ExpectativaRankingExportRow = {
   temObras: boolean
   /** Posição do candidato foco na última pesquisa (ex.: "3º"); "—" se não houver. */
   pesquisaPosicaoLabel: string
+  pesquisaTendenciaLabel: string
+  pesquisaPctUltimaLabel: string
+  pesquisaPctAnteriorLabel: string
 }
 
 export type ExpectativaRankingExportTotais = {
@@ -33,14 +36,16 @@ const HEADERS = [
   'Cidade',
   'Expectativa',
   'Peso %',
-  'População',
   'Eleitores',
-  'Última visita',
-  'Há quantos dias',
-  'Próx. visita',
+  'População',
   'Emendas',
   'Obras',
   'Pesquisas',
+  'Tendência',
+  '% anterior',
+  'Última visita',
+  'Data última visita',
+  'Próx. visita',
 ] as const
 
 let jspdfAutotableApplied = false
@@ -83,14 +88,16 @@ function cellRow(row: ExpectativaRankingExportRow): (string | number)[] {
     row.municipio,
     row.expectativa,
     Number(row.peso.toFixed(2)),
-    row.populacao ?? '',
     row.eleitores ?? '',
-    row.ultimaVisitaLabel,
-    row.diasDesdeLabel,
-    row.proxVisitaLabel,
+    row.populacao ?? '',
     row.temEmendas ? 'Sim' : 'Não',
     row.temObras ? 'Sim' : 'Não',
     row.pesquisaPosicaoLabel,
+    row.pesquisaTendenciaLabel,
+    row.pesquisaPctAnteriorLabel,
+    row.diasDesdeLabel,
+    row.ultimaVisitaLabel,
+    row.proxVisitaLabel,
   ]
 }
 
@@ -102,14 +109,16 @@ function totaisRow(
     `Total (${count})`,
     totais.expectativa,
     Number(totais.peso.toFixed(2)),
-    totais.populacao || '',
     totais.eleitores || '',
-    `${totais.comUltimaVisita} com`,
-    '',
-    `${totais.comProxVisita} com`,
+    totais.populacao || '',
     `${totais.comEmendas} sim`,
     `${totais.comObras} sim`,
     `${totais.comPesquisa} c/`,
+    '',
+    '',
+    `${totais.comUltimaVisita} com`,
+    '',
+    `${totais.comProxVisita} com`,
   ]
 }
 
@@ -152,6 +161,9 @@ export function exportExpectativaRankingXlsx(
     { wch: 10 },
     { wch: 10 },
     { wch: 10 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 11 },
   ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Ranking')
@@ -185,20 +197,20 @@ export function exportExpectativaRankingPdf(
       totaisRow(totais, rows.length).map(String),
     ],
     styles: {
-      fontSize: 7,
-      cellPadding: 1.5,
+      fontSize: 6.5,
+      cellPadding: 1.2,
       overflow: 'linebreak',
     },
     headStyles: {
       fillColor: [40, 40, 40],
       textColor: 255,
       fontStyle: 'bold',
-      fontSize: 7,
+      fontSize: 6.5,
     },
     alternateRowStyles: {
       fillColor: [248, 248, 246],
     },
-    margin: { left: 10, right: 10 },
+    margin: { left: 8, right: 8 },
   })
 
   pdf.save(nomeArquivo('pdf'))

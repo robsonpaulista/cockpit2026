@@ -3,13 +3,18 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  IconCalendarEvent,
   IconChartBar,
   IconDownload,
   IconFileSpreadsheet,
   IconFileTypeCsv,
   IconFileTypePdf,
   IconLoader2,
+  IconMinus,
+  IconPlane,
   IconSearch,
+  IconTrendingDown,
+  IconTrendingUp,
   IconX,
 } from '@tabler/icons-react'
 import type { IptMunicipio } from '@/lib/ipt'
@@ -20,8 +25,17 @@ import {
   filtrarEmendasPorMunicipio,
   type EmendaRegistro,
 } from '@/lib/emendas-filtro'
-import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
-import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
+import {
+  todayKeyInTz,
+  type WarRoomAgendaProximoItem,
+} from '@/lib/war-room/agenda-proximos'
+import {
+  diasDesdeVisita,
+  nivelVisitaAlerta,
+  precisaVisitaAltaExpectativa,
+  tituloVisitaAlerta,
+  type VisitaAlertaNivel,
+} from '@/lib/war-room/expectativa-visita-alerta'
 import {
   exportExpectativaRankingCsv,
   exportExpectativaRankingPdf,
@@ -37,6 +51,7 @@ import {
 import { WarRoomMunicipioEmendasModal } from '@/components/war-room/war-room-municipio-emendas-modal'
 import { WarRoomMunicipioObrasModal } from '@/components/war-room/war-room-municipio-obras-modal'
 import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
+import { WarRoomAgendaProximosModal } from '@/components/war-room/war-room-agenda-proximos-modal'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
 import {
@@ -45,8 +60,11 @@ import {
 } from '@/lib/campo-demandas-obras'
 import {
   buildWarRoomPesquisasConsolidadas,
-  mapUltimaPesquisaPorMunicipio,
+  mapUltimasDuasPesquisasPorMunicipio,
+  tendenciaPctPesquisa,
   type WarRoomPesquisaConsolidadaReal,
+  type WarRoomPesquisaParMunicipio,
+  type WarRoomPesquisaTendencia,
 } from '@/lib/war-room/pesquisas-consolidadas'
 import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
 import { cn } from '@/lib/utils'
@@ -82,7 +100,15 @@ type RankingRow = {
   temObras: boolean
   /** Posição do candidato foco na última pesquisa consolidada. */
   pesquisaPosicao: number | null
+  pesquisaPctUltima: number | null
+  pesquisaPctAnterior: number | null
+  pesquisaTendencia: WarRoomPesquisaTendencia
   pesquisa: WarRoomPesquisaConsolidadaReal | null
+  /** Expectativa ≥ 4k/10d (prioridade) ou >0/15d (base) — igual card Expectativa. */
+  precisaVisita: boolean
+  visitaAlertaNivel: VisitaAlertaNivel | null
+  /** Agenda nos próximos 7 dias (igual card Expectativa · ícone calendário). */
+  temAgendaProxima: boolean
 }
 
 type Props = {
@@ -91,24 +117,26 @@ type Props = {
   obras?: ObraMapaRow[] | null
   agendaPorMunicipio: Map<string, WarRoomAgendaProximoItem[]>
   onClose: () => void
+  /** `page` = conteúdo full da visão Copiloto (sem overlay). */
+  variant?: 'modal' | 'page'
 }
 
 const FILTRO_EXPECTATIVA_OPCOES: Array<{ id: FiltroExpectativa; label: string }> = [
   { id: 'todos', label: 'Todas' },
-  { id: 'gt0', label: 'Expectativa > 0' },
-  { id: 'eq0', label: 'Expectativa = 0' },
+  { id: 'gt0', label: '> 0' },
+  { id: 'eq0', label: '= 0' },
 ]
 
 const FILTRO_EMENDAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
-  { id: 'todos', label: 'Emendas: todas' },
-  { id: 'com', label: 'Com Emendas' },
-  { id: 'sem', label: 'Sem Emendas' },
+  { id: 'todos', label: 'Todas' },
+  { id: 'com', label: 'Com' },
+  { id: 'sem', label: 'Sem' },
 ]
 
 const FILTRO_OBRAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
-  { id: 'todos', label: 'Obras: todas' },
-  { id: 'com', label: 'Com Obras' },
-  { id: 'sem', label: 'Sem Obras' },
+  { id: 'todos', label: 'Todas' },
+  { id: 'com', label: 'Com' },
+  { id: 'sem', label: 'Sem' },
 ]
 
 function formatDataCurta(iso: string | null | undefined): string {
@@ -128,6 +156,37 @@ function formatPesoPct(value: number): string {
   })}%`
 }
 
+function PesoProgressBar({
+  peso,
+  maxPeso,
+}: {
+  peso: number
+  maxPeso: number
+}) {
+  const safeMax = maxPeso > 0 ? maxPeso : 1
+  const fillPct = Math.min(100, Math.max(0, (peso / safeMax) * 100))
+  const label = formatPesoPct(peso)
+  return (
+    <div
+      className="wr-expectativa-ranking-modal__peso"
+      role="progressbar"
+      aria-valuenow={Number(peso.toFixed(1))}
+      aria-valuemin={0}
+      aria-valuemax={Number(safeMax.toFixed(1))}
+      aria-label={`Peso ${label}`}
+      title={label}
+    >
+      <div className="wr-expectativa-ranking-modal__peso-track">
+        <span
+          className="wr-expectativa-ranking-modal__peso-fill"
+          style={{ width: `${fillPct}%` }}
+        />
+      </div>
+      <span className="wr-expectativa-ranking-modal__peso-label">{label}</span>
+    </div>
+  )
+}
+
 function formatInt(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return Math.round(value).toLocaleString('pt-BR')
@@ -136,6 +195,14 @@ function formatInt(value: number | null): string {
 function formatPosicaoPesquisa(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value) || value < 1) return '—'
   return `${Math.round(value)}º`
+}
+
+function formatPctPesquisa(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return `${value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`
 }
 
 function formatDiasDesdeVisita(dias: number | null): string {
@@ -175,9 +242,11 @@ export function WarRoomExpectativaRankingModal({
   obras: obrasProp = null,
   agendaPorMunicipio,
   onClose,
+  variant = 'modal',
 }: Props) {
+  const isPage = variant === 'page'
   const tituloId = useId()
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(isPage)
   const [busca, setBusca] = useState('')
   const [filtroExpectativa, setFiltroExpectativa] =
     useState<FiltroExpectativa>('todos')
@@ -199,30 +268,52 @@ export function WarRoomExpectativaRankingModal({
   const [recapObras, setRecapObras] = useState<ObraRecapMatchSource[] | null>(null)
   const [loadingObras, setLoadingObras] = useState(false)
   const [pesquisaByMun, setPesquisaByMun] = useState<
-    Map<string, WarRoomPesquisaConsolidadaReal>
+    Map<string, WarRoomPesquisaParMunicipio>
   >(() => new Map())
   const [loadingPesquisas, setLoadingPesquisas] = useState(true)
   const [pesquisaDetalhe, setPesquisaDetalhe] =
     useState<WarRoomPesquisaConsolidadaReal | null>(null)
+  const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(
+    null,
+  )
+
+  const agendaModalItens = useMemo(() => {
+    if (!agendaModalMunicipio) return []
+    return (
+      agendaPorMunicipio.get(normalizeIptMunicipio(agendaModalMunicipio)) ?? []
+    )
+  }, [agendaModalMunicipio, agendaPorMunicipio])
 
   useEffect(() => {
     setMounted(true)
     const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (!isPage) {
+      document.body.style.overflow = 'hidden'
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      if (agendaModalMunicipio) {
+        setAgendaModalMunicipio(null)
+        return
+      }
       if (detalhe) {
         setDetalhe(null)
+        return
+      }
+      if (pesquisaDetalhe) {
+        setPesquisaDetalhe(null)
         return
       }
       onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = prev
+      if (!isPage) {
+        document.body.style.overflow = prev
+      }
       window.removeEventListener('keydown', onKey)
     }
-  }, [onClose, detalhe])
+  }, [onClose, detalhe, pesquisaDetalhe, agendaModalMunicipio, isPage])
 
   useEffect(() => {
     let cancelled = false
@@ -280,7 +371,7 @@ export function WarRoomExpectativaRankingModal({
           foco,
           5000,
         )
-        if (!cancelled) setPesquisaByMun(mapUltimaPesquisaPorMunicipio(built))
+        if (!cancelled) setPesquisaByMun(mapUltimasDuasPesquisasPorMunicipio(built))
       } catch {
         if (!cancelled) setPesquisaByMun(new Map())
       } finally {
@@ -365,8 +456,13 @@ export function WarRoomExpectativaRankingModal({
       const demo = getDemografiaMunicipio(m.municipio)
       const populacao =
         demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
-      const prox = proxVisitaDe(agendaPorMunicipio.get(key))
-      const pesquisa = pesquisaByMun.get(key) ?? null
+      const agendaItens = agendaPorMunicipio.get(key)
+      const prox = proxVisitaDe(agendaItens)
+      const pesquisaPar = pesquisaByMun.get(key) ?? null
+      const pesquisa = pesquisaPar?.ultima ?? null
+      const pesquisaAnterior = pesquisaPar?.anterior ?? null
+      const pctUltima = pesquisa?.jadyelPct ?? null
+      const pctAnterior = pesquisaAnterior?.jadyelPct ?? null
       const dias = diasDesdeVisita(m.ultimaVisita ?? null)
       return {
         municipio: m.municipio,
@@ -384,7 +480,13 @@ export function WarRoomExpectativaRankingModal({
         temObras:
           m.sinais.obras === 'bem' || (m.detalhes.obrasQuantidade ?? 0) > 0,
         pesquisaPosicao: pesquisa?.jadyelPosicao ?? null,
+        pesquisaPctUltima: pctUltima,
+        pesquisaPctAnterior: pctAnterior,
+        pesquisaTendencia: tendenciaPctPesquisa(pctUltima, pctAnterior),
         pesquisa,
+        precisaVisita: precisaVisitaAltaExpectativa(m),
+        visitaAlertaNivel: nivelVisitaAlerta(m),
+        temAgendaProxima: (agendaItens?.length ?? 0) > 0,
       }
     })
   }, [agendaPorMunicipio, emendasKeys, municipios, pesquisaByMun])
@@ -467,10 +569,17 @@ export function WarRoomExpectativaRankingModal({
     sortCol,
   ])
 
+  const maxPesoFiltrado = useMemo(() => {
+    let max = 0
+    for (const row of filtradas) {
+      if (row.peso > max) max = row.peso
+    }
+    return max
+  }, [filtradas])
+
   const alternarSort = (column: SortCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, [
       'cidade',
-      'ultimaVisita',
       'diasVisita',
       'proxVisita',
     ] as const)
@@ -527,7 +636,22 @@ export function WarRoomExpectativaRankingModal({
         proxVisitaLabel: row.proxVisitaLabel,
         temEmendas: row.temEmendas,
         temObras: row.temObras,
-        pesquisaPosicaoLabel: formatPosicaoPesquisa(row.pesquisaPosicao),
+        pesquisaPosicaoLabel: [
+          formatPosicaoPesquisa(row.pesquisaPosicao),
+          formatPctPesquisa(row.pesquisaPctUltima),
+        ]
+          .filter((part) => part !== '—')
+          .join(' · ') || '—',
+        pesquisaTendenciaLabel:
+          row.pesquisaTendencia === 'alta'
+            ? 'alta'
+            : row.pesquisaTendencia === 'baixa'
+              ? 'baixa'
+              : row.pesquisaTendencia === 'estavel'
+                ? 'estável'
+                : '—',
+        pesquisaPctUltimaLabel: formatPctPesquisa(row.pesquisaPctUltima),
+        pesquisaPctAnteriorLabel: formatPctPesquisa(row.pesquisaPctAnterior),
       }))
       if (formato === 'csv') exportExpectativaRankingCsv(exportRows, totais)
       else if (formato === 'xlsx') exportExpectativaRankingXlsx(exportRows, totais)
@@ -552,44 +676,54 @@ export function WarRoomExpectativaRankingModal({
 
   if (!mounted) return null
 
-  return createPortal(
-    <>
-      <div className="wr-visita-modal" role="presentation">
-        <button
-          type="button"
-          className="wr-visita-modal__backdrop"
-          aria-label="Fechar"
-          onClick={onClose}
-        />
+  const panel = (
         <div
-          role="dialog"
-          aria-modal="true"
+          role={isPage ? 'region' : 'dialog'}
+          aria-modal={isPage ? undefined : true}
           aria-labelledby={tituloId}
-          className="wr-visita-modal__panel wr-expectativa-ranking-modal__panel"
+          className={
+            isPage
+              ? 'wr-expectativa-ranking-modal__page-panel'
+              : 'wr-visita-modal__panel wr-expectativa-ranking-modal__panel'
+          }
         >
-        <header className="wr-visita-modal__head">
-          <div className="wr-visita-modal__head-main min-w-0">
-            <span className="wr-visita-modal__icon" aria-hidden>
-              <IconChartBar className="h-4 w-4" stroke={1.75} />
-            </span>
-            <div className="min-w-0">
-              <p className="wr-visita-modal__eyebrow">War Room · Expectativa</p>
-              <h2 id={tituloId} className="wr-visita-modal__title truncate">
-                Ranking completo ({municipios.length})
-              </h2>
+        {!isPage ? (
+          <header className="wr-visita-modal__head">
+            <div className="wr-visita-modal__head-main min-w-0">
+              <span className="wr-visita-modal__icon" aria-hidden>
+                <IconChartBar className="h-4 w-4" stroke={1.75} />
+              </span>
+              <div className="min-w-0">
+                <p className="wr-visita-modal__eyebrow">War Room · Expectativa</p>
+                <h2 id={tituloId} className="wr-visita-modal__title truncate">
+                  Ranking completo ({municipios.length})
+                </h2>
+              </div>
             </div>
-          </div>
-          <button
-            type="button"
-            className="wr-visita-modal__close"
-            aria-label="Fechar"
-            onClick={onClose}
-          >
-            <IconX className="h-4 w-4" stroke={1.75} />
-          </button>
-        </header>
+            <button
+              type="button"
+              className="wr-visita-modal__close"
+              aria-label="Fechar"
+              onClick={onClose}
+            >
+              <IconX className="h-4 w-4" stroke={1.75} />
+            </button>
+          </header>
+        ) : (
+          <h2 id={tituloId} className="sr-only">
+            Ranking completo ({municipios.length})
+          </h2>
+        )}
 
-        <div className="wr-expectativa-ranking-modal__toolbar">
+        <div
+          className={cn(
+            'wr-expectativa-ranking-modal__toolbar',
+            isPage && 'wr-expectativa-ranking-modal__toolbar--as-header',
+          )}
+          role="search"
+          aria-label="Filtros do ranking"
+        >
+          <span className="wr-expectativa-ranking-modal__toolbar-title">Cidades</span>
           <label className="wr-expectativa-ranking-modal__search">
             <IconSearch className="h-3.5 w-3.5 shrink-0" stroke={1.75} aria-hidden />
             <input
@@ -599,114 +733,132 @@ export function WarRoomExpectativaRankingModal({
               placeholder="Buscar município…"
             />
           </label>
-          <div className="wr-expectativa-ranking-modal__export" role="group" aria-label="Exportar">
-            <span className="wr-expectativa-ranking-modal__export-label">
-              <IconDownload className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
-              Exportar
-            </span>
-            <button
-              type="button"
-              className="wr-expectativa-ranking-modal__export-btn"
-              disabled={filtradas.length === 0 || exportBusy !== 'idle'}
-              onClick={() => exportar('csv')}
-            >
-              {exportBusy === 'csv' ? (
-                <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
-              ) : (
-                <IconFileTypeCsv className="h-3.5 w-3.5" stroke={1.75} />
-              )}
-              CSV
-            </button>
-            <button
-              type="button"
-              className="wr-expectativa-ranking-modal__export-btn"
-              disabled={filtradas.length === 0 || exportBusy !== 'idle'}
-              onClick={() => exportar('xlsx')}
-            >
-              {exportBusy === 'xlsx' ? (
-                <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
-              ) : (
-                <IconFileSpreadsheet className="h-3.5 w-3.5" stroke={1.75} />
-              )}
-              XLS
-            </button>
-            <button
-              type="button"
-              className="wr-expectativa-ranking-modal__export-btn"
-              disabled={filtradas.length === 0 || exportBusy !== 'idle'}
-              onClick={() => exportar('pdf')}
-            >
-              {exportBusy === 'pdf' ? (
-                <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
-              ) : (
-                <IconFileTypePdf className="h-3.5 w-3.5" stroke={1.75} />
-              )}
-              PDF
-            </button>
-          </div>
-          <span className="wr-expectativa-ranking-modal__count tabular-nums">
-            {loadingEmendas ? (
-              <span className="inline-flex items-center gap-1.5">
-                <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
-                Emendas…
-              </span>
-            ) : (
-              `${filtradas.length.toLocaleString('pt-BR')} município${filtradas.length === 1 ? '' : 's'}`
-            )}
-          </span>
-        </div>
 
-        <div className="wr-expectativa-ranking-modal__filtros" role="group" aria-label="Filtros do ranking">
-          <div className="wr-expectativa-ranking-modal__filtro-grupo">
-            {FILTRO_EXPECTATIVA_OPCOES.map((opcao) => (
-              <button
-                key={opcao.id}
-                type="button"
-                aria-pressed={filtroExpectativa === opcao.id}
-                className={cn(
-                  'wr-expectativa-ranking-modal__filtro',
-                  filtroExpectativa === opcao.id &&
-                    'wr-expectativa-ranking-modal__filtro--ativo',
-                )}
-                onClick={() => setFiltroExpectativa(opcao.id)}
-              >
-                {opcao.label}
-              </button>
-            ))}
+          <div className="wr-expectativa-ranking-modal__filtros">
+            <div
+              className="wr-expectativa-ranking-modal__filtro-grupo"
+              role="group"
+              aria-label="Expectativa"
+            >
+              <span className="wr-expectativa-ranking-modal__filtro-label">Expectativa</span>
+              {FILTRO_EXPECTATIVA_OPCOES.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  aria-pressed={filtroExpectativa === opcao.id}
+                  className={cn(
+                    'wr-expectativa-ranking-modal__filtro',
+                    filtroExpectativa === opcao.id &&
+                      'wr-expectativa-ranking-modal__filtro--ativo',
+                  )}
+                  onClick={() => setFiltroExpectativa(opcao.id)}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+            <div
+              className="wr-expectativa-ranking-modal__filtro-grupo"
+              role="group"
+              aria-label="Emendas"
+            >
+              <span className="wr-expectativa-ranking-modal__filtro-label">Emendas</span>
+              {FILTRO_EMENDAS_OPCOES.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  aria-pressed={filtroEmendas === opcao.id}
+                  className={cn(
+                    'wr-expectativa-ranking-modal__filtro',
+                    filtroEmendas === opcao.id &&
+                      'wr-expectativa-ranking-modal__filtro--ativo',
+                  )}
+                  onClick={() => setFiltroEmendas(opcao.id)}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+            <div
+              className="wr-expectativa-ranking-modal__filtro-grupo"
+              role="group"
+              aria-label="Obras"
+            >
+              <span className="wr-expectativa-ranking-modal__filtro-label">Obras</span>
+              {FILTRO_OBRAS_OPCOES.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  aria-pressed={filtroObras === opcao.id}
+                  className={cn(
+                    'wr-expectativa-ranking-modal__filtro',
+                    filtroObras === opcao.id &&
+                      'wr-expectativa-ranking-modal__filtro--ativo',
+                  )}
+                  onClick={() => setFiltroObras(opcao.id)}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="wr-expectativa-ranking-modal__filtro-grupo">
-            {FILTRO_EMENDAS_OPCOES.map((opcao) => (
+
+          <div className="wr-expectativa-ranking-modal__toolbar-end">
+            <span className="wr-expectativa-ranking-modal__count tabular-nums">
+              {loadingEmendas ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                  Emendas…
+                </span>
+              ) : (
+                `${filtradas.length.toLocaleString('pt-BR')} município${filtradas.length === 1 ? '' : 's'}`
+              )}
+            </span>
+            <div className="wr-expectativa-ranking-modal__export" role="group" aria-label="Exportar">
+              <span className="wr-expectativa-ranking-modal__export-label">
+                <IconDownload className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                Exportar
+              </span>
               <button
-                key={opcao.id}
                 type="button"
-                aria-pressed={filtroEmendas === opcao.id}
-                className={cn(
-                  'wr-expectativa-ranking-modal__filtro',
-                  filtroEmendas === opcao.id &&
-                    'wr-expectativa-ranking-modal__filtro--ativo',
-                )}
-                onClick={() => setFiltroEmendas(opcao.id)}
+                className="wr-expectativa-ranking-modal__export-btn"
+                disabled={filtradas.length === 0 || exportBusy !== 'idle'}
+                onClick={() => exportar('csv')}
               >
-                {opcao.label}
+                {exportBusy === 'csv' ? (
+                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                ) : (
+                  <IconFileTypeCsv className="h-3.5 w-3.5" stroke={1.75} />
+                )}
+                CSV
               </button>
-            ))}
-          </div>
-          <div className="wr-expectativa-ranking-modal__filtro-grupo">
-            {FILTRO_OBRAS_OPCOES.map((opcao) => (
               <button
-                key={opcao.id}
                 type="button"
-                aria-pressed={filtroObras === opcao.id}
-                className={cn(
-                  'wr-expectativa-ranking-modal__filtro',
-                  filtroObras === opcao.id &&
-                    'wr-expectativa-ranking-modal__filtro--ativo',
-                )}
-                onClick={() => setFiltroObras(opcao.id)}
+                className="wr-expectativa-ranking-modal__export-btn"
+                disabled={filtradas.length === 0 || exportBusy !== 'idle'}
+                onClick={() => exportar('xlsx')}
               >
-                {opcao.label}
+                {exportBusy === 'xlsx' ? (
+                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                ) : (
+                  <IconFileSpreadsheet className="h-3.5 w-3.5" stroke={1.75} />
+                )}
+                XLS
               </button>
-            ))}
+              <button
+                type="button"
+                className="wr-expectativa-ranking-modal__export-btn"
+                disabled={filtradas.length === 0 || exportBusy !== 'idle'}
+                onClick={() => exportar('pdf')}
+              >
+                {exportBusy === 'pdf' ? (
+                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                ) : (
+                  <IconFileTypePdf className="h-3.5 w-3.5" stroke={1.75} />
+                )}
+                PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -714,7 +866,7 @@ export function WarRoomExpectativaRankingModal({
           <table className="wr-expectativa-ranking-modal__table">
             <thead>
               <tr>
-                <th>
+                <th className="wr-expectativa-ranking-modal__col-cidade">
                   <TerritorioSortableHeaderButton
                     label="Cidade"
                     active={sortCol === 'cidade'}
@@ -733,23 +885,12 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
-                <th className="wr-expectativa-ranking-modal__num">
+                <th className="wr-expectativa-ranking-modal__col-peso">
                   <TerritorioSortableHeaderButton
                     label="Peso"
                     active={sortCol === 'peso'}
                     asc={sortAsc}
                     onClick={() => alternarSort('peso')}
-                    align="right"
-                    compact
-                  />
-                </th>
-                <th className="wr-expectativa-ranking-modal__num">
-                  <TerritorioSortableHeaderButton
-                    label="População"
-                    active={sortCol === 'populacao'}
-                    asc={sortAsc}
-                    onClick={() => alternarSort('populacao')}
-                    align="right"
                     compact
                   />
                 </th>
@@ -763,18 +904,21 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
-                <th>
+                <th className="wr-expectativa-ranking-modal__center">Emendas</th>
+                <th className="wr-expectativa-ranking-modal__center">Obras</th>
+                <th className="wr-expectativa-ranking-modal__center">
                   <TerritorioSortableHeaderButton
-                    label="Última visita"
-                    active={sortCol === 'ultimaVisita'}
+                    label="Pesquisas"
+                    active={sortCol === 'pesquisa'}
                     asc={sortAsc}
-                    onClick={() => alternarSort('ultimaVisita')}
+                    onClick={() => alternarSort('pesquisa')}
+                    align="center"
                     compact
                   />
                 </th>
                 <th className="wr-expectativa-ranking-modal__num">
                   <TerritorioSortableHeaderButton
-                    label="Há quantos dias"
+                    label="Última visita"
                     active={sortCol === 'diasVisita'}
                     asc={sortAsc}
                     onClick={() => alternarSort('diasVisita')}
@@ -782,23 +926,12 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
-                <th>
+                <th className="wr-expectativa-ranking-modal__num">
                   <TerritorioSortableHeaderButton
                     label="Próx. visita"
                     active={sortCol === 'proxVisita'}
                     asc={sortAsc}
                     onClick={() => alternarSort('proxVisita')}
-                    compact
-                  />
-                </th>
-                <th>Emendas</th>
-                <th>Obras</th>
-                <th>
-                  <TerritorioSortableHeaderButton
-                    label="Pesquisas"
-                    active={sortCol === 'pesquisa'}
-                    asc={sortAsc}
-                    onClick={() => alternarSort('pesquisa')}
                     align="right"
                     compact
                   />
@@ -808,25 +941,70 @@ export function WarRoomExpectativaRankingModal({
             <tbody>
               {filtradas.map((row) => (
                 <tr key={row.municipio}>
-                  <td className="wr-expectativa-ranking-modal__cidade">{row.municipio}</td>
+                  <td className="wr-expectativa-ranking-modal__cidade">
+                    <span className="wr-expectativa-ranking-modal__cidade-inner">
+                      <span className="wr-expectativa-ranking-modal__cidade-nome">
+                        {row.municipio}
+                      </span>
+                      {row.temAgendaProxima || row.precisaVisita ? (
+                        <span className="wr-expectativa-ranking-modal__cidade-alertas">
+                          {row.temAgendaProxima ? (
+                            <button
+                              type="button"
+                              className="wr-expectativa-clean__agenda-alerta wr-expectativa-ranking-modal__agenda-alerta"
+                              title="Agenda nos próximos 7 dias"
+                              aria-label={`Ver agenda dos próximos 7 dias em ${row.municipio}`}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setAgendaModalMunicipio(row.municipio)
+                              }}
+                            >
+                              <IconCalendarEvent
+                                className="h-3.5 w-3.5"
+                                stroke={1.75}
+                                aria-hidden
+                              />
+                            </button>
+                          ) : null}
+                          {row.precisaVisita && row.visitaAlertaNivel ? (
+                            <span
+                              className={cn(
+                                'wr-expectativa-clean__visita-alerta wr-expectativa-ranking-modal__visita-alerta',
+                                row.visitaAlertaNivel === 'prioridade' &&
+                                  'wr-expectativa-ranking-modal__visita-alerta--prioridade',
+                              )}
+                              title={tituloVisitaAlerta(row.visitaAlertaNivel)}
+                              aria-label={`Precisa visitar ${row.municipio}: ${tituloVisitaAlerta(row.visitaAlertaNivel)}`}
+                            >
+                              <IconPlane
+                                className="h-3.5 w-3.5"
+                                stroke={1.75}
+                                aria-hidden
+                              />
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </span>
+                  </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {formatWarRoomNumber(row.expectativa)}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatPesoPct(row.peso)}
+                  <td className="wr-expectativa-ranking-modal__peso-cell">
+                    <PesoProgressBar peso={row.peso} maxPeso={maxPesoFiltrado} />
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatInt(row.populacao)}
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      row.populacao != null
+                        ? `População: ${formatInt(row.populacao)}`
+                        : undefined
+                    }
+                  >
                     {formatInt(row.eleitores)}
                   </td>
-                  <td className="tabular-nums">{row.ultimaVisitaLabel}</td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {row.diasDesdeLabel}
-                  </td>
-                  <td>{row.proxVisitaLabel}</td>
-                  <td>
+                  <td className="wr-expectativa-ranking-modal__center">
                     <button
                       type="button"
                       className={cn(
@@ -846,7 +1024,7 @@ export function WarRoomExpectativaRankingModal({
                       {row.temEmendas ? 'Sim' : 'Não'}
                     </button>
                   </td>
-                  <td>
+                  <td className="wr-expectativa-ranking-modal__center">
                     <button
                       type="button"
                       className={cn(
@@ -866,7 +1044,7 @@ export function WarRoomExpectativaRankingModal({
                       {row.temObras ? 'Sim' : 'Não'}
                     </button>
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                  <td className="wr-expectativa-ranking-modal__center">
                     {row.pesquisa ? (
                       <button
                         type="button"
@@ -881,7 +1059,24 @@ export function WarRoomExpectativaRankingModal({
                         aria-label={`Ver ranking da pesquisa em ${row.municipio}`}
                         title={
                           row.pesquisa
-                            ? `${formatPosicaoPesquisa(row.pesquisaPosicao)} · ${row.pesquisa.instituto} · ${row.pesquisa.dataLabel}`
+                            ? [
+                                `${formatPosicaoPesquisa(row.pesquisaPosicao)} · ${formatPctPesquisa(row.pesquisaPctUltima)}`,
+                                row.pesquisaPctAnterior != null
+                                  ? `Anterior: ${formatPctPesquisa(row.pesquisaPctAnterior)}`
+                                  : null,
+                                `${row.pesquisa.instituto} · ${row.pesquisa.dataLabel}`,
+                                row.pesquisaTendencia
+                                  ? `Tendência ${
+                                      row.pesquisaTendencia === 'alta'
+                                        ? 'alta'
+                                        : row.pesquisaTendencia === 'baixa'
+                                          ? 'baixa'
+                                          : 'estável'
+                                    }`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')
                             : undefined
                         }
                         onClick={(e) => {
@@ -890,13 +1085,50 @@ export function WarRoomExpectativaRankingModal({
                           abrirPesquisa(row.pesquisa)
                         }}
                       >
-                        {formatPosicaoPesquisa(row.pesquisaPosicao)}
+                        <span>{formatPosicaoPesquisa(row.pesquisaPosicao)}</span>
+                        {row.pesquisaTendencia === 'alta' ? (
+                          <IconTrendingUp
+                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--alta"
+                            stroke={2}
+                            aria-label="Crescimento"
+                          />
+                        ) : null}
+                        {row.pesquisaTendencia === 'baixa' ? (
+                          <IconTrendingDown
+                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--baixa"
+                            stroke={2}
+                            aria-label="Queda"
+                          />
+                        ) : null}
+                        {row.pesquisaTendencia === 'estavel' ? (
+                          <IconMinus
+                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--estavel"
+                            stroke={2}
+                            aria-label="Estabilidade"
+                          />
+                        ) : null}
+                        <span className="wr-expectativa-ranking-modal__pesquisa-pct">
+                          {formatPctPesquisa(row.pesquisaPctUltima)}
+                        </span>
                       </button>
                     ) : (
                       <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
                         {loadingPesquisas ? '…' : '—'}
                       </span>
                     )}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      row.ultimaVisitaLabel !== '—'
+                        ? row.ultimaVisitaLabel
+                        : undefined
+                    }
+                  >
+                    {row.diasDesdeLabel}
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {row.proxVisitaLabel}
                   </td>
                 </tr>
               ))}
@@ -910,30 +1142,33 @@ export function WarRoomExpectativaRankingModal({
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {formatWarRoomNumber(totais.expectativa)}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                  <td className="wr-expectativa-ranking-modal__col-peso tabular-nums">
                     {formatPesoPct(totais.peso)}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatInt(totais.populacao)}
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      totais.populacao
+                        ? `População: ${formatInt(totais.populacao)}`
+                        : undefined
+                    }
+                  >
                     {formatInt(totais.eleitores)}
                   </td>
-                  <td className="tabular-nums">
-                    {totais.comUltimaVisita.toLocaleString('pt-BR')} c/
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">—</td>
-                  <td className="tabular-nums">
-                    {totais.comProxVisita.toLocaleString('pt-BR')} c/
-                  </td>
-                  <td className="tabular-nums">
+                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
                     {totais.comEmendas.toLocaleString('pt-BR')} sim
                   </td>
-                  <td className="tabular-nums">
+                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
                     {totais.comObras.toLocaleString('pt-BR')} sim
                   </td>
-                  <td className="tabular-nums">
+                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
                     {totais.comPesquisa.toLocaleString('pt-BR')} c/
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {totais.comUltimaVisita.toLocaleString('pt-BR')} c/
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {totais.comProxVisita.toLocaleString('pt-BR')} c/
                   </td>
                 </tr>
               </tfoot>
@@ -944,8 +1179,10 @@ export function WarRoomExpectativaRankingModal({
           ) : null}
         </div>
       </div>
-      </div>
+  )
 
+  const nested = (
+    <>
       {detalhe?.tipo === 'emendas' ? (
         <WarRoomMunicipioEmendasModal
           municipio={detalhe.municipio}
@@ -970,6 +1207,41 @@ export function WarRoomExpectativaRankingModal({
           onClose={() => setPesquisaDetalhe(null)}
         />
       ) : null}
+
+      {agendaModalMunicipio ? (
+        <WarRoomAgendaProximosModal
+          municipio={agendaModalMunicipio}
+          itens={agendaModalItens}
+          hojeKey={todayKeyInTz()}
+          municipiosIpt={municipios}
+          agendaPorMunicipio={agendaPorMunicipio}
+          onClose={() => setAgendaModalMunicipio(null)}
+        />
+      ) : null}
+    </>
+  )
+
+  if (isPage) {
+    return (
+      <>
+        {panel}
+        {nested}
+      </>
+    )
+  }
+
+  return createPortal(
+    <>
+      <div className="wr-visita-modal" role="presentation">
+        <button
+          type="button"
+          className="wr-visita-modal__backdrop"
+          aria-label="Fechar"
+          onClick={onClose}
+        />
+        {panel}
+      </div>
+      {nested}
     </>,
     document.body,
   )

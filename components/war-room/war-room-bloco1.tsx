@@ -30,10 +30,9 @@ import {
   calcExpectativaDesempenho,
 } from '@/lib/war-room/expectativa-desempenho'
 import {
-  precisaVisitaAltaExpectativa,
   formatUltimaVisitaCurta,
-  WR_VISITA_ALERTA_DIAS,
-  WR_VISITA_ALERTA_EXPECTATIVA_MIN,
+  nivelVisitaAlerta,
+  tituloVisitaAlerta,
 } from '@/lib/war-room/expectativa-visita-alerta'
 import { WarRoomUltimaVisitaModal } from '@/components/war-room/war-room-ultima-visita-modal'
 import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
@@ -100,8 +99,11 @@ function ExpectativaItem({
   onOpenVisita: () => void
   onOpenAgenda: () => void
 }) {
-  const precisaVisita = precisaVisitaAltaExpectativa(municipio)
-  const visitaAlertaTitle = `Sem visita há ${WR_VISITA_ALERTA_DIAS}+ dias · expectativa ≥ ${WR_VISITA_ALERTA_EXPECTATIVA_MIN.toLocaleString('pt-BR')}`
+  const visitaNivel = nivelVisitaAlerta(municipio)
+  const precisaVisita = visitaNivel != null
+  const visitaAlertaTitle = visitaNivel
+    ? tituloVisitaAlerta(visitaNivel)
+    : ''
   const ultimaVisitaLabel = formatUltimaVisitaCurta(municipio.ultimaVisita)
 
   return (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   IconActivity,
   IconRefresh,
+  IconRobot,
   IconSearch,
   IconBell,
 } from '@tabler/icons-react'
@@ -55,6 +56,7 @@ import { WarRoomDisparosCard } from '@/components/war-room/war-room-disparos-car
 import { WarRoomRedesCard } from '@/components/war-room/war-room-redes-card'
 import { WarRoomInstagramRadarCard } from '@/components/war-room/war-room-instagram-radar-card'
 import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas-cidade-card'
+import { WarRoomCopilotoView } from '@/components/war-room/war-room-copiloto-view'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -133,7 +135,8 @@ function WarRoomPanelInner() {
   const [agendaError, setAgendaError] = useState<string | null>(null)
 
   const { register, refreshAll, refreshing, lastRefreshAt } = useWarRoomRefresh()
-  const { isDesempenho, toggleDesempenho } = useWarRoomViewMode()
+  const { isDesempenho, isCopiloto, toggleDesempenho, toggleCopiloto } =
+    useWarRoomViewMode()
   const agendaChange = useWarRoomCardChange('agenda')
 
   const loadAgenda = useCallback(async (opts?: { silent?: boolean }) => {
@@ -207,8 +210,17 @@ function WarRoomPanelInner() {
     document.body.setAttribute('data-war-room-clean', '')
     return () => {
       document.body.removeAttribute('data-war-room-clean')
+      document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
+
+  useEffect(() => {
+    if (isCopiloto) {
+      document.body.setAttribute('data-wr-copiloto', '')
+    } else {
+      document.body.removeAttribute('data-wr-copiloto')
+    }
+  }, [isCopiloto])
 
   useEffect(() => {
     void loadAgenda({ silent: false })
@@ -276,9 +288,31 @@ function WarRoomPanelInner() {
           </label>
           <button
             type="button"
+            className={cn(
+              'wr-topbar-clean__copiloto',
+              isCopiloto && 'wr-topbar-clean__copiloto--active',
+            )}
+            aria-pressed={isCopiloto}
+            onClick={toggleCopiloto}
+          >
+            <IconRobot className="h-4 w-4 shrink-0" stroke={1.75} aria-hidden />
+            {isCopiloto ? 'Sair do Copiloto' : 'Acionar Copiloto'}
+          </button>
+          <button
+            type="button"
             className="wr-topbar-clean__bell"
             aria-label={`${notificationCount} notificações`}
             onClick={() => {
+              if (isCopiloto) {
+                toggleCopiloto()
+                window.setTimeout(() => {
+                  document.getElementById('wr-decisoes')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  })
+                }, 50)
+                return
+              }
               document.getElementById('wr-decisoes')?.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start',
@@ -296,7 +330,13 @@ function WarRoomPanelInner() {
         </>
       ),
     }
-  }, [topbarVisible, notificationCount, refreshButton])
+  }, [
+    topbarVisible,
+    notificationCount,
+    refreshButton,
+    isCopiloto,
+    toggleCopiloto,
+  ])
 
   useSetDashboardTopbarExtras(topbarExtras)
 
@@ -320,55 +360,61 @@ function WarRoomPanelInner() {
       </DashboardPageChrome>
 
       <DashboardPageContent className={cn(typographyContentRootClass, 'pt-2 md:pt-3')}>
-        <div className="wr-page-canvas">
-          <WarRoomOpsBar
-            alertCount={alertCount}
-            lastRefreshAt={lastRefreshAt}
-            desempenhoActive={isDesempenho}
-            onToggleDesempenho={toggleDesempenho}
-          />
-
-          <div className="wr-layout">
-            <aside className="wr-col wr-col--lead" aria-label="Agenda e expectativa">
-              <WarRoomAgendaCard
-                items={agendaItems}
-                nowMinutes={nowMinutes}
-                loading={agendaLoading}
-                error={agendaError}
-                badge={<WarRoomChangeBadge change={agendaChange} />}
+        <div className={cn('wr-page-canvas', isCopiloto && 'wr-page-canvas--copiloto')}>
+          {isCopiloto ? (
+            <WarRoomCopilotoView />
+          ) : (
+            <>
+              <WarRoomOpsBar
+                alertCount={alertCount}
+                lastRefreshAt={lastRefreshAt}
+                desempenhoActive={isDesempenho}
+                onToggleDesempenho={toggleDesempenho}
               />
-              <WarRoomExpectativaCard />
-              <WarRoomVisitasCidadeCard />
-            </aside>
 
-            <div className={cn('wr-col wr-col--board', boardClass)} aria-label="Painel operacional">
-              <div className="wr-board-stack wr-cell--pesquisas-noticias">
-                <WarRoomPesquisasConsolidadasCard />
-                <WarRoomNoticiasCard />
+              <div className="wr-layout">
+                <aside className="wr-col wr-col--lead" aria-label="Agenda e expectativa">
+                  <WarRoomAgendaCard
+                    items={agendaItems}
+                    nowMinutes={nowMinutes}
+                    loading={agendaLoading}
+                    error={agendaError}
+                    badge={<WarRoomChangeBadge change={agendaChange} />}
+                  />
+                  <WarRoomExpectativaCard />
+                  <WarRoomVisitasCidadeCard />
+                </aside>
+
+                <div className={cn('wr-col wr-col--board', boardClass)} aria-label="Painel operacional">
+                  <div className="wr-board-stack wr-cell--pesquisas-noticias">
+                    <WarRoomPesquisasConsolidadasCard />
+                    <WarRoomNoticiasCard />
+                  </div>
+
+                  <div className="wr-board-stack wr-cell--redes">
+                    <WarRoomRedesCard />
+                    <WarRoomInstagramRadarCard />
+                  </div>
+
+                  <div className="wr-board-stack wr-cell--crm-evolucao">
+                    <WarRoomDisparosCard />
+                    <WarRoomCrmCard />
+                    {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
+                  </div>
+
+                  <div className="wr-board-stack wr-cell--prioridades" aria-label="Fila de decisões">
+                    <WarRoomDecisoesCard onTotalChange={setDecisoesTotal} />
+                    {/* Oculto por hora: <WarRoomFeedCard /> (Linha viva) */}
+                  </div>
+                </div>
               </div>
 
-              <div className="wr-board-stack wr-cell--redes">
-                <WarRoomRedesCard />
-                <WarRoomInstagramRadarCard />
-              </div>
-
-              <div className="wr-board-stack wr-cell--crm-evolucao">
-                <WarRoomDisparosCard />
-                <WarRoomCrmCard />
-                {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
-              </div>
-
-              <div className="wr-board-stack wr-cell--prioridades" aria-label="Fila de decisões">
-                <WarRoomDecisoesCard onTotalChange={setDecisoesTotal} />
-                {/* Oculto por hora: <WarRoomFeedCard /> (Linha viva) */}
-              </div>
-            </div>
-          </div>
-
-          <p className="mb-4 flex items-center gap-1.5 text-[11px] text-[var(--wr-muted)]">
-            <IconActivity className="h-3.5 w-3.5" stroke={1.5} />
-            War Room · Cockpit 2026
-          </p>
+              <p className="mb-4 flex items-center gap-1.5 text-[11px] text-[var(--wr-muted)]">
+                <IconActivity className="h-3.5 w-3.5" stroke={1.5} />
+                War Room · Cockpit 2026
+              </p>
+            </>
+          )}
         </div>
       </DashboardPageContent>
     </DashboardPageShell>
