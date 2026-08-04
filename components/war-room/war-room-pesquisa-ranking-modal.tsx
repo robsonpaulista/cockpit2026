@@ -97,30 +97,37 @@ export function WarRoomPesquisaRankingModal({ pesquisa, onClose }: Props) {
         {pesquisa.ranking.length === 0 ? (
           <p className="wr-visita-modal__state">Sem candidatos nesta pesquisa.</p>
         ) : (
-          <ol className="wr-pesquisa-ranking-modal__list" aria-label="Ranking da pesquisa">
-            {pesquisa.ranking.map((item, index) => {
-              const isFoco = focoNorm !== '' && candidatoNormalizado(item.nome) === focoNorm
-              return (
-                <li
-                  key={`${item.nome}-${index}`}
-                  className={cn(
-                    'wr-pesquisa-ranking-modal__row',
-                    isFoco && 'wr-pesquisa-ranking-modal__row--foco',
-                  )}
-                >
-                  <span className="wr-pesquisa-ranking-modal__pos tabular-nums">
-                    {index + 1}º
-                  </span>
-                  <span className="wr-pesquisa-ranking-modal__nome truncate" title={item.nome}>
-                    {item.nome}
-                  </span>
-                  <span className="wr-pesquisa-ranking-modal__pct tabular-nums">
-                    {formatPct1(item.pct)}
-                  </span>
-                </li>
-              )
-            })}
-          </ol>
+          <>
+            {pesquisa.jadyelNaoPontuou ? (
+              <p className="wr-pesquisa-ranking-modal__note" role="status">
+                Candidato foco não pontuou nesta pesquisa (NP · 0%).
+              </p>
+            ) : null}
+            <ol className="wr-pesquisa-ranking-modal__list" aria-label="Ranking da pesquisa">
+              {pesquisa.ranking.map((item, index) => {
+                const isFoco = focoNorm !== '' && candidatoNormalizado(item.nome) === focoNorm
+                return (
+                  <li
+                    key={`${item.nome}-${index}`}
+                    className={cn(
+                      'wr-pesquisa-ranking-modal__row',
+                      isFoco && 'wr-pesquisa-ranking-modal__row--foco',
+                    )}
+                  >
+                    <span className="wr-pesquisa-ranking-modal__pos tabular-nums">
+                      {index + 1}º
+                    </span>
+                    <span className="wr-pesquisa-ranking-modal__nome truncate" title={item.nome}>
+                      {item.nome}
+                    </span>
+                    <span className="wr-pesquisa-ranking-modal__pct tabular-nums">
+                      {formatPct1(item.pct)}
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
+          </>
         )}
       </div>
     </div>,

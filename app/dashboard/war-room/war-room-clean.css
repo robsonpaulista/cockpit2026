@@ -4155,6 +4155,18 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   max-width: 420px;
 }
 
+.wr-pesquisa-ranking-modal__note {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wr-gold) 18%, var(--wr-white));
+  color: color-mix(in srgb, var(--wr-slate) 78%, #8a5a00);
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-soft-size);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .wr-pesquisa-ranking-modal__list {
   display: flex;
   flex-direction: column;
@@ -7543,6 +7555,24 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   white-space: nowrap;
 }
 
+/* Botão de sort ocupa a largura da coluna → alinhamento = cabeçalho e valor */
+.wr-expectativa-ranking-modal__table thead th > button {
+  display: flex !important;
+  width: 100%;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 .wr-expectativa-ranking-modal__table tbody td {
   padding: 8px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--wr-slate) 7%, var(--wr-mist));
@@ -7557,26 +7587,39 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
 }
 
-.wr-expectativa-ranking-modal__num {
-  text-align: right;
+.wr-expectativa-ranking-modal__table :is(th, td).wr-expectativa-ranking-modal__num {
+  text-align: right !important;
   font-variant-numeric: tabular-nums;
 }
 
-.wr-expectativa-ranking-modal__center {
-  text-align: center;
+.wr-expectativa-ranking-modal__table thead th.wr-expectativa-ranking-modal__num > button {
+  justify-content: flex-end;
 }
 
-.wr-expectativa-ranking-modal__col-peso {
-  text-align: left;
+.wr-expectativa-ranking-modal__table :is(th, td).wr-expectativa-ranking-modal__center {
+  text-align: center !important;
+}
+
+.wr-expectativa-ranking-modal__table thead th.wr-expectativa-ranking-modal__center > button {
+  justify-content: center;
+}
+
+.wr-expectativa-ranking-modal__table :is(th, td).wr-expectativa-ranking-modal__col-peso {
+  text-align: left !important;
   min-width: 9.5rem;
   width: 10.5rem;
+}
+
+.wr-expectativa-ranking-modal__table thead th.wr-expectativa-ranking-modal__col-peso > button,
+.wr-expectativa-ranking-modal__table thead th.wr-expectativa-ranking-modal__col-cidade > button {
+  justify-content: flex-start;
 }
 
 .wr-expectativa-ranking-modal__cidade {
   font-size: var(--wr-type-row-size) !important;
   font-weight: var(--wr-type-row-weight) !important;
   color: var(--wr-type-row-color) !important;
-  text-align: left;
+  text-align: left !important;
   min-width: 12rem;
   max-width: 16rem;
   width: 14rem;

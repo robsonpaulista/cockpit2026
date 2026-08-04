@@ -35,6 +35,29 @@ export function buildDecisoesPesquisasForaTop5(
   const out: WarRoomDecisao[] = []
 
   for (const [cidadeKey, row] of mapUltimaPesquisaPorMunicipio(rows)) {
+    if (row.jadyelNaoPontuou) {
+      const pctTxt =
+        row.jadyelPct != null && Number.isFinite(row.jadyelPct)
+          ? `${Math.round(row.jadyelPct)}%`
+          : '0%'
+      out.push({
+        id: `pesquisa-fora-top${topN}:${cidadeKey}`,
+        prioridade: 'alta',
+        problema: `Não pontuou · ${row.cidade}`,
+        categoria: 'Pesquisas',
+        hora: row.dataLabel,
+        icone: 'alerta',
+        destaque: true,
+        contexto: cidadeKey,
+        prazo: row.dataLabel,
+        acao: `${candidatoLabel} NP · ${pctTxt} · ${row.instituto || 'Instituto'} · ${row.cenario}`,
+        href: '/dashboard/pesquisa',
+        status: 'pendente',
+        createdAt: `${row.data.includes('T') ? row.data : `${row.data}T12:00:00`}`,
+      })
+      continue
+    }
+
     const posicao = row.jadyelPosicao
     if (posicao == null || !Number.isFinite(posicao) || posicao <= topN) continue
 

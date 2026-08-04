@@ -5,7 +5,6 @@ import {
   IconActivity,
   IconRefresh,
   IconRobot,
-  IconSearch,
   IconBell,
 } from '@tabler/icons-react'
 import {
@@ -281,11 +280,6 @@ function WarRoomPanelInner() {
       description: <WarRoomTopbarCountdown />,
       actions: (
         <>
-          <label className="wr-topbar-clean__search">
-            <span className="sr-only">Buscar</span>
-            <input type="search" placeholder="Buscar..." autoComplete="off" />
-            <IconSearch className="h-4 w-4 shrink-0 opacity-55" stroke={1.75} aria-hidden />
-          </label>
           <button
             type="button"
             className={cn(

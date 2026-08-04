@@ -53,7 +53,11 @@ function formatPct0(value: number): string {
   return `${Math.round(value)}%`
 }
 
-function formatPosicao(value: number | null | undefined): string {
+function formatPosicao(
+  value: number | null | undefined,
+  naoPontuou?: boolean,
+): string {
+  if (naoPontuou) return 'NP'
   if (value == null || !Number.isFinite(value) || value < 1) return '—'
   return `${Math.round(value)}º`
 }
@@ -263,13 +267,14 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                       `wr-pesquisas-clean__kpi--${tone}`,
                       changedSet.has(row.id) && 'wr-row--changed',
                     )}
-                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel}`}
+                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao, row.jadyelNaoPontuou)} · ${row.instituto} · ${row.dataLabel}`}
                   >
                     <span className="wr-pesquisas-clean__kpi-value tabular-nums">
                       {row.jadyelPct != null ? formatPct0(row.jadyelPct) : '—'}
                     </span>
                     <span className="wr-pesquisas-clean__kpi-label">
-                      {formatPosicao(row.jadyelPosicao)} · {shortCityLabel(row.cidade)}
+                      {formatPosicao(row.jadyelPosicao, row.jadyelNaoPontuou)} ·{' '}
+                      {shortCityLabel(row.cidade)}
                     </span>
                   </div>
                 )
@@ -343,7 +348,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                       'wr-pesquisas-clean__row wr-pesquisas-clean__row--clickable',
                       changedSet.has(row.id) && 'wr-row--changed',
                     )}
-                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel} · ${row.cenario} · votos válidos · duplo clique para ver ranking`}
+                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao, row.jadyelNaoPontuou)} · ${row.instituto} · ${row.dataLabel} · ${row.cenario} · votos válidos · duplo clique para ver ranking`}
                     onDoubleClick={() => setRankingModal(row)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') setRankingModal(row)
@@ -358,7 +363,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                       {row.jadyelPct != null ? formatPct0(row.jadyelPct) : '—'}
                     </span>
                     <span className="wr-pesquisas-clean__pos tabular-nums">
-                      {formatPosicao(row.jadyelPosicao)}
+                      {formatPosicao(row.jadyelPosicao, row.jadyelNaoPontuou)}
                     </span>
                   </li>
                 ))}

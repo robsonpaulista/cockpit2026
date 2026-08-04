@@ -100,6 +100,8 @@ type RankingRow = {
   temObras: boolean
   /** Posição do candidato foco na última pesquisa consolidada. */
   pesquisaPosicao: number | null
+  /** Candidato foco ausente na onda (badge NP · 0%). */
+  pesquisaNaoPontuou: boolean
   pesquisaPctUltima: number | null
   pesquisaPctAnterior: number | null
   pesquisaTendencia: WarRoomPesquisaTendencia
@@ -192,7 +194,11 @@ function formatInt(value: number | null): string {
   return Math.round(value).toLocaleString('pt-BR')
 }
 
-function formatPosicaoPesquisa(value: number | null | undefined): string {
+function formatPosicaoPesquisa(
+  value: number | null | undefined,
+  naoPontuou?: boolean,
+): string {
+  if (naoPontuou) return 'NP'
   if (value == null || !Number.isFinite(value) || value < 1) return '—'
   return `${Math.round(value)}º`
 }
@@ -480,6 +486,7 @@ export function WarRoomExpectativaRankingModal({
         temObras:
           m.sinais.obras === 'bem' || (m.detalhes.obrasQuantidade ?? 0) > 0,
         pesquisaPosicao: pesquisa?.jadyelPosicao ?? null,
+        pesquisaNaoPontuou: Boolean(pesquisa?.jadyelNaoPontuou),
         pesquisaPctUltima: pctUltima,
         pesquisaPctAnterior: pctAnterior,
         pesquisaTendencia: tendenciaPctPesquisa(pctUltima, pctAnterior),
@@ -547,11 +554,12 @@ export function WarRoomExpectativaRankingModal({
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
       if (sortCol === 'pesquisa') {
-        const by = compareTerritorioNumber(
-          a.pesquisaPosicao ?? 999,
-          b.pesquisaPosicao ?? 999,
-          sortAsc,
-        )
+        const posSort = (row: RankingRow) => {
+          if (!row.pesquisa) return 9999
+          if (row.pesquisaNaoPontuou) return 998
+          return row.pesquisaPosicao ?? 999
+        }
+        const by = compareTerritorioNumber(posSort(a), posSort(b), sortAsc)
         if (by !== 0) return by
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
@@ -606,7 +614,7 @@ export function WarRoomExpectativaRankingModal({
       if (row.proxVisitaSort) comProxVisita += 1
       if (row.temEmendas) comEmendas += 1
       if (row.temObras) comObras += 1
-      if (row.pesquisaPosicao != null) comPesquisa += 1
+      if (row.pesquisa != null) comPesquisa += 1
     }
     return {
       expectativa,
@@ -637,7 +645,7 @@ export function WarRoomExpectativaRankingModal({
         temEmendas: row.temEmendas,
         temObras: row.temObras,
         pesquisaPosicaoLabel: [
-          formatPosicaoPesquisa(row.pesquisaPosicao),
+          formatPosicaoPesquisa(row.pesquisaPosicao, row.pesquisaNaoPontuou),
           formatPctPesquisa(row.pesquisaPctUltima),
         ]
           .filter((part) => part !== '—')
@@ -1052,19 +1060,22 @@ export function WarRoomExpectativaRankingModal({
                           'wr-expectativa-ranking-modal__flag',
                           'wr-expectativa-ranking-modal__flag--btn',
                           'wr-expectativa-ranking-modal__flag--pesquisa',
-                          row.pesquisaPosicao != null &&
-                            row.pesquisaPosicao > 5 &&
+                          (row.pesquisaNaoPontuou ||
+                            (row.pesquisaPosicao != null &&
+                              row.pesquisaPosicao > 5)) &&
                             'wr-expectativa-ranking-modal__flag--alerta',
                         )}
                         aria-label={`Ver ranking da pesquisa em ${row.municipio}`}
                         title={
                           row.pesquisa
                             ? [
-                                `${formatPosicaoPesquisa(row.pesquisaPosicao)} · ${formatPctPesquisa(row.pesquisaPctUltima)}`,
+                                row.pesquisaNaoPontuou
+                                  ? 'NP · não pontuou · 0%'
+                                  : `${formatPosicaoPesquisa(row.pesquisaPosicao)} · ${formatPctPesquisa(row.pesquisaPctUltima)}`,
                                 row.pesquisaPctAnterior != null
                                   ? `Anterior: ${formatPctPesquisa(row.pesquisaPctAnterior)}`
                                   : null,
-                                `${row.pesquisa.instituto} · ${row.pesquisa.dataLabel}`,
+                                `${row.pesquisa.instituto} · ${row.pesquisa.dataLabel} · ${row.pesquisa.cenario}`,
                                 row.pesquisaTendencia
                                   ? `Tendência ${
                                       row.pesquisaTendencia === 'alta'
@@ -1085,7 +1096,12 @@ export function WarRoomExpectativaRankingModal({
                           abrirPesquisa(row.pesquisa)
                         }}
                       >
-                        <span>{formatPosicaoPesquisa(row.pesquisaPosicao)}</span>
+                        <span>
+                          {formatPosicaoPesquisa(
+                            row.pesquisaPosicao,
+                            row.pesquisaNaoPontuou,
+                          )}
+                        </span>
                         {row.pesquisaTendencia === 'alta' ? (
                           <IconTrendingUp
                             className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--alta"

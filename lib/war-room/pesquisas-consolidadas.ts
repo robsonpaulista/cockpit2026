@@ -21,6 +21,11 @@ export type WarRoomPesquisaConsolidadaReal = {
   jadyelPct: number | null
   /** Posição do candidato foco no ranking da onda (1 = líder). */
   jadyelPosicao: number | null
+  /**
+   * Candidato foco ausente na onda (ex.: espontânea sem menção).
+   * UI: badge "NP" · 0% — não confundir com município sem pesquisa.
+   */
+  jadyelNaoPontuou: boolean
   liderPct: number
   liderNome: string
   diferencaPp: number | null
@@ -67,9 +72,19 @@ type OndaBucket = {
   linhas: Array<{ nome: string; intencao: number }>
 }
 
+type OndaValida = OndaBucket & {
+  ondaKey: string
+  ranking: WarRoomPesquisaRankingItem[]
+  liderNome: string
+  liderPct: number
+}
+
 /**
- * Ondas consolidadas (mesmo raciocínio do IPT): preferir estimulada;
- * redistribui sobre válidos; Jadyel vs líder da onda; ordena por data desc.
+ * Ondas consolidadas da War Room (alinhado ao IPT):
+ * - só conta onda com ≥1 candidato ativo após redistribuir sobre válidos;
+ * - prefere estimulada na mesma chave cidade+data+instituto;
+ * - espontânea só entra em município sem nenhuma estimulada válida;
+ * - candidato foco ausente na onda = não pontuou (0% · NP).
  */
 export function buildWarRoomPesquisasConsolidadas(
   polls: PollIptRow[],
@@ -114,7 +129,50 @@ export function buildWarRoomPesquisasConsolidadas(
       })
       bruto.set(ondaKey, bucket)
     }
-    return bruto
+
+    const validas: OndaValida[] = []
+    for (const [ondaKey, bucket] of bruto) {
+      const redis = redistribuirSobreVotosValidos(bucket.linhas)
+      if (redis.ativos.length === 0) continue
+
+      const porCandidato = new Map<string, { nome: string; pct: number }>()
+      for (const a of redis.ativos) {
+        const nk = candidatoNormalizado(a.nome)
+        const prev = porCandidato.get(nk)
+        if (prev) {
+          porCandidato.set(nk, {
+            nome: prev.nome,
+            pct: round1((prev.pct + a.intencao) / 2),
+          })
+        } else {
+          porCandidato.set(nk, { nome: a.nome, pct: round1(a.intencao) })
+        }
+      }
+
+      let liderNome = ''
+      let liderPct = -1
+      for (const row of porCandidato.values()) {
+        if (row.pct > liderPct) {
+          liderPct = row.pct
+          liderNome = row.nome
+        }
+      }
+      if (liderPct < 0) continue
+
+      const ranking = [...porCandidato.values()].sort((a, b) => {
+        if (b.pct !== a.pct) return b.pct - a.pct
+        return a.nome.localeCompare(b.nome, 'pt-BR')
+      })
+
+      validas.push({
+        ...bucket,
+        ondaKey,
+        ranking,
+        liderNome,
+        liderPct: round1(liderPct),
+      })
+    }
+    return validas
   }
 
   const estimuladas = buildForTipo('estimulada')
@@ -124,69 +182,56 @@ export function buildWarRoomPesquisasConsolidadas(
   const chaveSemTipo = (b: OndaBucket) =>
     `${normalizeIptMunicipio(b.cidade)}|${b.data}|${candidatoNormalizado(b.instituto)}`
 
-  const escolhidas = new Map<string, OndaBucket>()
-  for (const [, bucket] of estimuladas) {
+  const escolhidas = new Map<string, OndaValida>()
+  for (const bucket of estimuladas) {
     escolhidas.set(chaveSemTipo(bucket), bucket)
   }
-  for (const [, bucket] of espontaneas) {
+  for (const bucket of espontaneas) {
     const key = chaveSemTipo(bucket)
     if (!escolhidas.has(key)) escolhidas.set(key, bucket)
   }
 
+  /** Municípios com ≥1 estimulada válida: espontânea só preenche onde não há. */
+  const cidadesComEstimulada = new Set<string>()
+  for (const bucket of escolhidas.values()) {
+    if (bucket.tipo !== 'estimulada') continue
+    const cidadeKey = normalizeIptMunicipio(bucket.cidade)
+    if (cidadeKey) cidadesComEstimulada.add(cidadeKey)
+  }
+  for (const [key, bucket] of [...escolhidas.entries()]) {
+    if (bucket.tipo !== 'espontanea') continue
+    const cidadeKey = normalizeIptMunicipio(bucket.cidade)
+    if (cidadeKey && cidadesComEstimulada.has(cidadeKey)) {
+      escolhidas.delete(key)
+    }
+  }
+
   const rows: WarRoomPesquisaConsolidadaReal[] = []
-  for (const [ondaKey, bucket] of escolhidas) {
-    const redis = redistribuirSobreVotosValidos(bucket.linhas)
-    if (redis.ativos.length === 0) continue
-
-    const porCandidato = new Map<string, { nome: string; pct: number }>()
-    for (const a of redis.ativos) {
-      const nk = candidatoNormalizado(a.nome)
-      const prev = porCandidato.get(nk)
-      if (prev) {
-        porCandidato.set(nk, {
-          nome: prev.nome,
-          pct: round1((prev.pct + a.intencao) / 2),
-        })
-      } else {
-        porCandidato.set(nk, { nome: a.nome, pct: round1(a.intencao) })
-      }
-    }
-
-    let liderNome = ''
-    let liderPct = -1
-    for (const row of porCandidato.values()) {
-      if (row.pct > liderPct) {
-        liderPct = row.pct
-        liderNome = row.nome
-      }
-    }
-    if (liderPct < 0) continue
-
-    const jadyel = porCandidato.get(candidatoNorm)?.pct ?? null
-    const diferencaPp = jadyel != null ? round1(jadyel - liderPct) : null
-
-    const ranking = [...porCandidato.values()].sort((a, b) => {
-      if (b.pct !== a.pct) return b.pct - a.pct
-      return a.nome.localeCompare(b.nome, 'pt-BR')
-    })
-    const jadyelPosicaoIdx = ranking.findIndex(
+  for (const bucket of escolhidas.values()) {
+    const jadyelPosicaoIdx = bucket.ranking.findIndex(
       (row) => candidatoNormalizado(row.nome) === candidatoNorm,
     )
-    const jadyelPosicao = jadyelPosicaoIdx >= 0 ? jadyelPosicaoIdx + 1 : null
+    const jadyelNaoPontuou = jadyelPosicaoIdx < 0
+    const jadyelPct = jadyelNaoPontuou
+      ? 0
+      : (bucket.ranking[jadyelPosicaoIdx]?.pct ?? 0)
+    const jadyelPosicao = jadyelNaoPontuou ? null : jadyelPosicaoIdx + 1
+    const diferencaPp = round1(jadyelPct - bucket.liderPct)
 
     rows.push({
-      id: ondaKey,
+      id: bucket.ondaKey,
       cidade: bucket.cidade,
       instituto: bucket.instituto,
       data: bucket.data,
       dataLabel: formatDataLabel(bucket.data),
       cenario: bucket.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea',
-      jadyelPct: jadyel,
+      jadyelPct,
       jadyelPosicao,
-      liderPct: round1(liderPct),
-      liderNome,
+      jadyelNaoPontuou,
+      liderPct: bucket.liderPct,
+      liderNome: bucket.liderNome,
       diferencaPp,
-      ranking,
+      ranking: bucket.ranking,
     })
   }
 
