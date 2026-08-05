@@ -1,531 +1,531 @@
 [
   {
     "municipio": "Acauã",
-    "eleitorado": 6317
+    "eleitorado": 6401
   },
   {
     "municipio": "Agricolândia",
-    "eleitorado": 5608
+    "eleitorado": 5560
   },
   {
     "municipio": "Água Branca",
-    "eleitorado": 16010
+    "eleitorado": 15904
   },
   {
     "municipio": "Alagoinha do Piauí",
-    "eleitorado": 6261
-  },
-  {
-    "municipio": "Alegrete do Piauí",
-    "eleitorado": 4655
-  },
-  {
-    "municipio": "Alto Longá",
-    "eleitorado": 12859
-  },
-  {
-    "municipio": "Altos",
-    "eleitorado": 35689
-  },
-  {
-    "municipio": "Alvorada do Gurguéia",
-    "eleitorado": 4796
-  },
-  {
-    "municipio": "Amarante",
-    "eleitorado": 16248
-  },
-  {
-    "municipio": "Angical do Piauí",
-    "eleitorado": 6791
-  },
-  {
-    "municipio": "Anísio de Abreu",
-    "eleitorado": 6950
-  },
-  {
-    "municipio": "Antônio Almeida",
-    "eleitorado": 3161
-  },
-  {
-    "municipio": "Aroazes",
-    "eleitorado": 5709
-  },
-  {
-    "municipio": "Aroeiras do Itaim",
-    "eleitorado": 4402
-  },
-  {
-    "municipio": "Arraial",
-    "eleitorado": 4364
-  },
-  {
-    "municipio": "Assunção do Piauí",
-    "eleitorado": 7909
-  },
-  {
-    "municipio": "Avelino Lopes",
-    "eleitorado": 9711
-  },
-  {
-    "municipio": "Baixa Grande do Ribeiro",
-    "eleitorado": 11380
-  },
-  {
-    "municipio": "Barra D'alcântara",
-    "eleitorado": 3644
-  },
-  {
-    "municipio": "Barras",
-    "eleitorado": 38359
-  },
-  {
-    "municipio": "Barreiras do Piauí",
-    "eleitorado": 3854
-  },
-  {
-    "municipio": "Barro Duro",
-    "eleitorado": 6457
-  },
-  {
-    "municipio": "Batalha",
-    "eleitorado": 22862
-  },
-  {
-    "municipio": "Bela Vista do Piauí",
-    "eleitorado": 3416
-  },
-  {
-    "municipio": "Belém do Piauí",
-    "eleitorado": 3100
-  },
-  {
-    "municipio": "Beneditinos",
-    "eleitorado": 9643
-  },
-  {
-    "municipio": "Bertolínia",
-    "eleitorado": 5086
-  },
-  {
-    "municipio": "Betânia do Piauí",
-    "eleitorado": 5672
-  },
-  {
-    "municipio": "Boa Hora",
-    "eleitorado": 6926
-  },
-  {
-    "municipio": "Bocaina",
-    "eleitorado": 5918
-  },
-  {
-    "municipio": "Bom Jesus",
-    "eleitorado": 19392
-  },
-  {
-    "municipio": "Bom Princípio do Piauí",
-    "eleitorado": 6832
-  },
-  {
-    "municipio": "Bonfim do Piauí",
-    "eleitorado": 5072
-  },
-  {
-    "municipio": "Boqueirão do Piauí",
-    "eleitorado": 5981
-  },
-  {
-    "municipio": "Brasileira",
-    "eleitorado": 8942
-  },
-  {
-    "municipio": "Brejo do Piauí",
-    "eleitorado": 3856
-  },
-  {
-    "municipio": "Buriti dos Lopes",
-    "eleitorado": 17516
-  },
-  {
-    "municipio": "Buriti dos Montes",
-    "eleitorado": 6960
-  },
-  {
-    "municipio": "Cabeceiras do Piauí",
-    "eleitorado": 10011
-  },
-  {
-    "municipio": "Cajazeiras do Piauí",
-    "eleitorado": 3827
-  },
-  {
-    "municipio": "Cajueiro da Praia",
-    "eleitorado": 7502
-  },
-  {
-    "municipio": "Caldeirão Grande do Piauí",
-    "eleitorado": 5211
-  },
-  {
-    "municipio": "Campinas do Piauí",
-    "eleitorado": 5609
-  },
-  {
-    "municipio": "Campo Alegre do Fidalgo",
-    "eleitorado": 4553
-  },
-  {
-    "municipio": "Campo Grande do Piauí",
-    "eleitorado": 5323
-  },
-  {
-    "municipio": "Campo Largo do Piauí",
-    "eleitorado": 5908
-  },
-  {
-    "municipio": "Campo Maior",
-    "eleitorado": 35836
-  },
-  {
-    "municipio": "Canavieira",
-    "eleitorado": 3610
-  },
-  {
-    "municipio": "Canto do Buriti",
-    "eleitorado": 16489
-  },
-  {
-    "municipio": "Capitão de Campos",
-    "eleitorado": 10587
-  },
-  {
-    "municipio": "Capitão Gervásio Oliveira",
-    "eleitorado": 4033
-  },
-  {
-    "municipio": "Caracol",
-    "eleitorado": 8485
-  },
-  {
-    "municipio": "Caraúbas do Piauí",
-    "eleitorado": 5277
-  },
-  {
-    "municipio": "Caridade do Piauí",
-    "eleitorado": 4968
-  },
-  {
-    "municipio": "Castelo do Piauí",
-    "eleitorado": 17025
-  },
-  {
-    "municipio": "Caxingó",
-    "eleitorado": 5755
-  },
-  {
-    "municipio": "Cocal",
-    "eleitorado": 22675
-  },
-  {
-    "municipio": "Cocal de Telha",
-    "eleitorado": 4724
-  },
-  {
-    "municipio": "Cocal dos Alves",
-    "eleitorado": 5680
-  },
-  {
-    "municipio": "Coivaras",
-    "eleitorado": 5670
-  },
-  {
-    "municipio": "Colônia do Gurguéia",
-    "eleitorado": 5645
-  },
-  {
-    "municipio": "Colônia do Piauí",
-    "eleitorado": 6369
-  },
-  {
-    "municipio": "Conceição do Canindé",
-    "eleitorado": 4966
-  },
-  {
-    "municipio": "Coronel José Dias",
-    "eleitorado": 5441
-  },
-  {
-    "municipio": "Corrente",
-    "eleitorado": 21448
-  },
-  {
-    "municipio": "Cristalândia do Piauí",
-    "eleitorado": 6245
-  },
-  {
-    "municipio": "Cristino Castro",
-    "eleitorado": 8476
-  },
-  {
-    "municipio": "Curimatá",
-    "eleitorado": 9419
-  },
-  {
-    "municipio": "Currais",
-    "eleitorado": 6231
-  },
-  {
-    "municipio": "Curral Novo do Piauí",
-    "eleitorado": 5180
-  },
-  {
-    "municipio": "Curralinhos",
-    "eleitorado": 5333
-  },
-  {
-    "municipio": "Demerval Lobão",
-    "eleitorado": 13501
-  },
-  {
-    "municipio": "Dirceu Arcoverde",
-    "eleitorado": 6736
-  },
-  {
-    "municipio": "Dom Expedito Lopes",
-    "eleitorado": 6418
-  },
-  {
-    "municipio": "Dom Inocêncio",
-    "eleitorado": 7513
-  },
-  {
-    "municipio": "Domingos Mourão",
-    "eleitorado": 4392
-  },
-  {
-    "municipio": "Elesbão Veloso",
-    "eleitorado": 13885
-  },
-  {
-    "municipio": "Eliseu Martins",
-    "eleitorado": 4065
-  },
-  {
-    "municipio": "Esperantina",
-    "eleitorado": 32417
-  },
-  {
-    "municipio": "Fartura do Piauí",
-    "eleitorado": 4808
-  },
-  {
-    "municipio": "Flores do Piauí",
-    "eleitorado": 4436
-  },
-  {
-    "municipio": "Floresta do Piauí",
-    "eleitorado": 2659
-  },
-  {
-    "municipio": "Floriano",
-    "eleitorado": 44600
-  },
-  {
-    "municipio": "Francinópolis",
-    "eleitorado": 4555
-  },
-  {
-    "municipio": "Francisco Ayres",
-    "eleitorado": 5324
-  },
-  {
-    "municipio": "Francisco Macedo",
-    "eleitorado": 2825
-  },
-  {
-    "municipio": "Francisco Santos",
-    "eleitorado": 7278
-  },
-  {
-    "municipio": "Fronteiras",
-    "eleitorado": 9729
-  },
-  {
-    "municipio": "Geminiano",
-    "eleitorado": 6492
-  },
-  {
-    "municipio": "Gilbués",
-    "eleitorado": 8470
-  },
-  {
-    "municipio": "Guadalupe",
-    "eleitorado": 9022
-  },
-  {
-    "municipio": "Guaribas",
-    "eleitorado": 4556
-  },
-  {
-    "municipio": "Hugo Napoleão",
-    "eleitorado": 4534
-  },
-  {
-    "municipio": "Ilha Grande",
-    "eleitorado": 9651
-  },
-  {
-    "municipio": "Inhuma",
-    "eleitorado": 13303
-  },
-  {
-    "municipio": "Ipiranga do Piauí",
-    "eleitorado": 7773
-  },
-  {
-    "municipio": "Isaías Coelho",
-    "eleitorado": 6489
-  },
-  {
-    "municipio": "Itainópolis",
-    "eleitorado": 9556
-  },
-  {
-    "municipio": "Itaueira",
-    "eleitorado": 9501
-  },
-  {
-    "municipio": "Jacobina do Piauí",
-    "eleitorado": 5174
-  },
-  {
-    "municipio": "Jaicós",
-    "eleitorado": 13827
-  },
-  {
-    "municipio": "Jardim do Mulato",
-    "eleitorado": 4630
-  },
-  {
-    "municipio": "Jatobá do Piauí",
-    "eleitorado": 6868
-  },
-  {
-    "municipio": "Jerumenha",
-    "eleitorado": 5133
-  },
-  {
-    "municipio": "João Costa",
-    "eleitorado": 4074
-  },
-  {
-    "municipio": "Joaquim Pires",
-    "eleitorado": 12042
-  },
-  {
-    "municipio": "Joca Marques",
-    "eleitorado": 5585
-  },
-  {
-    "municipio": "José de Freitas",
-    "eleitorado": 34764
-  },
-  {
-    "municipio": "Juazeiro do Piauí",
-    "eleitorado": 5512
-  },
-  {
-    "municipio": "Júlio Borges",
-    "eleitorado": 5314
-  },
-  {
-    "municipio": "Jurema",
-    "eleitorado": 5407
-  },
-  {
-    "municipio": "Lagoa Alegre",
-    "eleitorado": 8538
-  },
-  {
-    "municipio": "Lagoa de São Francisco",
     "eleitorado": 6163
   },
   {
+    "municipio": "Alegrete do Piauí",
+    "eleitorado": 4544
+  },
+  {
+    "municipio": "Alto Longá",
+    "eleitorado": 12880
+  },
+  {
+    "municipio": "Altos",
+    "eleitorado": 36903
+  },
+  {
+    "municipio": "Alvorada do Gurguéia",
+    "eleitorado": 4660
+  },
+  {
+    "municipio": "Amarante",
+    "eleitorado": 16037
+  },
+  {
+    "municipio": "Angical do Piauí",
+    "eleitorado": 6654
+  },
+  {
+    "municipio": "Anísio de Abreu",
+    "eleitorado": 7185
+  },
+  {
+    "municipio": "Antônio Almeida",
+    "eleitorado": 3072
+  },
+  {
+    "municipio": "Aroazes",
+    "eleitorado": 5602
+  },
+  {
+    "municipio": "Aroeiras do Itaim",
+    "eleitorado": 4359
+  },
+  {
+    "municipio": "Arraial",
+    "eleitorado": 4391
+  },
+  {
+    "municipio": "Assunção do Piauí",
+    "eleitorado": 7664
+  },
+  {
+    "municipio": "Avelino Lopes",
+    "eleitorado": 9598
+  },
+  {
+    "municipio": "Baixa Grande do Ribeiro",
+    "eleitorado": 11464
+  },
+  {
+    "municipio": "Barra D'alcântara",
+    "eleitorado": 3589
+  },
+  {
+    "municipio": "Barras",
+    "eleitorado": 38258
+  },
+  {
+    "municipio": "Barreiras do Piauí",
+    "eleitorado": 3663
+  },
+  {
+    "municipio": "Barro Duro",
+    "eleitorado": 6432
+  },
+  {
+    "municipio": "Batalha",
+    "eleitorado": 22571
+  },
+  {
+    "municipio": "Bela Vista do Piauí",
+    "eleitorado": 3465
+  },
+  {
+    "municipio": "Belém do Piauí",
+    "eleitorado": 3336
+  },
+  {
+    "municipio": "Beneditinos",
+    "eleitorado": 9620
+  },
+  {
+    "municipio": "Bertolínia",
+    "eleitorado": 4990
+  },
+  {
+    "municipio": "Betânia do Piauí",
+    "eleitorado": 5869
+  },
+  {
+    "municipio": "Boa Hora",
+    "eleitorado": 6903
+  },
+  {
+    "municipio": "Bocaina",
+    "eleitorado": 5643
+  },
+  {
+    "municipio": "Bom Jesus",
+    "eleitorado": 19880
+  },
+  {
+    "municipio": "Bom Princípio do Piauí",
+    "eleitorado": 6788
+  },
+  {
+    "municipio": "Bonfim do Piauí",
+    "eleitorado": 4977
+  },
+  {
+    "municipio": "Boqueirão do Piauí",
+    "eleitorado": 6096
+  },
+  {
+    "municipio": "Brasileira",
+    "eleitorado": 8750
+  },
+  {
+    "municipio": "Brejo do Piauí",
+    "eleitorado": 3903
+  },
+  {
+    "municipio": "Buriti dos Lopes",
+    "eleitorado": 17666
+  },
+  {
+    "municipio": "Buriti dos Montes",
+    "eleitorado": 6989
+  },
+  {
+    "municipio": "Cabeceiras do Piauí",
+    "eleitorado": 9855
+  },
+  {
+    "municipio": "Cajazeiras do Piauí",
+    "eleitorado": 3679
+  },
+  {
+    "municipio": "Cajueiro da Praia",
+    "eleitorado": 7644
+  },
+  {
+    "municipio": "Caldeirão Grande do Piauí",
+    "eleitorado": 5190
+  },
+  {
+    "municipio": "Campinas do Piauí",
+    "eleitorado": 5404
+  },
+  {
+    "municipio": "Campo Alegre do Fidalgo",
+    "eleitorado": 4543
+  },
+  {
+    "municipio": "Campo Grande do Piauí",
+    "eleitorado": 5318
+  },
+  {
+    "municipio": "Campo Largo do Piauí",
+    "eleitorado": 5867
+  },
+  {
+    "municipio": "Campo Maior",
+    "eleitorado": 35912
+  },
+  {
+    "municipio": "Canavieira",
+    "eleitorado": 3462
+  },
+  {
+    "municipio": "Canto do Buriti",
+    "eleitorado": 16292
+  },
+  {
+    "municipio": "Capitão de Campos",
+    "eleitorado": 10509
+  },
+  {
+    "municipio": "Capitão Gervásio Oliveira",
+    "eleitorado": 4065
+  },
+  {
+    "municipio": "Caracol",
+    "eleitorado": 8425
+  },
+  {
+    "municipio": "Caraúbas do Piauí",
+    "eleitorado": 5364
+  },
+  {
+    "municipio": "Caridade do Piauí",
+    "eleitorado": 5029
+  },
+  {
+    "municipio": "Castelo do Piauí",
+    "eleitorado": 17008
+  },
+  {
+    "municipio": "Caxingó",
+    "eleitorado": 5781
+  },
+  {
+    "municipio": "Cocal",
+    "eleitorado": 23456
+  },
+  {
+    "municipio": "Cocal de Telha",
+    "eleitorado": 4647
+  },
+  {
+    "municipio": "Cocal dos Alves",
+    "eleitorado": 5606
+  },
+  {
+    "municipio": "Coivaras",
+    "eleitorado": 5680
+  },
+  {
+    "municipio": "Colônia do Gurguéia",
+    "eleitorado": 5603
+  },
+  {
+    "municipio": "Colônia do Piauí",
+    "eleitorado": 6186
+  },
+  {
+    "municipio": "Conceição do Canindé",
+    "eleitorado": 5020
+  },
+  {
+    "municipio": "Coronel José Dias",
+    "eleitorado": 5417
+  },
+  {
+    "municipio": "Corrente",
+    "eleitorado": 21271
+  },
+  {
+    "municipio": "Cristalândia do Piauí",
+    "eleitorado": 6256
+  },
+  {
+    "municipio": "Cristino Castro",
+    "eleitorado": 8632
+  },
+  {
+    "municipio": "Curimatá",
+    "eleitorado": 9444
+  },
+  {
+    "municipio": "Currais",
+    "eleitorado": 6304
+  },
+  {
+    "municipio": "Curral Novo do Piauí",
+    "eleitorado": 5412
+  },
+  {
+    "municipio": "Curralinhos",
+    "eleitorado": 5303
+  },
+  {
+    "municipio": "Demerval Lobão",
+    "eleitorado": 13808
+  },
+  {
+    "municipio": "Dirceu Arcoverde",
+    "eleitorado": 6704
+  },
+  {
+    "municipio": "Dom Expedito Lopes",
+    "eleitorado": 6576
+  },
+  {
+    "municipio": "Dom Inocêncio",
+    "eleitorado": 7584
+  },
+  {
+    "municipio": "Domingos Mourão",
+    "eleitorado": 4279
+  },
+  {
+    "municipio": "Elesbão Veloso",
+    "eleitorado": 13477
+  },
+  {
+    "municipio": "Eliseu Martins",
+    "eleitorado": 4051
+  },
+  {
+    "municipio": "Esperantina",
+    "eleitorado": 32681
+  },
+  {
+    "municipio": "Fartura do Piauí",
+    "eleitorado": 4766
+  },
+  {
+    "municipio": "Flores do Piauí",
+    "eleitorado": 4349
+  },
+  {
+    "municipio": "Floresta do Piauí",
+    "eleitorado": 2610
+  },
+  {
+    "municipio": "Floriano",
+    "eleitorado": 45077
+  },
+  {
+    "municipio": "Francinópolis",
+    "eleitorado": 4596
+  },
+  {
+    "municipio": "Francisco Ayres",
+    "eleitorado": 5186
+  },
+  {
+    "municipio": "Francisco Macedo",
+    "eleitorado": 2845
+  },
+  {
+    "municipio": "Francisco Santos",
+    "eleitorado": 7134
+  },
+  {
+    "municipio": "Fronteiras",
+    "eleitorado": 9600
+  },
+  {
+    "municipio": "Geminiano",
+    "eleitorado": 6484
+  },
+  {
+    "municipio": "Gilbués",
+    "eleitorado": 8693
+  },
+  {
+    "municipio": "Guadalupe",
+    "eleitorado": 8738
+  },
+  {
+    "municipio": "Guaribas",
+    "eleitorado": 4494
+  },
+  {
+    "municipio": "Hugo Napoleão",
+    "eleitorado": 4447
+  },
+  {
+    "municipio": "Ilha Grande",
+    "eleitorado": 9375
+  },
+  {
+    "municipio": "Inhuma",
+    "eleitorado": 13174
+  },
+  {
+    "municipio": "Ipiranga do Piauí",
+    "eleitorado": 7765
+  },
+  {
+    "municipio": "Isaías Coelho",
+    "eleitorado": 6487
+  },
+  {
+    "municipio": "Itainópolis",
+    "eleitorado": 9620
+  },
+  {
+    "municipio": "Itaueira",
+    "eleitorado": 9307
+  },
+  {
+    "municipio": "Jacobina do Piauí",
+    "eleitorado": 5230
+  },
+  {
+    "municipio": "Jaicós",
+    "eleitorado": 14231
+  },
+  {
+    "municipio": "Jardim do Mulato",
+    "eleitorado": 4552
+  },
+  {
+    "municipio": "Jatobá do Piauí",
+    "eleitorado": 6908
+  },
+  {
+    "municipio": "Jerumenha",
+    "eleitorado": 4842
+  },
+  {
+    "municipio": "João Costa",
+    "eleitorado": 3938
+  },
+  {
+    "municipio": "Joaquim Pires",
+    "eleitorado": 11841
+  },
+  {
+    "municipio": "Joca Marques",
+    "eleitorado": 5603
+  },
+  {
+    "municipio": "José de Freitas",
+    "eleitorado": 35375
+  },
+  {
+    "municipio": "Juazeiro do Piauí",
+    "eleitorado": 5445
+  },
+  {
+    "municipio": "Júlio Borges",
+    "eleitorado": 5247
+  },
+  {
+    "municipio": "Jurema",
+    "eleitorado": 5204
+  },
+  {
+    "municipio": "Lagoa Alegre",
+    "eleitorado": 8610
+  },
+  {
+    "municipio": "Lagoa de São Francisco",
+    "eleitorado": 6051
+  },
+  {
     "municipio": "Lagoa do Barro do Piauí",
-    "eleitorado": 4516
+    "eleitorado": 4657
   },
   {
     "municipio": "Lagoa do Piauí",
-    "eleitorado": 5311
+    "eleitorado": 5251
   },
   {
     "municipio": "Lagoa do Sítio",
-    "eleitorado": 4860
+    "eleitorado": 4870
   },
   {
     "municipio": "Lagoinha do Piauí",
-    "eleitorado": 3317
+    "eleitorado": 3252
   },
   {
     "municipio": "Landri Sales",
-    "eleitorado": 5295
+    "eleitorado": 5137
   },
   {
     "municipio": "Luis Correia",
-    "eleitorado": 27161
+    "eleitorado": 27381
   },
   {
     "municipio": "Luzilândia",
-    "eleitorado": 20225
+    "eleitorado": 20173
   },
   {
     "municipio": "Madeiro",
-    "eleitorado": 6818
+    "eleitorado": 6716
   },
   {
     "municipio": "Manoel Emídio",
-    "eleitorado": 4989
+    "eleitorado": 4919
   },
   {
     "municipio": "Marcolândia",
-    "eleitorado": 8665
+    "eleitorado": 8747
   },
   {
     "municipio": "Marcos Parente",
-    "eleitorado": 4395
+    "eleitorado": 4349
   },
   {
     "municipio": "Massapê do Piauí",
-    "eleitorado": 6602
+    "eleitorado": 6473
   },
   {
     "municipio": "Matias Olímpio",
-    "eleitorado": 9274
+    "eleitorado": 9192
   },
   {
     "municipio": "Miguel Alves",
-    "eleitorado": 27602
+    "eleitorado": 27734
   },
   {
     "municipio": "Miguel Leão",
-    "eleitorado": 1921
+    "eleitorado": 1892
   },
   {
     "municipio": "Milton Brandão",
-    "eleitorado": 7191
+    "eleitorado": 7107
   },
   {
     "municipio": "Monsenhor Gil",
-    "eleitorado": 10420
+    "eleitorado": 10468
   },
   {
     "municipio": "Monsenhor Hipólito",
-    "eleitorado": 7583
+    "eleitorado": 7540
   },
   {
     "municipio": "Monte Alegre do Piauí",
-    "eleitorado": 9701
+    "eleitorado": 9459
   },
   {
     "municipio": "Morro Cabeça No Tempo",
@@ -533,366 +533,366 @@
   },
   {
     "municipio": "Morro do Chapéu do Piauí",
-    "eleitorado": 5899
+    "eleitorado": 5889
   },
   {
     "municipio": "Murici dos Portelas",
-    "eleitorado": 6085
+    "eleitorado": 6071
   },
   {
     "municipio": "Nazaré do Piauí",
-    "eleitorado": 6938
+    "eleitorado": 6707
   },
   {
     "municipio": "Nazária",
-    "eleitorado": 11781
+    "eleitorado": 11573
   },
   {
     "municipio": "Nossa Senhora de Nazaré",
-    "eleitorado": 5915
+    "eleitorado": 6129
   },
   {
     "municipio": "Nossa Senhora dos Remédios",
-    "eleitorado": 8620
+    "eleitorado": 8649
   },
   {
     "municipio": "Nova Santa Rita",
-    "eleitorado": 4205
+    "eleitorado": 4158
   },
   {
     "municipio": "Novo Oriente do Piauí",
-    "eleitorado": 5260
+    "eleitorado": 5158
   },
   {
     "municipio": "Novo Santo Antônio",
-    "eleitorado": 4863
+    "eleitorado": 4768
   },
   {
     "municipio": "Oeiras",
-    "eleitorado": 31255
+    "eleitorado": 31159
   },
   {
     "municipio": "Olho D'água do Piauí",
-    "eleitorado": 2794
+    "eleitorado": 2711
   },
   {
     "municipio": "Padre Marcos",
-    "eleitorado": 6148
+    "eleitorado": 6046
   },
   {
     "municipio": "Paes Landim",
-    "eleitorado": 4662
+    "eleitorado": 4545
   },
   {
     "municipio": "Pajeú do Piauí",
-    "eleitorado": 3396
+    "eleitorado": 3424
   },
   {
     "municipio": "Palmeira do Piauí",
-    "eleitorado": 5059
+    "eleitorado": 4944
   },
   {
     "municipio": "Palmeirais",
-    "eleitorado": 13612
+    "eleitorado": 13363
   },
   {
     "municipio": "Paquetá",
-    "eleitorado": 4208
+    "eleitorado": 4183
   },
   {
     "municipio": "Parnaguá",
-    "eleitorado": 7731
+    "eleitorado": 7658
   },
   {
     "municipio": "Parnaíba",
-    "eleitorado": 114620
+    "eleitorado": 118066
   },
   {
     "municipio": "Passagem Franca do Piauí",
-    "eleitorado": 4327
+    "eleitorado": 4181
   },
   {
     "municipio": "Patos do Piauí",
-    "eleitorado": 5538
+    "eleitorado": 5570
   },
   {
     "municipio": "Pau D'arco do Piauí",
-    "eleitorado": 5272
+    "eleitorado": 5429
   },
   {
     "municipio": "Paulistana",
-    "eleitorado": 16928
+    "eleitorado": 17086
   },
   {
     "municipio": "Pavussu",
-    "eleitorado": 3964
+    "eleitorado": 3922
   },
   {
     "municipio": "Pedro Ii",
-    "eleitorado": 35094
+    "eleitorado": 35340
   },
   {
     "municipio": "Pedro Laurentino",
-    "eleitorado": 3353
+    "eleitorado": 3310
   },
   {
     "municipio": "Picos",
-    "eleitorado": 53389
+    "eleitorado": 54457
   },
   {
     "municipio": "Pimenteiras",
-    "eleitorado": 9566
+    "eleitorado": 9433
   },
   {
     "municipio": "Pio Ix",
-    "eleitorado": 14892
+    "eleitorado": 15153
   },
   {
     "municipio": "Piracuruca",
-    "eleitorado": 25840
+    "eleitorado": 25896
   },
   {
     "municipio": "Piripiri",
-    "eleitorado": 53073
+    "eleitorado": 53258
   },
   {
     "municipio": "Porto",
-    "eleitorado": 9781
+    "eleitorado": 10027
   },
   {
     "municipio": "Porto Alegre do Piauí",
-    "eleitorado": 2178
+    "eleitorado": 2112
   },
   {
     "municipio": "Prata do Piauí",
-    "eleitorado": 3738
+    "eleitorado": 3711
   },
   {
     "municipio": "Queimada Nova",
-    "eleitorado": 7137
+    "eleitorado": 7235
   },
   {
     "municipio": "Redenção do Gurguéia",
-    "eleitorado": 7127
+    "eleitorado": 7036
   },
   {
     "municipio": "Regeneração",
-    "eleitorado": 14741
+    "eleitorado": 14545
   },
   {
     "municipio": "Riacho Frio",
-    "eleitorado": 4493
+    "eleitorado": 4502
   },
   {
     "municipio": "Ribeira do Piauí",
-    "eleitorado": 3946
+    "eleitorado": 3907
   },
   {
     "municipio": "Ribeiro Gonçalves",
-    "eleitorado": 5520
+    "eleitorado": 5612
   },
   {
     "municipio": "Rio Grande do Piauí",
-    "eleitorado": 5537
+    "eleitorado": 5450
   },
   {
     "municipio": "Santa Cruz do Piauí",
-    "eleitorado": 5799
+    "eleitorado": 5927
   },
   {
     "municipio": "Santa Cruz dos Milagres",
-    "eleitorado": 4010
+    "eleitorado": 3995
   },
   {
     "municipio": "Santa Filomena",
-    "eleitorado": 5598
+    "eleitorado": 5577
   },
   {
     "municipio": "Santa Luz",
-    "eleitorado": 5332
+    "eleitorado": 5296
   },
   {
     "municipio": "Santa Rosa do Piauí",
-    "eleitorado": 5058
+    "eleitorado": 5006
   },
   {
     "municipio": "Santana do Piauí",
-    "eleitorado": 4205
+    "eleitorado": 4235
   },
   {
     "municipio": "Santo Antônio de Lisboa",
-    "eleitorado": 6486
+    "eleitorado": 6432
   },
   {
     "municipio": "Santo Antônio dos Milagres",
-    "eleitorado": 1940
+    "eleitorado": 1961
   },
   {
     "municipio": "Santo Inácio do Piauí",
-    "eleitorado": 3700
+    "eleitorado": 3664
   },
   {
     "municipio": "São Braz do Piauí",
-    "eleitorado": 4176
+    "eleitorado": 4165
   },
   {
     "municipio": "São Félix do Piauí",
-    "eleitorado": 4011
+    "eleitorado": 3989
   },
   {
     "municipio": "São Francisco de Assis do Piauí",
-    "eleitorado": 4717
+    "eleitorado": 4785
   },
   {
     "municipio": "São Francisco do Piauí",
-    "eleitorado": 6302
+    "eleitorado": 6234
   },
   {
     "municipio": "São Gonçalo do Gurguéia",
-    "eleitorado": 2978
+    "eleitorado": 2895
   },
   {
     "municipio": "São Gonçalo do Piauí",
-    "eleitorado": 5285
+    "eleitorado": 5211
   },
   {
     "municipio": "São João da Canabrava",
-    "eleitorado": 4538
+    "eleitorado": 4522
   },
   {
     "municipio": "São João da Fronteira",
-    "eleitorado": 5397
+    "eleitorado": 5382
   },
   {
     "municipio": "São João da Serra",
-    "eleitorado": 6914
+    "eleitorado": 6920
   },
   {
     "municipio": "São João da Varjota",
-    "eleitorado": 4203
+    "eleitorado": 4143
   },
   {
     "municipio": "São João do Arraial",
-    "eleitorado": 7618
+    "eleitorado": 7635
   },
   {
     "municipio": "São João do Piauí",
-    "eleitorado": 14853
+    "eleitorado": 15186
   },
   {
     "municipio": "São José do Divino",
-    "eleitorado": 5101
+    "eleitorado": 5077
   },
   {
     "municipio": "São José do Peixe",
-    "eleitorado": 3482
+    "eleitorado": 3381
   },
   {
     "municipio": "São José do Piauí",
-    "eleitorado": 6037
+    "eleitorado": 6020
   },
   {
     "municipio": "São Julião",
-    "eleitorado": 5540
+    "eleitorado": 5632
   },
   {
     "municipio": "São Lourenço do Piauí",
-    "eleitorado": 4970
+    "eleitorado": 4875
   },
   {
     "municipio": "São Luis do Piauí",
-    "eleitorado": 3882
+    "eleitorado": 3598
   },
   {
     "municipio": "São Miguel da Baixa Grande",
-    "eleitorado": 2779
+    "eleitorado": 2852
   },
   {
     "municipio": "São Miguel do Fidalgo",
-    "eleitorado": 3015
+    "eleitorado": 3048
   },
   {
     "municipio": "São Miguel do Tapuio",
-    "eleitorado": 16015
+    "eleitorado": 15650
   },
   {
     "municipio": "São Pedro do Piauí",
-    "eleitorado": 11548
+    "eleitorado": 11567
   },
   {
     "municipio": "São Raimundo Nonato",
-    "eleitorado": 26689
+    "eleitorado": 27518
   },
   {
     "municipio": "Sebastião Barros",
-    "eleitorado": 4633
+    "eleitorado": 4646
   },
   {
     "municipio": "Sebastião Leal",
-    "eleitorado": 4136
+    "eleitorado": 4234
   },
   {
     "municipio": "Sigefredo Pacheco",
-    "eleitorado": 9178
+    "eleitorado": 9292
   },
   {
     "municipio": "Simões",
-    "eleitorado": 12213
+    "eleitorado": 12555
   },
   {
     "municipio": "Simplício Mendes",
-    "eleitorado": 10315
+    "eleitorado": 10368
   },
   {
     "municipio": "Socorro do Piauí",
-    "eleitorado": 4440
+    "eleitorado": 4332
   },
   {
     "municipio": "Sussuapara",
-    "eleitorado": 6817
+    "eleitorado": 6751
   },
   {
     "municipio": "Tamboril do Piauí",
-    "eleitorado": 3025
+    "eleitorado": 3006
   },
   {
     "municipio": "Tanque do Piauí",
-    "eleitorado": 2779
+    "eleitorado": 2737
   },
   {
     "municipio": "Teresina",
-    "eleitorado": 587098
+    "eleitorado": 592210
   },
   {
     "municipio": "União",
-    "eleitorado": 37838
+    "eleitorado": 38755
   },
   {
     "municipio": "Uruçuí",
-    "eleitorado": 18664
+    "eleitorado": 18974
   },
   {
     "municipio": "Valença do Piauí",
-    "eleitorado": 17411
+    "eleitorado": 17704
   },
   {
     "municipio": "Várzea Branca",
-    "eleitorado": 4797
+    "eleitorado": 4700
   },
   {
     "municipio": "Várzea Grande",
-    "eleitorado": 4318
+    "eleitorado": 4199
   },
   {
     "municipio": "Vera Mendes",
-    "eleitorado": 3696
+    "eleitorado": 3681
   },
   {
     "municipio": "Vila Nova do Piauí",
-    "eleitorado": 2998
+    "eleitorado": 3011
   },
   {
     "municipio": "Wall Ferraz",
-    "eleitorado": 4341
+    "eleitorado": 4316
   }
 ]

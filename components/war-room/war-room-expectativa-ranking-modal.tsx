@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  IconAlertTriangle,
   IconCalendarEvent,
   IconChartBar,
   IconDownload,
@@ -11,7 +12,6 @@ import {
   IconFileTypePdf,
   IconLoader2,
   IconMinus,
-  IconPlane,
   IconSearch,
   IconTrendingDown,
   IconTrendingUp,
@@ -62,11 +62,17 @@ import {
   buildWarRoomPesquisasConsolidadas,
   mapUltimasDuasPesquisasPorMunicipio,
   tendenciaPctPesquisa,
+  votosProjetadosPesquisaPct,
+  metaVsProjPesquisaDiff,
   type WarRoomPesquisaConsolidadaReal,
   type WarRoomPesquisaParMunicipio,
   type WarRoomPesquisaTendencia,
 } from '@/lib/war-room/pesquisas-consolidadas'
 import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
+import {
+  fetchFederal2022VotosTotaisPorMunicipioPI,
+  obterVotosFederal2022TotaisMunicipio,
+} from '@/lib/jadyel-federal-2022-pi-votos'
 import { cn } from '@/lib/utils'
 
 type SortCol =
@@ -79,6 +85,8 @@ type SortCol =
   | 'diasVisita'
   | 'proxVisita'
   | 'pesquisa'
+  | 'projPesquisa'
+  | 'metaProj'
 
 type FiltroExpectativa = 'todos' | 'gt0' | 'eq0'
 type FiltroBinario = 'todos' | 'com' | 'sem'
@@ -106,6 +114,15 @@ type RankingRow = {
   pesquisaPctAnterior: number | null
   pesquisaTendencia: WarRoomPesquisaTendencia
   pesquisa: WarRoomPesquisaConsolidadaReal | null
+  /**
+   * Votos projetados: % sobre válidos × total DF 2022 na cidade.
+   * null = sem pesquisa (ou sem base 2022); 0 = NP / 0%.
+   */
+  projPesquisaVotos: number | null
+  /** Total nominais Dep. Federal 2022 na cidade (base da proyección). */
+  votosFederal2022: number | null
+  /** Proj − Meta (votos); null = sem pesquisa. */
+  metaVsProjDiff: number | null
   /** Expectativa ≥ 4k/10d (prioridade) ou >0/15d (base) — igual card Expectativa. */
   precisaVisita: boolean
   visitaAlertaNivel: VisitaAlertaNivel | null
@@ -189,6 +206,41 @@ function PesoProgressBar({
   )
 }
 
+/** Proj − Meta em votos (azul ≥ 0, vermelho < 0). */
+function MetaVsProjValue({
+  diff,
+  meta,
+  projVotos,
+}: {
+  diff: number
+  meta: number
+  projVotos: number | null
+}) {
+  const under = diff < 0
+  const signed = `${diff > 0 ? '+' : ''}${formatWarRoomNumber(diff)}`
+  const title = [
+    projVotos != null ? `Proj. ${formatInt(projVotos)}` : null,
+    `Meta ${formatWarRoomNumber(meta)}`,
+    `${signed} (Proj − Meta)`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <span
+      className={cn(
+        'wr-expectativa-ranking-modal__meta-proj',
+        'tabular-nums',
+        under
+          ? 'wr-expectativa-ranking-modal__meta-proj--under'
+          : 'wr-expectativa-ranking-modal__meta-proj--ok',
+      )}
+      title={title}
+    >
+      {signed}
+    </span>
+  )
+}
+
 function formatInt(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return Math.round(value).toLocaleString('pt-BR')
@@ -212,11 +264,10 @@ function formatPctPesquisa(value: number | null | undefined): string {
 }
 
 function formatDiasDesdeVisita(dias: number | null): string {
-  if (dias == null || !Number.isFinite(dias)) return '—'
-  if (dias < 0) return '—'
-  if (dias === 0) return 'hoje'
-  if (dias === 1) return '1 dia'
-  return `${dias.toLocaleString('pt-BR')} dias`
+  if (dias == null || !Number.isFinite(dias) || dias < 0) return 'sem visita'
+  if (dias === 0) return 'sem visita há 0 dias'
+  if (dias === 1) return 'sem visita há 1 dia'
+  return `sem visita há ${dias.toLocaleString('pt-BR')} dias`
 }
 
 function normalizarBusca(value: string): string {
@@ -277,6 +328,10 @@ export function WarRoomExpectativaRankingModal({
     Map<string, WarRoomPesquisaParMunicipio>
   >(() => new Map())
   const [loadingPesquisas, setLoadingPesquisas] = useState(true)
+  const [federal2022ByMun, setFederal2022ByMun] = useState<Map<string, number>>(
+    () => new Map(),
+  )
+  const [loadingFederal2022, setLoadingFederal2022] = useState(true)
   const [pesquisaDetalhe, setPesquisaDetalhe] =
     useState<WarRoomPesquisaConsolidadaReal | null>(null)
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(
@@ -391,6 +446,25 @@ export function WarRoomExpectativaRankingModal({
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoadingFederal2022(true)
+      try {
+        const mapa = await fetchFederal2022VotosTotaisPorMunicipioPI()
+        if (!cancelled) setFederal2022ByMun(mapa ?? new Map())
+      } catch {
+        if (!cancelled) setFederal2022ByMun(new Map())
+      } finally {
+        if (!cancelled) setLoadingFederal2022(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     if (detalhe?.tipo !== 'obras') return
     if (obrasAll != null && recapObras != null) return
 
@@ -470,12 +544,21 @@ export function WarRoomExpectativaRankingModal({
       const pctUltima = pesquisa?.jadyelPct ?? null
       const pctAnterior = pesquisaAnterior?.jadyelPct ?? null
       const dias = diasDesdeVisita(m.ultimaVisita ?? null)
+      const eleitores = getEleitoradoByCity(m.municipio)
+      const votosFederal2022 = obterVotosFederal2022TotaisMunicipio(
+        federal2022ByMun,
+        m.municipio,
+      )
+      const projPesquisaVotos =
+        pesquisa != null
+          ? votosProjetadosPesquisaPct(pctUltima ?? 0, votosFederal2022)
+          : null
       return {
         municipio: m.municipio,
         expectativa: m.expectativaVotos,
         peso: m.pesoExpectativaPct,
         populacao,
-        eleitores: getEleitoradoByCity(m.municipio),
+        eleitores,
         ultimaVisita: m.ultimaVisita ?? null,
         ultimaVisitaLabel: formatDataCurta(m.ultimaVisita),
         diasDesdeUltimaVisita: dias,
@@ -491,12 +574,18 @@ export function WarRoomExpectativaRankingModal({
         pesquisaPctAnterior: pctAnterior,
         pesquisaTendencia: tendenciaPctPesquisa(pctUltima, pctAnterior),
         pesquisa,
+        projPesquisaVotos,
+        votosFederal2022,
+        metaVsProjDiff: metaVsProjPesquisaDiff(
+          m.expectativaVotos,
+          projPesquisaVotos,
+        ),
         precisaVisita: precisaVisitaAltaExpectativa(m),
         visitaAlertaNivel: nivelVisitaAlerta(m),
         temAgendaProxima: (agendaItens?.length ?? 0) > 0,
       }
     })
-  }, [agendaPorMunicipio, emendasKeys, municipios, pesquisaByMun])
+  }, [agendaPorMunicipio, emendasKeys, federal2022ByMun, municipios, pesquisaByMun])
 
   const filtradas = useMemo(() => {
     const termo = normalizarBusca(busca)
@@ -563,6 +652,24 @@ export function WarRoomExpectativaRankingModal({
         if (by !== 0) return by
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
+      if (sortCol === 'projPesquisa') {
+        const by = compareTerritorioNumber(
+          a.projPesquisaVotos ?? -1,
+          b.projPesquisaVotos ?? -1,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
+      if (sortCol === 'metaProj') {
+        const by = compareTerritorioNumber(
+          a.metaVsProjDiff ?? Number.NEGATIVE_INFINITY,
+          b.metaVsProjDiff ?? Number.NEGATIVE_INFINITY,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
       const by = compareTerritorioText(a.proxVisitaSort, b.proxVisitaSort, sortAsc)
       if (by !== 0) return by
       return compareTerritorioText(a.municipio, b.municipio, true)
@@ -605,6 +712,7 @@ export function WarRoomExpectativaRankingModal({
     let comEmendas = 0
     let comObras = 0
     let comPesquisa = 0
+    let projPesquisa = 0
     for (const row of filtradas) {
       expectativa += row.expectativa
       peso += row.peso
@@ -615,7 +723,13 @@ export function WarRoomExpectativaRankingModal({
       if (row.temEmendas) comEmendas += 1
       if (row.temObras) comObras += 1
       if (row.pesquisa != null) comPesquisa += 1
+      if (row.projPesquisaVotos != null) projPesquisa += row.projPesquisaVotos
     }
+    /** Σ Proj − Σ Meta (mesmos totais do rodapé). */
+    const metaVsProjDiff =
+      filtradas.some((r) => r.projPesquisaVotos != null)
+        ? Math.round(projPesquisa - expectativa)
+        : null
     return {
       expectativa,
       peso,
@@ -626,6 +740,8 @@ export function WarRoomExpectativaRankingModal({
       comEmendas,
       comObras,
       comPesquisa,
+      projPesquisa,
+      metaVsProjDiff,
     }
   }, [filtradas])
 
@@ -650,6 +766,14 @@ export function WarRoomExpectativaRankingModal({
         ]
           .filter((part) => part !== '—')
           .join(' · ') || '—',
+        projPesquisaLabel:
+          row.projPesquisaVotos != null
+            ? String(Math.round(row.projPesquisaVotos))
+            : '—',
+        expectVsProjLabel:
+          row.metaVsProjDiff != null
+            ? `${row.metaVsProjDiff > 0 ? '+' : ''}${Math.round(row.metaVsProjDiff)}`
+            : '—',
         pesquisaTendenciaLabel:
           row.pesquisaTendencia === 'alta'
             ? 'alta'
@@ -885,7 +1009,7 @@ export function WarRoomExpectativaRankingModal({
                 </th>
                 <th className="wr-expectativa-ranking-modal__num">
                   <TerritorioSortableHeaderButton
-                    label="Expectativa"
+                    label="Meta"
                     active={sortCol === 'expectativa'}
                     asc={sortAsc}
                     onClick={() => alternarSort('expectativa')}
@@ -926,7 +1050,27 @@ export function WarRoomExpectativaRankingModal({
                 </th>
                 <th className="wr-expectativa-ranking-modal__num">
                   <TerritorioSortableHeaderButton
-                    label="Última visita"
+                    label="Proj. pesquisa"
+                    active={sortCol === 'projPesquisa'}
+                    asc={sortAsc}
+                    onClick={() => alternarSort('projPesquisa')}
+                    align="right"
+                    compact
+                  />
+                </th>
+                <th className="wr-expectativa-ranking-modal__num">
+                  <TerritorioSortableHeaderButton
+                    label="Meta × Pesquisas"
+                    active={sortCol === 'metaProj'}
+                    asc={sortAsc}
+                    onClick={() => alternarSort('metaProj')}
+                    align="right"
+                    compact
+                  />
+                </th>
+                <th className="wr-expectativa-ranking-modal__num">
+                  <TerritorioSortableHeaderButton
+                    label="Visitas"
                     active={sortCol === 'diasVisita'}
                     asc={sortAsc}
                     onClick={() => alternarSort('diasVisita')}
@@ -954,44 +1098,25 @@ export function WarRoomExpectativaRankingModal({
                       <span className="wr-expectativa-ranking-modal__cidade-nome">
                         {row.municipio}
                       </span>
-                      {row.temAgendaProxima || row.precisaVisita ? (
+                      {row.temAgendaProxima ? (
                         <span className="wr-expectativa-ranking-modal__cidade-alertas">
-                          {row.temAgendaProxima ? (
-                            <button
-                              type="button"
-                              className="wr-expectativa-clean__agenda-alerta wr-expectativa-ranking-modal__agenda-alerta"
-                              title="Agenda nos próximos 7 dias"
-                              aria-label={`Ver agenda dos próximos 7 dias em ${row.municipio}`}
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                setAgendaModalMunicipio(row.municipio)
-                              }}
-                            >
-                              <IconCalendarEvent
-                                className="h-3.5 w-3.5"
-                                stroke={1.75}
-                                aria-hidden
-                              />
-                            </button>
-                          ) : null}
-                          {row.precisaVisita && row.visitaAlertaNivel ? (
-                            <span
-                              className={cn(
-                                'wr-expectativa-clean__visita-alerta wr-expectativa-ranking-modal__visita-alerta',
-                                row.visitaAlertaNivel === 'prioridade' &&
-                                  'wr-expectativa-ranking-modal__visita-alerta--prioridade',
-                              )}
-                              title={tituloVisitaAlerta(row.visitaAlertaNivel)}
-                              aria-label={`Precisa visitar ${row.municipio}: ${tituloVisitaAlerta(row.visitaAlertaNivel)}`}
-                            >
-                              <IconPlane
-                                className="h-3.5 w-3.5"
-                                stroke={1.75}
-                                aria-hidden
-                              />
-                            </span>
-                          ) : null}
+                          <button
+                            type="button"
+                            className="wr-expectativa-clean__agenda-alerta wr-expectativa-ranking-modal__agenda-alerta"
+                            title="Agenda nos próximos 7 dias"
+                            aria-label={`Ver agenda dos próximos 7 dias em ${row.municipio}`}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setAgendaModalMunicipio(row.municipio)
+                            }}
+                          >
+                            <IconCalendarEvent
+                              className="h-3.5 w-3.5"
+                              stroke={1.75}
+                              aria-hidden
+                            />
+                          </button>
                         </span>
                       ) : null}
                     </span>
@@ -1136,12 +1261,81 @@ export function WarRoomExpectativaRankingModal({
                   <td
                     className="wr-expectativa-ranking-modal__num tabular-nums"
                     title={
-                      row.ultimaVisitaLabel !== '—'
-                        ? row.ultimaVisitaLabel
-                        : undefined
+                      row.pesquisa && row.projPesquisaVotos != null
+                        ? [
+                            row.pesquisaNaoPontuou
+                              ? 'NP · não pontuou · 0%'
+                              : formatPctPesquisa(row.pesquisaPctUltima),
+                            row.votosFederal2022 != null
+                              ? `× ${formatInt(row.votosFederal2022)} votos DF 2022`
+                              : null,
+                            'válidos',
+                            row.pesquisa.cenario,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : row.pesquisa
+                          ? 'Sem total DF 2022 para projetar'
+                          : undefined
                     }
                   >
-                    {row.diasDesdeLabel}
+                    {(row.pesquisa != null &&
+                      loadingFederal2022 &&
+                      row.projPesquisaVotos == null) ||
+                    (loadingPesquisas && row.pesquisa == null)
+                      ? '…'
+                      : formatInt(row.projPesquisaVotos)}
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {row.metaVsProjDiff != null ? (
+                      <MetaVsProjValue
+                        diff={row.metaVsProjDiff}
+                        meta={row.expectativa}
+                        projVotos={row.projPesquisaVotos}
+                      />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                        {(loadingPesquisas || loadingFederal2022) &&
+                        row.pesquisa == null
+                          ? '…'
+                          : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      [
+                        row.visitaAlertaNivel
+                          ? tituloVisitaAlerta(row.visitaAlertaNivel)
+                          : null,
+                        row.ultimaVisitaLabel !== '—'
+                          ? `Última visita: ${row.ultimaVisitaLabel}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || undefined
+                    }
+                  >
+                    <span className="wr-expectativa-ranking-modal__visitas-cell">
+                      {row.precisaVisita && row.visitaAlertaNivel ? (
+                        <span
+                          className={cn(
+                            'wr-expectativa-ranking-modal__visita-alerta',
+                            row.visitaAlertaNivel === 'prioridade' &&
+                              'wr-expectativa-ranking-modal__visita-alerta--prioridade',
+                          )}
+                          aria-label={`Precisa visitar ${row.municipio}: ${tituloVisitaAlerta(row.visitaAlertaNivel)}`}
+                        >
+                          <IconAlertTriangle
+                            className="h-3.5 w-3.5"
+                            stroke={1.75}
+                            aria-hidden
+                          />
+                        </span>
+                      ) : null}
+                      <span>{row.diasDesdeLabel}</span>
+                    </span>
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {row.proxVisitaLabel}
@@ -1179,6 +1373,22 @@ export function WarRoomExpectativaRankingModal({
                   </td>
                   <td className="wr-expectativa-ranking-modal__center tabular-nums">
                     {totais.comPesquisa.toLocaleString('pt-BR')} c/
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {formatWarRoomNumber(totais.projPesquisa)}
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
+                    {totais.metaVsProjDiff != null ? (
+                      <MetaVsProjValue
+                        diff={totais.metaVsProjDiff}
+                        meta={totais.expectativa}
+                        projVotos={totais.projPesquisa}
+                      />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                        —
+                      </span>
+                    )}
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {totais.comUltimaVisita.toLocaleString('pt-BR')} c/

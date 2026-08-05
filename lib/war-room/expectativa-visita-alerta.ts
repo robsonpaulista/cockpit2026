@@ -46,10 +46,9 @@ function semVisitaHa(dias: number | null, limiarDias: number): boolean {
 }
 
 /**
- * Nível do alerta de visita (avião):
+ * Nível do alerta de visita (advertência em Visitas):
  * - prioridade: expectativa ≥ 4.000 e sem visita há 10+ dias (ou nunca)
  * - base: expectativa > 0 e sem visita há 15+ dias (ou nunca)
- * A regra de prioridade eleva o bloco ≥ 4.000; ambas mostram o avião.
  */
 export function nivelVisitaAlerta(
   m: IptMunicipio,
@@ -74,7 +73,7 @@ export function nivelVisitaAlerta(
   return null
 }
 
-/** Título/tooltip do avião conforme o nível. */
+/** Título/tooltip do alerta de visita conforme o nível. */
 export function tituloVisitaAlerta(nivel: VisitaAlertaNivel): string {
   if (nivel === 'prioridade') {
     return `Prioridade · sem visita há ${WR_VISITA_ALERTA_DIAS}+ dias · expectativa ≥ ${WR_VISITA_ALERTA_EXPECTATIVA_MIN.toLocaleString('pt-BR')}`

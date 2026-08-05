@@ -47,6 +47,39 @@ export function obterVotos2022JadyelMunicipio(
   return mapa.get(normalizeMunicipioNome(nomeOficialMunicipio)) ?? 0
 }
 
+/**
+ * Total de votos nominais (todos os candidatos) — Dep. Federal 2022 — por município do PI.
+ * Mesma base do TOTAL da coluna "Deputado Federal 2022" em /dashboard/resumo-eleicoes.
+ */
+export async function fetchFederal2022VotosTotaisPorMunicipioPI(): Promise<Map<string, number> | null> {
+  const params = new URLSearchParams({
+    totals: 'federal2022VotosTotaisPorMunicipio',
+  })
+  const res = await fetch(`/api/resumo-eleicoes?${params}`)
+  if (!res.ok) return null
+  const data = (await res.json()) as {
+    pontos?: { municipio: string; votos: number }[]
+  }
+  const mapa = new Map<string, number>()
+  for (const p of data.pontos ?? []) {
+    const k = normalizeMunicipioNome(String(p.municipio ?? ''))
+    if (!k) continue
+    const votos = Number(p.votos)
+    if (!Number.isFinite(votos) || votos < 0) continue
+    mapa.set(k, Math.round(votos))
+  }
+  return mapa
+}
+
+export function obterVotosFederal2022TotaisMunicipio(
+  mapa: ReadonlyMap<string, number>,
+  nomeOficialMunicipio: string,
+): number | null {
+  const v = mapa.get(normalizeMunicipioNome(nomeOficialMunicipio))
+  if (v == null || !Number.isFinite(v) || v <= 0) return null
+  return v
+}
+
 export function somarVotos2022JadyelNoTd(
   mapa: ReadonlyMap<string, number>,
   td: TerritorioDesenvolvimentoPI

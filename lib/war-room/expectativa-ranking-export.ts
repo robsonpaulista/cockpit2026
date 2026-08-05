@@ -15,6 +15,10 @@ export type ExpectativaRankingExportRow = {
   temObras: boolean
   /** Posição do candidato foco na última pesquisa (ex.: "3º"); "—" se não houver. */
   pesquisaPosicaoLabel: string
+  /** Votos projetados (% válidos × total DF 2022 na cidade); "—" sem pesquisa. */
+  projPesquisaLabel: string
+  /** Proj − Meta (votos); "—" sem pesquisa. */
+  expectVsProjLabel: string
   pesquisaTendenciaLabel: string
   pesquisaPctUltimaLabel: string
   pesquisaPctAnteriorLabel: string
@@ -30,20 +34,25 @@ export type ExpectativaRankingExportTotais = {
   comEmendas: number
   comObras: number
   comPesquisa: number
+  projPesquisa: number
+  /** Σ Proj − Σ Meta; null se nenhuma cidade com proj. */
+  metaVsProjDiff: number | null
 }
 
 const HEADERS = [
   'Cidade',
-  'Expectativa',
+  'Meta',
   'Peso %',
   'Eleitores',
   'População',
   'Emendas',
   'Obras',
   'Pesquisas',
+  'Proj. pesquisa',
+  'Meta × Pesquisas',
   'Tendência',
   '% anterior',
-  'Última visita',
+  'Visitas',
   'Data última visita',
   'Próx. visita',
 ] as const
@@ -93,6 +102,8 @@ function cellRow(row: ExpectativaRankingExportRow): (string | number)[] {
     row.temEmendas ? 'Sim' : 'Não',
     row.temObras ? 'Sim' : 'Não',
     row.pesquisaPosicaoLabel,
+    row.projPesquisaLabel,
+    row.expectVsProjLabel,
     row.pesquisaTendenciaLabel,
     row.pesquisaPctAnteriorLabel,
     row.diasDesdeLabel,
@@ -114,6 +125,10 @@ function totaisRow(
     `${totais.comEmendas} sim`,
     `${totais.comObras} sim`,
     `${totais.comPesquisa} c/`,
+    totais.projPesquisa || '',
+    totais.metaVsProjDiff != null
+      ? `${totais.metaVsProjDiff > 0 ? '+' : ''}${totais.metaVsProjDiff}`
+      : '',
     '',
     '',
     `${totais.comUltimaVisita} com`,
@@ -155,15 +170,16 @@ export function exportExpectativaRankingXlsx(
     { wch: 10 },
     { wch: 12 },
     { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
     { wch: 14 },
     { wch: 14 },
-    { wch: 16 },
+    { wch: 12 },
     { wch: 10 },
     { wch: 10 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 11 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
   ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Ranking')

@@ -324,3 +324,31 @@ export function tendenciaPctPesquisa(
   if (Math.abs(delta) <= tolPp) return 'estavel'
   return delta > 0 ? 'alta' : 'baixa'
 }
+
+/**
+ * Projeção de votos: % sobre válidos × base (ex.: total DF 2022 na cidade).
+ * Sem % (município sem pesquisa) → null; NP (0%) → 0.
+ */
+export function votosProjetadosPesquisaPct(
+  pct: number | null | undefined,
+  base: number | null | undefined,
+): number | null {
+  if (pct == null || !Number.isFinite(pct)) return null
+  if (base == null || !Number.isFinite(base) || base <= 0) {
+    return null
+  }
+  return Math.round((base * pct) / 100)
+}
+
+/**
+ * Proj. pesquisa − Meta (votos).
+ * Positivo = projeção acima da meta; sem projeção → null.
+ */
+export function metaVsProjPesquisaDiff(
+  meta: number | null | undefined,
+  projVotos: number | null | undefined,
+): number | null {
+  if (projVotos == null || !Number.isFinite(projVotos)) return null
+  const m = meta != null && Number.isFinite(meta) ? meta : 0
+  return Math.round(projVotos - m)
+}

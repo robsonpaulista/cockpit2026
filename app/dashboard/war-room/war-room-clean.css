@@ -7667,6 +7667,14 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   background: transparent !important;
 }
 
+.wr-expectativa-ranking-modal__visitas-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
 .wr-expectativa-ranking-modal__visita-alerta {
   flex: 0 0 auto;
   display: inline-flex;
@@ -7681,7 +7689,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   /* Regra base (>0 / 15+ dias) */
   color: color-mix(in srgb, var(--wr-reject, #d64545) 78%, #8a2020) !important;
   background: transparent !important;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .wr-expectativa-ranking-modal__visita-alerta--prioridade {
@@ -7773,6 +7781,30 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   text-align: right;
   color: var(--wr-type-soft-color);
   font-variant-numeric: tabular-nums;
+}
+
+.wr-expectativa-ranking-modal__meta-proj {
+  font-family: var(--wr-font);
+  font-size: var(--wr-type-row-size);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.wr-expectativa-ranking-modal__meta-proj--ok {
+  color: var(--wr-inst, #005b8f);
+}
+
+.wr-expectativa-ranking-modal__meta-proj--under {
+  color: color-mix(in srgb, var(--wr-coral, #f04b23) 88%, var(--wr-slate));
+}
+
+.wr-expectativa-ranking-modal__expect-proj--under .wr-expectativa-ranking-modal__expect-proj-fill {
+  background: var(--wr-coral, #f04b23);
+}
+
+.wr-expectativa-ranking-modal__expect-proj--under .wr-expectativa-ranking-modal__peso-label {
+  color: color-mix(in srgb, var(--wr-coral, #f04b23) 72%, var(--wr-slate));
+  font-weight: 700;
 }
 
 .wr-expectativa-ranking-modal__flag--pesquisa {
