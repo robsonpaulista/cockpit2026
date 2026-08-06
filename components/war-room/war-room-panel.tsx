@@ -54,6 +54,7 @@ import { WarRoomRedesCard } from '@/components/war-room/war-room-redes-card'
 import { WarRoomInstagramRadarCard } from '@/components/war-room/war-room-instagram-radar-card'
 import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas-cidade-card'
 import { WarRoomCopilotoView } from '@/components/war-room/war-room-copiloto-view'
+import { isAgendaEventParaConhecimento } from '@/lib/war-room/agenda-proximos'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -153,6 +154,7 @@ function WarRoomPanelInner() {
       const today = todayKeyInTz()
       const todaysEvents = (data.events ?? []).filter((event) => {
         if (event.status === 'cancelled') return false
+        if (isAgendaEventParaConhecimento(event)) return false
         const date = getCalendarEventDate(event)
         if (!date) return false
         return calendarDateInTz(date) === today

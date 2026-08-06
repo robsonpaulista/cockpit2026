@@ -2,16 +2,11 @@ import { z } from 'zod'
 import { listarCidadesMcp } from '@/lib/mcp/data/cidades'
 import { listarAgendaMcp } from '@/lib/mcp/data/agenda'
 import { buscarObrasMcp, buscarObrasSemDivulgacaoMcp } from '@/lib/mcp/data/obras'
-import {
-  criarPacoteConteudoMcp,
-  listarConteudosFluxoMcp,
-  listarPendentesProducaoMcp,
-  registrarArteGeradaMcp,
-} from '@/lib/mcp/data/conteudos'
+import { registrarArteGeradaMcp } from '@/lib/mcp/data/conteudos'
 import {
   listarCatalogoTemplatesCanva,
   obterBriefProducao,
-} from '@/lib/fluxo-digital/canva-brief'
+} from '@/lib/comunicacao/canva-brief'
 import { mcpErrorText, mcpJsonText } from '@/lib/mcp/format'
 
 type McpServerLike = {
@@ -130,7 +125,7 @@ export function registerCockpitMcpTools(server: McpServerLike): void {
     {
       title: 'Listar agenda',
       description:
-        'Lista eventos da agenda (visitas, reuniões, etc.) que alimentam o planejamento do Fluxo Digital. Padrão: visitas planejadas a partir de hoje.',
+        'Lista eventos da agenda (visitas, reuniões, etc.). Padrão: visitas planejadas a partir de hoje.',
       inputSchema: {
         tipo: z
           .enum(['visita', 'evento', 'reuniao', 'outro', 'todos'])
@@ -172,80 +167,6 @@ export function registerCockpitMcpTools(server: McpServerLike): void {
         return mcpJsonText(result)
       } catch (e) {
         return mcpErrorText(e instanceof Error ? e.message : 'Erro ao listar agenda')
-      }
-    }
-  )
-
-  server.registerTool(
-    'listar_pendentes_producao',
-    {
-      title: 'Pendentes de produção',
-      description:
-        'Lista visitas do Fluxo Digital (incluir_fluxo_digital) que ainda não têm pacote de templates. Use antes de criar_pacote_conteudo.',
-      inputSchema: {
-        limite: z.number().int().min(1).max(80).optional(),
-      },
-    },
-    async (args) => {
-      try {
-        const result = await listarPendentesProducaoMcp(
-          typeof args.limite === 'number' ? args.limite : undefined
-        )
-        return mcpJsonText(result)
-      } catch (e) {
-        return mcpErrorText(
-          e instanceof Error ? e.message : 'Erro ao listar pendentes de produção'
-        )
-      }
-    }
-  )
-
-  server.registerTool(
-    'criar_pacote_conteudo',
-    {
-      title: 'Criar pacote de conteúdo',
-      description:
-        'Cria o pacote de 6 templates (antes/durante/depois) em conteudos_planejados para uma agenda do Fluxo Digital. Idempotente se o pacote já existir. Depois o operador pode gerar arte no Cockpit ou no Canva.',
-      inputSchema: {
-        agendaId: z.string().uuid().describe('ID da agenda (visita) no Cockpit'),
-      },
-    },
-    async (args) => {
-      try {
-        const agendaId = typeof args.agendaId === 'string' ? args.agendaId : ''
-        if (!agendaId) return mcpErrorText('agendaId é obrigatório')
-        const result = await criarPacoteConteudoMcp(agendaId)
-        return mcpJsonText(result)
-      } catch (e) {
-        return mcpErrorText(e instanceof Error ? e.message : 'Erro ao criar pacote')
-      }
-    }
-  )
-
-  server.registerTool(
-    'listar_conteudos_fluxo',
-    {
-      title: 'Listar conteúdos do Fluxo',
-      description:
-        'Lista peças (conteudos_planejados) ligadas às agendas do Fluxo Digital, com status rascunho/gerado/aprovado/publicado.',
-      inputSchema: {
-        status: z
-          .enum(['rascunho', 'gerado', 'aprovado', 'publicado', 'todos'])
-          .optional(),
-        municipio: z.string().optional(),
-        limite: z.number().int().min(1).max(100).optional(),
-      },
-    },
-    async (args) => {
-      try {
-        const result = await listarConteudosFluxoMcp({
-          status: typeof args.status === 'string' ? args.status : undefined,
-          municipio: typeof args.municipio === 'string' ? args.municipio : undefined,
-          limite: typeof args.limite === 'number' ? args.limite : undefined,
-        })
-        return mcpJsonText(result)
-      } catch (e) {
-        return mcpErrorText(e instanceof Error ? e.message : 'Erro ao listar conteúdos')
       }
     }
   )

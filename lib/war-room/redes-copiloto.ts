@@ -280,6 +280,14 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
 
   return [
     {
+      id: 'engagement',
+      label: 'Engajamento',
+      total: totalOf(engagementSeries),
+      deltaPct: deltaOf(engagementSeries),
+      series: engagementSeries,
+      legend: 'Soma das postagens no dia',
+    },
+    {
       id: 'views',
       label: 'Visualizações',
       total: viewsTotal,
@@ -294,6 +302,43 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
         audienceSplit?.views?.total ?? 0,
       ),
       legend: viewsLegend,
+    },
+    {
+      id: 'visits',
+      label: 'Visitas no perfil',
+      total: visitsTotal,
+      deltaPct: deltaOf(visitsSeries),
+      series: visitsSeries,
+      legend: 'Perfil · lançamento manual quando houver',
+    },
+    (() => {
+      const raw = metrics?.insights?.dailyStoryViews
+      const storySeries =
+        raw && raw.length > 0
+          ? raw.map((p) => ({
+              date: p.date,
+              label: formatDataCurta(`${p.date}T12:00:00`),
+              value: p.value,
+            }))
+          : []
+      const storiesTotal =
+        metrics?.insights?.periodMetrics?.storiesViews ?? totalOf(storySeries)
+      return {
+        id: 'story-views',
+        label: 'Visualizações nos Stories',
+        total: storiesTotal,
+        deltaPct: deltaOf(storySeries),
+        series: storySeries,
+        legend: 'Graph · breakdown STORY',
+      }
+    })(),
+    {
+      id: 'followers',
+      label: 'Seguidores',
+      total: followersNet,
+      deltaPct: followersDeltaPct,
+      series: followersSeries,
+      legend: 'Ganho líquido no período',
     },
     {
       id: 'likes',
@@ -318,30 +363,6 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
       deltaPct: deltaOf(sharesSeries),
       series: sharesSeries,
       legend: 'Soma das postagens no dia',
-    },
-    {
-      id: 'engagement',
-      label: 'Engajamento',
-      total: totalOf(engagementSeries),
-      deltaPct: deltaOf(engagementSeries),
-      series: engagementSeries,
-      legend: 'Soma das postagens no dia',
-    },
-    {
-      id: 'visits',
-      label: 'Visitas no perfil',
-      total: visitsTotal,
-      deltaPct: deltaOf(visitsSeries),
-      series: visitsSeries,
-      legend: 'Perfil · lançamento manual quando houver',
-    },
-    {
-      id: 'followers',
-      label: 'Seguidores',
-      total: followersNet,
-      deltaPct: followersDeltaPct,
-      series: followersSeries,
-      legend: 'Ganho líquido no período',
     },
   ].filter((kpi) => kpi.total !== 0 || kpi.series.some((p) => p.value !== 0))
 }

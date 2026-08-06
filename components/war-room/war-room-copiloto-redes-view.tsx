@@ -47,7 +47,6 @@ import { formatWarRoomNumber } from '@/lib/war-room/format'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
-const CANDIDATOS_ENGAJAMENTO_TOP_N = 5
 const CANDIDATOS_FETCH_LIMIT = 400
 
 type RadarBootstrapPayload = {
@@ -276,7 +275,6 @@ export function WarRoomCopilotoRedesView() {
         actors: radarActors,
         posts: radarPosts,
         days,
-        topN: CANDIDATOS_ENGAJAMENTO_TOP_N,
       }),
     [radarActors, radarPosts, days],
   )
@@ -404,21 +402,22 @@ export function WarRoomCopilotoRedesView() {
     [history, metrics, manualVisitsByDate, days],
   )
 
-  /** Limita a base do Comparativo exatamente na borda inferior do card Seguidores. */
+  /** Limita a base do Comparativo à borda inferior da última linha de indicadores. */
   useLayoutEffect(() => {
     const band = candidatosBandRef.current
     const cols = colsRef.current
     if (!band || !cols) return
 
-    const syncBottomToSeguidores = () => {
-      const seguidores = cols.querySelector<HTMLElement>('[data-wr-kpi="followers"]')
-      if (!seguidores) {
+    const syncBottomToIndicators = () => {
+      const cards = cols.querySelectorAll<HTMLElement>('[data-wr-kpi]')
+      const anchor = cards.length > 0 ? cards[cards.length - 1] : null
+      if (!anchor) {
         band.style.maxHeight = ''
         return
       }
       const bandTop = band.getBoundingClientRect().top
-      const seguidoresBottom = seguidores.getBoundingClientRect().bottom
-      const maxHeight = Math.floor(seguidoresBottom - bandTop)
+      const anchorBottom = anchor.getBoundingClientRect().bottom
+      const maxHeight = Math.floor(anchorBottom - bandTop)
       if (maxHeight > 0) {
         band.style.maxHeight = `${maxHeight}px`
       } else {
@@ -426,21 +425,20 @@ export function WarRoomCopilotoRedesView() {
       }
     }
 
-    syncBottomToSeguidores()
-    const raf = window.requestAnimationFrame(syncBottomToSeguidores)
+    syncBottomToIndicators()
+    const raf = window.requestAnimationFrame(syncBottomToIndicators)
     const observer = new ResizeObserver(() => {
-      syncBottomToSeguidores()
+      syncBottomToIndicators()
     })
     observer.observe(cols)
     observer.observe(band)
-    const seguidores = cols.querySelector('[data-wr-kpi="followers"]')
-    if (seguidores) observer.observe(seguidores)
-    window.addEventListener('resize', syncBottomToSeguidores)
+    cols.querySelectorAll('[data-wr-kpi]').forEach((el) => observer.observe(el))
+    window.addEventListener('resize', syncBottomToIndicators)
 
     return () => {
       window.cancelAnimationFrame(raf)
       observer.disconnect()
-      window.removeEventListener('resize', syncBottomToSeguidores)
+      window.removeEventListener('resize', syncBottomToIndicators)
       band.style.maxHeight = ''
     }
   }, [desempenhoKpis, candidatosEngajamento, themesPage, loading, radarLoading])
@@ -690,7 +688,7 @@ export function WarRoomCopilotoRedesView() {
                     className="h-4 w-4 animate-spin text-[var(--wr-accent,#F04B23)]"
                     aria-hidden
                   />
-                  Carregando top {CANDIDATOS_ENGAJAMENTO_TOP_N} candidatos…
+                  Carregando candidatos…
                 </p>
               ) : radarError ? (
                 <p className="wr-copiloto-redes__empty">{radarError}</p>

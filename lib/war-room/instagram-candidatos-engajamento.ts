@@ -33,11 +33,15 @@ function lastNDays(n: number): string[] {
   return dates
 }
 
-/** Top N candidatos · engajamento diário (likes + comments), uma linha por candidato. */
+/**
+ * Candidatos · engajamento diário (likes + comments).
+ * Inclui todos os atores ativos (exceto hidden). `topN` opcional limita o ranking.
+ */
 export function buildTopCandidatosEngajamentoDiario(opts: {
   actors: PoliticalActorWithTerms[]
   posts: InstagramRadarPostWithActor[]
   days: number
+  /** Se definido, limita aos N com maior engajamento médio. */
   topN?: number
   hiddenSlugs?: Set<string>
 }): CandidatosEngajamentoChartModel {
@@ -45,7 +49,7 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
     actors,
     posts,
     days,
-    topN = 5,
+    topN,
     hiddenSlugs = DEFAULT_HIDDEN,
   } = opts
 
@@ -54,10 +58,12 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
     buildPanoramaHeatmapActorColumns(activeActors).map((c) => [c.slug, c.accentColor]),
   )
 
-  const compareRows = buildInstagramRadarCompareRows(activeActors, posts, days)
-    .filter((row) => row.postCount > 0)
-    .sort((a, b) => b.avgEngagement - a.avgEngagement)
-    .slice(0, topN)
+  let compareRows = buildInstagramRadarCompareRows(activeActors, posts, days).sort(
+    (a, b) => b.avgEngagement - a.avgEngagement,
+  )
+  if (typeof topN === 'number' && topN > 0) {
+    compareRows = compareRows.slice(0, topN)
+  }
 
   const lines: CandidatoEngajamentoLine[] = compareRows.map((row) => ({
     slug: row.actor.slug,
@@ -66,12 +72,12 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
   }))
 
   const dates = lastNDays(days)
-  const topSlugs = new Set(lines.map((l) => l.slug))
+  const lineSlugs = new Set(lines.map((l) => l.slug))
   const bySlugDate = new Map<string, number>()
 
   for (const post of posts) {
     const slug = post.political_actors?.slug
-    if (!slug || !topSlugs.has(slug) || !post.posted_at) continue
+    if (!slug || !lineSlugs.has(slug) || !post.posted_at) continue
     const date = dayKey(post.posted_at)
     const key = `${slug}|${date}`
     const value = (post.likes_count ?? 0) + (post.comments_count ?? 0)
@@ -89,9 +95,9 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
     return row
   })
 
-  const empty =
-    lines.length === 0 ||
-    !chartData.some((row) => lines.some((line) => Number(row[line.slug] ?? 0) > 0))
-
-  return { lines, chartData, empty }
+  return {
+    lines,
+    chartData,
+    empty: lines.length === 0,
+  }
 }

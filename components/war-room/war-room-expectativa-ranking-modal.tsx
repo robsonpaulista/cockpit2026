@@ -56,6 +56,10 @@ import { WarRoomMunicipioEmendasModal } from '@/components/war-room/war-room-mun
 import { WarRoomMunicipioObrasModal } from '@/components/war-room/war-room-municipio-obras-modal'
 import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
 import { WarRoomAgendaProximosModal } from '@/components/war-room/war-room-agenda-proximos-modal'
+import {
+  WarRoomComunicarLideresModal,
+  type ComunicarLideresVisita,
+} from '@/components/war-room/war-room-comunicar-lideres-modal'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
 import {
@@ -109,6 +113,8 @@ type RankingRow = {
   diasDesdeLabel: string
   proxVisitaLabel: string
   proxVisitaSort: string
+  proxVisitaDataLabel: string
+  proxVisitaHorario: string
   temEmendas: boolean
   temObras: boolean
   /** Posição do candidato foco na última pesquisa consolidada. */
@@ -351,8 +357,15 @@ function normalizarBusca(value: string): string {
 
 function proxVisitaDe(
   itens: WarRoomAgendaProximoItem[] | undefined,
-): { label: string; sort: string } {
-  if (!itens || itens.length === 0) return { label: '—', sort: '' }
+): {
+  label: string
+  sort: string
+  dataLabel: string
+  horario: string
+} {
+  if (!itens || itens.length === 0) {
+    return { label: '—', sort: '', dataLabel: '', horario: '' }
+  }
   const first = [...itens].sort((a, b) => {
     const byDate = a.dataKey.localeCompare(b.dataKey)
     if (byDate !== 0) return byDate
@@ -361,7 +374,12 @@ function proxVisitaDe(
   const label = first.horario
     ? `${first.dataLabel} ${first.horario}`
     : first.dataLabel
-  return { label, sort: `${first.dataKey} ${first.horario}` }
+  return {
+    label,
+    sort: `${first.dataKey} ${first.horario}`,
+    dataLabel: first.dataLabel,
+    horario: first.horario,
+  }
 }
 
 /** Modal tabular — ranking completo de expectativa (mapa operacional). */
@@ -410,6 +428,8 @@ export function WarRoomExpectativaRankingModal({
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(
     null,
   )
+  const [comunicarVisita, setComunicarVisita] =
+    useState<ComunicarLideresVisita | null>(null)
 
   const agendaModalItens = useMemo(() => {
     if (!agendaModalMunicipio) return []
@@ -638,6 +658,8 @@ export function WarRoomExpectativaRankingModal({
         diasDesdeLabel: formatDiasDesdeVisita(dias),
         proxVisitaLabel: prox.label,
         proxVisitaSort: prox.sort,
+        proxVisitaDataLabel: prox.dataLabel,
+        proxVisitaHorario: prox.horario,
         temEmendas: emendasKeys.has(key),
         temObras:
           m.sinais.obras === 'bem' || (m.detalhes.obrasQuantidade ?? 0) > 0,
@@ -1537,9 +1559,11 @@ export function WarRoomExpectativaRankingModal({
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
-                          window.alert(
-                            `Comunicar Líderes · ${row.municipio}\n(em breve)`,
-                          )
+                          setComunicarVisita({
+                            municipio: row.municipio,
+                            dataLabel: row.proxVisitaDataLabel,
+                            horario: row.proxVisitaHorario,
+                          })
                         }}
                       >
                         <IconSend className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
@@ -1664,6 +1688,13 @@ export function WarRoomExpectativaRankingModal({
           municipiosIpt={municipios}
           agendaPorMunicipio={agendaPorMunicipio}
           onClose={() => setAgendaModalMunicipio(null)}
+        />
+      ) : null}
+
+      {comunicarVisita ? (
+        <WarRoomComunicarLideresModal
+          visita={comunicarVisita}
+          onClose={() => setComunicarVisita(null)}
         />
       ) : null}
     </>

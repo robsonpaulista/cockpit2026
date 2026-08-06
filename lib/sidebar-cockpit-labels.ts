@@ -3,8 +3,6 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   home: 'Visão',
   'resumo-operacional': 'Resumo',
   'territorio-ipt': 'Mapa Diagnóstico Campanha',
-  'cobertura-campanha': 'Fluxo Digital',
-  'fluxo-digital': 'Fluxo Digital',
   narrativas: 'Estratégia',
   agenda: 'Agenda',
   territorio: 'Território & Campo',

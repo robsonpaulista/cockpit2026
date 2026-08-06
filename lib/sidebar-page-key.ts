@@ -43,7 +43,6 @@ export function pageKeyForSidebarItem(id: string): string {
   if (id === 'noticias-menu') return 'noticias'
   if (id === 'noticias-monitoramento' || id === 'radar-224') return 'noticias'
   if (id === 'territorio-ipt') return 'ipt'
-  if (id === 'cobertura-campanha' || id === 'fluxo-digital') return 'fluxo-digital'
   if (id === 'war-room') return 'war-room'
   if (id === 'log-system') return 'log_system'
   if (id === 'backup') return 'backup'

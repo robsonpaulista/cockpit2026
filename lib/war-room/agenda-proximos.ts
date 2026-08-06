@@ -3,6 +3,7 @@ import {
   getCalendarEventDate,
   type CalendarEventRow,
 } from '@/lib/agenda/calendar-event-utils'
+import { resolveMunicipioNomeFromAgendaEvent } from '@/lib/agenda/calendar-to-campo'
 import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
 import { normalizeIptMunicipio } from '@/lib/ipt'
 
@@ -102,51 +103,62 @@ function normalizeAgendaHora(hora: string | null | undefined): string {
   return trimmed
 }
 
-function titleCaseMunicipio(raw: string): string {
-  return raw
-    .trim()
-    .toLocaleLowerCase('pt-BR')
-    .replace(/(^|[\s'-])(\S)/g, (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase('pt-BR'))
-}
-
-/** Extrai município da location ou do badge de origem no título. */
+/** Extrai município da location, badge `(Cidade - PI)` ou texto do título/descrição. */
 export function municipioFromAgendaEvent(event: CalendarEventRow): {
   key: string
   label: string
 } | null {
-  const loc = event.location?.trim()
-  if (loc) {
-    const first = loc.split(',')[0]?.trim()
-    if (first && first !== '—') {
-      return { key: normalizeIptMunicipio(first), label: titleCaseMunicipio(first) }
-    }
+  const nome = resolveMunicipioNomeFromAgendaEvent(event)
+  if (!nome) return null
+  return {
+    key: normalizeIptMunicipio(nome),
+    label: nome,
   }
-
-  const { origin } = parseEventOriginFromSummary(event.summary || '')
-  if (origin) {
-    const beforeState = origin.split(/\s*-\s*/)[0]?.trim()
-    if (beforeState) {
-      return {
-        key: normalizeIptMunicipio(beforeState),
-        label: titleCaseMunicipio(beforeState),
-      }
-    }
-  }
-
-  return null
 }
 
-/**
- * Eventos só informativos (ex.: agenda do governador) — não entram
- * na fila de decisões / alertas da War Room.
- */
-export function isAgendaParaConhecimento(summaryOrTitle: string): boolean {
+/** Prefixos no início do título/descrição que não entram na War Room. */
+const AGENDA_PREFIXOS_EXCLUIDOS = ['PARA CONHECIMENTO', 'ATENDIMENTO'] as const
+
+function normalizeAgendaPrefixText(summaryOrTitle: string): string {
   const text = summaryOrTitle
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .trim()
     .toLocaleUpperCase('pt-BR')
-  return text.startsWith('PARA CONHECIMENTO')
+  return text
+    .replace(/^<[^>]+>\s*/g, '')
+    .replace(/^[(\[{«"'\s]+/, '')
+    .trim()
+}
+
+/**
+ * Eventos informativos / administrativos — não entram na fila de decisões,
+ * próxima visita nem agenda do dia da War Room.
+ * Aceita `TERMO…` ou `(TERMO)…` no início (ex.: PARA CONHECIMENTO, ATENDIMENTO).
+ */
+export function isAgendaPrefixoExcluido(summaryOrTitle: string): boolean {
+  const stripped = normalizeAgendaPrefixText(summaryOrTitle)
+  return AGENDA_PREFIXOS_EXCLUIDOS.some((prefix) => stripped.startsWith(prefix))
+}
+
+/** @deprecated use isAgendaPrefixoExcluido */
+export function isAgendaParaConhecimento(summaryOrTitle: string): boolean {
+  return isAgendaPrefixoExcluido(summaryOrTitle)
+}
+
+/** Summary ou description iniciando com prefixo excluído (PARA CONHECIMENTO, ATENDIMENTO…). */
+export function isAgendaEventParaConhecimento(event: {
+  summary?: string
+  description?: string
+}): boolean {
+  const raw = event.summary || ''
+  const { origin, title } = parseEventOriginFromSummary(raw)
+  return (
+    isAgendaPrefixoExcluido(raw) ||
+    isAgendaPrefixoExcluido(origin || '') ||
+    isAgendaPrefixoExcluido(title) ||
+    isAgendaPrefixoExcluido(event.description || '')
+  )
 }
 
 export function buildAgendaProximosPorMunicipio(
@@ -177,6 +189,7 @@ export function listAgendaVisitasProximas(
 
   for (const event of events) {
     if (event.status === 'cancelled') continue
+    if (isAgendaEventParaConhecimento(event)) continue
     const dayKey = eventCalendarDayKey(event)
     if (!dayKey || !isDayKeyInJanela(dayKey, today, janela)) continue
 

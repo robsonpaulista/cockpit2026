@@ -176,7 +176,6 @@ function pageKeyForItem(id: string): string {
     return 'noticias'
   }
   if (id === 'territorio-ipt') return 'ipt'
-  if (id === 'cobertura-campanha' || id === 'fluxo-digital') return 'fluxo-digital'
   return id === 'home' ? 'dashboard' : id
 }
 

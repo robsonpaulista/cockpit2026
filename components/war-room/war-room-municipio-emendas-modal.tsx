@@ -28,6 +28,17 @@ function tituloEmenda(e: EmendaRegistro): string {
   return e.objeto?.trim() || e.emenda.trim() || 'Emenda sem objeto'
 }
 
+function modalidadeEmenda(e: EmendaRegistro): string {
+  const titulo = tituloEmenda(e)
+  const modalidade = e.emenda.trim()
+  if (!modalidade) return '—'
+  // Evita repetir o mesmo texto nas duas colunas
+  if (modalidade.toLocaleLowerCase('pt-BR') === titulo.toLocaleLowerCase('pt-BR')) {
+    return e.bloco?.trim() || '—'
+  }
+  return modalidade
+}
+
 /** Modal de emendas do município — aberto a partir do ranking da Expectativa. */
 export function WarRoomMunicipioEmendasModal({
   municipio,
@@ -77,7 +88,7 @@ export function WarRoomMunicipioEmendasModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={tituloId}
-        className="wr-visita-modal__panel wr-municipio-detalhe-modal__panel"
+        className="wr-visita-modal__panel wr-municipio-detalhe-modal__panel wr-municipio-detalhe-modal__panel--emendas"
       >
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
@@ -112,35 +123,59 @@ export function WarRoomMunicipioEmendasModal({
         {lista.length === 0 ? (
           <p className="wr-visita-modal__state">Sem emendas para listar.</p>
         ) : (
-          <ul className="wr-municipio-detalhe-modal__lista">
-            {lista.map((emenda) => {
-              const valor =
-                emenda.valor_indicado ??
-                emenda.valor_empenhado ??
-                emenda.valor_pago
-              const paga = emendaEstaPaga(emenda)
-              return (
-                <li key={emenda.id}>
-                  <div className="wr-municipio-detalhe-modal__item-top">
-                    <strong>{tituloEmenda(emenda)}</strong>
-                    <span className="tabular-nums">{formatBrl(valor)}</span>
-                  </div>
-                  <div className="wr-municipio-detalhe-modal__item-meta">
-                    {emenda.exercicio != null ? <em>{emenda.exercicio}</em> : null}
-                    {emenda.emenda.trim() ? <em>{emenda.emenda.trim()}</em> : null}
-                    <em
-                      className={
-                        paga ? 'wr-municipio-detalhe-modal__status--ok' : undefined
-                      }
-                    >
-                      {paga ? 'Paga' : 'Em aberto'}
-                    </em>
-                    {emenda.bloco?.trim() ? <em>{emenda.bloco.trim()}</em> : null}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <div className="wr-municipio-detalhe-modal__table-wrap">
+            <table className="wr-municipio-detalhe-modal__table">
+              <thead>
+                <tr>
+                  <th scope="col">Ano</th>
+                  <th scope="col">Emenda</th>
+                  <th scope="col">Modalidade</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="wr-municipio-detalhe-modal__col-valor">
+                    Valor
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map((emenda) => {
+                  const valor =
+                    emenda.valor_indicado ??
+                    emenda.valor_empenhado ??
+                    emenda.valor_pago
+                  const paga = emendaEstaPaga(emenda)
+                  const titulo = tituloEmenda(emenda)
+                  return (
+                    <tr key={emenda.id}>
+                      <td className="tabular-nums">
+                        {emenda.exercicio != null ? emenda.exercicio : '—'}
+                      </td>
+                      <td className="wr-municipio-detalhe-modal__col-obra" title={titulo}>
+                        <span>{titulo}</span>
+                      </td>
+                      <td
+                        className="wr-municipio-detalhe-modal__col-clip"
+                        title={modalidadeEmenda(emenda)}
+                      >
+                        <span>{modalidadeEmenda(emenda)}</span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            paga ? 'wr-municipio-detalhe-modal__status--ok' : undefined
+                          }
+                        >
+                          {paga ? 'Paga' : 'Em aberto'}
+                        </span>
+                      </td>
+                      <td className="wr-municipio-detalhe-modal__col-valor tabular-nums">
+                        {formatBrl(valor)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

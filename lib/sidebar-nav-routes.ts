@@ -277,19 +277,6 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   backup: ['backup', 'backup supabase', 'backup banco', 'db backup'],
   'log-system': ['log system', 'log ia cockpit', 'logs agente', 'historico ia cockpit', 'log jarvis', 'historico jarvis'],
   'territorio-ipt': ['mapa diagnostico campanha', 'mapa diagnostico', 'ipt', 'diagnostico campanha'],
-  'fluxo-digital': [
-    'fluxo digital',
-    'fluxo digital da campanha',
-    'fluxo do conteudo',
-    'cobertura da campanha',
-    'cobertura',
-  ],
-  'cobertura-campanha': [
-    'fluxo digital',
-    'cobertura da campanha',
-    'cobertura campanha',
-    'cobertura',
-  ],
 }
 
 function buildTarget(item: MenuItem): SidebarNavTarget {
@@ -335,12 +322,6 @@ export const SIDEBAR_NAV_TARGETS: SidebarNavTarget[] = [
     label: 'Mapa Campanha',
     icon: 'MapPin',
     href: '/dashboard/territorio/ipt',
-  }),
-  buildTarget({
-    id: 'fluxo-digital',
-    label: 'Fluxo Digital',
-    icon: 'Target',
-    href: '/dashboard/fluxo-digital',
   }),
 ]
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Download, ExternalLink, Link2, Loader2, RefreshCw } from 'lucide-react'
 import {
+  listarMunicipiosComObras,
   valorExibidoMapaObra,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
@@ -61,6 +62,7 @@ export function MapaObrasListaStatus({
   onStatusSalvo,
 }: MapaObrasListaStatusProps) {
   const [busca, setBusca] = useState('')
+  const [filtroMunicipio, setFiltroMunicipio] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
   const [sortCol, setSortCol] = useState<SortObraCol>('municipio')
@@ -121,6 +123,11 @@ export function MapaObrasListaStatus({
     void carregarLinks()
   }, [carregarLinks])
 
+  const opcoesMunicipio = useMemo(
+    () => listarMunicipiosComObras(obras, 'todos'),
+    [obras],
+  )
+
   const opcoesTipo = useMemo(() => {
     const presentes = new Set<string>()
     for (const obra of obras) {
@@ -147,6 +154,10 @@ export function MapaObrasListaStatus({
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
     const base = obras.filter((obra) => {
+      if (filtroMunicipio) {
+        const municipio = (obra.municipio ?? '').trim()
+        if (municipio !== filtroMunicipio) return false
+      }
       if (filtroTipo) {
         const tipo = (obra.tipo ?? '').trim()
         if (tipo !== filtroTipo) return false
@@ -190,7 +201,7 @@ export function MapaObrasListaStatus({
       if (byCota !== 0) return byCota
       return compareTerritorioText(a.municipio || '', b.municipio || '', true)
     })
-  }, [busca, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
+  }, [busca, filtroMunicipio, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
 
   const totais = useMemo(() => {
     let valor = 0
@@ -223,13 +234,14 @@ export function MapaObrasListaStatus({
     () =>
       [
         busca.trim() ? `Busca: ${busca.trim()}` : null,
+        filtroMunicipio ? `Município: ${filtroMunicipio}` : null,
         filtroTipo
           ? `Tipo: ${TIPO_LABEL[filtroTipo] ?? filtroTipo}`
           : null,
         filtroStatus ? `Status: ${filtroStatus}` : null,
         `Ordenação: ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
       ].filter((v): v is string => Boolean(v)),
-    [busca, filtroStatus, filtroTipo, sortAsc, sortCol],
+    [busca, filtroMunicipio, filtroStatus, filtroTipo, sortAsc, sortCol],
   )
 
   const alternarSort = (column: SortObraCol) => {
@@ -269,6 +281,19 @@ export function MapaObrasListaStatus({
           className="min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs"
         />
         <select
+          value={filtroMunicipio}
+          onChange={(e) => setFiltroMunicipio(e.target.value)}
+          title="Filtrar por município"
+          className="max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+        >
+          <option value="">Todos os municípios</option>
+          {opcoesMunicipio.map((municipio) => (
+            <option key={municipio} value={municipio}>
+              {municipio}
+            </option>
+          ))}
+        </select>
+        <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
           title="Filtrar por tipo"
@@ -294,10 +319,11 @@ export function MapaObrasListaStatus({
             </option>
           ))}
         </select>
-        {(filtroTipo || filtroStatus) && (
+        {(filtroMunicipio || filtroTipo || filtroStatus) && (
           <button
             type="button"
             onClick={() => {
+              setFiltroMunicipio('')
               setFiltroTipo('')
               setFiltroStatus('')
             }}

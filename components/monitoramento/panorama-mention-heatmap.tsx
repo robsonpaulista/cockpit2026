@@ -40,6 +40,27 @@ function formatDayLabel(iso: string): string {
   })
 }
 
+function formatHeatmapCellValue(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return ''
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}mi`
+  }
+  if (value >= 10_000) {
+    return `${Math.round(value / 1_000).toLocaleString('pt-BR')}mil`
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}mil`
+  }
+  return Math.round(value).toLocaleString('pt-BR')
+}
+
+/** Contraste do texto sobre a intensidade da célula. */
+function heatmapValueTextClass(value: number, scaleMax: number): string {
+  if (value <= 0 || scaleMax <= 0) return 'text-text-muted/70'
+  const t = value / scaleMax
+  return t >= 0.55 ? 'text-white' : 'text-text-primary/85'
+}
+
 interface PanoramaMentionHeatmapProps {
   dates: string[]
   rows: PanoramaHeatmapRow[]
@@ -53,6 +74,13 @@ interface PanoramaMentionHeatmapProps {
   hideScaleControls?: boolean
   /** Layout mais estreito (ex.: War Room com 7 dias). */
   compact?: boolean
+  /**
+   * Força o máximo do modo comparativo (ex.: página parcial do heatmap —
+   * mantém a escala igual à da lista completa).
+   */
+  comparativeMax?: number
+  /** Exibe o valor numérico dentro de cada célula. */
+  showValues?: boolean
 }
 
 export function PanoramaHeatmapScaleToggle({
@@ -92,13 +120,21 @@ export function PanoramaMentionHeatmap({
   onScaleModeChange,
   hideScaleControls = false,
   compact = false,
+  comparativeMax,
+  showValues = false,
 }: PanoramaMentionHeatmapProps) {
   const [internalScaleMode, setInternalScaleMode] = useState<HeatmapScaleMode>('comparative')
   const scaleMode = scaleModeProp ?? internalScaleMode
   const setScaleMode = onScaleModeChange ?? setInternalScaleMode
   const [selection, setSelection] = useState<PanoramaNewsDaySelection | null>(null)
 
-  const globalMax = useMemo(() => heatmapGlobalMax(rows.map((row) => row.values)), [rows])
+  const globalMax = useMemo(() => {
+    const fromRows = heatmapGlobalMax(rows.map((row) => row.values))
+    if (typeof comparativeMax === 'number' && Number.isFinite(comparativeMax) && comparativeMax > 0) {
+      return Math.max(comparativeMax, fromRows)
+    }
+    return fromRows
+  }, [rows, comparativeMax])
   const legendBase = heatmapLegendBaseColor(scaleMode)
 
   const monthTicks: Array<{ index: number; label: string }> = []
@@ -172,8 +208,11 @@ export function PanoramaMentionHeatmap({
                       key={`${row.slug}-${dates[i]}`}
                       type="button"
                       className={cn(
-                        'animate-panorama-heatmap-cell h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
-                        value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default'
+                        'animate-panorama-heatmap-cell min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
+                        showValues
+                          ? 'inline-flex h-[22px] items-center justify-center px-0.5'
+                          : 'h-[18px]',
+                        value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default',
                       )}
                       style={{
                         backgroundColor: heatmapCellColor(row.color, value, scaleMax, scaleMode),
@@ -202,7 +241,18 @@ export function PanoramaMentionHeatmap({
                           },
                         })
                       }}
-                    />
+                    >
+                      {showValues ? (
+                        <span
+                          className={cn(
+                            'pointer-events-none select-none text-[9px] font-semibold leading-none tabular-nums tracking-tight',
+                            heatmapValueTextClass(value, scaleMax),
+                          )}
+                        >
+                          {value > 0 ? formatHeatmapCellValue(value) : '0'}
+                        </span>
+                      ) : null}
+                    </button>
                   ))}
                 </div>
               </div>

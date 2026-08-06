@@ -1,7 +1,7 @@
 import {
   agendaFluxoKeyForVisita,
   diffDayKeys,
-  isAgendaParaConhecimento,
+  isAgendaEventParaConhecimento,
   listAgendaVisitasProximas,
   todayKeyInTz,
   type WarRoomAgendaVisita,
@@ -106,7 +106,7 @@ export function buildDecisoesVisitasFluxoIncompleto(
     opts.janelaDias ?? WR_DECISOES_VIAGENS_JANELA_DIAS,
   )
   const eventsFiltrados = events.filter(
-    (event) => !isAgendaParaConhecimento(event.summary || ''),
+    (event) => !isAgendaEventParaConhecimento(event),
   )
   const visitas = listAgendaVisitasProximas(eventsFiltrados, {
     hojeKey,

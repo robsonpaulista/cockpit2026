@@ -76,10 +76,17 @@ export async function fetchGoogleCalendarEvents(
   startDate.setHours(0, 0, 0, 0)
   startDate.setDate(startDate.getDate() - 7)
 
+  // Cobre a janela da War Room (próx. visita ~15d) com folga; sem timeMax a
+  // API podia truncar em maxResults e deixar compromissos próximos de fora.
+  const endDate = new Date()
+  endDate.setHours(23, 59, 59, 999)
+  endDate.setDate(endDate.getDate() + 45)
+
   const response = await calendar.events.list({
     calendarId: config.calendarId,
     timeMin: startDate.toISOString(),
-    maxResults: 500,
+    timeMax: endDate.toISOString(),
+    maxResults: 2500,
     singleEvents: true,
     orderBy: 'startTime',
   })

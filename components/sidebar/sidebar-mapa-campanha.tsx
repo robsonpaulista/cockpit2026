@@ -25,7 +25,7 @@ type CampanhaLink = {
   id: string
   href: string
   label: string
-  icon: 'Activity' | 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3'
+  icon: 'Activity' | 'MapPin' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3'
   pageKeys: string[]
 }
 
@@ -35,7 +35,7 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
     href: '/dashboard/war-room',
     label: 'War Room',
     icon: 'Activity',
-    pageKeys: ['war-room', 'conteudo', 'material-campanha', 'fluxo-digital', 'ipt', 'whatsapp'],
+    pageKeys: ['war-room', 'conteudo', 'material-campanha', 'ipt', 'whatsapp'],
   },
   {
     id: 'diagnostico',
@@ -57,13 +57,6 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
     label: 'Pesquisas de Opinião',
     icon: 'BarChart3',
     pageKeys: ['pesquisa'],
-  },
-  {
-    id: 'fluxo-digital',
-    href: '/dashboard/fluxo-digital',
-    label: 'Fluxo Digital',
-    icon: 'Target',
-    pageKeys: ['fluxo-digital', 'cobertura', 'conteudo'],
   },
   {
     id: 'radar-eleitoral',

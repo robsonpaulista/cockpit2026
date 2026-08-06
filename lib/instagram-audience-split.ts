@@ -257,3 +257,215 @@ export async function fetchInstagramAudienceSplit(opts: {
     reach: reachPrimary ?? reachFallback,
   }
 }
+
+export type InstagramProductTypeViews = {
+  story: number
+  reel: number
+  feed: number
+  ad: number
+  total: number
+}
+
+function classifyProductType(raw: string): keyof Omit<InstagramProductTypeViews, 'total'> | null {
+  const n = raw
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!n) return null
+  if (n.includes('STORY')) return 'story'
+  if (n.includes('REEL')) return 'reel'
+  if (n.includes('AD')) return 'ad'
+  if (n.includes('FEED') || n.includes('POST') || n.includes('CAROUSEL')) return 'feed'
+  return null
+}
+
+/** Extrai totais por superfície (STORY / REEL / FEED / AD) de insights total_value. */
+export function parseProductTypeViewsFromInsights(
+  payload: InsightMetricPayload,
+  metricName: string = 'views',
+): InstagramProductTypeViews | null {
+  const metric = (payload.data ?? []).find((m) => m.name === metricName)
+  const totalRaw = metric?.total_value?.value
+  const total = typeof totalRaw === 'number' && Number.isFinite(totalRaw) ? totalRaw : 0
+  const blocks = metric?.total_value?.breakdowns ?? []
+  const out: InstagramProductTypeViews = {
+    story: 0,
+    reel: 0,
+    feed: 0,
+    ad: 0,
+    total: 0,
+  }
+
+  for (const block of blocks) {
+    for (const row of block.results ?? []) {
+      const label = (row.dimension_values ?? []).join(' ')
+      const value = typeof row.value === 'number' && Number.isFinite(row.value) ? row.value : 0
+      const key = classifyProductType(label)
+      if (key) out[key] += value
+    }
+  }
+
+  const sumParts = out.story + out.reel + out.feed + out.ad
+  if (total <= 0 && sumParts <= 0) return null
+  out.total = total > 0 ? total : sumParts
+  return out
+}
+
+function dateKeysForTimeRange(timeRange: string): string[] {
+  let days = 30
+  switch (timeRange) {
+    case '1d':
+      days = 1
+      break
+    case '7d':
+      days = 7
+      break
+    case '14d':
+      days = 14
+      break
+    case '28d':
+      days = 28
+      break
+    case '60d':
+      days = 60
+      break
+    case '90d':
+      days = 90
+      break
+    default:
+      days = 30
+  }
+
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+  const [y, m, d] = today.split('-').map((p) => Number.parseInt(p, 10))
+  if (!y || !m || !d) return []
+  const base = new Date(Date.UTC(y, m - 1, d))
+  const out: string[] = []
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const dt = new Date(base)
+    dt.setUTCDate(base.getUTCDate() - i)
+    out.push(dt.toISOString().slice(0, 10))
+  }
+  return out
+}
+
+/** Meia-noite BRT (sem horário de verão) como unix — janela diária na Graph. */
+function unixBoundsForDateKey(dateKey: string): { since: number; until: number } | null {
+  const [y, m, d] = dateKey.split('-').map((p) => Number.parseInt(p, 10))
+  if (!y || !m || !d) return null
+  // America/Sao_Paulo = UTC-3 → 00:00 BRT = 03:00 UTC
+  const since = Math.floor(Date.UTC(y, m - 1, d, 3, 0, 0) / 1000)
+  return { since, until: since + 86_400 }
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const idx = next
+      next += 1
+      results[idx] = await worker(items[idx] as T)
+    }
+  })
+  await Promise.all(runners)
+  return results
+}
+
+/**
+ * Views da conta quebradas por superfície (Stories / Reels / Feed / Ads).
+ * Usa `metric=views&metric_type=total_value&breakdown=media_product_type`.
+ */
+export async function fetchInstagramViewsByProductType(opts: {
+  igUserId: string
+  accessToken: string
+  timeRange?: string
+  since?: number
+  until?: number
+  cacheBuster?: string
+}): Promise<InstagramProductTypeViews | null> {
+  const {
+    igUserId,
+    accessToken,
+    timeRange = '30d',
+    since,
+    until,
+    cacheBuster = '',
+  } = opts
+  const range =
+    since != null && until != null
+      ? `since=${since}&until=${until}`
+      : rangeParamsForTimeRange(timeRange)
+  const url =
+    `https://graph.facebook.com/v21.0/${igUserId}/insights` +
+    `?metric=views&period=day&metric_type=total_value&breakdown=media_product_type` +
+    `&${range}&access_token=${encodeURIComponent(accessToken)}${cacheBuster}`
+
+  try {
+    const res = await fetch(url)
+    const payload = (await res.json()) as InsightMetricPayload
+    if (!res.ok) return null
+    return parseProductTypeViewsFromInsights(payload, 'views')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Série de visualizações só de Stories (breakdown STORY).
+ * - Total do período: 1 chamada agregada
+ * - Sparklines: amostragem diária (7/14) ou a cada 2–3 dias (28/60+) para respeitar rate limit
+ */
+export async function fetchInstagramDailyStoryViews(opts: {
+  igUserId: string
+  accessToken: string
+  timeRange?: string
+  cacheBuster?: string
+}): Promise<{
+  daily: InstagramDailyMetricPoint[]
+  total: number
+  byProduct: InstagramProductTypeViews | null
+}> {
+  const { igUserId, accessToken, timeRange = '30d', cacheBuster = '' } = opts
+  const byProduct = await fetchInstagramViewsByProductType({
+    igUserId,
+    accessToken,
+    timeRange,
+    cacheBuster,
+  })
+
+  const dateKeys = dateKeysForTimeRange(timeRange)
+  // No máx. ~8 pontos no sparkline (rate limit da Graph).
+  const step = Math.max(1, Math.ceil(dateKeys.length / 8))
+  const sampleKeys = dateKeys.filter(
+    (_, i) => i % step === 0 || i === dateKeys.length - 1,
+  )
+
+  const daily = await mapPool(sampleKeys, 6, async (date) => {
+    const bounds = unixBoundsForDateKey(date)
+    if (!bounds) return { date, value: 0 }
+    const part = await fetchInstagramViewsByProductType({
+      igUserId,
+      accessToken,
+      since: bounds.since,
+      until: bounds.until,
+      cacheBuster,
+    })
+    return { date, value: part?.story ?? 0 }
+  })
+
+  const sumDaily = daily.reduce((s, p) => s + p.value, 0)
+  const total = byProduct?.story && byProduct.story > 0 ? byProduct.story : sumDaily
+
+  return { daily, total, byProduct }
+}

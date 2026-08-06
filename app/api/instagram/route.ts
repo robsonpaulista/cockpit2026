@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logger, logError } from '@/lib/logger'
-import { fetchInstagramAudienceSplit, fetchInstagramDailyViewsReach } from '@/lib/instagram-audience-split'
+import { fetchInstagramAudienceSplit, fetchInstagramDailyViewsReach, fetchInstagramDailyStoryViews } from '@/lib/instagram-audience-split'
 
 // Interface para os dados do Instagram
 interface InstagramMetrics {
@@ -57,6 +57,8 @@ interface InstagramMetrics {
     dailyViews?: Array<{ date: string; value: number }>
     /** Série diária de alcance. */
     dailyReach?: Array<{ date: string; value: number }>
+    /** Visualizações de Stories (amostras do período · breakdown STORY). */
+    dailyStoryViews?: Array<{ date: string; value: number }>
     periodMetrics?: {
       startDate: string
       endDate: string
@@ -588,44 +590,68 @@ export async function POST(request: Request) {
     // porque a métrica `impressions` foi depreciada e getInsightValue lia values[0].
     let dailyViews: Array<{ date: string; value: number }> = []
     let dailyReach: Array<{ date: string; value: number }> = []
-    try {
-      const daily = await fetchInstagramDailyViewsReach({
+    let audienceSplit: InstagramMetrics['insights']['audienceSplit']
+    let dailyStoryViews: Array<{ date: string; value: number }> = []
+    let storiesViews = 0
+    let reelsViews = 0
+    let postViews = 0
+
+    const timeRangeStr = typeof timeRange === 'string' ? timeRange : '30d'
+    const [dailyResult, splitResult, storyResult] = await Promise.all([
+      fetchInstagramDailyViewsReach({
         igUserId: instagramBusinessId,
         accessToken: token,
-        timeRange: typeof timeRange === 'string' ? timeRange : '30d',
+        timeRange: timeRangeStr,
         cacheBuster,
-      })
-      dailyViews = daily.views
-      dailyReach = daily.reach
-    } catch (err) {
-      logger.warn('dailyViews/dailyReach indisponível', {
-        error: err instanceof Error ? err.message : String(err),
-      })
+      }).catch((err: unknown) => {
+        logger.warn('dailyViews/dailyReach indisponível', {
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return { views: [] as Array<{ date: string; value: number }>, reach: [] as Array<{ date: string; value: number }> }
+      }),
+      fetchInstagramAudienceSplit({
+        igUserId: instagramBusinessId,
+        accessToken: token,
+        timeRange: timeRangeStr,
+        cacheBuster,
+      }).catch((err: unknown) => {
+        logger.warn('audienceSplit indisponível', {
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return { views: null, reach: null }
+      }),
+      fetchInstagramDailyStoryViews({
+        igUserId: instagramBusinessId,
+        accessToken: token,
+        timeRange: timeRangeStr,
+        cacheBuster,
+      }).catch((err: unknown) => {
+        logger.warn('dailyStoryViews indisponível', {
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return {
+          daily: [] as Array<{ date: string; value: number }>,
+          total: 0,
+          byProduct: null,
+        }
+      }),
+    ])
+
+    dailyViews = dailyResult.views
+    dailyReach = dailyResult.reach
+    if (splitResult.views || splitResult.reach) {
+      audienceSplit = {
+        ...(splitResult.views ? { views: splitResult.views } : {}),
+        ...(splitResult.reach ? { reach: splitResult.reach } : {}),
+      }
     }
+    dailyStoryViews = storyResult.daily
+    storiesViews = storyResult.total
+    reelsViews = storyResult.byProduct?.reel ?? 0
+    postViews = storyResult.byProduct?.feed ?? 0
 
     const latestDaily = (series: Array<{ date: string; value: number }>) =>
       series.length > 0 ? series[series.length - 1]?.value ?? 0 : 0
-
-    // Split seguidor × não-seguidor (views + reach)
-    let audienceSplit: InstagramMetrics['insights']['audienceSplit']
-    try {
-      const split = await fetchInstagramAudienceSplit({
-        igUserId: instagramBusinessId,
-        accessToken: token,
-        timeRange: typeof timeRange === 'string' ? timeRange : '30d',
-        cacheBuster,
-      })
-      if (split.views || split.reach) {
-        audienceSplit = {
-          ...(split.views ? { views: split.views } : {}),
-          ...(split.reach ? { reach: split.reach } : {}),
-        }
-      }
-    } catch (err) {
-      logger.warn('audienceSplit indisponível', {
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
 
     const viewsToday = latestDaily(dailyViews) || impressionsLegacy
     const reachToday = latestDaily(dailyReach) || reachLegacy
@@ -653,6 +679,7 @@ export async function POST(request: Request) {
         audienceSplit,
         dailyViews: dailyViews.length > 0 ? dailyViews : undefined,
         dailyReach: dailyReach.length > 0 ? dailyReach : undefined,
+        dailyStoryViews: dailyStoryViews.length > 0 ? dailyStoryViews : undefined,
         periodMetrics: {
           startDate: periodStart.toISOString().split('T')[0],
           endDate: new Date().toISOString().split('T')[0],
@@ -661,6 +688,9 @@ export async function POST(request: Request) {
           totalInteractions: getInsightValue('total_interactions'),
           totalViews: audienceSplit?.views?.total || dailyViews.reduce((s, p) => s + p.value, 0) || viewsToday,
           linkClicks: websiteClicks,
+          storiesViews,
+          reelsViews,
+          postViews,
         },
       },
       demographics,

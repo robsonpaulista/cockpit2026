@@ -54,6 +54,8 @@ export interface InstagramMetrics {
     dailyViews?: Array<{ date: string; value: number }>
     /** Série diária de alcance. */
     dailyReach?: Array<{ date: string; value: number }>
+    /** Visualizações de Stories (amostras do período · breakdown STORY). */
+    dailyStoryViews?: Array<{ date: string; value: number }>
     periodMetrics?: {
       startDate: string
       endDate: string

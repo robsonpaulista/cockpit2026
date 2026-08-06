@@ -162,7 +162,7 @@ export async function catalogoBibliotecaComunicacao() {
       'Dentro de Obras: vários formatos da mesma categoria (Feed, Story, Reels, WhatsApp).',
       'Nomeie: Cockpit | OBRA_IMPACTO | V1 | Feed — versões V2/V3 para testes A/B.',
       'No Cockpit, cadastre a URL/ID em comunicacao_templates (codigo TPL*).',
-      'O Fluxo Digital pede a CATEGORIA; a versão ativa é a marcada padrao=true.',
+      'A peça pede a CATEGORIA; a versão ativa é a marcada padrao=true.',
     ],
   }
 }

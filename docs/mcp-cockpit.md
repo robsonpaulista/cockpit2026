@@ -33,14 +33,11 @@ Não compartilhe a URL publicamente.
 | `buscar_obras` | Obras por município/tipo/status |
 | `buscar_obras_sem_divulgacao` | Obras sem conteúdo publicado |
 | `listar_agenda` | Visitas/eventos da agenda (padrão: planejadas a partir de hoje) |
-| `listar_pendentes_producao` | Visitas do Fluxo Digital sem pacote de templates |
-| `criar_pacote_conteudo` | Cria 6 templates em `conteudos_planejados` para uma agenda |
-| `listar_conteudos_fluxo` | Peças do Fluxo Digital com status |
 | `registrar_arte_gerada` | Grava URL do Canva/export e marca status `gerado` |
 | `obter_brief_producao` | Brief para preencher template mestre (anti-genérico) |
 | `listar_templates_canva` | Catálogo dos mestres Canva |
 
-Ver também: [fluxo-digital-producao.md](./fluxo-digital-producao.md) e [biblioteca-comunicacao.md](./biblioteca-comunicacao.md).
+Ver também: [biblioteca-comunicacao.md](./biblioteca-comunicacao.md).
 
 ## Claude (conector personalizado)
 
