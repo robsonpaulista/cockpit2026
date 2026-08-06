@@ -29,7 +29,7 @@ import {
   sidebarNavItemClass,
   sidebarSectionLabelClass,
 } from '@/lib/premium-ui-classes'
-import { AppBrandHeader, SidebarBrandMark } from '@/components/app-brand-title'
+import { AppBrandHeader, AppBrandWordmark, SidebarBrandMark } from '@/components/app-brand-title'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
 import { SidebarMapaCampanhaBlock } from '@/components/sidebar/sidebar-mapa-campanha'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
@@ -74,6 +74,7 @@ import {
   dashboardSidebarCollapsedPageHeaderSpacerClassFor,
   dashboardSidebarCollapsedSubnavSpacerClass,
   dashboardSidebarCollapsedTopbarZoneClass,
+  dashboardSidebarWarRoomExpandedHeaderClass,
 } from '@/lib/dashboard-chrome-layout'
 import { COCKPIT_MENU_LABEL } from '@/lib/sidebar-cockpit-labels'
 import {
@@ -558,6 +559,7 @@ export function Sidebar() {
   const isGradientHome = false
   const hasFixedPageChrome = useDashboardFixedChromeActive()
   const topbarVisible = useDashboardTopbarVisible()
+  const isWarRoom = pathname.startsWith('/dashboard/war-room')
   const collapsedPageHeaderSpacerClass = dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible)
   const showCollapsedSubnavSpacer =
     hasFixedPageChrome &&
@@ -725,19 +727,29 @@ export function Sidebar() {
                 ? sidebarShellHeaderClass(navCollapsed, navMobileOpen)
                 : navCollapsed && !navMobileOpen
                   ? 'shrink-0'
-                  : dashboardPageHeaderZoneSidebarClass,
+                  : isWarRoom
+                    ? dashboardSidebarWarRoomExpandedHeaderClass
+                    : dashboardPageHeaderZoneSidebarClass,
               !isGradientHome && 'border-b border-white/10',
             )}
           >
             {(!navCollapsed || navMobileOpen) && (
               <>
                 <div className="flex min-w-0 flex-1 items-center justify-center pr-8">
-                  <AppBrandHeader
-                    isCockpit={isCockpit}
-                    lightOnGradient={isGradientHome}
-                    variant={filmNav ? 'page' : 'sidebar'}
-                    className="min-w-0 w-full max-w-full items-center text-center"
-                  />
+                  {isWarRoom ? (
+                    <AppBrandWordmark
+                      size="md"
+                      lightOnGradient={isGradientHome}
+                      className="min-w-0 items-center text-center"
+                    />
+                  ) : (
+                    <AppBrandHeader
+                      isCockpit={isCockpit}
+                      lightOnGradient={isGradientHome}
+                      variant={filmNav ? 'page' : 'sidebar'}
+                      className="min-w-0 w-full max-w-full items-center text-center"
+                    />
+                  )}
                 </div>
                 {!collapsed && (
                   <button
@@ -943,8 +955,8 @@ export function Sidebar() {
                   'cockpit-icon shrink-0 transition-colors',
                   isGradientHome
                     ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
-                    : 'text-white/55 group-hover:text-[#ff9800]',
-                  filmNav && !isGradientHome && 'group-hover:text-[#ff9800]',
+                    : 'text-white/55 group-hover:text-[#f04b23]',
+                  filmNav && !isGradientHome && 'group-hover:text-[#f04b23]',
                 )}
                 aria-hidden
               />

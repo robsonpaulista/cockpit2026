@@ -756,7 +756,7 @@ body[data-ipt-refine] .ipt-page-body {
 /* --- Sidebar + ícones IPT (somente nesta rota) --- */
 /* Mesmo tom escuro da splash / login / demais páginas. */
 body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell {
-  background: #0b0b0d !important;
+  background: var(--palette-petrol) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
@@ -773,7 +773,7 @@ body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell footer {
 
 /* Zona do logo — mesmo preenchimento escuro do restante da sidebar. */
 body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell > div > div:first-child {
-  background: #0b0b0d !important;
+  background: var(--palette-petrol) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 

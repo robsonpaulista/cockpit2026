@@ -14,7 +14,6 @@ import {
 } from '@/components/dashboard/dashboard-page-chrome'
 import { typographyContentRootClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
-import { dashboardPageMetaStripClass } from '@/lib/dashboard-chrome-layout'
 import {
   WAR_ROOM_CRM_FUNNEL,
   type WarRoomAgendaItem,
@@ -26,7 +25,6 @@ import {
 } from '@/lib/agenda/calendar-event-utils'
 import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
 import { resolveCrmCardStatus } from '@/lib/war-room/card-status'
-import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useSetDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { WarRoomExpectativaCard } from '@/components/war-room/war-room-bloco1'
 import { WarRoomOpsBar } from '@/components/war-room/war-room-ops-bar'
@@ -127,7 +125,6 @@ export function WarRoomPanel() {
 }
 
 function WarRoomPanelInner() {
-  const topbarVisible = useDashboardTopbarVisible()
   const [nowMinutes, setNowMinutes] = useState(() => nowMinutesInTz())
   const [agendaItems, setAgendaItems] = useState<WarRoomAgendaItem[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
@@ -275,7 +272,6 @@ function WarRoomPanelInner() {
   )
 
   const topbarExtras = useMemo(() => {
-    if (!topbarVisible) return null
     return {
       description: <WarRoomTopbarCountdown />,
       actions: (
@@ -325,7 +321,6 @@ function WarRoomPanelInner() {
       ),
     }
   }, [
-    topbarVisible,
     notificationCount,
     refreshButton,
     isCopiloto,
@@ -340,18 +335,7 @@ function WarRoomPanelInner() {
 
   return (
     <DashboardPageShell>
-      <DashboardPageChrome>
-        {topbarVisible ? null : (
-          <div className={cn(dashboardPageMetaStripClass, 'wr-page-chrome-compact')}>
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-              <h1 className="min-w-0 flex-1 truncate text-base font-bold uppercase tracking-tight text-[var(--wr-black,#000)] sm:text-lg">
-                War Room
-              </h1>
-              {refreshButton}
-            </div>
-          </div>
-        )}
-      </DashboardPageChrome>
+      <DashboardPageChrome>{null}</DashboardPageChrome>
 
       <DashboardPageContent className={cn(typographyContentRootClass, 'pt-2 md:pt-3')}>
         <div className={cn('wr-page-canvas', isCopiloto && 'wr-page-canvas--copiloto')}>

@@ -60,7 +60,7 @@ type InstagramFollowersHistoryChartProps = {
   livePosts?: InstagramDayPostRecord[]
 }
 
-const FOLLOWERS_COLOR = '#ff9800'
+const FOLLOWERS_COLOR = '#f04b23'
 const ENGAGEMENT_COLOR = '#9A6B08'
 const GRID_STROKE = 'rgb(var(--color-border-tertiary) / 0.45)'
 const TICK_STYLE = { fontSize: 10, fill: '#000000' }
@@ -223,7 +223,7 @@ export function InstagramFollowersHistoryChart({
           cx={cx}
           cy={cy}
           r={isSelected ? 6 : 3.5}
-          fill={isSelected ? '#ff9800' : FOLLOWERS_COLOR}
+          fill={isSelected ? '#f04b23' : FOLLOWERS_COLOR}
           stroke="rgb(var(--bg-surface))"
           strokeWidth={isSelected ? 2 : 1.5}
           style={{ cursor: 'pointer' }}
@@ -310,8 +310,8 @@ export function InstagramFollowersHistoryChart({
               >
                 <defs>
                   <linearGradient id="followersAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ff9800" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#ff9800" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#f04b23" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#f04b23" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid

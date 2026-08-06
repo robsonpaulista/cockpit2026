@@ -13,8 +13,11 @@ import {
   IconLoader2,
   IconMinus,
   IconSearch,
+  IconSelector,
   IconTrendingDown,
   IconTrendingUp,
+  IconTrophy,
+  IconSend,
   IconX,
 } from '@tabler/icons-react'
 import type { IptMunicipio } from '@/lib/ipt'
@@ -26,6 +29,7 @@ import {
   type EmendaRegistro,
 } from '@/lib/emendas-filtro'
 import {
+  AGENDA_PROXIMOS_JANELA_DIAS,
   todayKeyInTz,
   type WarRoomAgendaProximoItem,
 } from '@/lib/war-room/agenda-proximos'
@@ -90,6 +94,7 @@ type SortCol =
 
 type FiltroExpectativa = 'todos' | 'gt0' | 'eq0'
 type FiltroBinario = 'todos' | 'com' | 'sem'
+type FiltroVisitas = 'todos' | 'com' | 'sem' | 'necessidade'
 
 type RankingRow = {
   municipio: string
@@ -126,7 +131,7 @@ type RankingRow = {
   /** Expectativa ≥ 4k/10d (prioridade) ou >0/15d (base) — igual card Expectativa. */
   precisaVisita: boolean
   visitaAlertaNivel: VisitaAlertaNivel | null
-  /** Agenda nos próximos 7 dias (igual card Expectativa · ícone calendário). */
+  /** Agenda nos próximos N dias (igual card Expectativa · ícone calendário). */
   temAgendaProxima: boolean
 }
 
@@ -141,21 +146,34 @@ type Props = {
 }
 
 const FILTRO_EXPECTATIVA_OPCOES: Array<{ id: FiltroExpectativa; label: string }> = [
-  { id: 'todos', label: 'Todas' },
-  { id: 'gt0', label: '> 0' },
-  { id: 'eq0', label: '= 0' },
+  { id: 'todos', label: 'Todas as cidades' },
+  { id: 'gt0', label: 'Com meta' },
+  { id: 'eq0', label: 'Sem meta' },
 ]
 
 const FILTRO_EMENDAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
   { id: 'todos', label: 'Todas' },
-  { id: 'com', label: 'Com' },
-  { id: 'sem', label: 'Sem' },
+  { id: 'com', label: 'Com emendas' },
+  { id: 'sem', label: 'Sem emendas' },
+]
+
+const FILTRO_PESQUISAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
+  { id: 'todos', label: 'Todas' },
+  { id: 'com', label: 'Com pesquisa' },
+  { id: 'sem', label: 'Sem pesquisa' },
+]
+
+const FILTRO_VISITAS_OPCOES: Array<{ id: FiltroVisitas; label: string }> = [
+  { id: 'todos', label: 'Todas' },
+  { id: 'com', label: 'Com visita' },
+  { id: 'sem', label: 'Sem visita' },
+  { id: 'necessidade', label: 'Com necessidade' },
 ]
 
 const FILTRO_OBRAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
   { id: 'todos', label: 'Todas' },
-  { id: 'com', label: 'Com' },
-  { id: 'sem', label: 'Sem' },
+  { id: 'com', label: 'Com obras' },
+  { id: 'sem', label: 'Sem obras' },
 ]
 
 function formatDataCurta(iso: string | null | undefined): string {
@@ -263,6 +281,59 @@ function formatPctPesquisa(value: number | null | undefined): string {
   })}%`
 }
 
+function PesquisaPosicaoMark({
+  posicao,
+  naoPontuou,
+}: {
+  posicao: number | null
+  naoPontuou: boolean
+}) {
+  if (naoPontuou) {
+    return (
+      <span className="wr-expectativa-ranking-modal__pesquisa-pos-np" aria-label="Não pontuou">
+        NP
+      </span>
+    )
+  }
+  const n =
+    posicao != null && Number.isFinite(posicao) ? Math.round(posicao) : null
+  if (n == null || n < 1) {
+    return <span aria-hidden>—</span>
+  }
+  if (n >= 1 && n <= 3) {
+    const lugarClass =
+      n === 1
+        ? 'wr-expectativa-ranking-modal__pesquisa-trophy--ouro'
+        : n === 2
+          ? 'wr-expectativa-ranking-modal__pesquisa-trophy--prata'
+          : 'wr-expectativa-ranking-modal__pesquisa-trophy--bronze'
+    return (
+      <span
+        className="wr-expectativa-ranking-modal__pesquisa-pos-podium"
+        aria-label={`${n}º lugar`}
+      >
+        <IconTrophy
+          className={cn(
+            'wr-expectativa-ranking-modal__pesquisa-trophy',
+            lugarClass,
+          )}
+          stroke={1.5}
+          aria-hidden
+        />
+        <span className="wr-expectativa-ranking-modal__pesquisa-pos-num">{n}º</span>
+      </span>
+    )
+  }
+  return (
+    <span
+      className="wr-expectativa-ranking-modal__pesquisa-pos-num"
+      aria-label={`${n}º lugar`}
+    >
+      {n}º
+    </span>
+  )
+}
+
 function formatDiasDesdeVisita(dias: number | null): string {
   if (dias == null || !Number.isFinite(dias) || dias < 0) return 'sem visita'
   if (dias === 0) return 'sem visita há 0 dias'
@@ -307,8 +378,10 @@ export function WarRoomExpectativaRankingModal({
   const [busca, setBusca] = useState('')
   const [filtroExpectativa, setFiltroExpectativa] =
     useState<FiltroExpectativa>('todos')
+  const [filtroPesquisas, setFiltroPesquisas] = useState<FiltroBinario>('todos')
   const [filtroEmendas, setFiltroEmendas] = useState<FiltroBinario>('todos')
   const [filtroObras, setFiltroObras] = useState<FiltroBinario>('todos')
+  const [filtroVisitas, setFiltroVisitas] = useState<FiltroVisitas>('todos')
   const [sortCol, setSortCol] = useState<SortCol>('expectativa')
   const [sortAsc, setSortAsc] = useState(false)
   const [emendasKeys, setEmendasKeys] = useState<Set<string>>(() => new Set())
@@ -593,10 +666,15 @@ export function WarRoomExpectativaRankingModal({
       if (termo && !normalizarBusca(r.municipio).includes(termo)) return false
       if (filtroExpectativa === 'gt0' && !(r.expectativa > 0)) return false
       if (filtroExpectativa === 'eq0' && r.expectativa !== 0) return false
+      if (filtroPesquisas === 'com' && !r.pesquisa) return false
+      if (filtroPesquisas === 'sem' && r.pesquisa) return false
       if (filtroEmendas === 'com' && !r.temEmendas) return false
       if (filtroEmendas === 'sem' && r.temEmendas) return false
       if (filtroObras === 'com' && !r.temObras) return false
       if (filtroObras === 'sem' && r.temObras) return false
+      if (filtroVisitas === 'com' && !r.ultimaVisita) return false
+      if (filtroVisitas === 'sem' && r.ultimaVisita) return false
+      if (filtroVisitas === 'necessidade' && !r.precisaVisita) return false
       return true
     })
 
@@ -679,6 +757,8 @@ export function WarRoomExpectativaRankingModal({
     filtroEmendas,
     filtroExpectativa,
     filtroObras,
+    filtroPesquisas,
+    filtroVisitas,
     rows,
     sortAsc,
     sortCol,
@@ -855,84 +935,136 @@ export function WarRoomExpectativaRankingModal({
           role="search"
           aria-label="Filtros do ranking"
         >
-          <span className="wr-expectativa-ranking-modal__toolbar-title">Cidades</span>
-          <label className="wr-expectativa-ranking-modal__search">
-            <IconSearch className="h-3.5 w-3.5 shrink-0" stroke={1.75} aria-hidden />
-            <input
-              type="search"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar município…"
-            />
-          </label>
+          <div className="wr-expectativa-ranking-modal__toolbar-intro">
+            <span className="wr-expectativa-ranking-modal__toolbar-title">Cidades</span>
+            <label className="wr-expectativa-ranking-modal__search">
+              <IconSearch className="h-3.5 w-3.5 shrink-0" stroke={1.75} aria-hidden />
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar município…"
+              />
+            </label>
+          </div>
 
           <div className="wr-expectativa-ranking-modal__filtros">
-            <div
-              className="wr-expectativa-ranking-modal__filtro-grupo"
-              role="group"
-              aria-label="Expectativa"
-            >
-              <span className="wr-expectativa-ranking-modal__filtro-label">Expectativa</span>
-              {FILTRO_EXPECTATIVA_OPCOES.map((opcao) => (
-                <button
-                  key={opcao.id}
-                  type="button"
-                  aria-pressed={filtroExpectativa === opcao.id}
-                  className={cn(
-                    'wr-expectativa-ranking-modal__filtro',
-                    filtroExpectativa === opcao.id &&
-                      'wr-expectativa-ranking-modal__filtro--ativo',
-                  )}
-                  onClick={() => setFiltroExpectativa(opcao.id)}
+            <label className="wr-expectativa-ranking-modal__filter-field">
+              <span className="wr-expectativa-ranking-modal__filter-field-label">Meta</span>
+              <span className="wr-expectativa-ranking-modal__filter-select-wrap">
+                <select
+                  className="wr-expectativa-ranking-modal__filter-select"
+                  value={filtroExpectativa}
+                  onChange={(e) =>
+                    setFiltroExpectativa(e.target.value as FiltroExpectativa)
+                  }
+                  aria-label="Filtrar por meta"
                 >
-                  {opcao.label}
-                </button>
-              ))}
-            </div>
-            <div
-              className="wr-expectativa-ranking-modal__filtro-grupo"
-              role="group"
-              aria-label="Emendas"
-            >
-              <span className="wr-expectativa-ranking-modal__filtro-label">Emendas</span>
-              {FILTRO_EMENDAS_OPCOES.map((opcao) => (
-                <button
-                  key={opcao.id}
-                  type="button"
-                  aria-pressed={filtroEmendas === opcao.id}
-                  className={cn(
-                    'wr-expectativa-ranking-modal__filtro',
-                    filtroEmendas === opcao.id &&
-                      'wr-expectativa-ranking-modal__filtro--ativo',
-                  )}
-                  onClick={() => setFiltroEmendas(opcao.id)}
+                  {FILTRO_EXPECTATIVA_OPCOES.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.label}
+                    </option>
+                  ))}
+                </select>
+                <IconSelector
+                  className="wr-expectativa-ranking-modal__filter-select-icon"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </span>
+            </label>
+
+            <label className="wr-expectativa-ranking-modal__filter-field">
+              <span className="wr-expectativa-ranking-modal__filter-field-label">Pesquisas</span>
+              <span className="wr-expectativa-ranking-modal__filter-select-wrap">
+                <select
+                  className="wr-expectativa-ranking-modal__filter-select"
+                  value={filtroPesquisas}
+                  onChange={(e) => setFiltroPesquisas(e.target.value as FiltroBinario)}
+                  aria-label="Filtrar por pesquisas"
                 >
-                  {opcao.label}
-                </button>
-              ))}
-            </div>
-            <div
-              className="wr-expectativa-ranking-modal__filtro-grupo"
-              role="group"
-              aria-label="Obras"
-            >
-              <span className="wr-expectativa-ranking-modal__filtro-label">Obras</span>
-              {FILTRO_OBRAS_OPCOES.map((opcao) => (
-                <button
-                  key={opcao.id}
-                  type="button"
-                  aria-pressed={filtroObras === opcao.id}
-                  className={cn(
-                    'wr-expectativa-ranking-modal__filtro',
-                    filtroObras === opcao.id &&
-                      'wr-expectativa-ranking-modal__filtro--ativo',
-                  )}
-                  onClick={() => setFiltroObras(opcao.id)}
+                  {FILTRO_PESQUISAS_OPCOES.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.label}
+                    </option>
+                  ))}
+                </select>
+                <IconSelector
+                  className="wr-expectativa-ranking-modal__filter-select-icon"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </span>
+            </label>
+
+            <label className="wr-expectativa-ranking-modal__filter-field">
+              <span className="wr-expectativa-ranking-modal__filter-field-label">Emendas</span>
+              <span className="wr-expectativa-ranking-modal__filter-select-wrap">
+                <select
+                  className="wr-expectativa-ranking-modal__filter-select"
+                  value={filtroEmendas}
+                  onChange={(e) => setFiltroEmendas(e.target.value as FiltroBinario)}
+                  aria-label="Filtrar por emendas"
                 >
-                  {opcao.label}
-                </button>
-              ))}
-            </div>
+                  {FILTRO_EMENDAS_OPCOES.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.label}
+                    </option>
+                  ))}
+                </select>
+                <IconSelector
+                  className="wr-expectativa-ranking-modal__filter-select-icon"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </span>
+            </label>
+
+            <label className="wr-expectativa-ranking-modal__filter-field">
+              <span className="wr-expectativa-ranking-modal__filter-field-label">Obras</span>
+              <span className="wr-expectativa-ranking-modal__filter-select-wrap">
+                <select
+                  className="wr-expectativa-ranking-modal__filter-select"
+                  value={filtroObras}
+                  onChange={(e) => setFiltroObras(e.target.value as FiltroBinario)}
+                  aria-label="Filtrar por obras"
+                >
+                  {FILTRO_OBRAS_OPCOES.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.label}
+                    </option>
+                  ))}
+                </select>
+                <IconSelector
+                  className="wr-expectativa-ranking-modal__filter-select-icon"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </span>
+            </label>
+
+            <label className="wr-expectativa-ranking-modal__filter-field">
+              <span className="wr-expectativa-ranking-modal__filter-field-label">Visitas</span>
+              <span className="wr-expectativa-ranking-modal__filter-select-wrap">
+                <select
+                  className="wr-expectativa-ranking-modal__filter-select"
+                  value={filtroVisitas}
+                  onChange={(e) => setFiltroVisitas(e.target.value as FiltroVisitas)}
+                  aria-label="Filtrar por visitas"
+                >
+                  {FILTRO_VISITAS_OPCOES.map((opcao) => (
+                    <option key={opcao.id} value={opcao.id}>
+                      {opcao.label}
+                    </option>
+                  ))}
+                </select>
+                <IconSelector
+                  className="wr-expectativa-ranking-modal__filter-select-icon"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </span>
+            </label>
           </div>
 
           <div className="wr-expectativa-ranking-modal__toolbar-end">
@@ -997,7 +1129,37 @@ export function WarRoomExpectativaRankingModal({
         <div className="wr-expectativa-ranking-modal__table-wrap">
           <table className="wr-expectativa-ranking-modal__table">
             <thead>
-              <tr>
+              <tr className="wr-expectativa-ranking-modal__group-row">
+                <th
+                  colSpan={4}
+                  scope="colgroup"
+                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--meta"
+                >
+                  Meta de Votos
+                </th>
+                <th
+                  colSpan={3}
+                  scope="colgroup"
+                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--pesquisas"
+                >
+                  Pesquisas de Opinião
+                </th>
+                <th
+                  colSpan={2}
+                  scope="colgroup"
+                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--mandato"
+                >
+                  Mandato
+                </th>
+                <th
+                  colSpan={3}
+                  scope="colgroup"
+                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--cobertura"
+                >
+                  Cobertura Território
+                </th>
+              </tr>
+              <tr className="wr-expectativa-ranking-modal__cols-row">
                 <th className="wr-expectativa-ranking-modal__col-cidade">
                   <TerritorioSortableHeaderButton
                     label="Cidade"
@@ -1036,15 +1198,13 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
-                <th className="wr-expectativa-ranking-modal__center">Emendas</th>
-                <th className="wr-expectativa-ranking-modal__center">Obras</th>
-                <th className="wr-expectativa-ranking-modal__center">
+                <th className="wr-expectativa-ranking-modal__col-pesquisa wr-expectativa-ranking-modal__group-edge">
                   <TerritorioSortableHeaderButton
                     label="Pesquisas"
                     active={sortCol === 'pesquisa'}
                     asc={sortAsc}
                     onClick={() => alternarSort('pesquisa')}
-                    align="center"
+                    align="left"
                     compact
                   />
                 </th>
@@ -1068,7 +1228,11 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
-                <th className="wr-expectativa-ranking-modal__num">
+                <th className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__group-edge">
+                  Emendas
+                </th>
+                <th className="wr-expectativa-ranking-modal__center">Obras</th>
+                <th className="wr-expectativa-ranking-modal__num wr-expectativa-ranking-modal__group-edge">
                   <TerritorioSortableHeaderButton
                     label="Visitas"
                     active={sortCol === 'diasVisita'}
@@ -1088,6 +1252,12 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
+                <th
+                  className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__col-comunicar"
+                  title="Comunicar líderes"
+                >
+                  Comunicar
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1103,8 +1273,8 @@ export function WarRoomExpectativaRankingModal({
                           <button
                             type="button"
                             className="wr-expectativa-clean__agenda-alerta wr-expectativa-ranking-modal__agenda-alerta"
-                            title="Agenda nos próximos 7 dias"
-                            aria-label={`Ver agenda dos próximos 7 dias em ${row.municipio}`}
+                            title={`Agenda nos próximos ${AGENDA_PROXIMOS_JANELA_DIAS} dias`}
+                            aria-label={`Ver agenda dos próximos ${AGENDA_PROXIMOS_JANELA_DIAS} dias em ${row.municipio}`}
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
@@ -1137,58 +1307,13 @@ export function WarRoomExpectativaRankingModal({
                   >
                     {formatInt(row.eleitores)}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__center">
-                    <button
-                      type="button"
-                      className={cn(
-                        'wr-expectativa-ranking-modal__flag',
-                        'wr-expectativa-ranking-modal__flag--btn',
-                        row.temEmendas
-                          ? 'wr-expectativa-ranking-modal__flag--sim'
-                          : 'wr-expectativa-ranking-modal__flag--nao',
-                      )}
-                      aria-label={`Ver emendas de ${row.municipio}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        abrirEmendas(row.municipio)
-                      }}
-                    >
-                      {row.temEmendas ? 'Sim' : 'Não'}
-                    </button>
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__center">
-                    <button
-                      type="button"
-                      className={cn(
-                        'wr-expectativa-ranking-modal__flag',
-                        'wr-expectativa-ranking-modal__flag--btn',
-                        row.temObras
-                          ? 'wr-expectativa-ranking-modal__flag--sim'
-                          : 'wr-expectativa-ranking-modal__flag--nao',
-                      )}
-                      aria-label={`Ver obras de ${row.municipio}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        abrirObras(row.municipio)
-                      }}
-                    >
-                      {row.temObras ? 'Sim' : 'Não'}
-                    </button>
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__center">
+                  <td className="wr-expectativa-ranking-modal__col-pesquisa wr-expectativa-ranking-modal__group-edge">
                     {row.pesquisa ? (
                       <button
                         type="button"
                         className={cn(
-                          'wr-expectativa-ranking-modal__flag',
                           'wr-expectativa-ranking-modal__flag--btn',
-                          'wr-expectativa-ranking-modal__flag--pesquisa',
-                          (row.pesquisaNaoPontuou ||
-                            (row.pesquisaPosicao != null &&
-                              row.pesquisaPosicao > 5)) &&
-                            'wr-expectativa-ranking-modal__flag--alerta',
+                          'wr-expectativa-ranking-modal__pesquisa-split',
                         )}
                         aria-label={`Ver ranking da pesquisa em ${row.municipio}`}
                         title={
@@ -1221,39 +1346,61 @@ export function WarRoomExpectativaRankingModal({
                           abrirPesquisa(row.pesquisa)
                         }}
                       >
-                        <span>
-                          {formatPosicaoPesquisa(
-                            row.pesquisaPosicao,
-                            row.pesquisaNaoPontuou,
+                        <span
+                          className={cn(
+                            'wr-expectativa-ranking-modal__flag',
+                            'wr-expectativa-ranking-modal__pesquisa-pos',
+                            (row.pesquisaNaoPontuou ||
+                              (row.pesquisaPosicao != null &&
+                                row.pesquisaPosicao > 5)) &&
+                              'wr-expectativa-ranking-modal__flag--alerta',
                           )}
+                        >
+                          <PesquisaPosicaoMark
+                            posicao={row.pesquisaPosicao}
+                            naoPontuou={row.pesquisaNaoPontuou}
+                          />
                         </span>
-                        {row.pesquisaTendencia === 'alta' ? (
-                          <IconTrendingUp
-                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--alta"
-                            stroke={2}
-                            aria-label="Crescimento"
-                          />
-                        ) : null}
-                        {row.pesquisaTendencia === 'baixa' ? (
-                          <IconTrendingDown
-                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--baixa"
-                            stroke={2}
-                            aria-label="Queda"
-                          />
-                        ) : null}
-                        {row.pesquisaTendencia === 'estavel' ? (
-                          <IconMinus
-                            className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--estavel"
-                            stroke={2}
-                            aria-label="Estabilidade"
-                          />
-                        ) : null}
-                        <span className="wr-expectativa-ranking-modal__pesquisa-pct">
-                          {formatPctPesquisa(row.pesquisaPctUltima)}
+                        <span
+                          className={cn(
+                            'wr-expectativa-ranking-modal__flag',
+                            'wr-expectativa-ranking-modal__pesquisa-pct-chip',
+                            (row.pesquisaNaoPontuou ||
+                              (row.pesquisaPosicao != null &&
+                                row.pesquisaPosicao > 5)) &&
+                              'wr-expectativa-ranking-modal__flag--alerta',
+                          )}
+                        >
+                          <span className="wr-expectativa-ranking-modal__pesquisa-pct-group">
+                            {row.pesquisaTendencia === 'alta' ? (
+                              <IconTrendingUp
+                                className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--alta"
+                                stroke={2}
+                                aria-label="Crescimento"
+                              />
+                            ) : null}
+                            {row.pesquisaTendencia === 'baixa' ? (
+                              <IconTrendingDown
+                                className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--baixa"
+                                stroke={2}
+                                aria-label="Queda"
+                              />
+                            ) : null}
+                            {row.pesquisaTendencia === 'estavel' ? (
+                              <IconMinus
+                                className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--estavel"
+                                stroke={2}
+                                aria-label="Estabilidade"
+                              />
+                            ) : null}
+                            <span className="wr-expectativa-ranking-modal__pesquisa-pct">
+                              {formatPctPesquisa(row.pesquisaPctUltima)}
+                            </span>
+                          </span>
                         </span>
                       </button>
                     ) : (
-                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                      <span className="wr-expectativa-ranking-modal__pesquisa-empty">
                         {loadingPesquisas ? '…' : '—'}
                       </span>
                     )}
@@ -1302,8 +1449,48 @@ export function WarRoomExpectativaRankingModal({
                       </span>
                     )}
                   </td>
+                  <td className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__group-edge">
+                    <button
+                      type="button"
+                      className={cn(
+                        'wr-expectativa-ranking-modal__flag',
+                        'wr-expectativa-ranking-modal__flag--btn',
+                        row.temEmendas
+                          ? 'wr-expectativa-ranking-modal__flag--sim'
+                          : 'wr-expectativa-ranking-modal__flag--nao',
+                      )}
+                      aria-label={`Ver emendas de ${row.municipio}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        abrirEmendas(row.municipio)
+                      }}
+                    >
+                      {row.temEmendas ? 'Sim' : 'Não'}
+                    </button>
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__center">
+                    <button
+                      type="button"
+                      className={cn(
+                        'wr-expectativa-ranking-modal__flag',
+                        'wr-expectativa-ranking-modal__flag--btn',
+                        row.temObras
+                          ? 'wr-expectativa-ranking-modal__flag--sim'
+                          : 'wr-expectativa-ranking-modal__flag--nao',
+                      )}
+                      aria-label={`Ver obras de ${row.municipio}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        abrirObras(row.municipio)
+                      }}
+                    >
+                      {row.temObras ? 'Sim' : 'Não'}
+                    </button>
+                  </td>
                   <td
-                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    className="wr-expectativa-ranking-modal__num tabular-nums wr-expectativa-ranking-modal__group-edge"
                     title={
                       [
                         row.visitaAlertaNivel
@@ -1340,6 +1527,29 @@ export function WarRoomExpectativaRankingModal({
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {row.proxVisitaLabel}
                   </td>
+                  <td className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__col-comunicar">
+                    {row.temAgendaProxima ? (
+                      <button
+                        type="button"
+                        className="wr-expectativa-ranking-modal__comunicar-btn"
+                        title={`Comunicar líderes · ${row.municipio}`}
+                        aria-label={`Comunicar líderes em ${row.municipio}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          window.alert(
+                            `Comunicar Líderes · ${row.municipio}\n(em breve)`,
+                          )
+                        }}
+                      >
+                        <IconSend className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      </button>
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                        —
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1365,14 +1575,11 @@ export function WarRoomExpectativaRankingModal({
                   >
                     {formatInt(totais.eleitores)}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
-                    {totais.comEmendas.toLocaleString('pt-BR')} sim
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
-                    {totais.comObras.toLocaleString('pt-BR')} sim
-                  </td>
-                  <td className="wr-expectativa-ranking-modal__center tabular-nums">
-                    {totais.comPesquisa.toLocaleString('pt-BR')} c/
+                  <td
+                    className="wr-expectativa-ranking-modal__center tabular-nums wr-expectativa-ranking-modal__group-edge"
+                    title="Com pesquisa"
+                  >
+                    {totais.comPesquisa.toLocaleString('pt-BR')}
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {formatWarRoomNumber(totais.projPesquisa)}
@@ -1390,11 +1597,26 @@ export function WarRoomExpectativaRankingModal({
                       </span>
                     )}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {totais.comUltimaVisita.toLocaleString('pt-BR')} c/
+                  <td
+                    className="wr-expectativa-ranking-modal__center tabular-nums wr-expectativa-ranking-modal__group-edge"
+                    title="Com emendas"
+                  >
+                    {totais.comEmendas.toLocaleString('pt-BR')}
                   </td>
-                  <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {totais.comProxVisita.toLocaleString('pt-BR')} c/
+                  <td className="wr-expectativa-ranking-modal__center tabular-nums" title="Com obras">
+                    {totais.comObras.toLocaleString('pt-BR')}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums wr-expectativa-ranking-modal__group-edge"
+                    title="Com visita registrada"
+                  >
+                    {totais.comUltimaVisita.toLocaleString('pt-BR')}
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__num tabular-nums" title="Com próxima visita">
+                    {totais.comProxVisita.toLocaleString('pt-BR')}
+                  </td>
+                  <td className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__col-comunicar">
+                    —
                   </td>
                 </tr>
               </tfoot>

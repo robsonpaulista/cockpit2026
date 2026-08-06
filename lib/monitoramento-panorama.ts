@@ -147,7 +147,7 @@ const ACTOR_TYPE_ORDER: Record<string, number> = {
 }
 
 /** Paleta institucional — âmbar da marca + neutros quentes (menos contraste entre séries). */
-const OWN_CANDIDATE_COLOR = '#C8900A'
+const OWN_CANDIDATE_COLOR = '#f04b23'
 
 const COMPETITOR_COLORS = [
   '#6B7280',

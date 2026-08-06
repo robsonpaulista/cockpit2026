@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { IconCalendarEvent, IconMapRoute, IconX } from '@tabler/icons-react'
 import type { IptMunicipio } from '@/lib/ipt'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
+import { AGENDA_PROXIMOS_JANELA_DIAS } from '@/lib/war-room/agenda-proximos'
 import { WarRoomAgendaFluxoPanel } from '@/components/war-room/war-room-agenda-fluxo-panel'
 import { WarRoomAgendaSugestaoTdModal } from '@/components/war-room/war-room-agenda-sugestao-td-modal'
 
@@ -131,7 +132,9 @@ export function WarRoomAgendaProximosModal({
           <div className="wr-agenda-proximos__layout wr-agenda-proximos__layout--stack">
             <section className="wr-agenda-proximos__col wr-agenda-proximos__col--agenda" aria-label="Compromissos">
               <div className="wr-agenda-proximos__section-head">
-                <p className="wr-agenda-proximos__section-label">Compromissos · 7 dias</p>
+                <p className="wr-agenda-proximos__section-label">
+                  Compromissos · {AGENDA_PROXIMOS_JANELA_DIAS} dias
+                </p>
                 <p className="wr-agenda-proximos__section-sub">
                   Selecione o item para acompanhar o fluxo operacional.
                 </p>
@@ -139,7 +142,8 @@ export function WarRoomAgendaProximosModal({
 
               {ordenados.length === 0 ? (
                 <p className="wr-visita-modal__state wr-agenda-proximos__empty">
-                  Nenhum compromisso encontrado para os próximos 7 dias.
+                  Nenhum compromisso encontrado para os próximos {AGENDA_PROXIMOS_JANELA_DIAS}{' '}
+                  dias.
                 </p>
               ) : (
                 <ul className="wr-agenda-proximos__list">

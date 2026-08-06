@@ -399,7 +399,7 @@ export function ResumoLiderancasCrudModal({
                 type="button"
                 onClick={() => void salvar()}
                 disabled={saving}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#ff9800] px-3 text-xs font-medium text-white disabled:opacity-50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#f04b23] px-3 text-xs font-medium text-white disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
                 Salvar

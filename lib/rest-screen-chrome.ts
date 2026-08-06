@@ -1,20 +1,23 @@
-/** Âmbar da marca alinhado à paleta IPT (#ff9800). */
-export const REST_SCREEN_AMBER = '#ff9800'
-export const REST_SCREEN_AMBER_DARK = '#e28000'
-export const REST_SCREEN_AMBER_RGB = '255, 152, 0'
-export const REST_SCREEN_AMBER_DARK_RGB = '226, 128, 0'
+/** Accent coral da marca (paleta Copiloto). */
+export const REST_SCREEN_AMBER = '#f04b23'
+export const REST_SCREEN_AMBER_DARK = '#c43d1c'
+export const REST_SCREEN_AMBER_RGB = '240, 75, 35'
+export const REST_SCREEN_AMBER_DARK_RGB = '196, 61, 28'
+export const REST_SCREEN_PETROL = '#022b3a'
+export const REST_SCREEN_PETROL_MUTED = '#6b7280'
 
-export const REST_SCREEN_GRADIENT = `linear-gradient(145deg, ${REST_SCREEN_AMBER} 0%, ${REST_SCREEN_AMBER} 40%, ${REST_SCREEN_AMBER_DARK} 100%)`
+/** Home / splash de boas-vindas — fundo claro (não usar coral sólido aqui). */
+export const REST_SCREEN_GRADIENT = '#ffffff'
 
 export const REST_SCREEN_RADIAL_GLOW =
-  'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%)'
+  'radial-gradient(circle at 50% 42%, rgba(240, 75, 35, 0.06) 0%, transparent 55%)'
 
-/** Shell da home — laranja sólido (sem faixas do gradiente/radial). */
+/** Shell da home — branco com tipografia petróleo + coral. */
 export const dashboardHomeShellStyle = {
-  background: REST_SCREEN_AMBER,
+  background: '#ffffff',
 } as const
 
 export const DASHBOARD_HOME_SHELL_CLASS = 'relative'
 
-/** Classe CSS (globals) — fundo laranja do topbar em viewports menores que lg. */
+/** Classe CSS (globals) — fundo accent do topbar em viewports menores que lg. */
 export const dashboardMobilePageHeaderClass = 'dashboard-mobile-page-header'

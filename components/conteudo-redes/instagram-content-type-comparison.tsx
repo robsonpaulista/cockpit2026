@@ -64,7 +64,7 @@ function MetricRow({
         <div
           className={cn(
             'h-full rounded-full transition-all',
-            isLeader ? 'bg-[#ff9800]' : 'bg-[#d6d3d1]'
+            isLeader ? 'bg-[#f04b23]' : 'bg-[#d6d3d1]'
           )}
           style={{ width: `${Math.max(ratio, value > 0 ? 6 : 0)}%` }}
         />
@@ -146,7 +146,7 @@ export function InstagramContentTypeComparison({
               key={type}
               className={cn(
                 panelClassName,
-                isOverallLeader && 'border-[#ffd59a] bg-[#fffdf8]'
+                isOverallLeader && 'border-[#ffc9b8] bg-[#fffdf8]'
               )}
             >
               <div className="mb-3 border-b border-[#ebe8e4] pb-3">

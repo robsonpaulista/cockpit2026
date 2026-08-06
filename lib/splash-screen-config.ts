@@ -26,9 +26,9 @@ export const SPLASH_STUDIO_FRAME_MS = 50
 
 export const SPLASH_COLORS = {
   bg: '#0B0B0D',
-  gold: '#ff9800',
-  goldGlow: 'rgba(255, 152, 0, 0.55)',
-  goldSoft: 'rgba(255, 152, 0, 0.18)',
+  gold: '#f04b23',
+  goldGlow: 'rgba(240, 75, 35, 0.55)',
+  goldSoft: 'rgba(240, 75, 35, 0.18)',
   graphite: '#3A3D42',
   lightSurface: '#F8F6F0',
   textOnDark: '#FFFFFF',

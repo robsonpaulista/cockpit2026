@@ -1,12 +1,18 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useTheme } from '@/contexts/theme-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { cn } from '@/lib/utils'
-import { REST_SCREEN_GRADIENT, REST_SCREEN_RADIAL_GLOW } from '@/lib/rest-screen-chrome'
+import {
+  REST_SCREEN_GRADIENT,
+  REST_SCREEN_PETROL,
+  REST_SCREEN_AMBER,
+  REST_SCREEN_PETROL_MUTED,
+  REST_SCREEN_RADIAL_GLOW,
+} from '@/lib/rest-screen-chrome'
+import { APP_BRAND_TAGLINE, brandWordmarkClass } from '@/lib/sidebar-brand-styles'
 
-const SLOGAN = 'Comando Central de Eleições Dep Fed Jadyel Alencar'
+const SLOGAN = APP_BRAND_TAGLINE
 
 const CICLO_MS = {
   mostrarC: 200,
@@ -19,9 +25,8 @@ const CICLO_MS = {
 type Fase = 'inicio' | 'c' | 'nome' | 'slogan'
 
 /**
- * Conteúdo visual equivalente à splash por inatividade (IdleSplash):
- * gradiente com variáveis de acento do tema, logótipo animado e slogan.
- * Respeita tema (agentes / republicanos) e aparência claro/escuro via CSS vars.
+ * Conteúdo visual da home / splash de boas-vindas:
+ * fundo branco, tipografia petróleo + coral (#2026).
  */
 interface DashboardHomeWelcomeProps {
   /** hero = tela cheia central; compact = coluna ao lado do Jarvis na Visão geral */
@@ -30,9 +35,7 @@ interface DashboardHomeWelcomeProps {
 
 export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeProps) {
   const isCompact = variant === 'compact'
-  const { appearance } = useTheme()
   const isGradientHome = useDashboardHomeChrome()
-  const isDark = appearance === 'dark'
   const [fase, setFase] = useState<Fase>('inicio')
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
@@ -74,20 +77,28 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
     }
   }, [limparTimers])
 
+  const titleClass = cn(
+    brandWordmarkClass,
+    'transition-[opacity,transform] duration-700',
+    isCompact ? 'text-[2.5rem] sm:text-[3.5rem]' : 'text-[3.25rem] sm:text-[5.5rem]',
+  )
+
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col items-center justify-center px-4',
-        isCompact ? 'py-4 sm:py-6' : 'py-10 sm:py-14',
-        isGradientHome && !isCompact && 'py-6 sm:py-10'
+        'flex w-full flex-col items-center justify-center px-4',
+        isCompact
+          ? 'min-h-0 flex-1 py-4 sm:py-6'
+          : 'h-full min-h-0 flex-1',
       )}
     >
       <div
         className={cn(
-          'relative flex w-full flex-col items-center justify-center',
-          isCompact ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-6 py-14 sm:px-10 sm:py-16',
-          isGradientHome ? 'relative overflow-visible' : 'relative overflow-hidden max-w-3xl rounded-3xl border shadow-xl',
-          !isGradientHome && (isDark ? 'border-white/10 shadow-black/25' : 'border-border-card shadow-card')
+          'relative mx-auto flex w-full max-w-3xl flex-col items-center justify-center text-center',
+          isCompact ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-6 py-4 sm:px-10',
+          isGradientHome
+            ? 'overflow-visible'
+            : 'overflow-hidden rounded-3xl border border-[rgb(var(--color-border-tertiary)/0.85)] shadow-card',
         )}
         style={
           isGradientHome
@@ -104,13 +115,14 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
           />
         ) : null}
 
-        <div className="relative z-[1] mb-7 flex items-baseline justify-center gap-0">
+        <div
+          className="relative z-[1] mb-7 flex items-baseline justify-center gap-0"
+          aria-label="Cockpit 2026"
+        >
           <span
-            className={cn(
-              'font-sans font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform] duration-700',
-              isCompact ? 'text-[2.5rem] sm:text-[3.5rem]' : 'text-[3.25rem] sm:text-[5.5rem]'
-            )}
+            className={titleClass}
             style={{
+              color: REST_SCREEN_PETROL,
               opacity: fase !== 'inicio' ? 1 : 0,
               transform:
                 fase !== 'inicio' ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-15deg)',
@@ -121,22 +133,27 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
           </span>
           <span
             className={cn(
-              'font-sans font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform,letter-spacing] duration-700',
-              isCompact ? 'text-[2.5rem] sm:text-[3.5rem]' : 'text-[3.25rem] sm:text-[5.5rem]'
+              titleClass,
+              'transition-[opacity,transform,letter-spacing] duration-700',
             )}
             style={{
+              color: REST_SCREEN_PETROL,
               opacity: fase === 'nome' || fase === 'slogan' ? 1 : 0,
               transform:
                 fase === 'nome' || fase === 'slogan' ? 'translateX(0)' : 'translateX(-20px)',
-              letterSpacing: fase === 'nome' || fase === 'slogan' ? '0.05em' : '0.3em',
+              letterSpacing: fase === 'nome' || fase === 'slogan' ? '-0.01em' : '0.3em',
               transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
             }}
           >
-            ockpit
+            OCKPIT
           </span>
           <span
-            className="ml-2 self-end pb-1 font-sans text-[1.1rem] font-light leading-none text-white/60 transition-[opacity,transform] duration-700 sm:ml-3 sm:pb-2 sm:text-[2rem]"
+            className={cn(
+              brandWordmarkClass,
+              'ml-2 self-end pb-1 text-[1.1rem] font-medium transition-[opacity,transform] duration-700 sm:ml-3 sm:pb-2 sm:text-[2rem]',
+            )}
             style={{
+              color: REST_SCREEN_AMBER,
               opacity: fase === 'nome' || fase === 'slogan' ? 1 : 0,
               transform: fase === 'nome' || fase === 'slogan' ? 'translateY(0)' : 'translateY(15px)',
               transitionDelay: '0.3s',
@@ -149,24 +166,26 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
 
         <div
           className={cn(
-            'relative z-[1] mb-5 h-0.5 w-14 rounded-full bg-white/40',
+            'relative z-[1] mb-5 h-0.5 w-14 rounded-full',
             isGradientHome
               ? 'transition-opacity duration-700'
-              : 'transition-[opacity,transform] duration-700'
+              : 'transition-[opacity,transform] duration-700',
           )}
           style={
             isGradientHome
-              ? { opacity: fase === 'slogan' ? 1 : 0 }
+              ? { background: REST_SCREEN_AMBER, opacity: fase === 'slogan' ? 0.55 : 0 }
               : {
-                  opacity: fase === 'slogan' ? 1 : 0,
+                  background: REST_SCREEN_AMBER,
+                  opacity: fase === 'slogan' ? 0.55 : 0,
                   transform: fase === 'slogan' ? 'scaleX(1)' : 'scaleX(0)',
                 }
           }
         />
 
         <p
-          className="relative z-[1] max-w-xl text-center font-sans text-[0.7rem] font-medium uppercase tracking-[0.12em] text-white/90 transition-[opacity,transform] duration-700 sm:text-[1.05rem] sm:tracking-[0.15em]"
+          className="relative z-[1] max-w-xl text-center font-sans text-[0.7rem] font-medium uppercase tracking-[0.12em] transition-[opacity,transform] duration-700 sm:text-[1.05rem] sm:tracking-[0.15em]"
           style={{
+            color: REST_SCREEN_PETROL,
             opacity: fase === 'slogan' ? 1 : 0,
             transform: fase === 'slogan' ? 'translateY(0)' : 'translateY(15px)',
           }}
@@ -176,10 +195,11 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
 
         <p
           className={cn(
-            'relative z-[1] max-w-md text-center text-xs leading-relaxed text-white/55 sm:text-sm',
-            isCompact ? 'mt-6' : 'mt-10'
+            'relative z-[1] max-w-md text-center text-xs leading-relaxed sm:text-sm',
+            isCompact ? 'mt-6' : 'mt-10',
           )}
           style={{
+            color: REST_SCREEN_PETROL_MUTED,
             opacity: fase === 'slogan' ? 1 : 0,
             transition: 'opacity 1s ease 0.4s',
           }}

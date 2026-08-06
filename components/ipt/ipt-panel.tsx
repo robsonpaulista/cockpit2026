@@ -68,6 +68,7 @@ import { cn } from '@/lib/utils'
 import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 import '@/app/dashboard/territorio/ipt/ipt-operacional.css'
 import '@/app/dashboard/territorio/ipt/ipt-clean.css'
+import '@/app/dashboard/territorio/ipt/ipt-copiloto-bridge.css'
 
 const IptMapSection = dynamic(
   () => import('@/components/ipt/ipt-map-section').then((mod) => mod.IptMapSection),

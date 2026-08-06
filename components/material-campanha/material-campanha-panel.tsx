@@ -317,7 +317,7 @@ export function MaterialCampanhaPanel() {
               <button
                 type="button"
                 onClick={openNovoMaterial}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#ff9800] bg-[#ff9800] px-3 py-1.5 text-xs font-medium text-black"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#f04b23] bg-[#f04b23] px-3 py-1.5 text-xs font-medium text-white"
               >
                 <IconPlus className="h-3.5 w-3.5" stroke={1.5} />
                 Novo material
@@ -376,16 +376,16 @@ export function MaterialCampanhaPanel() {
                     }}
                     className={cn(
                       'flex cursor-pointer flex-col rounded-xl border bg-surface p-2.5 shadow-card outline-none transition-shadow',
-                      'hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#ff9800]/40',
+                      'hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#f04b23]/40',
                       selecionado
-                        ? 'border-[#ff9800] ring-2 ring-[#ff9800]/25'
+                        ? 'border-[#f04b23] ring-2 ring-[#f04b23]/25'
                         : baixo
                           ? 'border-amber-500/50'
                           : 'border-card'
                     )}
                   >
                     <div className="flex items-start gap-1.5">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#ff9800]/12 text-[#ff9800]">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f04b23]/12 text-[#f04b23]">
                         <IconPackage className="h-3.5 w-3.5" stroke={1.5} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -601,7 +601,7 @@ export function MaterialCampanhaPanel() {
                 type="button"
                 disabled={saving || !nome.trim()}
                 onClick={() => void saveMaterial()}
-                className="rounded-full bg-[#ff9800] px-4 py-1.5 text-sm font-medium text-black disabled:opacity-40"
+                className="rounded-full bg-[#f04b23] px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
               >
                 {saving ? 'Salvando…' : 'Salvar'}
               </button>
@@ -691,7 +691,7 @@ export function MaterialCampanhaPanel() {
                 type="button"
                 disabled={saving || !movMaterialId || !Number(movQtd)}
                 onClick={() => void saveMovimento()}
-                className="rounded-full bg-[#ff9800] px-4 py-1.5 text-sm font-medium text-black disabled:opacity-40"
+                className="rounded-full bg-[#f04b23] px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
               >
                 {saving ? 'Registrando…' : 'Registrar'}
               </button>

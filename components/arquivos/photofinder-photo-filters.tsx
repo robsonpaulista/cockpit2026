@@ -43,7 +43,7 @@ export function PhotofinderPhotoFilters({ filters, onFilterChange }: PhotoFilter
   return (
     <div className="rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface p-4">
       <div className="mb-3 flex items-center gap-2">
-        <Search className="h-4 w-4 text-[#C8900A]" />
+        <Search className="h-4 w-4 text-[#f04b23]" />
         <h2 className="text-sm font-semibold text-text-primary">Filtros</h2>
       </div>
 

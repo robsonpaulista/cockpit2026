@@ -6,8 +6,8 @@ import {
   pillInputClass,
 } from '@/lib/premium-ui-classes'
 
-/** Accent da aba Base — alinhado à paleta IPT (#ff9800). */
-export const TERRITORIO_BASE_AMBER = '#ff9800'
+/** Accent da aba Base — coral oficial Copiloto. */
+export const TERRITORIO_BASE_AMBER = '#f04b23'
 
 /** Texto preto em toda a aba Base (evita cinza/azul do tema). */
 export const territorioBaseTextClass = 'text-black'
@@ -17,13 +17,13 @@ export const territorioBaseGhostButtonClass = cn(ghostButtonClass, territorioBas
 export const territorioBasePillInputClass = cn(
   pillInputClass,
   territorioBaseTextClass,
-  'placeholder:text-black/45 focus:ring-[#ff9800]/25',
+  'placeholder:text-black/45 focus:ring-[#f04b23]/25',
 )
 
 export const territorioBasePillFilterIdleClass = cn(pillFilterIdleClass, territorioBaseTextClass)
 
 export const territorioBasePillFilterActiveClass =
-  'inline-flex items-center gap-1 rounded-[99px] border border-[#ff9800] bg-[#ff9800]/10 px-2.5 py-1 text-[13px] font-medium text-black'
+  'inline-flex items-center gap-1 rounded-[99px] border border-[#f04b23] bg-[#f04b23]/10 px-2.5 py-1 text-[13px] font-medium text-black'
 
 export const territorioBaseCargoChipClass = cn(cargoChipClass, territorioBaseTextClass)
 

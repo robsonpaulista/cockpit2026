@@ -31,7 +31,7 @@ export function RecfaceHomeTab() {
   if (loading) {
     return (
       <div className="flex justify-center py-16 text-text-muted">
-        <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
       </div>
     )
   }
@@ -70,8 +70,8 @@ export function RecfaceHomeTab() {
             key={label}
             className="rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-4 py-3"
           >
-            <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-[#C8900A]/15">
-              <Icon className="h-4 w-4 text-[#C8900A]" />
+            <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-[#f04b23]/15">
+              <Icon className="h-4 w-4 text-[#f04b23]" />
             </div>
             <p className="text-xs text-text-muted">{label}</p>
             <p className="text-lg font-semibold text-text-primary">{value}</p>

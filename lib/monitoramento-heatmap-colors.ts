@@ -1,8 +1,8 @@
 export type HeatmapScaleMode = 'individual' | 'comparative'
 
 const EMPTY_CELL = '#EDEDED'
-/** Cor padrão do modo comparativo — paleta IPT (#ff9800). */
-const COMPARATIVE_BASE = '#ff9800'
+/** Cor padrão do modo comparativo — paleta IPT (#f04b23). */
+const COMPARATIVE_BASE = '#f04b23'
 
 function parseHex(hex: string): { r: number; g: number; b: number } | null {
   const raw = hex.trim().replace('#', '')

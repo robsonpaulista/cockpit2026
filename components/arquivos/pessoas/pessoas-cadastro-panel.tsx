@@ -38,7 +38,7 @@ function PersonAvatar({ pessoa }: { pessoa: Pessoa }) {
 
   if (pessoa.enrollment_count > 0 && !pessoa.reference_image_path) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#C8900A]/10 px-1 text-center text-[#C8900A]">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f04b23]/10 px-1 text-center text-[#f04b23]">
         <Camera className="h-4 w-4 opacity-70" />
         <span className="text-[8px] font-medium leading-tight">Reenvie foto</span>
       </div>
@@ -46,7 +46,7 @@ function PersonAvatar({ pessoa }: { pessoa: Pessoa }) {
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#C8900A]/10 text-sm font-semibold text-[#C8900A]">
+    <div className="flex h-full w-full items-center justify-center bg-[#f04b23]/10 text-sm font-semibold text-[#f04b23]">
       {pessoa.name.charAt(0).toUpperCase()}
     </div>
   )
@@ -170,8 +170,8 @@ export function PessoasCadastroPanel() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8900A]/15">
-            <ScanFace className="h-5 w-5 text-[#C8900A]" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f04b23]/15">
+            <ScanFace className="h-5 w-5 text-[#f04b23]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-text-primary">Cadastro de pessoas</p>
@@ -268,7 +268,7 @@ export function PessoasCadastroPanel() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
         </div>
       ) : pessoas.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-secondary))] px-6 py-16 text-center">
@@ -303,7 +303,7 @@ export function PessoasCadastroPanel() {
                   {p.name}
                 </p>
                 {p.role_tag ? (
-                  <p className="truncate text-[11px] text-[#C8900A]">{p.role_tag}</p>
+                  <p className="truncate text-[11px] text-[#f04b23]">{p.role_tag}</p>
                 ) : null}
 
                 <div className="mt-1.5 flex items-center gap-1">
@@ -311,7 +311,7 @@ export function PessoasCadastroPanel() {
                     className={cn(
                       'flex flex-1 cursor-pointer items-center justify-center gap-1 rounded border border-dashed py-1 text-[10px]',
                       enrollingId === p.id
-                        ? 'border-[#C8900A]/50 text-[#C8900A]'
+                        ? 'border-[#f04b23]/50 text-[#f04b23]'
                         : 'border-[rgb(var(--color-border-secondary))] text-text-muted hover:bg-bg-muted',
                     )}
                     title={p.enrollment_count > 0 ? 'Atualizar foto do rosto' : 'Cadastrar rosto'}

@@ -103,7 +103,7 @@ export function PhotofinderPhotoCard({
         className={cn(
           'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface transition-colors hover:border-[rgb(var(--color-border-secondary)/0.9)]',
           'group !overflow-visible p-0',
-          selectionMode && selected && 'ring-2 ring-[#C8900A] ring-offset-2',
+          selectionMode && selected && 'ring-2 ring-[#f04b23] ring-offset-2',
         )}
       >
         <div className="relative aspect-square overflow-hidden bg-bg-muted">
@@ -112,7 +112,7 @@ export function PhotofinderPhotoCard({
               type="button"
               onClick={handleImageClick}
               className={cn(
-                'block h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C8900A] focus-visible:ring-offset-2',
+                'block h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f04b23] focus-visible:ring-offset-2',
                 selectionMode ? 'cursor-pointer' : 'cursor-zoom-in',
               )}
               aria-label={
@@ -147,7 +147,7 @@ export function PhotofinderPhotoCard({
               className={cn(
                 'absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border-2 shadow-sm transition-colors',
                 selected
-                  ? 'border-[#C8900A] bg-[#C8900A] text-white'
+                  ? 'border-[#f04b23] bg-[#f04b23] text-white'
                   : 'border-white/90 bg-black/40 text-white hover:bg-black/60',
               )}
               aria-pressed={selected}
@@ -197,14 +197,14 @@ export function PhotofinderPhotoCard({
           ) : null}
 
           {location ? (
-            <p className="flex items-center gap-1 text-xs text-[#C8900A]">
+            <p className="flex items-center gap-1 text-xs text-[#f04b23]">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{location}</span>
             </p>
           ) : null}
 
           {photo.event_type ? (
-            <span className="inline-block rounded-md bg-[#C8900A]/10 px-2 py-0.5 text-[11px] font-medium text-[#C8900A]">
+            <span className="inline-block rounded-md bg-[#f04b23]/10 px-2 py-0.5 text-[11px] font-medium text-[#f04b23]">
               {photo.event_type}
             </span>
           ) : null}
@@ -241,7 +241,7 @@ export function PhotofinderPhotoCard({
                 type="button"
                 onClick={() => void handleSavePerson()}
                 disabled={saving}
-                className="rounded-lg bg-[#C8900A] px-2 py-1 text-xs text-white"
+                className="rounded-lg bg-[#f04b23] px-2 py-1 text-xs text-white"
               >
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'OK'}
               </button>

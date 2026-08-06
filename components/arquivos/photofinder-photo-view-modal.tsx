@@ -60,7 +60,7 @@ export function PhotofinderPhotoViewModal({ photo, open, onClose }: PhotofinderP
                 <span>{format(new Date(photo.created_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
               ) : null}
               {location ? (
-                <span className="inline-flex items-center gap-1 text-[#C8900A]">
+                <span className="inline-flex items-center gap-1 text-[#f04b23]">
                   <MapPin className="h-3.5 w-3.5" />
                   {location}
                 </span>

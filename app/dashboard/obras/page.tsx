@@ -860,14 +860,14 @@ export default function ObrasPage() {
   }
 
   const selectClass =
-    'h-9 w-full rounded-lg border border-card bg-background px-3 text-xs text-text-primary outline-none focus:border-[#ff9800]'
+    'h-9 w-full rounded-lg border border-card bg-background px-3 text-xs text-text-primary outline-none focus:border-[#f04b23]'
 
   const obrasMainContent = (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className={cn(typographySectionTitleClass, 'flex items-center gap-2 text-base')}>
-            <HardHat className="h-4 w-4 text-[#ff9800]" aria-hidden />
+            <HardHat className="h-4 w-4 text-[#f04b23]" aria-hidden />
             Lista de obras
           </h2>
           <p className={cn(typographySectionLeadClass, 'mt-1')}>
@@ -1015,7 +1015,7 @@ export default function ObrasPage() {
               placeholder="Buscar por nome, município, órgão, SEI…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-full rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#ff9800]"
+              className="h-9 w-full rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f04b23]"
             />
           </div>
           <select
@@ -1081,7 +1081,7 @@ export default function ObrasPage() {
       <article className="overflow-hidden rounded-xl border border-card bg-surface shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" />
+              <Loader2 className="h-5 w-5 animate-spin text-[#f04b23]" />
               <span className="ml-2 text-sm text-text-secondary">Carregando obras...</span>
             </div>
           ) : filteredObras.length === 0 ? (

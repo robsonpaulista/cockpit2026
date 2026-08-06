@@ -45,9 +45,11 @@ import { useTheme } from '@/contexts/theme-context'
 import { InstagramFollowersHistoryChart } from '@/components/conteudo-redes/instagram-followers-history-chart'
 import { InstagramContentTypeComparison } from '@/components/conteudo-redes/instagram-content-type-comparison'
 import { InstagramThemeComparisonTable } from '@/components/conteudo-redes/instagram-theme-comparison-table'
+import { InstagramBestPostByThemeTable } from '@/components/conteudo-redes/instagram-best-post-by-theme-table'
 import { InstagramCaptionCityRanking } from '@/components/conteudo-redes/instagram-caption-city-ranking'
 import { aggregateInstagramMetricsByCaptionCity } from '@/lib/instagram-city-caption-stats'
 import { mapMetricsPostsToDayRecords } from '@/lib/instagram-day-posts'
+import { followersHistoryDaysFromRange, FOLLOWERS_HISTORY_RANGE_OPTIONS } from '@/lib/instagram-followers-history-chart'
 import { cn } from '@/lib/utils'
 import { municipalityCardClass } from '@/lib/premium-ui-classes'
 import {
@@ -73,7 +75,7 @@ import {
 } from '@tabler/icons-react'
 
 const producao = [
-  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-[#ff9800]/10 border-[#ff9800]/30' },
+  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-[#f04b23]/10 border-[#f04b23]/30' },
   { etapa: 'Gravação', quantidade: 2, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Edição', quantidade: 4, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Aprovação', quantidade: 1, cor: 'bg-status-success/10 border-status-success/30' },
@@ -236,6 +238,8 @@ export default function ConteudoPage() {
 
   // Ref para detectar cliques fora do modal
   const themeModalRef = useRef<HTMLDivElement>(null)
+  /** Evita refetch duplicado no mount (já busca no loadConfig). */
+  const skipDateRangeFetchRef = useRef(true)
 
   // Fechar modal ao clicar fora
   useEffect(() => {
@@ -475,13 +479,21 @@ export default function ConteudoPage() {
   useEffect(() => {
     if (!isConfigured) return
     void loadMetricsHistory()
+    if (skipDateRangeFetchRef.current) {
+      skipDateRangeFetchRef.current = false
+      return
+    }
+    if (config?.token && config.businessAccountId) {
+      void fetchData(config)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch só quando o período muda
   }, [dateRange, isConfigured])
 
   // Função para buscar histórico de métricas
   const loadMetricsHistory = async () => {
     setLoadingHistory(true)
     try {
-      const days = dateRange === '7d' ? 7 : dateRange === '14d' ? 14 : dateRange === '90d' ? 90 : 30
+      const days = followersHistoryDaysFromRange(dateRange)
       const history = await fetchInstagramHistory(days)
       setMetricsHistory(history)
     } catch (err) {
@@ -566,21 +578,29 @@ export default function ConteudoPage() {
     }
   }
 
-  // Usar posts reais se disponível, senão usar mock
-  const postsToDisplay = metrics?.posts || mockPosts
+  // Usar posts reais se disponível, senão usar mock — sempre filtrados pelo período
+  const postsToDisplay = useMemo(() => {
+    const source = metrics?.posts || mockPosts
+    const days = followersHistoryDaysFromRange(dateRange)
+    const startMs = Date.now() - days * 24 * 60 * 60 * 1000
+    return source.filter((post) => {
+      const t = new Date(post.postedAt).getTime()
+      return !Number.isNaN(t) && t >= startMs
+    })
+  }, [metrics?.posts, dateRange])
 
   const postsForEngagementChart = useMemo(
     () =>
-      (metrics?.posts ?? []).map((post) => ({
+      postsToDisplay.map((post) => ({
         postedAt: post.postedAt,
         engagement: post.metrics.engagement || 0,
       })),
-    [metrics?.posts]
+    [postsToDisplay]
   )
 
   const livePostsForChart = useMemo(
-    () => mapMetricsPostsToDayRecords(metrics?.posts ?? []),
-    [metrics?.posts]
+    () => mapMetricsPostsToDayRecords(postsToDisplay),
+    [postsToDisplay]
   )
 
   // Calcular estatísticas por tipo de conteúdo
@@ -728,6 +748,52 @@ export default function ConteudoPage() {
     return stats
   }, [postsToDisplay, postClassifications])
 
+  const bestPostByTheme = useMemo(() => {
+    if (postsToDisplay.length === 0 || Object.keys(postClassifications).length === 0) {
+      return []
+    }
+
+    const bestByTheme = new Map<
+      string,
+      {
+        theme: string
+        thumbnail?: string
+        caption?: string
+        url: string
+        engagement: number
+        postedAt?: string
+      }
+    >()
+
+    for (const post of postsToDisplay) {
+      const identifier = getPostIdentifier(post)
+      const theme = postClassifications[identifier]?.theme
+      if (!theme) continue
+
+      const engagement = post.metrics.engagement || 0
+      const current = bestByTheme.get(theme)
+      if (!current || engagement > current.engagement) {
+        bestByTheme.set(theme, {
+          theme,
+          thumbnail: post.thumbnail,
+          caption: post.caption,
+          url: post.url,
+          engagement,
+          postedAt: post.postedAt,
+        })
+      }
+    }
+
+    return [...bestByTheme.values()].sort((a, b) => b.engagement - a.engagement)
+  }, [postsToDisplay, postClassifications])
+
+  const periodLabel = useMemo(
+    () =>
+      FOLLOWERS_HISTORY_RANGE_OPTIONS.find((o) => o.value === dateRange)?.label ??
+      `${followersHistoryDaysFromRange(dateRange)} dias`,
+    [dateRange],
+  )
+
   const captionCityAggregate = useMemo(
     () => aggregateInstagramMetricsByCaptionCity(postsToDisplay),
     [postsToDisplay],
@@ -775,9 +841,9 @@ export default function ConteudoPage() {
     if (!config) return 'Conecte o Instagram para ver posts e insights'
     if (loading && !metrics) return 'Carregando métricas do Instagram…'
     const followers = metrics?.followers?.total?.toLocaleString('pt-BR') ?? '0'
-    const postsCount = metrics?.posts?.length ?? 0
-    return `${followers} seguidores · ${postsCount} publicações no período`
-  }, [config, loading, metrics])
+    const postsCount = postsToDisplay.length
+    return `${followers} seguidores · ${postsCount} publicações · ${periodLabel}`
+  }, [config, loading, metrics, postsToDisplay.length, periodLabel])
 
   const audienceKpiData = useMemo(
     () => ({
@@ -857,7 +923,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#f04b23]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                   </div>
               ) : !isConfigured ? (
@@ -900,6 +966,15 @@ export default function ConteudoPage() {
                   {themeStats && Object.keys(themeStats).length > 0 && (
                     <InstagramThemeComparisonTable
                       themeStats={themeStats}
+                      sectionClassName={sectionWrapClass}
+                      panelClassName={innerPanelClass}
+                    />
+                  )}
+
+                  {bestPostByTheme.length > 0 && (
+                    <InstagramBestPostByThemeTable
+                      rows={bestPostByTheme}
+                      periodLabel={periodLabel}
                       sectionClassName={sectionWrapClass}
                       panelClassName={innerPanelClass}
                     />
@@ -998,7 +1073,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#f04b23]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
@@ -1149,7 +1224,7 @@ export default function ConteudoPage() {
                                       ? 'bg-red-500'
                                       : post.type === 'carousel'
                                       ? 'bg-[#9A6B08]'
-                                      : 'bg-[#ff9800]'
+                                      : 'bg-[#f04b23]'
                                   }`}
                                 >
                                   {typeLabels[post.type as keyof typeof typeLabels] || post.type}
@@ -1185,7 +1260,7 @@ export default function ConteudoPage() {
                                   href={post.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center text-[11px] font-medium text-[#ff9800] hover:underline"
+                                  className="flex items-center text-[11px] font-medium text-[#f04b23] hover:underline"
                                 >
                                   <ExternalLink className="h-3 w-3 mr-1" /> Ver
                                 </a>
@@ -1217,7 +1292,7 @@ export default function ConteudoPage() {
                                         )
                                       }
                                     }}
-                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
+                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#f04b23]/30"
                                   >
                                     <option value="">Tema</option>
                                     {availableThemes.map((theme) => (
@@ -1252,7 +1327,7 @@ export default function ConteudoPage() {
                                             }
                                           }}
                                           placeholder="Digite o nome do tema"
-                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
+                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-[#f04b23]/30"
                                           autoFocus
                                         />
                                         {newTheme.trim() && availableThemes.includes(newTheme.trim()) && (
@@ -1268,7 +1343,7 @@ export default function ConteudoPage() {
                                               handleAddTheme(getPostIdentifier(post), classification?.isBoosted ?? false)
                                             }}
                                             disabled={!newTheme.trim() || availableThemes.includes(newTheme.trim())}
-                                            className="flex-1 rounded-[10px] bg-[#ff9800] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#e28000]"
+                                            className="flex-1 rounded-[10px] bg-[#f04b23] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#c43d1c]"
                                           >
                                             Adicionar
                                           </button>
@@ -1299,7 +1374,7 @@ export default function ConteudoPage() {
                                         e.target.value || null
                                       )
                                     }
-                                    className="h-7 text-xs min-w-[160px] max-w-[220px] flex-[1.4] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
+                                    className="h-7 text-xs min-w-[160px] max-w-[220px] flex-[1.4] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#f04b23]/30"
                                     title="Relacionar post à obra do Mapa / Diagnóstico"
                                   >
                                     <option value="">Obra (match)</option>
@@ -1325,7 +1400,7 @@ export default function ConteudoPage() {
                                       classification?.obraMapaId ?? null
                                     )
                                   }
-                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
+                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#f04b23]/30"
                                   title="Impulsionado?"
                                 >
                                   <option value="nao">Não</option>
@@ -1351,7 +1426,7 @@ export default function ConteudoPage() {
               </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <MessageCircle className="h-3 w-3 text-[#ff9800] mr-0.5" />
+                                    <MessageCircle className="h-3 w-3 text-[#f04b23] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.comments.toLocaleString('pt-BR')}
                                     </span>
@@ -1368,7 +1443,7 @@ export default function ConteudoPage() {
         </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <Eye className="h-3 w-3 text-[#ff9800] mr-0.5" />
+                                    <Eye className="h-3 w-3 text-[#f04b23] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.views
                                         ? post.metrics.views.toLocaleString('pt-BR')
@@ -1442,7 +1517,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#f04b23]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
@@ -1581,8 +1656,8 @@ export default function ConteudoPage() {
                                         className={cn(
                                           'flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-medium',
                                           index === 0
-                                            ? 'bg-[#ff9800] text-white'
-                                            : 'bg-[#ff9800]/12 text-[#ff9800]'
+                                            ? 'bg-[#f04b23] text-white'
+                                            : 'bg-[#f04b23]/12 text-[#f04b23]'
                                         )}
                                       >
                                         {index + 1}
@@ -1595,7 +1670,7 @@ export default function ConteudoPage() {
                                       </div>
                                     </div>
                                     <div className="ml-4 text-right">
-                                      <p className="text-base font-medium tabular-nums text-[#ff9800]">
+                                      <p className="text-base font-medium tabular-nums text-[#f04b23]">
                                         {count.toLocaleString('pt-BR')}
                                       </p>
                                       <p className="text-[11px]">{unitLabel}</p>
@@ -1603,7 +1678,7 @@ export default function ConteudoPage() {
                                   </div>
                                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
                                     <div
-                                      className="h-full rounded-full bg-[#ff9800] transition-all duration-500"
+                                      className="h-full rounded-full bg-[#f04b23] transition-all duration-500"
                                       style={{ width: `${barWidth}%` }}
                                     />
                                   </div>

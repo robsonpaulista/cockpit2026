@@ -318,7 +318,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
         <div className="ipt-evolucao-modal__body">
           {loading ? (
             <div className="ipt-evolucao-modal__empty">
-              <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" aria-hidden />
+              <Loader2 className="h-5 w-5 animate-spin text-[#005b8f]" aria-hidden />
               Carregando evolução…
             </div>
           ) : grupos.length === 0 ? (

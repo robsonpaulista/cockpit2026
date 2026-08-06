@@ -56,7 +56,7 @@ export function PhotofinderSyncProgressModal({
             ) : isDone ? (
               <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-status-success" />
             ) : (
-              <Loader2 className="mt-0.5 h-6 w-6 shrink-0 animate-spin text-[#C8900A]" />
+              <Loader2 className="mt-0.5 h-6 w-6 shrink-0 animate-spin text-[#f04b23]" />
             )}
             <div>
               <h2 id="sync-progress-title" className="text-base font-semibold text-text-primary">
@@ -97,7 +97,7 @@ export function PhotofinderSyncProgressModal({
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500 ease-out',
-              isError ? 'bg-status-danger' : isDone ? 'bg-status-success' : 'bg-[#C8900A]',
+              isError ? 'bg-status-danger' : isDone ? 'bg-status-success' : 'bg-[#f04b23]',
             )}
             style={{ width: `${Math.max(4, barPercent)}%` }}
           />

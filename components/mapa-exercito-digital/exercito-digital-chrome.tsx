@@ -29,10 +29,10 @@ import { exercitoSectionCardClass } from '@/lib/mapa-exercito-digital-layout'
 import { resumoAmberInfoBoxClass } from '@/lib/resumo-eleicoes-table-styles'
 import { cn } from '@/lib/utils'
 
-const exercitoAmberIconClass = 'text-[#C8900A]'
+const exercitoAmberIconClass = 'text-[#f04b23]'
 const exercitoAmberTextClass = 'text-[#854F0B]'
 const exercitoAmberPrimaryButtonClass =
-  'inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#C8900A] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#A87308] disabled:pointer-events-none disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#f04b23] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#c43d1c] disabled:pointer-events-none disabled:opacity-50'
 
 const BANNER_STORAGE_KEY = 'cockpit2026.exercito-digital.banner.dismissed'
 const LOOKBACK_OPTIONS = [7, 15, 30] as const

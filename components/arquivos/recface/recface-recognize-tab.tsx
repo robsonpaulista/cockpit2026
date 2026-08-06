@@ -116,7 +116,7 @@ export function RecfaceRecognizeTab() {
                 Confiança: {(result.confidence * 100).toFixed(1)}% · Distância: {result.distance.toFixed(4)}
               </p>
               {result.agendaEntry ? (
-                <p className="text-xs text-[#C8900A]">
+                <p className="text-xs text-[#f04b23]">
                   Agenda: {result.agendaEntry.time} — {result.agendaEntry.location}
                   {result.agendaValid ? ' ✓' : ' (fora da janela)'}
                 </p>

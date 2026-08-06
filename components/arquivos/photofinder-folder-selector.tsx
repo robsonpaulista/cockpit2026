@@ -95,7 +95,7 @@ export function PhotofinderFolderSelector({
           className={cn(
             'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
             isSelected
-              ? 'border border-[#C8900A] bg-[#C8900A]/10 text-text-primary'
+              ? 'border border-[#f04b23] bg-[#f04b23]/10 text-text-primary'
               : 'hover:bg-bg-muted text-text-primary',
           )}
           style={{ paddingLeft: `${12 + level * 16}px` }}
@@ -118,7 +118,7 @@ export function PhotofinderFolderSelector({
           ) : (
             <span className="w-5" />
           )}
-          <Folder className="h-4 w-4 shrink-0 text-[#C8900A]" />
+          <Folder className="h-4 w-4 shrink-0 text-[#f04b23]" />
           <span className="truncate">{folder.name}</span>
         </button>
         {hasChildren && isExpanded
@@ -155,7 +155,7 @@ export function PhotofinderFolderSelector({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 text-text-muted">
-              <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#C8900A]" />
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#f04b23]" />
               Carregando pastas do Google Drive…
             </div>
           ) : folders.length === 0 ? (

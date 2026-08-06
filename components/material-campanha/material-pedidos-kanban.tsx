@@ -43,7 +43,7 @@ const COLUNAS: Array<{
   }
   return {
     status,
-    cor: '#ff9800',
+    cor: '#f04b23',
     chipBg: 'bg-orange-50 dark:bg-orange-500/15',
     chipBorder: 'border-orange-200/80 dark:border-orange-500/30',
   }
@@ -233,7 +233,7 @@ export function MaterialPedidosKanban({
                               className={cn(
                                 'rounded-full px-2.5 py-1 text-[11px] font-medium',
                                 next === 'entregue'
-                                  ? 'border border-[#ff9800] bg-[#ff9800] text-black'
+                                  ? 'border border-[#f04b23] bg-[#f04b23] text-white'
                                   : 'border border-card bg-background text-text-primary hover:bg-black/[0.03]'
                               )}
                             >

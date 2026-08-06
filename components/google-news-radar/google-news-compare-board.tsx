@@ -113,7 +113,7 @@ function ArticleList({
               {m.title}
             </a>
             <p className="mt-0.5 truncate text-[11px] text-text-muted">
-              <span className="font-medium text-[#C8900A]">
+              <span className="font-medium text-[#f04b23]">
                 {labelGoogleNewsPlatform(m.platform ?? 'website')}
               </span>
               {' · '}

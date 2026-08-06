@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 /** Paleta compartilhada com a splash ("ligar a máquina") — laranja IPT. */
-const GOLD = '#ff9800'
-const GOLD_HOVER = '#e28000'
+const GOLD = '#f04b23'
+const GOLD_HOVER = '#c43d1c'
 const CAR_IMAGE = '/splash/cockpit-track-full.png'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
@@ -216,7 +216,7 @@ export function LoginForm() {
                 onFocus={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
                   e.currentTarget.style.borderColor = GOLD
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,154,46,0.18)'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(240,75,35,0.18)'
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
@@ -251,7 +251,7 @@ export function LoginForm() {
                 onFocus={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
                   e.currentTarget.style.borderColor = GOLD
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,154,46,0.18)'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(240,75,35,0.18)'
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
@@ -290,8 +290,8 @@ export function LoginForm() {
               <div
                 style={{
                   padding: '12px',
-                  background: 'rgba(201,154,46,0.1)',
-                  border: '1px solid rgba(201,154,46,0.35)',
+                  background: 'rgba(240,75,35,0.1)',
+                  border: '1px solid rgba(240,75,35,0.35)',
                   borderRadius: '10px',
                 }}
               >
@@ -305,8 +305,8 @@ export function LoginForm() {
               style={{
                 width: '100%',
                 padding: '13px',
-                background: loading ? 'rgba(201,154,46,0.4)' : GOLD,
-                color: '#14110a',
+                background: loading ? 'rgba(240,75,35,0.4)' : GOLD,
+                color: '#ffffff',
                 borderRadius: '999px',
                 fontWeight: 700,
                 fontSize: '0.95rem',
@@ -315,19 +315,19 @@ export function LoginForm() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 opacity: loading ? 0.8 : 1,
-                boxShadow: loading ? 'none' : '0 8px 26px rgba(201,154,46,0.38)',
+                boxShadow: loading ? 'none' : '0 8px 26px rgba(240,75,35,0.38)',
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
                   e.currentTarget.style.background = GOLD_HOVER
                   e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(201,154,46,0.5)'
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(240,75,35,0.5)'
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = loading ? 'rgba(201,154,46,0.4)' : GOLD
+                e.currentTarget.style.background = loading ? 'rgba(240,75,35,0.4)' : GOLD
                 e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = loading ? 'none' : '0 8px 26px rgba(201,154,46,0.38)'
+                e.currentTarget.style.boxShadow = loading ? 'none' : '0 8px 26px rgba(240,75,35,0.38)'
               }}
             >
               {loading ? 'Entrando...' : 'Entrar no Cockpit'}

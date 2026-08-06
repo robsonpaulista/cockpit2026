@@ -32,8 +32,8 @@ export function ConteudoPresencaNav() {
             className={cn(
               'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-premium',
               active
-                ? 'border border-[#C8900A] bg-[#C8900A] text-white shadow-card'
-                : 'border border-border-card bg-bg-surface text-black hover:bg-[#C8900A]/10',
+                ? 'border border-[#f04b23] bg-[#f04b23] text-white shadow-card'
+                : 'border border-border-card bg-bg-surface text-black hover:bg-[#f04b23]/10',
             )}
           >
             {label}

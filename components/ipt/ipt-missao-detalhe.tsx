@@ -138,8 +138,8 @@ const INDICADOR_META: Record<
   IndicadorId,
   { label: string; cor: string; icon: typeof MapPin }
 > = {
-  pesquisa: { label: 'Pesquisa', cor: '#e28000', icon: BarChart3 },
-  campo: { label: 'Campo', cor: '#ff9800', icon: MapPin },
+  pesquisa: { label: 'Pesquisa', cor: '#005b8f', icon: BarChart3 },
+  campo: { label: 'Campo', cor: '#005b8f', icon: MapPin },
   digital: { label: 'Digital', cor: '#8c8c8c', icon: Smartphone },
   obras: { label: 'Obras', cor: '#666666', icon: Building2 },
 }

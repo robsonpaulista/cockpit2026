@@ -51,7 +51,7 @@ export function PhotofinderPersonTags({
                   'inline-flex max-w-full break-words rounded-md px-1.5 py-0.5 text-[11px] font-medium',
                   isOnImage
                     ? 'bg-black/55 text-white'
-                    : 'bg-[#C8900A]/10 text-[#C8900A]',
+                    : 'bg-[#f04b23]/10 text-[#f04b23]',
                 )
               : 'break-words font-medium text-text-primary',
             badgeClassName,

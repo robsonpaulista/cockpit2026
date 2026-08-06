@@ -38,6 +38,7 @@ import {
   resumoTrZebra,
   resumoTrSelecionado,
   resumoTrDestaqueForte,
+  resumoTrDestaquePetrol,
   resumoTableFooterClass,
   resumoKpiValueClass,
   resumoKpiLabelClass,
@@ -2245,7 +2246,7 @@ export function ResumoEleicoesAtendimentoPanel() {
               className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'h-10')}
             >
               <RefreshCw
-                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin', isCockpit ? 'text-white' : 'text-[#f04b23]')}
                 aria-hidden
               />
               Buscar
@@ -2453,7 +2454,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#ff9800]/6',
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#f04b23]/6',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2471,7 +2472,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                            className="h-3.5 w-3.5 accent-[#f04b23]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2547,8 +2548,8 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
-                          isJadyel && resumoTrDestaqueForte(),
+                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
+                          isJadyel && resumoTrDestaquePetrol(),
                           !isJadyel && isSelected && resumoTrSelecionado(),
                           !isJadyel && !isSelected && resumoTrZebra(rowIndex),
                           !isJadyel && 'text-text-primary',
@@ -2568,7 +2569,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                            className="h-3.5 w-3.5 accent-[#f04b23]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2643,7 +2644,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#ff9800]/6',
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#f04b23]/6',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2661,7 +2662,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                            className="h-3.5 w-3.5 accent-[#f04b23]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2742,9 +2743,9 @@ export function ResumoEleicoesAtendimentoPanel() {
                         onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
                         title="Dê duplo clique para definir como Presidente da Câmara"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
+                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
                           isPresidente && 'select-none',
-                          isPresidente && resumoTrDestaqueForte(),
+                          isPresidente && resumoTrDestaquePetrol(),
                           !isPresidente &&
                             isSelected &&
                             resumoTrSelecionado(),
@@ -2766,7 +2767,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                            className="h-3.5 w-3.5 accent-[#f04b23]"
                           />
                         </td>
                         <td className="min-w-0 px-1 py-1">
@@ -2800,7 +2801,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                                 'border border-white/40 bg-white/15 font-medium text-white',
                               !isPresidente &&
                                 isEleito &&
-                                'bg-[#ff9800]/12 font-medium text-[#ff9800]',
+                                'bg-[#f04b23]/12 font-medium text-[#f04b23]',
                               !isPresidente &&
                                 !isEleito &&
                                 'bg-background text-text-secondary',
@@ -2870,7 +2871,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         key={item.partido}
                         title="Dê duplo clique no partido para filtrar as demais tabelas"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
+                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
                           isPartidoAtivo && resumoTrDestaqueForte(),
                           !isPartidoAtivo && isSelected && resumoTrSelecionado(),
                           !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),
@@ -2882,7 +2883,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('partido_2024', rowId, item.votos)}
-                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                            className="h-3.5 w-3.5 accent-[#f04b23]"
                           />
                         </td>
                         <td
@@ -3175,7 +3176,7 @@ export function ResumoEleicoesAtendimentoPanel() {
               type="button"
               role="menuitem"
               onClick={confirmarIncluirComoLideranca}
-              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[#C8900A]/10"
+              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[#f04b23]/10"
             >
               Incluir como liderança
             </button>
@@ -3253,7 +3254,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleLiderancaDemanda(nome)}
-                          className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          className="h-3.5 w-3.5 accent-[#f04b23]"
                         />
                         <span className="text-sm text-text-primary">{nome}</span>
                       </label>

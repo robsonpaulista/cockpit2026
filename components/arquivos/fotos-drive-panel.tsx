@@ -322,7 +322,7 @@ export function FotosDrivePanel() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center gap-2 py-20 text-text-muted">
-        <Loader2 className="h-5 w-5 animate-spin text-[#C8900A]" />
+        <Loader2 className="h-5 w-5 animate-spin text-[#f04b23]" />
         Verificando conexão com o Google Drive…
       </div>
     )
@@ -335,8 +335,8 @@ export function FotosDrivePanel() {
 
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface p-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C8900A]/15">
-          <Cloud className="h-7 w-7 text-[#C8900A]" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f04b23]/15">
+          <Cloud className="h-7 w-7 text-[#f04b23]" />
         </div>
         <h2 className="text-lg font-semibold text-text-primary">Conectar Google Drive</h2>
         <p className="mt-2 text-sm text-text-muted">
@@ -393,8 +393,8 @@ export function FotosDrivePanel() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8900A]/15">
-            <ImageIcon className="h-5 w-5 text-[#C8900A]" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f04b23]/15">
+            <ImageIcon className="h-5 w-5 text-[#f04b23]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-text-primary">

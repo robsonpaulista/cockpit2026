@@ -42,6 +42,7 @@ import {
 } from '@/components/war-room/war-room-agenda-proximos-modal'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
 import {
+  AGENDA_PROXIMOS_JANELA_DIAS,
   buildAgendaProximosPorMunicipio,
   todayKeyInTz,
 } from '@/lib/war-room/agenda-proximos'
@@ -147,8 +148,8 @@ function ExpectativaItem({
             <button
               type="button"
               className="wr-expectativa-clean__agenda-alerta"
-              title="Agenda nos próximos 7 dias"
-              aria-label={`Ver agenda dos próximos 7 dias em ${municipio.municipio}`}
+              title={`Agenda nos próximos ${AGENDA_PROXIMOS_JANELA_DIAS} dias`}
+              aria-label={`Ver agenda dos próximos ${AGENDA_PROXIMOS_JANELA_DIAS} dias em ${municipio.municipio}`}
               onClick={(e) => {
                 e.stopPropagation()
                 onSelect()

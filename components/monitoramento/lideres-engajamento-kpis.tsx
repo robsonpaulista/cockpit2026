@@ -12,7 +12,7 @@ import {
 } from '@/lib/mapa-exercito-digital-layout'
 import { cn } from '@/lib/utils'
 
-const ICON_CLASS = 'h-3.5 w-3.5 shrink-0 text-[#ff9800]'
+const ICON_CLASS = 'h-3.5 w-3.5 shrink-0 text-[#f04b23]'
 
 interface LideresEngajamentoKpisProps {
   kpis: ExercitoDigitalKpis

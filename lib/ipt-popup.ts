@@ -335,7 +335,7 @@ function quadroIndicadores(
       rotulo: iptRotuloSinalIndicador('digital', m.sinais.digital),
       muted,
       destaque: indicador === 'digital',
-      destaqueCor: '#C8900A',
+      destaqueCor: '#f04b23',
       compact: true,
     })}
     ${

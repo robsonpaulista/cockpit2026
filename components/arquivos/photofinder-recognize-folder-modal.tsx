@@ -72,8 +72,8 @@ export function PhotofinderRecognizeFolderModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--color-border-secondary)/0.85)] px-5 py-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8900A]/15">
-              <ScanFace className="h-5 w-5 text-[#C8900A]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f04b23]/15">
+              <ScanFace className="h-5 w-5 text-[#f04b23]" />
             </div>
             <div>
               <h2 id="recognize-folders-title" className="text-base font-semibold text-text-primary">
@@ -101,7 +101,7 @@ export function PhotofinderRecognizeFolderModal({
             type="button"
             onClick={toggleAll}
             disabled={folders.length === 0}
-            className="flex items-center gap-1.5 text-xs text-[#C8900A] hover:underline disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs text-[#f04b23] hover:underline disabled:opacity-50"
           >
             {allSelected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
             {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
@@ -114,7 +114,7 @@ export function PhotofinderRecognizeFolderModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
             </div>
           ) : folders.length === 0 ? (
             <p className="py-8 text-center text-sm text-text-muted">
@@ -130,19 +130,19 @@ export function PhotofinderRecognizeFolderModal({
                     <label
                       className={cn(
                         'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                        checked ? 'bg-[#C8900A]/8' : 'hover:bg-bg-muted',
+                        checked ? 'bg-[#f04b23]/8' : 'hover:bg-bg-muted',
                       )}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(folder.id)}
-                        className="h-4 w-4 rounded border-[rgb(var(--color-border-secondary))] accent-[#C8900A]"
+                        className="h-4 w-4 rounded border-[rgb(var(--color-border-secondary))] accent-[#f04b23]"
                       />
                       <Folder
                         className={cn(
                           'h-4 w-4 shrink-0',
-                          unclassified ? 'text-text-muted' : 'text-[#C8900A]',
+                          unclassified ? 'text-text-muted' : 'text-[#f04b23]',
                         )}
                         fill="currentColor"
                         fillOpacity={0.2}

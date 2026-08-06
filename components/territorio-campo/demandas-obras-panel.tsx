@@ -201,7 +201,7 @@ export function DemandasObrasPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
-            <ClipboardList className="h-4 w-4 text-[#ff9800]" aria-hidden />
+            <ClipboardList className="h-4 w-4 text-[#f04b23]" aria-hidden />
             Obras por cidade
           </h2>
           <p className="mt-1 text-xs text-text-secondary">
@@ -222,7 +222,7 @@ export function DemandasObrasPanel() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar cidade, obra, status…"
-              className="h-9 w-[220px] rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#ff9800]"
+              className="h-9 w-[220px] rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f04b23]"
             />
           </label>
           <button
@@ -312,7 +312,7 @@ export function DemandasObrasPanel() {
                         aria-hidden
                       />
                     )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#ff9800]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#f04b23]" aria-hidden />
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {grupo.cidade}
                     </span>

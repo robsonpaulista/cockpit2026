@@ -328,8 +328,8 @@ export function Radar224Panel() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2">
-            <Radar className="h-4 w-4 text-[#ff9800]" aria-hidden />
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#ff9800]">
+            <Radar className="h-4 w-4 text-[#f04b23]" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#f04b23]">
               Radar 224 · fase 1
             </p>
           </div>
@@ -426,7 +426,7 @@ export function Radar224Panel() {
             className={cn(
               'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
               aba === id
-                ? 'border-[#ff9800] bg-[#ff9800]/10 text-[#e28000]'
+                ? 'border-[#f04b23] bg-[#f04b23]/10 text-[#c43d1c]'
                 : 'border-card bg-surface text-text-secondary hover:bg-background',
             )}
           >
@@ -486,7 +486,7 @@ export function Radar224Panel() {
         ) : aba === 'noticias' ? (
           buscandoNoticias ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-              <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" aria-hidden />
+              <Loader2 className="h-5 w-5 animate-spin text-[#f04b23]" aria-hidden />
               Consultando Google News… isso pode levar alguns segundos.
             </div>
           ) : noticiasFiltradas.length === 0 ? (
@@ -500,7 +500,7 @@ export function Radar224Panel() {
               {noticiasFiltradas.map((n) => (
                 <article key={`${n.fonteId}-${n.articleId}`} className="px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide text-text-secondary">
-                    <span className="font-semibold text-[#e28000]">{n.municipio}</span>
+                    <span className="font-semibold text-[#c43d1c]">{n.municipio}</span>
                     <span>·</span>
                     <span>{n.fonteNome}</span>
                     <span>·</span>
@@ -514,7 +514,7 @@ export function Radar224Panel() {
                         href={n.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-start gap-1 hover:text-[#e28000]"
+                        className="inline-flex items-start gap-1 hover:text-[#c43d1c]"
                       >
                         {n.title}
                         <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-60" aria-hidden />
@@ -568,7 +568,7 @@ export function Radar224Panel() {
                     <td className="px-3 py-2">
                       <button
                         type="button"
-                        className="text-[11px] font-medium text-[#e28000] hover:underline"
+                        className="text-[11px] font-medium text-[#c43d1c] hover:underline"
                         onClick={() => {
                           setMunicipioBusca(m.municipio)
                           setAba('noticias')
@@ -608,7 +608,7 @@ export function Radar224Panel() {
                           href={f.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-[#e28000] hover:underline"
+                          className="text-[11px] text-[#c43d1c] hover:underline"
                         >
                           {f.dominio || f.url}
                         </a>

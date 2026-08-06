@@ -46,18 +46,22 @@ function wordmarkTone({
 }
 
 function wordmarkColors(tone: WordmarkTone) {
+  // Padrão oficial Copiloto: COCKPIT branco · 2026 accent coral
   if (tone === 'onGradient') {
-    return { cockpit: 'text-white', year: 'text-[#ff9800]' }
+    return { cockpit: 'text-white', year: 'text-[var(--palette-accent,#f04b23)]' }
   }
   if (tone === 'onAmber') {
-    // Mobile (header âmbar): texto claro. Desktop (header claro / sidebar light): COCKPIT preto + 2026 âmbar.
+    // Topbar clara (desktop): petróleo + accent. Mobile âmbar/escura: branco + accent.
     return {
-      cockpit: 'text-text-primary max-lg:text-white',
-      year: 'text-[#ff9800] max-lg:text-white/90',
+      cockpit: 'text-[var(--palette-petrol,#022b3a)] max-lg:text-white',
+      year: 'text-[var(--palette-accent,#f04b23)] max-lg:text-[var(--palette-accent,#f04b23)]',
     }
   }
   // Sidebar escura / superfícies escuras
-  return { cockpit: 'text-[#ff9800]', year: 'text-white' }
+  return {
+    cockpit: 'text-white',
+    year: 'text-[var(--palette-accent,#f04b23)]',
+  }
 }
 
 /** Wordmark COCK + PIT — tipografia bold, duas cores, sem ícone. */

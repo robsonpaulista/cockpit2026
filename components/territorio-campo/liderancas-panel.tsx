@@ -341,7 +341,7 @@ export function LiderancasPanel() {
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
               placeholder="Buscar cidade, liderança ou cargo"
-              className="h-9 w-full rounded-lg border border-card bg-background pl-9 pr-9 text-sm text-text-primary outline-none focus:border-[#ff9800]"
+              className="h-9 w-full rounded-lg border border-card bg-background pl-9 pr-9 text-sm text-text-primary outline-none focus:border-[#f04b23]"
             />
             {busca ? (
               <button
@@ -371,7 +371,7 @@ export function LiderancasPanel() {
                   className={cn(
                     'h-8 rounded-md px-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
                     ativo
-                      ? 'bg-[#ff9800] text-black'
+                      ? 'bg-[#f04b23] text-white'
                       : 'text-text-secondary hover:text-text-primary',
                   )}
                 >
@@ -408,7 +408,7 @@ export function LiderancasPanel() {
           <button
             type="button"
             onClick={() => setSelecionandoCidade(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#ff9800] px-3 text-xs font-semibold text-black"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#f04b23] px-3 text-xs font-semibold text-white"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Nova liderança
@@ -460,7 +460,7 @@ export function LiderancasPanel() {
                     ) : (
                       <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                     )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#ff9800]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#f04b23]" aria-hidden />
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {grupo.cidade}
                     </span>
@@ -524,7 +524,7 @@ export function LiderancasPanel() {
                               className={cn(
                                 'border-t border-card text-text-primary',
                                 index % 2 === 1 && 'bg-background/30',
-                                editando && 'bg-[#ff9800]/5',
+                                editando && 'bg-[#f04b23]/5',
                               )}
                             >
                               <td
@@ -825,7 +825,7 @@ export function LiderancasPanel() {
                 type="button"
                 onClick={abrirNovaLideranca}
                 disabled={!novaCidade.trim()}
-                className="h-8 rounded-lg bg-[#ff9800] px-3 text-xs font-semibold text-black disabled:opacity-50"
+                className="h-8 rounded-lg bg-[#f04b23] px-3 text-xs font-semibold text-white disabled:opacity-50"
               >
                 Continuar
               </button>
@@ -849,7 +849,7 @@ export function LiderancasPanel() {
 }
 
 const inlineFieldClass =
-  'h-7 w-full min-w-[88px] rounded border border-[#ff9800]/50 bg-surface px-1.5 text-xs text-text-primary outline-none focus:border-[#ff9800] focus:ring-1 focus:ring-[#ff9800]/25'
+  'h-7 w-full min-w-[88px] rounded border border-[#f04b23]/50 bg-surface px-1.5 text-xs text-text-primary outline-none focus:border-[#f04b23] focus:ring-1 focus:ring-[#f04b23]/25'
 
 type InlineInputProps = {
   value: string
@@ -896,7 +896,7 @@ type IndicadorProps = {
 function Indicador({ icon: Icon, label, valor }: IndicadorProps) {
   return (
     <div className="rounded-xl border border-card bg-surface p-3 shadow-sm">
-      <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff9800]/15 text-[#ff9800]">
+      <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg bg-[#f04b23]/15 text-[#f04b23]">
         <Icon className="h-4 w-4" aria-hidden />
       </div>
       <p className="text-[10px] uppercase tracking-wide text-text-secondary">{label}</p>

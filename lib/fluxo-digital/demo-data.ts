@@ -70,7 +70,7 @@ export const FLUXO_DIGITAL_DEMO: FluxoDigitalResumo = {
   totalConteudos: 386,
   tipos: [
     { id: 'video', label: 'Vídeo', pct: 36, cor: '#2563eb' },
-    { id: 'imagem', label: 'Imagem', pct: 28, cor: '#e28000' },
+    { id: 'imagem', label: 'Imagem', pct: 28, cor: '#c43d1c' },
     { id: 'carrossel', label: 'Carrossel', pct: 16, cor: '#8b5cf6' },
     { id: 'stories', label: 'Stories', pct: 12, cor: '#06b6d4' },
     { id: 'reels', label: 'Reels', pct: 8, cor: '#22c55e' },

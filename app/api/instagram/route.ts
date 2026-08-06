@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logger, logError } from '@/lib/logger'
-import { fetchInstagramAudienceSplit } from '@/lib/instagram-audience-split'
+import { fetchInstagramAudienceSplit, fetchInstagramDailyViewsReach } from '@/lib/instagram-audience-split'
 
 // Interface para os dados do Instagram
 interface InstagramMetrics {
@@ -53,6 +53,10 @@ interface InstagramMetrics {
         nonFollowers: number
       }
     }
+    /** Série diária da métrica `views` (API atual; impressions foi depreciada). */
+    dailyViews?: Array<{ date: string; value: number }>
+    /** Série diária de alcance. */
+    dailyReach?: Array<{ date: string; value: number }>
     periodMetrics?: {
       startDate: string
       endDate: string
@@ -157,6 +161,35 @@ export async function POST(request: Request) {
     // Cache buster para forçar dados frescos quando refresh manual
     const cacheBuster = forceRefresh ? `&_cb=${Date.now()}` : ''
 
+    const daysFromRange = (range: string): number => {
+      switch (range) {
+        case '1d':
+          return 1
+        case '7d':
+          return 7
+        case '14d':
+          return 14
+        case '28d':
+          return 28
+        case '60d':
+          return 60
+        case '90d':
+          return 90
+        case '30d':
+        default:
+          return 30
+      }
+    }
+
+    const periodDays = daysFromRange(typeof timeRange === 'string' ? timeRange : '30d')
+    const periodStart = new Date()
+    if (periodDays <= 1) {
+      periodStart.setHours(0, 0, 0, 0)
+    } else {
+      periodStart.setDate(periodStart.getDate() - periodDays)
+    }
+    const periodStartMs = periodStart.getTime()
+
     // 1. Obter dados da página e conta Instagram Business
     const pageResponse = await fetch(
       `https://graph.facebook.com/v18.0/${businessAccountId}?fields=instagram_business_account{id,username,profile_picture_url,followers_count,media_count}&access_token=${token}${cacheBuster}`
@@ -182,20 +215,43 @@ export async function POST(request: Request) {
     const instagramBusinessId = pageData.instagram_business_account.id
     const instagramData = pageData.instagram_business_account
 
-    // 2. Buscar publicações recentes (com cache buster para dados frescos)
-    const mediaResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${instagramBusinessId}/media?fields=id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count&limit=20&access_token=${token}${cacheBuster}`
-    )
+    // 2. Buscar publicações do período (pagina até sair da janela)
+    const mediaFields =
+      'id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count'
+    const maxMediaItems = periodDays >= 90 ? 150 : periodDays >= 60 ? 120 : periodDays >= 30 ? 80 : 50
+    const mediaInRange: any[] = []
+    let mediaUrl: string | null =
+      `https://graph.facebook.com/v18.0/${instagramBusinessId}/media?fields=${mediaFields}&limit=50&access_token=${token}${cacheBuster}`
 
-    if (!mediaResponse.ok) {
-      const errorResponse = await mediaResponse.json()
-      return NextResponse.json(
-        { error: errorResponse.error?.message || 'Erro ao buscar publicações' },
-        { status: 400 }
-      )
+    while (mediaUrl && mediaInRange.length < maxMediaItems) {
+      const mediaResponse = await fetch(mediaUrl)
+      if (!mediaResponse.ok) {
+        const errorResponse = await mediaResponse.json()
+        return NextResponse.json(
+          { error: errorResponse.error?.message || 'Erro ao buscar publicações' },
+          { status: 400 }
+        )
+      }
+
+      const mediaPage = await mediaResponse.json()
+      const batch: any[] = mediaPage.data || []
+      if (batch.length === 0) break
+
+      let leftWindow = false
+      for (const item of batch) {
+        const ts = new Date(item.timestamp).getTime()
+        if (Number.isNaN(ts)) continue
+        if (ts < periodStartMs) {
+          leftWindow = true
+          break
+        }
+        mediaInRange.push(item)
+        if (mediaInRange.length >= maxMediaItems) break
+      }
+
+      if (leftWindow || mediaInRange.length >= maxMediaItems) break
+      mediaUrl = typeof mediaPage.paging?.next === 'string' ? mediaPage.paging.next : null
     }
-
-    const mediaData = await mediaResponse.json()
 
     // 3. Buscar insights básicos (métricas diárias)
     const basicInsightsResponse = await fetch(
@@ -221,9 +277,9 @@ export async function POST(request: Request) {
       console.log('Métricas de perfil não disponíveis:', error)
     }
 
-    // 4. Processar posts
+    // 4. Processar posts do período
     const posts = await Promise.all(
-      (mediaData.data || []).map(async (post: any) => {
+      mediaInRange.map(async (post: any) => {
         let type: 'image' | 'video' | 'carousel'
         switch (post.media_type) {
           case 'VIDEO':
@@ -242,7 +298,10 @@ export async function POST(request: Request) {
         let shares: number | undefined = undefined
 
         try {
-          const metricsToTry = type === 'video' ? ['video_views', 'impressions', 'reach'] : ['impressions', 'reach']
+          const metricsToTry =
+            type === 'video'
+              ? ['views', 'video_views', 'impressions', 'reach']
+              : ['views', 'impressions', 'reach']
           
           for (const metric of metricsToTry) {
             try {
@@ -344,18 +403,24 @@ export async function POST(request: Request) {
     )
 
     // 5. Processar insights
-    const getInsightValue = (metricName: string) => {
-      // Buscar primeiro nos insights básicos
+    const getInsightSeries = (metricName: string): Array<{ value: number; end_time?: string }> => {
       const dataArr = insightsData?.data ?? []
-      let insight = dataArr.find((i: any) => i.name === metricName)
-      if (insight?.values?.[0]?.value !== undefined) {
-        return insight.values[0].value
+      let insight = dataArr.find((i: { name?: string }) => i.name === metricName)
+      if (insight?.values && Array.isArray(insight.values) && insight.values.length > 0) {
+        return insight.values
       }
-      
-      // Buscar nos insights de perfil
       const profileDataArr = profileInsightsData?.data ?? []
-      insight = profileDataArr.find((i: any) => i.name === metricName)
-      return insight?.values?.[0]?.value || 0
+      insight = profileDataArr.find((i: { name?: string }) => i.name === metricName)
+      return insight?.values && Array.isArray(insight.values) ? insight.values : []
+    }
+
+    const getInsightValue = (metricName: string) => {
+      const values = getInsightSeries(metricName)
+      if (values.length === 0) return 0
+      // period=day: o último ponto é o mais recente (antes pegávamos values[0] = mais antigo)
+      const last = values[values.length - 1]
+      const n = Number(last?.value)
+      return Number.isFinite(n) ? n : 0
     }
 
     // 6. Demográficos via follower_demographics + engaged_audience_demographics (API atual)
@@ -513,26 +578,33 @@ export async function POST(request: Request) {
       })
     }
 
-    // Calcular período
-    const periodStart = new Date()
-    switch (timeRange) {
-      case '1d':
-        periodStart.setHours(0, 0, 0, 0)
-        break
-      case '7d':
-        periodStart.setDate(periodStart.getDate() - 7)
-        break
-      case '90d':
-        periodStart.setDate(periodStart.getDate() - 90)
-        break
-      default:
-        periodStart.setDate(periodStart.getDate() - 30)
-    }
-
-    // Obter métricas de perfil
+    // Calcular período (já definido no início da busca de mídia)
     const profileViews = getInsightValue('profile_views')
     const websiteClicks = getInsightValue('website_clicks')
-    const impressions = getInsightValue('impressions')
+    const impressionsLegacy = getInsightValue('impressions')
+    const reachLegacy = getInsightValue('reach')
+
+    // Série diária moderna (views + reach) — impressões diárias via snapshots ficavam 0
+    // porque a métrica `impressions` foi depreciada e getInsightValue lia values[0].
+    let dailyViews: Array<{ date: string; value: number }> = []
+    let dailyReach: Array<{ date: string; value: number }> = []
+    try {
+      const daily = await fetchInstagramDailyViewsReach({
+        igUserId: instagramBusinessId,
+        accessToken: token,
+        timeRange: typeof timeRange === 'string' ? timeRange : '30d',
+        cacheBuster,
+      })
+      dailyViews = daily.views
+      dailyReach = daily.reach
+    } catch (err) {
+      logger.warn('dailyViews/dailyReach indisponível', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+
+    const latestDaily = (series: Array<{ date: string; value: number }>) =>
+      series.length > 0 ? series[series.length - 1]?.value ?? 0 : 0
 
     // Split seguidor × não-seguidor (views + reach)
     let audienceSplit: InstagramMetrics['insights']['audienceSplit']
@@ -555,6 +627,9 @@ export async function POST(request: Request) {
       })
     }
 
+    const viewsToday = latestDaily(dailyViews) || impressionsLegacy
+    const reachToday = latestDaily(dailyReach) || reachLegacy
+
     // Criar objeto de resposta
     const instagramMetrics: InstagramMetrics = {
       username: instagramData.username || '',
@@ -568,21 +643,23 @@ export async function POST(request: Request) {
       },
       posts,
       insights: {
-        reach: getInsightValue('reach'),
-        impressions: impressions,
+        reach: reachToday,
+        impressions: viewsToday,
         profileViews: profileViews,
         websiteClicks: websiteClicks,
-        totalViews: audienceSplit?.views?.total || impressions,
+        totalViews: audienceSplit?.views?.total || dailyViews.reduce((s, p) => s + p.value, 0) || viewsToday,
         totalInteractions: getInsightValue('total_interactions'),
-        totalReach: audienceSplit?.reach?.total || getInsightValue('reach'),
+        totalReach: audienceSplit?.reach?.total || dailyReach.reduce((s, p) => s + p.value, 0) || reachToday,
         audienceSplit,
+        dailyViews: dailyViews.length > 0 ? dailyViews : undefined,
+        dailyReach: dailyReach.length > 0 ? dailyReach : undefined,
         periodMetrics: {
           startDate: periodStart.toISOString().split('T')[0],
           endDate: new Date().toISOString().split('T')[0],
           newFollowers: 0,
-          totalReach: audienceSplit?.reach?.total || getInsightValue('reach'),
+          totalReach: audienceSplit?.reach?.total || dailyReach.reduce((s, p) => s + p.value, 0) || reachToday,
           totalInteractions: getInsightValue('total_interactions'),
-          totalViews: audienceSplit?.views?.total || impressions,
+          totalViews: audienceSplit?.views?.total || dailyViews.reduce((s, p) => s + p.value, 0) || viewsToday,
           linkClicks: websiteClicks,
         },
       },

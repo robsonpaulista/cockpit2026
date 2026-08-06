@@ -9,15 +9,19 @@ import {
 } from '@/lib/war-room/agenda-proximos'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
+import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
+import { cn } from '@/lib/utils'
+
+type CopilotoTab = 'cidades' | 'redes'
 
 /**
- * Visão Copiloto — página inteira = Ranking completo de Expectativa (224).
- * Mesma fonte de dados do modal aberto pelo card Expectativa.
+ * Visão Copiloto — abas Cidades (ranking expectativa) e Redes Sociais.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
   const { setViewMode } = useWarRoomViewMode()
+  const [tab, setTab] = useState<CopilotoTab>('cidades')
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
@@ -40,39 +44,54 @@ export function WarRoomCopilotoView() {
     void loadAgendaProximos()
   }, [loadAgendaProximos])
 
-  if (loading && municipios.length === 0) {
-    return (
-      <div className="wr-copiloto-view__state">
-        <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" />
-        <span>Carregando ranking do Copiloto…</span>
-      </div>
-    )
-  }
-
-  if (error && municipios.length === 0) {
-    return (
-      <div className="wr-copiloto-view__state">
-        <p>{error}</p>
-        <button
-          type="button"
-          className="wr-copiloto-view__retry"
-          onClick={() => void recarregar()}
-        >
-          Tentar de novo
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="wr-copiloto-view">
-      <WarRoomExpectativaRankingModal
-        variant="page"
-        municipios={municipios}
-        obras={obras}
-        agendaPorMunicipio={agendaPorMunicipio}
-        onClose={() => setViewMode('padrao')}
-      />
+      <nav className="wr-copiloto-tabs" aria-label="Seções do Copiloto">
+        <button
+          type="button"
+          className={cn('wr-copiloto-tabs__btn', tab === 'cidades' && 'wr-copiloto-tabs__btn--active')}
+          aria-pressed={tab === 'cidades'}
+          onClick={() => setTab('cidades')}
+        >
+          Cidades
+        </button>
+        <button
+          type="button"
+          className={cn('wr-copiloto-tabs__btn', tab === 'redes' && 'wr-copiloto-tabs__btn--active')}
+          aria-pressed={tab === 'redes'}
+          onClick={() => setTab('redes')}
+        >
+          Redes Sociais
+        </button>
+      </nav>
+
+      {tab === 'redes' ? (
+        <WarRoomCopilotoRedesView />
+      ) : loading && municipios.length === 0 ? (
+        <div className="wr-copiloto-view__state">
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" />
+          <span>Carregando ranking do Copiloto…</span>
+        </div>
+      ) : error && municipios.length === 0 ? (
+        <div className="wr-copiloto-view__state">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="wr-copiloto-view__retry"
+            onClick={() => void recarregar()}
+          >
+            Tentar de novo
+          </button>
+        </div>
+      ) : (
+        <WarRoomExpectativaRankingModal
+          variant="page"
+          municipios={municipios}
+          obras={obras}
+          agendaPorMunicipio={agendaPorMunicipio}
+          onClose={() => setViewMode('padrao')}
+        />
+      )}
     </div>
   )
 }

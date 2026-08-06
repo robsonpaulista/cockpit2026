@@ -195,7 +195,7 @@ body[data-ipt-operacional] .ipt-missao-card__cta {
 
 body[data-ipt-operacional] .ipt-missao-card--base {
   border-style: solid !important;
-  border-color: #c98900 !important;
+  border-color: #005b8f !important;
   border-width: 1.5px !important;
   background: #ffffff !important;
 }
@@ -216,7 +216,7 @@ body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) {
 
 body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active,
 body[data-ipt-operacional] .ipt-missao-card--base:hover:not(:disabled) {
-  border-color: #c98900 !important;
+  border-color: #005b8f !important;
 }
 
 body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon,
@@ -347,7 +347,7 @@ body[data-ipt-operacional] .ipt-lens-toggle__btn {
 }
 
 body[data-ipt-operacional] .ipt-btn-atualizar {
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.28);
+  box-shadow: 0 2px 8px color-mix(in srgb, #005b8f 28%, transparent);
 }
 
 body[data-ipt-operacional] .ipt-btn-exportar {

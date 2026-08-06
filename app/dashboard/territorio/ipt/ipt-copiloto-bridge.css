@@ -1,0 +1,117 @@
+/**
+ * IPT — consome a paleta oficial Copiloto (app/design-tokens-copiloto.css).
+ * Sem chrome da War Room; só remapeia tokens IPT e unifica a sidebar.
+ */
+
+body[data-ipt-operacional] {
+  --ipt-orange-deep: #004870;
+  --ipt-orange: var(--palette-inst);
+  --ipt-orange-light: color-mix(in srgb, var(--palette-inst) 55%, #fff);
+  --ipt-gray: color-mix(in srgb, var(--palette-petrol) 70%, var(--palette-aux));
+  --ipt-gray-mid: var(--palette-aux);
+  --ipt-gray-soft: var(--palette-chart-bg);
+  --ipt-gray-border: var(--palette-neutral-bar);
+
+  --page-bg: var(--palette-bg);
+  --surface: var(--palette-card);
+  --surface-muted: var(--palette-chart-bg);
+  --border: var(--palette-divider);
+  --border-strong: var(--palette-neutral-bar);
+  --text: var(--palette-petrol);
+  --text-muted: var(--palette-aux);
+  --text-soft: color-mix(in srgb, var(--palette-petrol) 78%, var(--palette-aux));
+
+  --cockpit-gold: var(--palette-inst);
+  --mission-field: var(--palette-accent);
+  --mission-field-bg: color-mix(in srgb, var(--palette-accent) 10%, var(--palette-card));
+  --mission-research: var(--palette-inst);
+  --mission-research-bg: var(--palette-inst-soft);
+  --mission-digital: var(--palette-aux);
+  --mission-digital-bg: var(--palette-chart-bg);
+  --mission-works: var(--palette-petrol);
+  --mission-works-bg: color-mix(in srgb, var(--palette-petrol) 8%, var(--palette-card));
+
+  --bg-app: var(--palette-bg-rgb);
+  --bg-surface: var(--palette-card-rgb);
+  --acao-bg: var(--palette-petrol);
+  --alerta-texto: var(--palette-accent);
+}
+
+body[data-ipt-operacional] .ipt-page-shell--operacional,
+body[data-ipt-operacional] .ipt-page-body {
+  background: var(--palette-bg) !important;
+  color: var(--palette-petrol);
+}
+
+/* Sidebar IPT = petróleo (igual ao restante do app); header = corpo */
+body[data-ipt-operacional] aside[data-sidebar-shell],
+body[data-ipt-operacional] aside.sidebar-apify-shell,
+body[data-ipt-operacional] aside.sidebar-cockpit-shell,
+body[data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
+body[data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child {
+  background: var(--palette-petrol) !important;
+  background-color: var(--palette-petrol) !important;
+  background-image: none !important;
+  border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
+}
+
+body[data-ipt-operacional] aside[data-sidebar-shell] > div {
+  background: transparent !important;
+}
+
+body[data-ipt-operacional] .ipt-exec-banner {
+  background: linear-gradient(180deg, var(--palette-card) 0%, var(--palette-bg) 100%) !important;
+  border-color: var(--palette-divider) !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-atualizar {
+  background: var(--palette-inst) !important;
+  border-color: var(--palette-inst) !important;
+  color: #fff !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
+  background: #004870 !important;
+  border-color: #004870 !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar,
+body[data-ipt-operacional] .ipt-btn-evolucao {
+  border-color: var(--palette-neutral-bar) !important;
+  background: var(--palette-card) !important;
+  color: var(--palette-petrol) !important;
+}
+
+body[data-ipt-operacional] .ipt-territorio-visao__btn--active,
+body[data-ipt-operacional] .ipt-territorio-visao__btn--active:hover {
+  background: var(--palette-inst) !important;
+  border-color: var(--palette-inst) !important;
+  color: #fff !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__ver-mais {
+  color: var(--palette-inst) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active,
+body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active {
+  border-color: var(--palette-inst) !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco-lista__row:hover,
+body[data-ipt-operacional] .ipt-bloco-lista__row--active {
+  background: var(--palette-inst-soft) !important;
+}
+
+body[data-ipt-operacional] .text-\[\#f04b23\],
+body[data-ipt-operacional] .text-\[\#f04b23\],
+body[data-ipt-operacional] .cockpit-icon.text-\[\#f04b23\] {
+  color: var(--palette-inst) !important;
+}
+
+body[data-ipt-operacional] .bg-\[\#f04b23\],
+body[data-ipt-operacional] .bg-\[\#f04b23\] {
+  background-color: var(--palette-inst) !important;
+}

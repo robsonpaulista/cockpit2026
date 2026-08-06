@@ -50,6 +50,10 @@ export interface InstagramMetrics {
         nonFollowers: number
       }
     }
+    /** Série diária da métrica `views` (API atual). */
+    dailyViews?: Array<{ date: string; value: number }>
+    /** Série diária de alcance. */
+    dailyReach?: Array<{ date: string; value: number }>
     periodMetrics?: {
       startDate: string
       endDate: string
@@ -292,8 +296,13 @@ export async function saveInstagramSnapshot(metrics: InstagramMetrics): Promise<
         followers_count: metrics.followers.total,
         profile_views: metrics.insights.profileViews,
         website_clicks: metrics.insights.websiteClicks,
-        reach: metrics.insights.reach,
-        impressions: metrics.insights.impressions,
+        // Preferir último dia da série moderna; impressions legada costuma vir 0.
+        reach:
+          metrics.insights.dailyReach?.[metrics.insights.dailyReach.length - 1]?.value ??
+          metrics.insights.reach,
+        impressions:
+          metrics.insights.dailyViews?.[metrics.insights.dailyViews.length - 1]?.value ??
+          metrics.insights.impressions,
         accounts_engaged: 0,
         total_interactions: metrics.insights.totalInteractions,
         media_count: metrics.posts.length,

@@ -24,7 +24,7 @@ export function PhotofinderPhotoGallery({
   if (loading && photos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-text-muted">
-        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#C8900A]" />
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#f04b23]" />
         <p className="text-sm">Carregando fotos…</p>
       </div>
     )

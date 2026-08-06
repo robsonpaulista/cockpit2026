@@ -39,7 +39,7 @@ export default function ArquivosPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center gap-2 py-20 text-text-muted">
-          <Loader2 className="h-5 w-5 animate-spin text-[#C8900A]" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#f04b23]" />
           Carregando arquivos…
         </div>
       }

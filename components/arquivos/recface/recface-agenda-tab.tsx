@@ -67,7 +67,7 @@ export function RecfaceAgendaTab() {
   if (loading) {
     return (
       <div className="flex justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
       </div>
     )
   }

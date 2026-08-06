@@ -314,7 +314,7 @@ export function MapaObrasPlanoDriveModal({
               id="mapa-obras-plano-drive-title"
               className="flex items-center gap-2 text-base font-semibold text-text-primary"
             >
-              <Link2 className="h-4 w-4 text-[#ff9800]" aria-hidden />
+              <Link2 className="h-4 w-4 text-[#f04b23]" aria-hidden />
               Plano de trabalho (Drive)
             </h2>
             <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">
@@ -384,7 +384,7 @@ export function MapaObrasPlanoDriveModal({
               rows={3}
               maxLength={2000}
               placeholder="Situação do plano de trabalho…"
-              className="mt-2 w-full resize-y rounded-lg border border-card bg-surface px-3 py-2 text-xs text-text-primary outline-none focus:border-[#ff9800]"
+              className="mt-2 w-full resize-y rounded-lg border border-card bg-surface px-3 py-2 text-xs text-text-primary outline-none focus:border-[#f04b23]"
             />
             <div className="mt-2 flex justify-end">
               <button
@@ -475,7 +475,7 @@ export function MapaObrasPlanoDriveModal({
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   placeholder="Filtrar pastas e arquivos…"
-                  className="h-9 w-full rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#ff9800]"
+                  className="h-9 w-full rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f04b23]"
                 />
               </label>
 
@@ -499,7 +499,7 @@ export function MapaObrasPlanoDriveModal({
                           className={cn(
                             'flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-xs transition-colors',
                             selected
-                              ? 'bg-[#ff9800]/15 text-text-primary'
+                              ? 'bg-[#f04b23]/15 text-text-primary'
                               : 'text-text-primary hover:bg-surface',
                             'disabled:opacity-50',
                           )}
@@ -507,7 +507,7 @@ export function MapaObrasPlanoDriveModal({
                           <span className="flex min-w-0 items-center gap-1.5">
                             {item.isFolder ? (
                               <FolderOpen
-                                className="h-3.5 w-3.5 shrink-0 text-[#ff9800]"
+                                className="h-3.5 w-3.5 shrink-0 text-[#f04b23]"
                                 aria-hidden
                               />
                             ) : (

@@ -2,9 +2,9 @@
 
 .ss-root {
   --splash-bg: #0b0b0d;
-  --splash-gold: #ff9800;
-  --splash-gold-glow: rgba(255, 152, 0, 0.55);
-  --splash-gold-soft: rgba(255, 152, 0, 0.18);
+  --splash-gold: #f04b23;
+  --splash-gold-glow: rgba(240, 75, 35, 0.55);
+  --splash-gold-soft: rgba(240, 75, 35, 0.18);
   --splash-graphite: #3a3d42;
   --splash-light: #f8f6f0;
 
@@ -122,7 +122,7 @@
   height: 84px;
   border-radius: 50%;
   border: 1.5px solid var(--splash-gold);
-  background: radial-gradient(circle at 50% 40%, rgba(201, 154, 46, 0.16), rgba(11, 11, 13, 0.9));
+  background: radial-gradient(circle at 50% 40%, rgba(240, 75, 35, 0.16), rgba(11, 11, 13, 0.9));
   color: var(--splash-gold);
   cursor: pointer;
   display: grid;
@@ -159,10 +159,10 @@
 @keyframes ss-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(201, 154, 46, 0.5), 0 0 22px 2px rgba(201, 154, 46, 0.35);
+    box-shadow: 0 0 0 0 rgba(240, 75, 35, 0.5), 0 0 22px 2px rgba(240, 75, 35, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 14px rgba(201, 154, 46, 0), 0 0 34px 6px rgba(201, 154, 46, 0.55);
+    box-shadow: 0 0 0 14px rgba(240, 75, 35, 0), 0 0 34px 6px rgba(240, 75, 35, 0.55);
   }
 }
 
@@ -171,7 +171,7 @@
   position: absolute;
   inset: 0;
   z-index: 55;
-  background: radial-gradient(circle at 50% 46%, rgba(255, 250, 240, 0.85) 0%, rgba(201, 154, 46, 0.18) 45%, rgba(201, 154, 46, 0) 72%);
+  background: radial-gradient(circle at 50% 46%, rgba(255, 250, 240, 0.85) 0%, rgba(240, 75, 35, 0.18) 45%, rgba(240, 75, 35, 0) 72%);
   pointer-events: none;
 }
 
@@ -520,14 +520,14 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 8px 26px rgba(201, 154, 46, 0.38);
+  box-shadow: 0 8px 26px rgba(240, 75, 35, 0.38);
   transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
 .ss-cta:hover {
   background: #dcae42;
   transform: translateY(-1px);
-  box-shadow: 0 12px 40px rgba(201, 154, 46, 0.5);
+  box-shadow: 0 12px 40px rgba(240, 75, 35, 0.5);
 }
 
 .ss-cta:focus-visible {
@@ -586,7 +586,7 @@
 .ss-studio__badge {
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(201, 154, 46, 0.18);
+  background: rgba(240, 75, 35, 0.18);
   color: var(--splash-gold);
   font-weight: 700;
   text-transform: uppercase;
@@ -646,7 +646,7 @@
 
 .ss-studio__marker--active {
   background: var(--splash-gold);
-  box-shadow: 0 0 8px rgba(201, 154, 46, 0.8);
+  box-shadow: 0 0 8px rgba(240, 75, 35, 0.8);
 }
 
 .ss-studio__controls {
@@ -669,14 +669,14 @@
 }
 
 .ss-studio__btn:hover {
-  border-color: rgba(201, 154, 46, 0.45);
-  background: rgba(201, 154, 46, 0.12);
+  border-color: rgba(240, 75, 35, 0.45);
+  background: rgba(240, 75, 35, 0.12);
 }
 
 .ss-studio__btn--primary {
   min-width: 52px;
-  background: rgba(201, 154, 46, 0.2);
-  border-color: rgba(201, 154, 46, 0.5);
+  background: rgba(240, 75, 35, 0.2);
+  border-color: rgba(240, 75, 35, 0.5);
 }
 
 .ss-root--light .ss-studio__btn {
@@ -708,8 +708,8 @@
 }
 
 .ss-studio__scene--active {
-  border-color: rgba(201, 154, 46, 0.55);
-  background: rgba(201, 154, 46, 0.14);
+  border-color: rgba(240, 75, 35, 0.55);
+  background: rgba(240, 75, 35, 0.14);
   color: #fff;
 }
 

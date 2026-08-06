@@ -14,7 +14,7 @@ import {
 } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
-export const QUICK_ACCESS_KPI_ICON_CLASS = 'text-[#ff9800]'
+export const QUICK_ACCESS_KPI_ICON_CLASS = 'text-[#f04b23]'
 
 export type QuickAccessKpiBadge = 'leader' | 'growth' | 'outsider'
 

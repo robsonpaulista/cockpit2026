@@ -63,7 +63,7 @@ export function ExercitoDigitalScoreboardHeader({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-2.5 py-1 text-[10px] font-semibold text-[#854F0B]">
+          <span className="rounded-[99px] border border-[#f04b23]/45 bg-[#FAEEDA] px-2.5 py-1 text-[10px] font-semibold text-[#854F0B]">
             ⚔️ Disputa de líderes
           </span>
           <span className="rounded-[99px] border border-[rgb(var(--color-primary)/0.35)] bg-[#E6F1FB] px-2.5 py-1 text-[10px] font-semibold text-[rgb(var(--color-primary))]">

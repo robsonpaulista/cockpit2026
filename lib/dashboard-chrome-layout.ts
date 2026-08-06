@@ -20,15 +20,37 @@ const dashboardHeaderBandBaseClass = cn(
 /** Zona compacta quando o topbar já exibe o título da página. */
 export const DASHBOARD_PAGE_HEADER_COMPACT_H_CLASS = 'h-[2.75rem]'
 
-/** Topbar visível com sidebar recolhida — alinha com `DashboardHeader`. */
-export const DASHBOARD_TOPBAR_H_CLASS = 'h-16'
+/** Topbar Visível War Room / Dashboard — altura única (`h-16`). */
+export const DASHBOARD_TOPBAR_H_CLASS = 'h-16 min-h-16 max-h-16 box-border'
 
 /** Sidebar recolhida: faixa do logo alinhada ao topbar da página. */
 export const dashboardSidebarCollapsedTopbarZoneClass = cn(
-  'flex shrink-0 items-center justify-center border-b bg-bg-surface',
+  'flex shrink-0 items-center justify-center border-b bg-transparent',
   chromeBorderClass,
   DASHBOARD_TOPBAR_H_CLASS,
   'px-1'
+)
+
+/**
+ * Zona da marca na sidebar expandida: transparente para herdar
+ * `rgb(var(--bg-sidebar))` do shell — evita faixa com cor diferente de `--bg-surface`.
+ */
+export const dashboardPageHeaderZoneSidebarClass = cn(
+  'box-border relative flex shrink-0 min-h-0 items-center overflow-hidden border-b bg-transparent',
+  chromeBorderClass,
+  DASHBOARD_PAGE_HEADER_BAND_CLASS,
+  'px-3',
+)
+
+/**
+ * War Room com sidebar expandida: uma linha (marca + seta),
+ * mesma altura da top bar (`h-16`). Herda a cor do shell.
+ */
+export const dashboardSidebarWarRoomExpandedHeaderClass = cn(
+  'relative box-border flex shrink-0 min-h-0 items-center overflow-hidden border-b bg-transparent',
+  chromeBorderClass,
+  DASHBOARD_TOPBAR_H_CLASS,
+  'px-3',
 )
 
 /** Sidebar recolhida: faixa vazia alinhada ao título fixo da página (`DashboardPageHeader`). */
@@ -74,11 +96,6 @@ export const dashboardPageMetaStripClass = cn(
   chromeBorderClass,
   'px-4 md:px-6',
   DASHBOARD_PAGE_HEADER_COMPACT_H_CLASS
-)
-
-export const dashboardPageHeaderZoneSidebarClass = cn(
-  dashboardHeaderBandBaseClass,
-  'relative px-3',
 )
 
 /** Faixa cinza contínua: busca (sidebar) ↔ abas (página). */

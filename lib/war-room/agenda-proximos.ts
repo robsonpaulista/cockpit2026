@@ -22,7 +22,7 @@ export type WarRoomAgendaVisita = WarRoomAgendaProximoItem & {
   municipioLabel: string
 }
 
-export const AGENDA_PROXIMOS_JANELA_DIAS = 7
+export const AGENDA_PROXIMOS_JANELA_DIAS = 15
 export const WAR_ROOM_AGENDA_TZ = 'America/Sao_Paulo'
 
 export function calendarDateInTz(

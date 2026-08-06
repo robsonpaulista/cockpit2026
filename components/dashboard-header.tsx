@@ -17,6 +17,7 @@ import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
+import { DASHBOARD_TOPBAR_H_CLASS } from '@/lib/dashboard-chrome-layout'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -104,7 +105,8 @@ export function DashboardHeader() {
   const isHome = isDashboardHomePath(p)
   const isWarRoom = p.startsWith('/dashboard/war-room')
 
-  if (!showTopbar || isHome) {
+  /** War Room mantém a top bar mesmo com a sidebar expandida (alinha marca + cronômetro). */
+  if ((!showTopbar && !isWarRoom) || isHome) {
     return null
   }
 
@@ -129,8 +131,15 @@ export function DashboardHeader() {
     >
       <div
         className={cn(
-          'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:h-16 lg:gap-3 lg:px-6',
-          isGradientHome ? 'h-12 lg:h-14' : 'h-16',
+          'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-6',
+          isWarRoom
+            ? cn(
+                DASHBOARD_TOPBAR_H_CLASS,
+                'box-border overflow-hidden px-3 sm:px-4 lg:px-6',
+              )
+            : isGradientHome
+              ? 'h-12 lg:h-14'
+              : 'h-16',
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
@@ -141,6 +150,7 @@ export function DashboardHeader() {
             size="md"
             className={cn(
               'min-w-0',
+              isWarRoom && 'lg:hidden',
               isGradientHome ? 'sm:scale-105' : 'shrink-0',
               mobileAmberHeader && 'max-lg:[&_span]:drop-shadow-[0_1px_8px_rgba(0,0,0,0.12)]',
             )}
@@ -149,7 +159,7 @@ export function DashboardHeader() {
             className={cn(
               'hidden shrink-0 sm:inline',
               isWarRoom
-                ? 'wr-topbar-clean__sep text-[var(--wr-slate)]/35'
+                ? 'wr-topbar-clean__sep text-[var(--wr-slate)]/35 lg:hidden'
                 : lightBrand
                   ? 'text-white/35'
                   : 'text-border-card/70',
@@ -161,17 +171,17 @@ export function DashboardHeader() {
           </span>
           <div className="min-w-0 flex-1">
             {isWarRoom ? (
-              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-nowrap items-center gap-x-3 overflow-hidden sm:gap-x-4">
                 {topbarExtras?.hidePageTitle ? null : (
                   <h1
-                    className="wr-topbar-clean__title shrink-0 truncate font-bold uppercase tracking-tight text-base text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]"
+                    className="wr-topbar-clean__title shrink-0 font-bold uppercase tracking-tight text-base text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]"
                     title={pageTitle}
                   >
                     {pageTitle}
                   </h1>
                 )}
                 {topbarExtras?.description ? (
-                  <div className="min-w-0 shrink-0 truncate leading-none">
+                  <div className="wr-topbar-clean__countdown-slot shrink-0 leading-none">
                     {topbarExtras.description}
                   </div>
                 ) : null}

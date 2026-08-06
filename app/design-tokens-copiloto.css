@@ -1,0 +1,62 @@
+/**
+ * Cockpit 2026 — Paleta oficial (padrão War Room · Copiloto)
+ *
+ * Fonte única de verdade. Toda a aplicação deve usar estes tokens.
+ * Não introduzir laranja #f04b23 / dourado legado como accent de marca.
+ *
+ * Core: #022B3A · #005B8F · #F04B23 · #F5F6F8 · #FFFFFF
+ */
+
+:root {
+  /* ——— Hex (CSS direto) ——— */
+  --palette-petrol: #022b3a;
+  --palette-inst: #005b8f;
+  --palette-accent: #f04b23;
+  --palette-bg: #f5f6f8;
+  --palette-card: #ffffff;
+  --palette-aux: #6b7280;
+  --palette-chart-bg: #e6eaf0;
+  --palette-neutral-bar: #cdd5df;
+  --palette-divider: #e5e7eb;
+  --palette-inst-soft: #ddeaf3;
+  --palette-yellow-soft: #fff0b8;
+  --palette-yellow-strong: #f5c542;
+  --palette-reject: #d64545;
+
+  /* ——— RGB (Tailwind / rgb(var(--x))) ——— */
+  --palette-petrol-rgb: 2 43 58;
+  --palette-inst-rgb: 0 91 143;
+  --palette-accent-rgb: 240 75 35;
+  --palette-bg-rgb: 245 246 248;
+  --palette-card-rgb: 255 255 255;
+  --palette-aux-rgb: 107 114 128;
+  --palette-chart-bg-rgb: 230 234 240;
+  --palette-neutral-bar-rgb: 205 213 223;
+  --palette-divider-rgb: 229 231 235;
+  --palette-inst-soft-rgb: 221 234 243;
+  --palette-reject-rgb: 214 69 69;
+  --palette-yellow-strong-rgb: 245 197 66;
+
+  /* ——— Aliases de produto (legado → paleta) ——— */
+  --wr-petrol: var(--palette-petrol);
+  --wr-inst: var(--palette-inst);
+  --wr-accent: var(--palette-accent);
+  --wr-bg: var(--palette-bg);
+  --wr-card: var(--palette-card);
+  --wr-aux: var(--palette-aux);
+  --wr-chart-bg: var(--palette-chart-bg);
+  --wr-neutral-bar: var(--palette-neutral-bar);
+  --wr-divider: var(--palette-divider);
+  --wr-inst-soft: var(--palette-inst-soft);
+  --wr-yellow-soft: var(--palette-yellow-soft);
+  --wr-yellow-strong: var(--palette-yellow-strong);
+  --wr-reject: var(--palette-reject);
+
+  --brand-accent: var(--palette-accent);
+  --brand-accent-hover: color-mix(in srgb, var(--palette-accent) 82%, #000);
+  --on-brand-accent: #ffffff;
+  --cockpit-gold: var(--palette-accent);
+  --mon-brand: var(--palette-accent);
+  --mon-brand-deep: color-mix(in srgb, var(--palette-accent) 82%, #000);
+  --mon-brand-soft: color-mix(in srgb, var(--palette-accent) 14%, var(--palette-card));
+}

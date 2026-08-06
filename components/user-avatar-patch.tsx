@@ -40,7 +40,7 @@ export function UserAvatarPatch({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white',
+        'user-avatar-patch flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white',
         SIZE_CLASS[size],
         className
       )}

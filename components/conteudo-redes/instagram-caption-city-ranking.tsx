@@ -151,7 +151,7 @@ export function InstagramCaptionCityRanking({
                   <div
                     className={cn(
                       'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-medium',
-                      index === 0 ? 'bg-[#ff9800] text-white' : 'bg-[#ff9800]/12 text-[#ff9800]',
+                      index === 0 ? 'bg-[#f04b23] text-white' : 'bg-[#f04b23]/12 text-[#f04b23]',
                     )}
                   >
                     {index + 1}
@@ -204,7 +204,7 @@ export function InstagramCaptionCityRanking({
 
               <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-[#f3f1ec]">
                 <div
-                  className="h-full rounded-full bg-[#ff9800] transition-all"
+                  className="h-full rounded-full bg-[#f04b23] transition-all"
                   style={{ width: `${barWidth}%` }}
                 />
               </div>

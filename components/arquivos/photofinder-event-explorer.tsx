@@ -22,7 +22,7 @@ function FolderIcon({ unclassified }: { unclassified: boolean }) {
     <div
       className={cn(
         'flex h-14 w-14 items-center justify-center rounded-lg shadow-sm',
-        unclassified ? 'bg-bg-muted text-text-muted' : 'bg-[#C8900A]/15 text-[#C8900A]',
+        unclassified ? 'bg-bg-muted text-text-muted' : 'bg-[#f04b23]/15 text-[#f04b23]',
       )}
     >
       <Folder className="h-8 w-8" fill="currentColor" fillOpacity={0.25} />
@@ -55,7 +55,7 @@ export function PhotofinderEventExplorer({
           className={cn(
             'inline-flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors',
             insideFolder
-              ? 'text-[#C8900A] hover:bg-[#C8900A]/10'
+              ? 'text-[#f04b23] hover:bg-[#f04b23]/10'
               : 'font-medium text-text-primary',
           )}
         >
@@ -81,7 +81,7 @@ export function PhotofinderEventExplorer({
       {!insideFolder ? (
         foldersLoading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
           </div>
         ) : folders.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-secondary))] px-6 py-16 text-center">
@@ -109,7 +109,7 @@ export function PhotofinderEventExplorer({
                     key={folder.id}
                     type="button"
                     onClick={() => onOpenFolder(folder)}
-                    className="group flex flex-col items-center gap-2 rounded-lg border border-transparent px-3 py-4 text-center transition-colors hover:border-[#C8900A]/30 hover:bg-[#C8900A]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C8900A]"
+                    className="group flex flex-col items-center gap-2 rounded-lg border border-transparent px-3 py-4 text-center transition-colors hover:border-[#f04b23]/30 hover:bg-[#f04b23]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f04b23]"
                     title={`Abrir ${folder.name}`}
                   >
                     <FolderIcon unclassified={unclassified} />

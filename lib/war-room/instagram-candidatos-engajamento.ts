@@ -1,0 +1,97 @@
+import { buildInstagramRadarCompareRows } from '@/lib/instagram-radar-aggregate'
+import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
+import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
+import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
+import { formatDataCurta } from '@/lib/war-room/redes-copiloto'
+
+export type CandidatoEngajamentoLine = {
+  slug: string
+  name: string
+  color: string
+}
+
+export type CandidatosEngajamentoChartModel = {
+  lines: CandidatoEngajamentoLine[]
+  chartData: Array<{ date: string; label: string } & Record<string, number>>
+  empty: boolean
+}
+
+const DEFAULT_HIDDEN = new Set(['instagram-causa-animal'])
+
+function dayKey(iso: string): string {
+  return iso.slice(0, 10)
+}
+
+function lastNDays(n: number): string[] {
+  const dates: string[] = []
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setUTCHours(12, 0, 0, 0)
+    d.setUTCDate(d.getUTCDate() - i)
+    dates.push(d.toISOString().slice(0, 10))
+  }
+  return dates
+}
+
+/** Top N candidatos · engajamento diário (likes + comments), uma linha por candidato. */
+export function buildTopCandidatosEngajamentoDiario(opts: {
+  actors: PoliticalActorWithTerms[]
+  posts: InstagramRadarPostWithActor[]
+  days: number
+  topN?: number
+  hiddenSlugs?: Set<string>
+}): CandidatosEngajamentoChartModel {
+  const {
+    actors,
+    posts,
+    days,
+    topN = 5,
+    hiddenSlugs = DEFAULT_HIDDEN,
+  } = opts
+
+  const activeActors = actors.filter((a) => a.active && !hiddenSlugs.has(a.slug))
+  const colorBySlug = new Map(
+    buildPanoramaHeatmapActorColumns(activeActors).map((c) => [c.slug, c.accentColor]),
+  )
+
+  const compareRows = buildInstagramRadarCompareRows(activeActors, posts, days)
+    .filter((row) => row.postCount > 0)
+    .sort((a, b) => b.avgEngagement - a.avgEngagement)
+    .slice(0, topN)
+
+  const lines: CandidatoEngajamentoLine[] = compareRows.map((row) => ({
+    slug: row.actor.slug,
+    name: row.actor.name,
+    color: colorBySlug.get(row.actor.slug) ?? '#6B7280',
+  }))
+
+  const dates = lastNDays(days)
+  const topSlugs = new Set(lines.map((l) => l.slug))
+  const bySlugDate = new Map<string, number>()
+
+  for (const post of posts) {
+    const slug = post.political_actors?.slug
+    if (!slug || !topSlugs.has(slug) || !post.posted_at) continue
+    const date = dayKey(post.posted_at)
+    const key = `${slug}|${date}`
+    const value = (post.likes_count ?? 0) + (post.comments_count ?? 0)
+    bySlugDate.set(key, (bySlugDate.get(key) ?? 0) + value)
+  }
+
+  const chartData = dates.map((date) => {
+    const row: { date: string; label: string } & Record<string, number> = {
+      date,
+      label: formatDataCurta(`${date}T12:00:00`),
+    }
+    for (const line of lines) {
+      row[line.slug] = bySlugDate.get(`${line.slug}|${date}`) ?? 0
+    }
+    return row
+  })
+
+  const empty =
+    lines.length === 0 ||
+    !chartData.some((row) => lines.some((line) => Number(row[line.slug] ?? 0) > 0))
+
+  return { lines, chartData, empty }
+}

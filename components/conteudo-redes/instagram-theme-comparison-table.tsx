@@ -14,6 +14,8 @@ type InstagramThemeComparisonTableProps = {
   themeStats: ThemeStatsBundle
   sectionClassName?: string
   panelClassName?: string
+  /** Oculta título/descrição (útil quando o container já tem cabeçalho de grupo). */
+  hideHeader?: boolean
 }
 
 function MetricCell({
@@ -43,7 +45,7 @@ function MetricCell({
         <div
           className={cn(
             'ml-auto h-full rounded-full',
-            isLeader ? 'bg-[#ff9800]' : 'bg-[#d6d3d1]'
+            isLeader ? 'bg-[#f04b23]' : 'bg-[#d6d3d1]'
           )}
           style={{ width: `${Math.max(ratio, value > 0 ? 6 : 0)}%` }}
         />
@@ -56,6 +58,7 @@ export function InstagramThemeComparisonTable({
   themeStats,
   sectionClassName = '',
   panelClassName = 'overflow-hidden rounded-[18px] border border-[#ebe8e4] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.03)]',
+  hideHeader = false,
 }: InstagramThemeComparisonTableProps) {
   const comparison = computeThemeComparison(themeStats)
 
@@ -68,10 +71,12 @@ export function InstagramThemeComparisonTable({
 
   return (
     <div className={sectionClassName}>
-      <PremiumSectionHeader
-        title="Comparativo por tema"
-        description="Médias por postagem em cada tema classificado"
-      />
+      {hideHeader ? null : (
+        <PremiumSectionHeader
+          title="Comparativo por tema"
+          description="Médias por postagem em cada tema classificado"
+        />
+      )}
 
       <div className="mb-5 rounded-[14px] border border-[#ebe8e4] bg-[#fafaf8] px-4 py-3">
         <p className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.04em] text-[#a8a29e]">

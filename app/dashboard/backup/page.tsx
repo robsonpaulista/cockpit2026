@@ -226,7 +226,7 @@ export default function BackupPage() {
   if (permLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#ff9800]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#f04b23]" />
       </div>
     )
   }
@@ -372,7 +372,7 @@ export default function BackupPage() {
             ) : null}
 
             {lastResult ? (
-              <div className="mt-4 rounded-[14px] border border-[#ffd59a] bg-[#fff4e5] px-3 py-3 text-sm text-text-primary">
+              <div className="mt-4 rounded-[14px] border border-[#ffc9b8] bg-[#fff1ed] px-3 py-3 text-sm text-text-primary">
                 <p className="font-medium">
                   {lastResult.via === 'download' ? 'Download pronto' : 'Enviado ao Storage'}
                   {' · '}
@@ -468,7 +468,7 @@ export default function BackupPage() {
               </div>
             ) : loading && runs.length === 0 ? (
               <div className="flex items-center justify-center gap-2 py-12 text-text-muted">
-                <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" />
+                <Loader2 className="h-5 w-5 animate-spin text-[#f04b23]" />
                 <span className="text-sm">Carregando…</span>
               </div>
             ) : runs.length === 0 ? (

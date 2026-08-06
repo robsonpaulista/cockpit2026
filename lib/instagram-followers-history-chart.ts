@@ -96,8 +96,27 @@ export const FOLLOWERS_HISTORY_RANGE_OPTIONS = [
   { value: '7d', label: '7 dias' },
   { value: '14d', label: '14 dias' },
   { value: '30d', label: '30 dias' },
+  { value: '60d', label: '60 dias' },
   { value: '90d', label: '90 dias' },
 ] as const
+
+export function followersHistoryDaysFromRange(dateRange: string): number {
+  switch (dateRange) {
+    case '7d':
+      return 7
+    case '14d':
+      return 14
+    case '28d':
+      return 28
+    case '60d':
+      return 60
+    case '90d':
+      return 90
+    case '30d':
+    default:
+      return 30
+  }
+}
 
 export function formatFollowersDelta(value: number): string {
   if (value > 0) return `+${value.toLocaleString('pt-BR')}`

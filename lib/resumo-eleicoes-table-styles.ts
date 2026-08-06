@@ -1,15 +1,24 @@
 import { cn } from '@/lib/utils'
 import { SIDEBAR_BRAND_AMBER } from '@/lib/sidebar-brand-styles'
 
-/** Seleção de linha — âmbar (padrão Central de Comunicação / sidebar). */
+/** Seleção de linha — accent coral (padrão Copiloto / sidebar). */
 export function resumoTrSelecionado(): string {
-  return 'bg-[#C8900A]/12 ring-1 ring-inset ring-[#C8900A]'
+  return 'bg-[#f04b23]/12 ring-1 ring-inset ring-[#f04b23]'
 }
 
-/** Destaque forte (ex.: candidato principal, partido filtrado) — linha âmbar sólida, texto branco. */
+/** Destaque forte (ex.: partido filtrado) — linha coral sólida, texto branco. */
 export function resumoTrDestaqueForte(): string {
   return cn(
-    'border-b border-[#C8900A] !bg-[#C8900A] font-semibold !text-white hover:!bg-[#C8900A]',
+    'border-b border-[#f04b23] !bg-[#f04b23] font-semibold !text-white hover:!bg-[#f04b23]',
+    '[&_button]:!text-white [&_button]:decoration-white/50',
+    '[&_a]:!text-white',
+  )
+}
+
+/** Destaque de candidato principal (Federal / Vereador) — mesmo azul da sidebar. */
+export function resumoTrDestaquePetrol(): string {
+  return cn(
+    'resumo-tr-destaque-petrol font-semibold !text-white',
     '[&_button]:!text-white [&_button]:decoration-white/50',
     '[&_a]:!text-white',
   )
@@ -26,11 +35,11 @@ export const RESUMO_TH_CLASS = 'bg-background px-1 py-1 text-xs text-text-second
 export const RESUMO_TD_CLASS = 'px-1 py-1'
 
 export function resumoSortAccentClass(): string {
-  return 'text-[#C8900A]'
+  return 'text-[#f04b23]'
 }
 
 export function resumoAccentTextClass(): string {
-  return 'text-[#C8900A]'
+  return 'text-[#f04b23]'
 }
 
 export const RESUMO_ACCENT_AMBER = SIDEBAR_BRAND_AMBER
@@ -49,7 +58,7 @@ export function resumoLinhaTabela(
 ): string {
   const { selecionada = false, destaqueForte = false } = opts
   return cn(
-    'border-b border-card text-text-primary transition-colors hover:bg-[#C8900A]/6',
+    'border-b border-card text-text-primary transition-colors hover:bg-[#f04b23]/6',
     destaqueForte && resumoTrDestaqueForte(),
     !destaqueForte && selecionada && resumoTrSelecionado(),
     !destaqueForte && !selecionada && resumoTrZebra(rowIndex),
@@ -69,7 +78,7 @@ export function resumoKpiMetaClass(): string {
 }
 
 export function resumoKpiLinkClass(): string {
-  return 'text-[11px] font-medium text-[#C8900A] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
+  return 'text-[11px] font-medium text-[#f04b23] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
 }
 
 export function resumoKpiCardClass(): string {
@@ -81,47 +90,47 @@ export function resumoKpiHeaderClass(): string {
 }
 
 export function resumoKpiIconClass(): string {
-  return 'h-3.5 w-3.5 shrink-0 text-[#C8900A]'
+  return 'h-3.5 w-3.5 shrink-0 text-[#f04b23]'
 }
 
-/** Âmbar fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */
+/** Coral fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */
 export const resumoAmberChipActiveClass =
-  'border-[#C8900A]/50 bg-[#C8900A]/10 text-text-primary'
+  'border-[#f04b23]/50 bg-[#f04b23]/10 text-text-primary'
 
 export const resumoAmberChipActiveStrongClass =
-  'border-[#C8900A]/50 bg-[#C8900A]/15 text-text-primary'
+  'border-[#f04b23]/50 bg-[#f04b23]/15 text-text-primary'
 
 export const resumoAmberButtonOutlineClass =
-  'border-[#C8900A]/40 bg-[#C8900A]/10 text-text-primary hover:bg-[#C8900A]/15'
+  'border-[#f04b23]/40 bg-[#f04b23]/10 text-text-primary hover:bg-[#f04b23]/15'
 
 export const resumoAmberButtonOutlineHover20Class =
-  'border-[#C8900A]/40 bg-[#C8900A]/10 text-text-primary hover:bg-[#C8900A]/20'
+  'border-[#f04b23]/40 bg-[#f04b23]/10 text-text-primary hover:bg-[#f04b23]/20'
 
 export const resumoAmberInfoBoxClass =
-  'border-[#C8900A]/30 bg-[#C8900A]/10'
+  'border-[#f04b23]/30 bg-[#f04b23]/10'
 
 export const resumoAmberPillClass =
-  'border-[#C8900A]/35 bg-[#C8900A]/10'
+  'border-[#f04b23]/35 bg-[#f04b23]/10'
 
 export const resumoAmberBadgeClass =
-  'border-[#C8900A]/40 bg-[#C8900A]/10'
+  'border-[#f04b23]/40 bg-[#f04b23]/10'
 
-export const resumoAmberColHighlightClass = 'bg-[#C8900A]/15'
+export const resumoAmberColHighlightClass = 'bg-[#f04b23]/15'
 
 export const resumoAmberGroupRowClass =
-  'border-b border-card/50 bg-[#C8900A]/5 hover:bg-[#C8900A]/10'
+  'border-b border-card/50 bg-[#f04b23]/5 hover:bg-[#f04b23]/10'
 
-export const resumoAmberGroupCellClass = 'sticky left-0 z-10 bg-[#C8900A]/5 px-2 py-2'
+export const resumoAmberGroupCellClass = 'sticky left-0 z-10 bg-[#f04b23]/5 px-2 py-2'
 
 export const resumoAmberSimilaridadeAltaClass =
-  'border-[#C8900A]/50 bg-[#C8900A]/10'
+  'border-[#f04b23]/50 bg-[#f04b23]/10'
 
 export const resumoAmberSimilaridadeMediaClass =
-  'border-[#C8900A]/30 bg-[#C8900A]/5'
+  'border-[#f04b23]/30 bg-[#f04b23]/5'
 
-export const resumoAmberBarAltaClass = 'bg-[#C8900A]'
+export const resumoAmberBarAltaClass = 'bg-[#f04b23]'
 
-export const resumoAmberBarMediaClass = 'bg-[#C8900A]/70'
+export const resumoAmberBarMediaClass = 'bg-[#f04b23]/70'
 
 export const resumoAmberAtualizarButtonClass =
-  'inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#C8900A]/40 bg-[#C8900A]/10 px-4 text-sm font-medium text-text-primary hover:bg-[#C8900A]/15 disabled:opacity-50 lg:w-auto'
+  'inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#f04b23]/40 bg-[#f04b23]/10 px-4 text-sm font-medium text-text-primary hover:bg-[#f04b23]/15 disabled:opacity-50 lg:w-auto'

@@ -112,8 +112,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #fff4e5;
-  color: #e28000;
+  background: #fff1ed;
+  color: #c43d1c;
 }
 
 .fd-pipeline__card--produzido .fd-pipeline__ico {
@@ -328,7 +328,7 @@
 .fd-link {
   border: 0;
   background: transparent;
-  color: #e28000;
+  color: #c43d1c;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -387,7 +387,7 @@
 .fd-muni em {
   font-style: normal;
   font-size: 10px;
-  color: #e28000;
+  color: #c43d1c;
 }
 
 .fd-status {
@@ -501,7 +501,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #f59e0b, #e28000);
+  background: linear-gradient(90deg, #f59e0b, #c43d1c);
 }
 
 .fd-grid-bottom {
@@ -539,7 +539,7 @@
   position: relative;
   height: 88px;
   background:
-    linear-gradient(135deg, rgba(226, 128, 0, 0.35), rgba(37, 99, 235, 0.25)),
+    linear-gradient(135deg, rgba(196, 61, 28, 0.35), rgba(37, 99, 235, 0.25)),
     #e8e4dc;
 }
 

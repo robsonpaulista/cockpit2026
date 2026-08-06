@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { useDashboardFixedChromeActive } from '@/contexts/dashboard-page-chrome-context'
+import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { cn } from '@/lib/utils'
 
 interface PageTransitionProps {
@@ -20,6 +21,7 @@ interface PageTransitionProps {
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname()
   const fixedChrome = useDashboardFixedChromeActive()
+  const isHome = isDashboardHomePath(pathname ?? '')
   const [displayChildren, setDisplayChildren] = useState(children)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const prevPathRef = useRef(pathname)
@@ -53,7 +55,9 @@ export function PageTransition({ children }: PageTransitionProps) {
         'page-transition flex flex-col',
         fixedChrome
           ? 'min-h-0 flex-1 overflow-hidden'
-          : 'w-full min-w-0'
+          : isHome
+            ? 'h-full min-h-0 w-full min-w-0 flex-1'
+            : 'w-full min-w-0'
       )}
       style={{
         opacity: isTransitioning ? 0 : 1,

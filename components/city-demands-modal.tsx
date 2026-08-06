@@ -602,7 +602,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                           ? 'border-white/8 hover:bg-white/[0.04]'
                           : isDarkAppearance
                             ? 'border-white/8 hover:bg-white/[0.04]'
-                            : 'border-card/80 hover:bg-[#fff4e5]/55',
+                            : 'border-card/80 hover:bg-[#fff1ed]/55',
                       )}
                     >
                       <td className="px-3 py-2">

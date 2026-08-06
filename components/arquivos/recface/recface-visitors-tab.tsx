@@ -63,7 +63,7 @@ export function RecfaceVisitorsTab() {
   if (loading) {
     return (
       <div className="flex justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-[#C8900A]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#f04b23]" />
       </div>
     )
   }
@@ -90,8 +90,8 @@ export function RecfaceVisitorsTab() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#C8900A]/15">
-                    <User className="h-5 w-5 text-[#C8900A]" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f04b23]/15">
+                    <User className="h-5 w-5 text-[#f04b23]" />
                   </div>
                   <div>
                     {editingId === v.id ? (
@@ -104,7 +104,7 @@ export function RecfaceVisitorsTab() {
                         <button
                           type="button"
                           onClick={() => void saveName(v.id)}
-                          className="text-xs text-[#C8900A]"
+                          className="text-xs text-[#f04b23]"
                         >
                           Salvar
                         </button>

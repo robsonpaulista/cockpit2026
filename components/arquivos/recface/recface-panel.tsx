@@ -30,8 +30,8 @@ export function RecfacePanel() {
       <RecfaceServiceBanner />
 
       <div className="flex items-center gap-3 rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-4 py-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C8900A]/15">
-          <ScanFace className="h-5 w-5 text-[#C8900A]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f04b23]/15">
+          <ScanFace className="h-5 w-5 text-[#f04b23]" />
         </div>
         <div>
           <p className="text-sm font-semibold text-text-primary">Reconhecimento facial (FaceAgenda)</p>

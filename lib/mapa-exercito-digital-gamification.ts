@@ -98,7 +98,7 @@ export function getHeatmapLabels(referenceMonth: string): string[] {
 
 export const PODIUM_STYLES = [
   {
-    ring: 'ring-2 ring-[#C8900A]/70',
+    ring: 'ring-2 ring-[#f04b23]/70',
     bg: 'bg-gradient-to-b from-[#FAEEDA] to-[#FFF8ED]',
     medal: '🥇',
     label: '#1',

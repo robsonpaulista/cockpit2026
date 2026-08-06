@@ -240,7 +240,7 @@ export function ExercitoDigitalLeaderRanking({
     cn(
       'rounded-[99px] border px-2.5 py-0.5 text-[11px] transition-colors',
       active
-        ? 'border-[#C8900A]/50 bg-[#FAEEDA] font-medium text-[#854F0B]'
+        ? 'border-[#f04b23]/50 bg-[#FAEEDA] font-medium text-[#854F0B]'
         : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
     )
 
@@ -341,7 +341,7 @@ export function ExercitoDigitalLeaderRanking({
                       <div className="flex min-w-0 items-center gap-1.5">
                         <p className="truncate text-xs font-semibold text-text-primary">{leader.nome}</p>
                         {liderRede ? (
-                          <span className="shrink-0 rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
+                          <span className="shrink-0 rounded-[99px] border border-[#f04b23]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
                             Rede
                           </span>
                         ) : mandato ? (
