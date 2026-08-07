@@ -88,10 +88,10 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
   }
 
   const chartData = dates.map((date) => {
-    const row: { date: string; label: string } & Record<string, number> = {
+    const row = {
       date,
       label: formatDataCurta(`${date}T12:00:00`),
-    }
+    } as { date: string; label: string } & Record<string, number>
     for (const line of lines) {
       row[line.slug] = bySlugDate.get(`${line.slug}|${date}`) ?? 0
     }

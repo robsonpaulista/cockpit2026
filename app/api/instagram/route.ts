@@ -226,22 +226,27 @@ export async function POST(request: Request) {
       `https://graph.facebook.com/v18.0/${instagramBusinessId}/media?fields=${mediaFields}&limit=50&access_token=${token}${cacheBuster}`
 
     while (mediaUrl && mediaInRange.length < maxMediaItems) {
-      const mediaResponse = await fetch(mediaUrl)
+      const mediaResponse: Response = await fetch(mediaUrl)
       if (!mediaResponse.ok) {
-        const errorResponse = await mediaResponse.json()
+        const errorResponse = (await mediaResponse.json()) as {
+          error?: { message?: string }
+        }
         return NextResponse.json(
           { error: errorResponse.error?.message || 'Erro ao buscar publicações' },
           { status: 400 }
         )
       }
 
-      const mediaPage = await mediaResponse.json()
-      const batch: any[] = mediaPage.data || []
+      const mediaPage = (await mediaResponse.json()) as {
+        data?: Array<Record<string, unknown> & { timestamp?: string }>
+        paging?: { next?: string }
+      }
+      const batch = mediaPage.data ?? []
       if (batch.length === 0) break
 
       let leftWindow = false
       for (const item of batch) {
-        const ts = new Date(item.timestamp).getTime()
+        const ts = new Date(String(item.timestamp ?? '')).getTime()
         if (Number.isNaN(ts)) continue
         if (ts < periodStartMs) {
           leftWindow = true
