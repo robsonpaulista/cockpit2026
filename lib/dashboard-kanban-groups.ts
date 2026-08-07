@@ -11,7 +11,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'comunicacao',
     label: 'Comunicação',
-    itemIds: ['conteudo-redes', 'noticias-menu', 'whatsapp'],
+    itemIds: ['conteudo-redes', 'radar-eleitoral', 'whatsapp'],
   },
   {
     id: 'eleicoes',

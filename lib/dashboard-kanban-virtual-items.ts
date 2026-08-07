@@ -8,6 +8,12 @@ export const DASHBOARD_KANBAN_VIRTUAL_ITEMS: Record<string, SidebarMenuItemConfi
     icon: 'Bot',
     href: '/dashboard',
   },
+  'radar-eleitoral': {
+    id: 'radar-eleitoral',
+    label: 'Radar Eleitoral',
+    icon: 'Radar',
+    href: '/dashboard/noticias/monitoramento',
+  },
 }
 
 export function resolveKanbanMenuItem(

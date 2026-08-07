@@ -112,26 +112,6 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     ],
   },
   {
-    id: 'noticias-menu',
-    label: 'Radar Eleitoral',
-    icon: 'Radar',
-    href: '/dashboard/noticias/monitoramento',
-    children: [
-      {
-        id: 'noticias-monitoramento',
-        label: 'Monitoramento',
-        icon: 'Activity',
-        href: '/dashboard/noticias/monitoramento',
-      },
-      {
-        id: 'radar-224',
-        label: 'Radar 224',
-        icon: 'MapPinned',
-        href: '/dashboard/radar-224',
-      },
-    ],
-  },
-  {
     id: 'mobilizacao-menu',
     label: 'Mobilização',
     icon: 'Users',
@@ -277,6 +257,14 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   backup: ['backup', 'backup supabase', 'backup banco', 'db backup'],
   'log-system': ['log system', 'log ia cockpit', 'logs agente', 'historico ia cockpit', 'log jarvis', 'historico jarvis'],
   'territorio-ipt': ['mapa diagnostico campanha', 'mapa diagnostico', 'ipt', 'diagnostico campanha'],
+  'radar-eleitoral': [
+    'radar eleitoral',
+    'noticias',
+    'crises',
+    'monitoramento',
+    'radar 224',
+    'radar',
+  ],
 }
 
 function buildTarget(item: MenuItem): SidebarNavTarget {
@@ -322,6 +310,12 @@ export const SIDEBAR_NAV_TARGETS: SidebarNavTarget[] = [
     label: 'Mapa Campanha',
     icon: 'MapPin',
     href: '/dashboard/territorio/ipt',
+  }),
+  buildTarget({
+    id: 'radar-eleitoral',
+    label: 'Radar Eleitoral',
+    icon: 'Radar',
+    href: '/dashboard/noticias/monitoramento',
   }),
 ]
 

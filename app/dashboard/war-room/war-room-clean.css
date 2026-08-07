@@ -7258,7 +7258,10 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 }
 
 .wr-copiloto-redes--page {
+  display: flex;
+  flex: 1 1 auto;
   min-height: min(72vh, 780px);
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--wr-divider, #e5e7eb);
   border-radius: 14px;
@@ -7350,8 +7353,9 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 
 .wr-copiloto-redes__cols {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
 }
@@ -7359,6 +7363,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 .wr-copiloto-redes__cols--split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
   overflow: hidden;
 }
 
@@ -7366,8 +7371,12 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   display: flex;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex-direction: column;
+  gap: 12px;
+  padding: 10px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--wr-mist, #f5f6f8) 55%, var(--wr-chart-bg, #e6eaf0));
   border-right: 1px solid color-mix(in srgb, var(--wr-slate, #424e5c) 10%, var(--wr-mist, #f5f6f8));
 }
 
@@ -7375,8 +7384,25 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   display: flex;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex-direction: column;
+  padding: 10px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--wr-mist, #f5f6f8) 55%, var(--wr-chart-bg, #e6eaf0));
+}
+
+.wr-copiloto-redes__side > .wr-copiloto-redes__band--indicadores {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-copiloto-redes__band--indicadores .wr-copiloto-redes__side-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+  scrollbar-width: thin;
 }
 
 .wr-copiloto-redes__side-body {
@@ -7393,17 +7419,17 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   flex-direction: column;
   flex: 0 0 auto;
   min-width: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--wr-slate, #424e5c) 10%, var(--wr-mist, #f5f6f8));
+  overflow: hidden;
+  border: 1px solid var(--wr-divider, #e5e7eb);
+  border-radius: 14px;
+  background: var(--wr-card, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--wr-petrol, #022b3a) 4%, transparent);
 }
 
-.wr-copiloto-redes__band:last-child {
-  border-bottom: 0;
-}
-
-/* Comparativo: ocupa o restante; a base é limitada em JS à última linha de indicadores. */
+/* Comparativo: cresce e ocupa todo o restante da coluna esquerda. */
 .wr-copiloto-redes__main > .wr-copiloto-redes__band--candidatos {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 1 0;
+  min-height: 220px;
   overflow: hidden;
 }
 
@@ -7415,15 +7441,21 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   overflow: hidden;
 }
 
+.wr-copiloto-redes__main > .wr-copiloto-redes__temas-anuncios {
+  flex: 0 0 auto;
+}
+
 .wr-copiloto-redes__group-th {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  height: 28px;
-  padding: 6px 12px;
+  box-sizing: border-box;
+  height: 48px;
+  min-height: 48px;
+  padding: 14px 16px;
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -7431,6 +7463,10 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   white-space: nowrap;
   border-bottom: 1px solid color-mix(in srgb, var(--wr-slate, #424e5c) 12%, var(--wr-mist, #f5f6f8));
   background: color-mix(in srgb, var(--wr-mist, #f5f6f8) 42%, var(--wr-white, #fff));
+}
+
+.wr-copiloto-redes__band > .wr-copiloto-redes__group-th {
+  border-radius: 14px 14px 0 0;
 }
 
 .wr-copiloto-redes__band-body {
@@ -7542,6 +7578,77 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   min-width: 0;
 }
 
+.wr-copiloto-redes__temas-anuncios {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.wr-copiloto-redes__temas-anuncios > .wr-copiloto-redes__band {
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .wr-copiloto-redes__temas-anuncios {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.wr-copiloto-redes-anuncios {
+  min-width: 0;
+}
+
+.wr-copiloto-redes__table--anuncios .wr-copiloto-redes__cell-anuncio {
+  max-width: 0;
+  width: 52%;
+}
+
+.wr-copiloto-redes__cell-anuncio-link {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 4px;
+}
+
+.wr-copiloto-redes__cell-anuncio-link .wr-copiloto-redes__cell-truncate {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.wr-copiloto-redes__cell-anuncio-ext {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-copiloto-redes__cell-anuncio-link:hover .wr-copiloto-redes__cell-anuncio-ext {
+  color: var(--wr-inst, #005b8f);
+}
+
+.wr-copiloto-redes__table--anuncios .wr-copiloto-redes__cell-compact {
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+}
+
+.wr-copiloto-redes-anuncios__footer-inline {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wr-inst, #005b8f);
+  text-decoration: none;
+}
+
+.wr-copiloto-redes-anuncios__footer-inline:hover {
+  color: var(--wr-accent, #f04b23);
+  text-decoration: underline;
+}
+
 .wr-copiloto-redes__pager {
   display: flex;
   align-items: center;
@@ -7593,6 +7700,9 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   }
 
   .wr-copiloto-redes__main {
+    height: auto;
+    min-height: 520px;
+    overflow: auto;
     border-right: 0;
     border-bottom: 1px solid color-mix(in srgb, var(--wr-slate, #424e5c) 10%, var(--wr-mist, #f5f6f8));
   }
@@ -7873,9 +7983,10 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  width: 100%;
   flex-direction: column;
-  padding: 4px 8px 6px;
-  gap: 4px;
+  padding: 6px 10px 8px;
+  gap: 6px;
 }
 
 .wr-copiloto-redes-candidatos__toolbar {
@@ -7889,13 +8000,24 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 }
 
 .wr-copiloto-redes-candidatos__scroll {
+  display: flex;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .wr-copiloto-redes-candidatos__heatmap {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
   min-height: 0;
+  height: 100%;
+  flex-direction: column;
 }
 
 .wr-copiloto-redes-candidatos__heatmap .pmh-name {

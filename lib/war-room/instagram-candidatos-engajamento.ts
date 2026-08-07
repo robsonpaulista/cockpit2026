@@ -35,13 +35,14 @@ function lastNDays(n: number): string[] {
 
 /**
  * Candidatos · engajamento diário (likes + comments).
+ * Ordena pelo engajamento total do período (maior → menor).
  * Inclui todos os atores ativos (exceto hidden). `topN` opcional limita o ranking.
  */
 export function buildTopCandidatosEngajamentoDiario(opts: {
   actors: PoliticalActorWithTerms[]
   posts: InstagramRadarPostWithActor[]
   days: number
-  /** Se definido, limita aos N com maior engajamento médio. */
+  /** Se definido, limita aos N com maior engajamento total. */
   topN?: number
   hiddenSlugs?: Set<string>
 }): CandidatosEngajamentoChartModel {
@@ -58,9 +59,11 @@ export function buildTopCandidatosEngajamentoDiario(opts: {
     buildPanoramaHeatmapActorColumns(activeActors).map((c) => [c.slug, c.accentColor]),
   )
 
-  let compareRows = buildInstagramRadarCompareRows(activeActors, posts, days).sort(
-    (a, b) => b.avgEngagement - a.avgEngagement,
-  )
+  let compareRows = buildInstagramRadarCompareRows(activeActors, posts, days).sort((a, b) => {
+    const totalA = a.posts.reduce((sum, p) => sum + p.likes_count + p.comments_count, 0)
+    const totalB = b.posts.reduce((sum, p) => sum + p.likes_count + p.comments_count, 0)
+    return totalB - totalA
+  })
   if (typeof topN === 'number' && topN > 0) {
     compareRows = compareRows.slice(0, topN)
   }

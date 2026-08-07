@@ -89,6 +89,7 @@ export function WarRoomCopilotoCandidatosEngajamentoChart({ model, className }: 
           onScaleModeChange={setScaleMode}
           hideScaleControls
           compact
+          fillAvailableHeight
           comparativeMax={fullComparativeMax}
           showValues
           className="wr-copiloto-redes-candidatos__heatmap"

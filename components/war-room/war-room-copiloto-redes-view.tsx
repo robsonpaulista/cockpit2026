@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import {
@@ -22,6 +22,7 @@ import {
   fetchInstagramProfileVisitsManual,
 } from '@/lib/instagram-profile-visits-manual'
 import { WarRoomCopilotoCandidatosEngajamentoChart } from '@/components/war-room/war-room-copiloto-candidatos-engajamento-chart'
+import { WarRoomCopilotoJadyelAnuncios } from '@/components/war-room/war-room-copiloto-jadyel-anuncios'
 import { WarRoomCopilotoRedesDesempenho } from '@/components/war-room/war-room-copiloto-redes-desempenho'
 import {
   COMPARISON_METRICS,
@@ -152,8 +153,6 @@ export function WarRoomCopilotoRedesView() {
   const [radarLoading, setRadarLoading] = useState(true)
   const [radarError, setRadarError] = useState<string | null>(null)
   const topPostModalTitleId = useId()
-  const candidatosBandRef = useRef<HTMLElement | null>(null)
-  const colsRef = useRef<HTMLDivElement | null>(null)
 
   const loadClassifications = async () => {
     try {
@@ -402,47 +401,6 @@ export function WarRoomCopilotoRedesView() {
     [history, metrics, manualVisitsByDate, days],
   )
 
-  /** Limita a base do Comparativo à borda inferior da última linha de indicadores. */
-  useLayoutEffect(() => {
-    const band = candidatosBandRef.current
-    const cols = colsRef.current
-    if (!band || !cols) return
-
-    const syncBottomToIndicators = () => {
-      const cards = cols.querySelectorAll<HTMLElement>('[data-wr-kpi]')
-      const anchor = cards.length > 0 ? cards[cards.length - 1] : null
-      if (!anchor) {
-        band.style.maxHeight = ''
-        return
-      }
-      const bandTop = band.getBoundingClientRect().top
-      const anchorBottom = anchor.getBoundingClientRect().bottom
-      const maxHeight = Math.floor(anchorBottom - bandTop)
-      if (maxHeight > 0) {
-        band.style.maxHeight = `${maxHeight}px`
-      } else {
-        band.style.maxHeight = ''
-      }
-    }
-
-    syncBottomToIndicators()
-    const raf = window.requestAnimationFrame(syncBottomToIndicators)
-    const observer = new ResizeObserver(() => {
-      syncBottomToIndicators()
-    })
-    observer.observe(cols)
-    observer.observe(band)
-    cols.querySelectorAll('[data-wr-kpi]').forEach((el) => observer.observe(el))
-    window.addEventListener('resize', syncBottomToIndicators)
-
-    return () => {
-      window.cancelAnimationFrame(raf)
-      observer.disconnect()
-      window.removeEventListener('resize', syncBottomToIndicators)
-      band.style.maxHeight = ''
-    }
-  }, [desempenhoKpis, candidatosEngajamento, themesPage, loading, radarLoading])
-
   if (loading && !metrics) {
     return (
       <div className="wr-copiloto-view__state">
@@ -514,10 +472,7 @@ export function WarRoomCopilotoRedesView() {
         </button>
       </header>
 
-      <div
-        ref={colsRef}
-        className="wr-copiloto-redes__cols wr-copiloto-redes__cols--split"
-      >
+      <div className="wr-copiloto-redes__cols wr-copiloto-redes__cols--split">
         <div className="wr-copiloto-redes__main">
           <section className="wr-copiloto-redes__band" aria-label="Análise Feed">
             <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--posts">
@@ -570,111 +525,131 @@ export function WarRoomCopilotoRedesView() {
             </div>
           </section>
 
-          <section className="wr-copiloto-redes__band" aria-label="Desempenho por tema">
-            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--temas">
-              Desempenho por tema
-            </div>
-            <div className="wr-copiloto-redes__band-body">
-              {themeRows.length === 0 ? (
-                <p className="wr-copiloto-redes__empty">
-                  Sem temas classificados nos últimos {periodLabel}.
-                </p>
-              ) : (
-                <div className="wr-copiloto-redes__themes-panel">
-                  <div className="wr-copiloto-redes__table-scroll">
-                    <table className="wr-copiloto-redes__table">
-                      <thead>
-                        <tr>
-                          <th>Tema</th>
-                          <th className="wr-copiloto-redes__num">Posts</th>
-                          {THEME_METRICS.map((metric) => (
-                            <th key={metric.key} className="wr-copiloto-redes__num">
-                              {THEME_METRIC_SHORT[metric.key]}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {themeRowsPage.map(({ theme, stats }, pageIndex) => {
-                          const rank = themesPageSafe * THEMES_PAGE_SIZE + pageIndex + 1
-                          const hasTopPost = bestPostByTheme.has(theme)
-                          return (
-                            <tr key={theme}>
-                              <td
-                                className="wr-copiloto-redes__cell-tema"
-                                title={theme}
-                              >
-                                <ThemeRankTrophy rank={rank} />
-                                <span className="wr-copiloto-redes__cell-truncate">{theme}</span>
-                              </td>
-                              <td className="wr-copiloto-redes__num">
-                                {hasTopPost ? (
-                                  <button
-                                    type="button"
-                                    className="wr-copiloto-redes__posts-btn tabular-nums"
-                                    title="Ver top postagem deste tema"
-                                    onClick={() => setTopPostModalTheme(theme)}
-                                  >
-                                    {stats.posts}
-                                  </button>
-                                ) : (
-                                  <span className="tabular-nums">{stats.posts}</span>
-                                )}
-                              </td>
-                              {THEME_METRICS.map((metric) => (
+          <div className="wr-copiloto-redes__temas-anuncios">
+            <section
+              className="wr-copiloto-redes__band wr-copiloto-redes__band--temas"
+              aria-label="Desempenho por tema"
+            >
+              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--temas">
+                Desempenho por tema
+              </div>
+              <div className="wr-copiloto-redes__band-body">
+                {themeRows.length === 0 ? (
+                  <p className="wr-copiloto-redes__empty">
+                    Sem temas classificados nos últimos {periodLabel}.
+                  </p>
+                ) : (
+                  <div className="wr-copiloto-redes__themes-panel">
+                    <div className="wr-copiloto-redes__table-scroll">
+                      <table className="wr-copiloto-redes__table">
+                        <thead>
+                          <tr>
+                            <th>Tema</th>
+                            <th className="wr-copiloto-redes__num">Posts</th>
+                            {THEME_METRICS.map((metric) => (
+                              <th key={metric.key} className="wr-copiloto-redes__num">
+                                {THEME_METRIC_SHORT[metric.key]}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {themeRowsPage.map(({ theme, stats }, pageIndex) => {
+                            const rank = themesPageSafe * THEMES_PAGE_SIZE + pageIndex + 1
+                            const hasTopPost = bestPostByTheme.has(theme)
+                            return (
+                              <tr key={theme}>
                                 <td
-                                  key={metric.key}
-                                  className="wr-copiloto-redes__num tabular-nums"
-                                  title={
-                                    metric.key === 'avgEngagement'
-                                      ? engajamentoHint(stats)
-                                      : undefined
-                                  }
+                                  className="wr-copiloto-redes__cell-tema"
+                                  title={theme}
                                 >
-                                  {formatMetricValue(metric.key, stats[metric.key])}
+                                  <ThemeRankTrophy rank={rank} />
+                                  <span className="wr-copiloto-redes__cell-truncate">{theme}</span>
                                 </td>
-                              ))}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {themesPageCount > 1 ? (
-                    <div className="wr-copiloto-redes__pager" role="navigation" aria-label="Páginas de temas">
-                      <button
-                        type="button"
-                        className="wr-copiloto-redes__pager-btn"
-                        disabled={themesPageSafe <= 0}
-                        onClick={() => setThemesPage((p) => Math.max(0, p - 1))}
-                      >
-                        Anterior
-                      </button>
-                      <span className="wr-copiloto-redes__pager-status tabular-nums">
-                        {themesPageSafe + 1} / {themesPageCount}
-                        <span className="wr-copiloto-redes__pager-count">
-                          · {themeRows.length} temas
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        className="wr-copiloto-redes__pager-btn"
-                        disabled={themesPageSafe >= themesPageCount - 1}
-                        onClick={() =>
-                          setThemesPage((p) => Math.min(themesPageCount - 1, p + 1))
-                        }
-                      >
-                        Próxima
-                      </button>
+                                <td className="wr-copiloto-redes__num">
+                                  {hasTopPost ? (
+                                    <button
+                                      type="button"
+                                      className="wr-copiloto-redes__posts-btn tabular-nums"
+                                      title="Ver top postagem deste tema"
+                                      onClick={() => setTopPostModalTheme(theme)}
+                                    >
+                                      {stats.posts}
+                                    </button>
+                                  ) : (
+                                    <span className="tabular-nums">{stats.posts}</span>
+                                  )}
+                                </td>
+                                {THEME_METRICS.map((metric) => (
+                                  <td
+                                    key={metric.key}
+                                    className="wr-copiloto-redes__num tabular-nums"
+                                    title={
+                                      metric.key === 'avgEngagement'
+                                        ? engajamentoHint(stats)
+                                        : undefined
+                                    }
+                                  >
+                                    {formatMetricValue(metric.key, stats[metric.key])}
+                                  </td>
+                                ))}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </section>
+                    {themesPageCount > 1 ? (
+                      <div
+                        className="wr-copiloto-redes__pager"
+                        role="navigation"
+                        aria-label="Páginas de temas"
+                      >
+                        <button
+                          type="button"
+                          className="wr-copiloto-redes__pager-btn"
+                          disabled={themesPageSafe <= 0}
+                          onClick={() => setThemesPage((p) => Math.max(0, p - 1))}
+                        >
+                          Anterior
+                        </button>
+                        <span className="wr-copiloto-redes__pager-status tabular-nums">
+                          {themesPageSafe + 1} / {themesPageCount}
+                          <span className="wr-copiloto-redes__pager-count">
+                            · {themeRows.length} temas
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="wr-copiloto-redes__pager-btn"
+                          disabled={themesPageSafe >= themesPageCount - 1}
+                          onClick={() =>
+                            setThemesPage((p) => Math.min(themesPageCount - 1, p + 1))
+                          }
+                        >
+                          Próxima
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section
+              className="wr-copiloto-redes__band wr-copiloto-redes__band--anuncios"
+              aria-label="Anúncios ativos Jadyel Alencar"
+            >
+              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--anuncios">
+                Anúncios ativos · Jadyel Alencar
+              </div>
+              <div className="wr-copiloto-redes__band-body">
+                <WarRoomCopilotoJadyelAnuncios />
+              </div>
+            </section>
+          </div>
 
           <section
-            ref={candidatosBandRef}
             className="wr-copiloto-redes__band wr-copiloto-redes__band--candidatos"
             aria-label="Comparativo candidatos engajamento diário"
           >
@@ -700,11 +675,13 @@ export function WarRoomCopilotoRedesView() {
         </div>
 
         <section className="wr-copiloto-redes__side" aria-label="Indicadores">
-          <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--indicadores">
-            Indicadores
-          </div>
-          <div className="wr-copiloto-redes__side-body">
-            <WarRoomCopilotoRedesDesempenho kpis={desempenhoKpis} compact />
+          <div className="wr-copiloto-redes__band wr-copiloto-redes__band--indicadores">
+            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--indicadores">
+              Indicadores
+            </div>
+            <div className="wr-copiloto-redes__side-body">
+              <WarRoomCopilotoRedesDesempenho kpis={desempenhoKpis} compact />
+            </div>
           </div>
         </section>
       </div>

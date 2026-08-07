@@ -81,6 +81,11 @@ interface PanoramaMentionHeatmapProps {
   comparativeMax?: number
   /** Exibe o valor numérico dentro de cada célula. */
   showValues?: boolean
+  /**
+   * Estica linhas/células para ocupar a altura do container
+   * (ex.: Comparativo candidatos no Copiloto Redes).
+   */
+  fillAvailableHeight?: boolean
 }
 
 export function PanoramaHeatmapScaleToggle({
@@ -93,7 +98,11 @@ export function PanoramaHeatmapScaleToggle({
   className?: string
 }) {
   return (
-    <div className={cn('flex shrink-0 flex-wrap justify-end gap-1', className)} role="group" aria-label="Modo de escala">
+    <div
+      className={cn('flex shrink-0 flex-wrap justify-end gap-1', className)}
+      role="group"
+      aria-label="Modo de escala"
+    >
       {SCALE_OPTIONS.map((opt) => (
         <button
           key={opt.value}
@@ -122,6 +131,7 @@ export function PanoramaMentionHeatmap({
   compact = false,
   comparativeMax,
   showValues = false,
+  fillAvailableHeight = false,
 }: PanoramaMentionHeatmapProps) {
   const [internalScaleMode, setInternalScaleMode] = useState<HeatmapScaleMode>('comparative')
   const scaleMode = scaleModeProp ?? internalScaleMode
@@ -160,8 +170,16 @@ export function PanoramaMentionHeatmap({
   const metricWord = metricLabel.toLowerCase()
   const lessLabel = 'Menos'
   const moreLabel = scaleMode === 'comparative' ? 'Mais' : 'Pico'
-  const nameColClass = compact ? 'w-[104px]' : 'w-[120px]'
-  const axisPadClass = compact ? 'pl-[112px]' : 'pl-[128px]'
+  const nameColClass = compact
+    ? fillAvailableHeight
+      ? 'w-[104px] min-[900px]:w-[132px]'
+      : 'w-[104px]'
+    : 'w-[120px]'
+  const axisPadClass = compact
+    ? fillAvailableHeight
+      ? 'pl-[112px] min-[900px]:pl-[140px]'
+      : 'pl-[112px]'
+    : 'pl-[128px]'
   const nameTypeClass = compact
     ? 'pmh-name leading-snug'
     : cn(typographyBodyMediumClass, 'text-text-secondary')
@@ -171,7 +189,13 @@ export function PanoramaMentionHeatmap({
   const rowGapClass = compact ? 'mb-1.5' : 'mb-2'
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', compact ? 'gap-1.5' : 'gap-2', className)}>
+    <div
+      className={cn(
+        'flex h-full min-h-0 w-full flex-col',
+        compact ? 'gap-1.5' : 'gap-2',
+        className,
+      )}
+    >
       {!hideScaleControls ? (
         <PanoramaHeatmapScaleToggle scaleMode={scaleMode} onScaleModeChange={setScaleMode} />
       ) : null}
@@ -184,17 +208,30 @@ export function PanoramaMentionHeatmap({
 
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-x-auto',
-          compact ? 'justify-start overflow-y-auto pr-0.5' : 'justify-center',
+          'flex min-h-0 w-full flex-1 flex-col',
+          fillAvailableHeight
+            ? 'h-full overflow-x-hidden overflow-y-auto'
+            : compact
+              ? 'justify-start overflow-x-auto overflow-y-auto pr-0.5'
+              : 'justify-center overflow-x-auto',
         )}
       >
-        <div className={cn(compact ? 'min-w-0' : 'min-w-[520px]')}>
+        <div
+          className={cn(
+            'w-full max-w-none',
+            compact ? 'min-w-0' : 'min-w-[520px]',
+            fillAvailableHeight && 'flex w-full flex-col gap-1.5',
+          )}
+        >
           {rows.map((row, rowIndex) => {
             const scaleMax = scaleMode === 'comparative' ? globalMax : heatmapRowMax(row.values)
             return (
               <div
                 key={row.slug}
-                className={cn('flex items-center gap-2 last:mb-0', rowGapClass)}
+                className={cn(
+                  'flex w-full max-w-none items-center gap-2 last:mb-0',
+                  fillAvailableHeight ? 'h-7 shrink-0' : rowGapClass,
+                )}
               >
                 <span
                   className={cn('shrink-0 truncate', nameColClass, nameTypeClass)}
@@ -202,7 +239,7 @@ export function PanoramaMentionHeatmap({
                 >
                   {row.name}
                 </span>
-                <div className="flex min-w-0 flex-1 gap-[3px]">
+                <div className="flex h-full min-w-0 flex-1 gap-1">
                   {row.values.map((value, i) => (
                     <button
                       key={`${row.slug}-${dates[i]}`}
@@ -210,8 +247,13 @@ export function PanoramaMentionHeatmap({
                       className={cn(
                         'animate-panorama-heatmap-cell min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
                         showValues
-                          ? 'inline-flex h-[22px] items-center justify-center px-0.5'
-                          : 'h-[18px]',
+                          ? cn(
+                              'inline-flex items-center justify-center px-0.5',
+                              fillAvailableHeight ? 'h-full' : 'h-[22px]',
+                            )
+                          : fillAvailableHeight
+                            ? 'h-full'
+                            : 'h-[18px]',
                         value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default',
                       )}
                       style={{
@@ -245,7 +287,8 @@ export function PanoramaMentionHeatmap({
                       {showValues ? (
                         <span
                           className={cn(
-                            'pointer-events-none select-none text-[9px] font-semibold leading-none tabular-nums tracking-tight',
+                            'pointer-events-none select-none font-semibold leading-none tabular-nums tracking-tight',
+                            fillAvailableHeight ? 'text-[10px] min-[900px]:text-[11px]' : 'text-[9px]',
                             heatmapValueTextClass(value, scaleMax),
                           )}
                         >
@@ -260,7 +303,7 @@ export function PanoramaMentionHeatmap({
           })}
 
           {dayTicks.length > 0 ? (
-            <div className={cn('mt-1 flex h-4 gap-2', axisPadClass)}>
+            <div className={cn('mt-1 flex h-4 shrink-0 gap-2', axisPadClass)}>
               <div className="relative flex min-w-0 flex-1">
                 {dayTicks.map((tick) => (
                   <span
@@ -274,7 +317,7 @@ export function PanoramaMentionHeatmap({
               </div>
             </div>
           ) : monthTicks.length > 0 ? (
-            <div className={cn('mt-1 flex gap-2', axisPadClass)}>
+            <div className={cn('mt-1 flex shrink-0 gap-2', axisPadClass)}>
               <div className="relative flex min-w-0 flex-1">
                 {monthTicks.map((tick) => (
                   <span
