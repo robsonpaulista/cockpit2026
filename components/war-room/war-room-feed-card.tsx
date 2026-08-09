@@ -1,19 +1,8 @@
 'use client'
 
+import { AlertTriangle, BarChart3, ChevronRight, Image, MapPin, Package, ScatterChart, Send, UsersRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  IconAlertTriangleFilled,
-  IconChartBar,
-  IconChartDots3,
-  IconChevronRight,
-  IconMapPin,
-  IconPackage,
-  IconPhoto,
-  IconSend,
-  IconUsersGroup,
-  type Icon,
-} from '@tabler/icons-react'
 import {
   WarRoomMiniPager,
   warRoomPageCount,
@@ -27,15 +16,15 @@ import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 4
 
-const FEED_ICON_BY_TIPO: Record<WarRoomFeedTipo, Icon> = {
-  pesquisa: IconChartDots3,
-  visita: IconMapPin,
-  expectativa: IconChartBar,
-  conteudo: IconPhoto,
-  mobilizacao: IconUsersGroup,
-  alerta: IconAlertTriangleFilled,
-  material: IconPackage,
-  disparo: IconSend,
+const FEED_ICON_BY_TIPO: Record<WarRoomFeedTipo, LucideIcon> = {
+  pesquisa: ScatterChart,
+  visita: MapPin,
+  expectativa: BarChart3,
+  conteudo: Image,
+  mobilizacao: UsersRound,
+  alerta: AlertTriangle,
+  material: Package,
+  disparo: Send,
 }
 
 function FeedItem({
@@ -63,7 +52,7 @@ function FeedItem({
           )}
           aria-hidden
         >
-          <ItemIcon className="h-[18px] w-[18px]" stroke={1.6} />
+          <ItemIcon className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </span>
 
         <div className="wr-decisoes-fila__body min-w-0 flex-1">
@@ -137,7 +126,7 @@ export function WarRoomFeedCard({ className }: Props) {
         />
         <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
           <span>Ver todas ({total})</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       </div>
     </section>

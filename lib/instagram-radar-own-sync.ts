@@ -4,6 +4,7 @@ import { GRAPH_BASE, resolveInstagramBusinessAccount } from '@/lib/instagram-gra
 import { getInstagramEnvCredentials } from '@/lib/instagram-graph-server'
 import { getLatestInstagramPostMetrics } from '@/lib/instagram-snapshot-server'
 import { normalizeInstagramUsername } from '@/lib/instagram-radar-username'
+import { persistInstagramAvatarFromUrl } from '@/lib/instagram-avatar-storage'
 
 /** Candidato padrão do cockpit — nunca usa Apify */
 export const OWN_CANDIDATE_SLUG = 'jadyel-alencar'
@@ -85,16 +86,19 @@ async function fetchMediaFromGraphWithCredentials(
 ): Promise<{
   username: string
   posts: RadarPostRow[]
+  profilePictureUrl?: string | null
   error?: string
 } | null> {
   if (!token.trim() || !businessAccountId.trim()) return null
 
   let igId: string
   let username: string
+  let profilePictureUrl: string | null = null
   try {
     const resolved = await resolveInstagramBusinessAccount(businessAccountId, token)
     igId = resolved.instagramBusinessId
     username = resolved.ownerUsername
+    profilePictureUrl = resolved.profilePictureUrl
   } catch (err) {
     return {
       username: '',
@@ -111,6 +115,7 @@ async function fetchMediaFromGraphWithCredentials(
     return {
       username,
       posts: [],
+      profilePictureUrl,
       error: json.error?.message ?? 'Erro ao buscar mídia do Instagram',
     }
   }
@@ -132,11 +137,17 @@ async function fetchMediaFromGraphWithCredentials(
     collected_at: collectedAt,
   }))
 
-  return { username: normalizeInstagramUsername(username) ?? username, posts }
+  return {
+    username: normalizeInstagramUsername(username) ?? username,
+    posts,
+    profilePictureUrl,
+  }
 }
 
-async function fetchMediaFromGraph(limit: number): Promise<{  username: string
+async function fetchMediaFromGraph(limit: number): Promise<{
+  username: string
   posts: RadarPostRow[]
+  profilePictureUrl?: string | null
   error?: string
 } | null> {
   const creds = getInstagramEnvCredentials()
@@ -144,10 +155,12 @@ async function fetchMediaFromGraph(limit: number): Promise<{  username: string
 
   let igId: string
   let username: string
+  let profilePictureUrl: string | null = null
   try {
     const resolved = await resolveInstagramBusinessAccount(creds.businessAccountId, creds.token)
     igId = resolved.instagramBusinessId
     username = resolved.ownerUsername
+    profilePictureUrl = resolved.profilePictureUrl
   } catch (err) {
     return {
       username: '',
@@ -164,6 +177,7 @@ async function fetchMediaFromGraph(limit: number): Promise<{  username: string
     return {
       username,
       posts: [],
+      profilePictureUrl,
       error: json.error?.message ?? 'Erro ao buscar mídia do Instagram',
     }
   }
@@ -185,7 +199,11 @@ async function fetchMediaFromGraph(limit: number): Promise<{  username: string
     collected_at: collectedAt,
   }))
 
-  return { username: normalizeInstagramUsername(username) ?? username, posts }
+  return {
+    username: normalizeInstagramUsername(username) ?? username,
+    posts,
+    profilePictureUrl,
+  }
 }
 
 async function resolveOwnerUserId(supabase: SupabaseClient): Promise<string | null> {
@@ -314,6 +332,7 @@ export async function syncOwnCandidateInstagramRadar(
       ''
     let rows: RadarPostRow[] = []
     let syncError: string | undefined
+    let profilePictureUrl: string | null = null
 
     const clientToken = options?.instagramToken?.trim()
     const clientBusinessId = options?.instagramBusinessAccountId?.trim()
@@ -324,8 +343,11 @@ export async function syncOwnCandidateInstagramRadar(
       if (graph?.posts.length) {
         username = graph.username || username
         rows = graph.posts.filter((p) => withinWindow(p.posted_at, cutoff))
+        profilePictureUrl = graph.profilePictureUrl ?? null
       } else if (graph?.error) {
         syncError = graph.error
+      } else if (graph?.profilePictureUrl) {
+        profilePictureUrl = graph.profilePictureUrl
       }
     }
 
@@ -345,8 +367,11 @@ export async function syncOwnCandidateInstagramRadar(
       if (graph?.posts.length) {
         username = graph.username || username
         rows = graph.posts.filter((p) => withinWindow(p.posted_at, cutoff))
+        profilePictureUrl = graph.profilePictureUrl ?? null
       } else if (graph?.error) {
         syncError = graph.error
+      } else if (graph?.profilePictureUrl) {
+        profilePictureUrl = graph.profilePictureUrl
       }
     }
     if (username && username !== actor.instagram_username) {
@@ -354,6 +379,19 @@ export async function syncOwnCandidateInstagramRadar(
         .from('political_actors')
         .update({ instagram_username: username })
         .eq('id', actor.id)
+    }
+
+    if (profilePictureUrl) {
+      try {
+        await persistInstagramAvatarFromUrl(supabase, {
+          actorId: actor.id,
+          slug: actor.slug,
+          imageUrl: profilePictureUrl,
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        syncError = syncError ? `${syncError}; avatar: ${msg}` : `avatar: ${msg}`
+      }
     }
 
     const { inserted, updated } = rows.length

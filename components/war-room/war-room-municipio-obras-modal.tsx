@@ -1,12 +1,8 @@
 'use client'
 
+import { Building2, ExternalLink, Loader2, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
-import {
-  IconBuildingBridge,
-  IconExternalLink,
-  IconLoader2,
-  IconX,
-} from '@tabler/icons-react'
+
 import { normalizeIptMunicipio } from '@/lib/ipt'
 import {
   isObraLinhaTotalPlanilha,
@@ -190,7 +186,7 @@ export function WarRoomMunicipioObrasModal({
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconBuildingBridge className="h-4 w-4" stroke={1.75} />
+              <Building2 className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">War Room · Obras</p>
@@ -205,13 +201,13 @@ export function WarRoomMunicipioObrasModal({
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
         {loading ? (
           <p className="wr-visita-modal__state flex items-center gap-2">
-            <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
             Carregando obras…
           </p>
         ) : (
@@ -320,7 +316,7 @@ export function WarRoomMunicipioObrasModal({
                                 }
                               >
                                 <span>{seiNumero}</span>
-                                <IconExternalLink className="h-3 w-3 shrink-0" stroke={1.75} />
+                                <ExternalLink className="h-3 w-3 shrink-0" strokeWidth={1.5} />
                               </a>
                             ) : seiNumero ? (
                               <code title={seiNumero}>{seiNumero}</code>
@@ -347,7 +343,7 @@ export function WarRoomMunicipioObrasModal({
                                 title={planoLabel}
                               >
                                 <span>{planoLabel}</span>
-                                <IconExternalLink className="h-3 w-3 shrink-0" stroke={1.75} />
+                                <ExternalLink className="h-3 w-3 shrink-0" strokeWidth={1.5} />
                               </a>
                             ) : (
                               '—'

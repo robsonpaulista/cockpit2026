@@ -1,8 +1,8 @@
 'use client'
 
+import { Loader2, Save, Send, X } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import Image from 'next/image'
-import { IconDeviceFloppy, IconLoader2, IconSend, IconX } from '@tabler/icons-react'
 import {
   applyComunicarLideresTemplate,
   COMUNICAR_LIDERES_TEMPLATE_DEFAULT,
@@ -141,7 +141,7 @@ export function WarRoomComunicarLideresModal({ visita, onClose }: Props) {
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconSend className="h-4 w-4" stroke={1.75} />
+              <Send className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">Comunicar líderes</p>
@@ -156,7 +156,7 @@ export function WarRoomComunicarLideresModal({ visita, onClose }: Props) {
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
@@ -174,7 +174,7 @@ export function WarRoomComunicarLideresModal({ visita, onClose }: Props) {
 
           {loading ? (
             <p className="wr-comunicar-lideres-modal__state">
-              <IconLoader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} aria-hidden />
               Carregando mensagem…
             </p>
           ) : (
@@ -203,9 +203,9 @@ export function WarRoomComunicarLideresModal({ visita, onClose }: Props) {
                   onClick={() => void salvar()}
                 >
                   {saving ? (
-                    <IconLoader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
                   ) : (
-                    <IconDeviceFloppy className="h-3.5 w-3.5" aria-hidden />
+                    <Save className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                   )}
                   Salvar modelo
                 </button>
@@ -215,7 +215,7 @@ export function WarRoomComunicarLideresModal({ visita, onClose }: Props) {
                   disabled={loading || !mensagem.trim()}
                   title="Em breve: envio pelo webhook n8n"
                 >
-                  <IconSend className="h-3.5 w-3.5" aria-hidden />
+                  <Send className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                   Enviar
                 </button>
                 {savedHint ? (

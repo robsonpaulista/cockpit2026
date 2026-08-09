@@ -22,12 +22,13 @@ import {
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
 import { DataFreshnessIndicator } from '@/components/monitoramento/data-freshness-indicator'
+import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
-import '@/app/dashboard/shared/ipt-page-palette.css'
-import '@/app/dashboard/noticias/radar-eleitoral-clean.css'
+import '@/app/dashboard/war-room/war-room-fonts.css'
+import '@/app/dashboard/war-room/war-room-clean.css'
 
 export type MonitoramentoTab =
   | 'geral'
@@ -90,11 +91,11 @@ export function MonitoramentoShell({
     activeTab === MONITORAMENTO_TAB_LIDERES ? 'Radar eleitoral · Eng. líderes' : 'Radar eleitoral'
 
   useEffect(() => {
-    document.body.setAttribute('data-ipt-palette', '')
-    document.body.setAttribute('data-radar-clean', '')
+    document.body.setAttribute('data-war-room-clean', '')
+    document.body.setAttribute('data-wr-copiloto', '')
     return () => {
-      document.body.removeAttribute('data-ipt-palette')
-      document.body.removeAttribute('data-radar-clean')
+      document.body.removeAttribute('data-war-room-clean')
+      document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
 
@@ -117,6 +118,7 @@ export function MonitoramentoShell({
 
   return (
     <DashboardPageShell>
+      <WarRoomFontBootstrap />
       <DashboardPageChrome>
         {topbarVisible ? (
           description ? <DashboardPageMetaStrip>{description}</DashboardPageMetaStrip> : null
@@ -130,7 +132,11 @@ export function MonitoramentoShell({
           actions={tabActions}
         />
       </DashboardPageChrome>
-      <DashboardPageContent className={typographyContentRootClass}>{children}</DashboardPageContent>
+      <DashboardPageContent
+        className={cn(typographyContentRootClass, 'wr-page-canvas--scroll')}
+      >
+        {children}
+      </DashboardPageContent>
     </DashboardPageShell>
   )
 }

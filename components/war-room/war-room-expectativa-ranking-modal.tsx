@@ -1,25 +1,9 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { AlertTriangle, ArrowDown, ArrowUp, BarChart3, Calendar, ChevronsUpDown, Download, FileSpreadsheet, FileText, Loader2, Minus, Search, Send, Sheet, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
+import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  IconAlertTriangle,
-  IconCalendarEvent,
-  IconChartBar,
-  IconDownload,
-  IconFileSpreadsheet,
-  IconFileTypeCsv,
-  IconFileTypePdf,
-  IconLoader2,
-  IconMinus,
-  IconSearch,
-  IconSelector,
-  IconTrendingDown,
-  IconTrendingUp,
-  IconTrophy,
-  IconSend,
-  IconX,
-} from '@tabler/icons-react'
+import { useAnimatedCounter } from '@/hooks/use-animated-counter'
 import type { IptMunicipio } from '@/lib/ipt'
 import { normalizeIptMunicipio } from '@/lib/ipt'
 import { getDemografiaMunicipio } from '@/lib/demografia-municipio'
@@ -202,13 +186,19 @@ function formatPesoPct(value: number): string {
 function PesoProgressBar({
   peso,
   maxPeso,
+  resetKey,
 }: {
   peso: number
   maxPeso: number
+  resetKey: string | number
 }) {
   const safeMax = maxPeso > 0 ? maxPeso : 1
   const fillPct = Math.min(100, Math.max(0, (peso / safeMax) * 100))
-  const label = formatPesoPct(peso)
+  const animatedPeso = useAnimatedCounter(peso, { durationMs: 1200, resetKey })
+  const label = formatPesoPct(animatedPeso)
+  const segments = 40
+  const filled = Math.round((fillPct / 100) * segments)
+
   return (
     <div
       className="wr-expectativa-ranking-modal__peso"
@@ -216,17 +206,78 @@ function PesoProgressBar({
       aria-valuenow={Number(peso.toFixed(1))}
       aria-valuemin={0}
       aria-valuemax={Number(safeMax.toFixed(1))}
-      aria-label={`Peso ${label}`}
-      title={label}
+      aria-label={`Peso ${formatPesoPct(peso)}`}
+      title={formatPesoPct(peso)}
     >
-      <div className="wr-expectativa-ranking-modal__peso-track">
-        <span
-          className="wr-expectativa-ranking-modal__peso-fill"
-          style={{ width: `${fillPct}%` }}
-        />
+      <div className="wr-expectativa-ranking-modal__peso-comb" aria-hidden>
+        {Array.from({ length: segments }, (_, i) => (
+          <span
+            key={i}
+            className={
+              i < filled
+                ? 'wr-expectativa-ranking-modal__peso-tick wr-expectativa-ranking-modal__peso-tick--on'
+                : 'wr-expectativa-ranking-modal__peso-tick'
+            }
+            style={{ ['--tick-i' as string]: i } as CSSProperties}
+          />
+        ))}
       </div>
-      <span className="wr-expectativa-ranking-modal__peso-label">{label}</span>
+      <span className="wr-expectativa-ranking-modal__peso-label wr-expectativa-ranking-modal__enter-num">
+        {label}
+      </span>
     </div>
+  )
+}
+
+function EnterInt({
+  value,
+  resetKey,
+  empty = '—',
+}: {
+  value: number | null | undefined
+  resetKey: string | number
+  empty?: string
+}) {
+  const enabled = value != null && Number.isFinite(value)
+  const animated = useAnimatedCounter(enabled ? (value as number) : 0, {
+    durationMs: 1100,
+    enabled,
+    resetKey,
+  })
+  return (
+    <span className="wr-expectativa-ranking-modal__enter-num tabular-nums">
+      {enabled ? formatInt(animated) : empty}
+    </span>
+  )
+}
+
+function EnterWarRoomNumber({
+  value,
+  resetKey,
+}: {
+  value: number
+  resetKey: string | number
+}) {
+  const animated = useAnimatedCounter(value, { durationMs: 1100, resetKey })
+  return (
+    <span className="wr-expectativa-ranking-modal__enter-num tabular-nums">
+      {formatWarRoomNumber(animated)}
+    </span>
+  )
+}
+
+function EnterPct({
+  value,
+  resetKey,
+}: {
+  value: number
+  resetKey: string | number
+}) {
+  const animated = useAnimatedCounter(value, { durationMs: 1100, resetKey })
+  return (
+    <span className="wr-expectativa-ranking-modal__enter-num tabular-nums">
+      {formatPctPesquisa(animated)}
+    </span>
   )
 }
 
@@ -235,12 +286,19 @@ function MetaVsProjValue({
   diff,
   meta,
   projVotos,
+  resetKey,
 }: {
   diff: number
   meta: number
   projVotos: number | null
+  resetKey: string | number
 }) {
   const under = diff < 0
+  const animatedAbs = useAnimatedCounter(Math.abs(diff), { durationMs: 1100, resetKey })
+  const signedLive =
+    diff === 0
+      ? formatWarRoomNumber(0)
+      : `${diff > 0 ? '+' : '-'}${formatWarRoomNumber(animatedAbs)}`
   const signed = `${diff > 0 ? '+' : ''}${formatWarRoomNumber(diff)}`
   const title = [
     projVotos != null ? `Proj. ${formatInt(projVotos)}` : null,
@@ -253,14 +311,31 @@ function MetaVsProjValue({
     <span
       className={cn(
         'wr-expectativa-ranking-modal__meta-proj',
+        'wr-expectativa-ranking-modal__enter-num',
         'tabular-nums',
         under
           ? 'wr-expectativa-ranking-modal__meta-proj--under'
-          : 'wr-expectativa-ranking-modal__meta-proj--ok',
+          : diff > 0
+            ? 'wr-expectativa-ranking-modal__meta-proj--ok'
+            : 'wr-expectativa-ranking-modal__meta-proj--flat',
       )}
       title={title}
     >
-      {signed}
+      <span className="wr-expectativa-ranking-modal__meta-proj-value">{signedLive}</span>
+      {diff > 0 ? (
+        <ArrowUp
+          className="wr-expectativa-ranking-modal__meta-proj-icon wr-expectativa-ranking-modal__meta-proj-icon--up"
+          strokeWidth={1.5}
+          aria-label="Acima da meta"
+        />
+      ) : null}
+      {diff < 0 ? (
+        <ArrowDown
+          className="wr-expectativa-ranking-modal__meta-proj-icon wr-expectativa-ranking-modal__meta-proj-icon--down"
+          strokeWidth={1.5}
+          aria-label="Abaixo da meta"
+        />
+      ) : null}
     </span>
   )
 }
@@ -318,12 +393,12 @@ function PesquisaPosicaoMark({
         className="wr-expectativa-ranking-modal__pesquisa-pos-podium"
         aria-label={`${n}º lugar`}
       >
-        <IconTrophy
+        <Trophy
           className={cn(
             'wr-expectativa-ranking-modal__pesquisa-trophy',
             lugarClass,
           )}
-          stroke={1.5}
+          strokeWidth={1.5}
           aria-hidden
         />
         <span className="wr-expectativa-ranking-modal__pesquisa-pos-num">{n}º</span>
@@ -341,10 +416,10 @@ function PesquisaPosicaoMark({
 }
 
 function formatDiasDesdeVisita(dias: number | null): string {
-  if (dias == null || !Number.isFinite(dias) || dias < 0) return 'sem visita'
-  if (dias === 0) return 'sem visita há 0 dias'
-  if (dias === 1) return 'sem visita há 1 dia'
-  return `sem visita há ${dias.toLocaleString('pt-BR')} dias`
+  if (dias == null || !Number.isFinite(dias) || dias < 0) return '—'
+  if (dias === 0) return 'há 0 dias'
+  if (dias === 1) return 'há 1 dia'
+  return `há ${dias.toLocaleString('pt-BR')} dias`
 }
 
 function normalizarBusca(value: string): string {
@@ -794,6 +869,12 @@ export function WarRoomExpectativaRankingModal({
     return max
   }, [filtradas])
 
+  const enterAnimKey = useMemo(
+    () =>
+      `${sortCol}:${sortAsc ? 'a' : 'd'}:${filtradas.length}:${filtradas[0]?.municipio ?? ''}:${maxPesoFiltrado.toFixed(2)}`,
+    [filtradas, maxPesoFiltrado, sortAsc, sortCol],
+  )
+
   const alternarSort = (column: SortCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, [
       'cidade',
@@ -925,7 +1006,7 @@ export function WarRoomExpectativaRankingModal({
           <header className="wr-visita-modal__head">
             <div className="wr-visita-modal__head-main min-w-0">
               <span className="wr-visita-modal__icon" aria-hidden>
-                <IconChartBar className="h-4 w-4" stroke={1.75} />
+                <BarChart3 className="h-4 w-4" strokeWidth={1.5} />
               </span>
               <div className="min-w-0">
                 <p className="wr-visita-modal__eyebrow">War Room · Expectativa</p>
@@ -940,7 +1021,7 @@ export function WarRoomExpectativaRankingModal({
               aria-label="Fechar"
               onClick={onClose}
             >
-              <IconX className="h-4 w-4" stroke={1.75} />
+              <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </header>
         ) : (
@@ -960,7 +1041,7 @@ export function WarRoomExpectativaRankingModal({
           <div className="wr-expectativa-ranking-modal__toolbar-intro">
             <span className="wr-expectativa-ranking-modal__toolbar-title">Cidades</span>
             <label className="wr-expectativa-ranking-modal__search">
-              <IconSearch className="h-3.5 w-3.5 shrink-0" stroke={1.75} aria-hidden />
+              <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
               <input
                 type="search"
                 value={busca}
@@ -988,9 +1069,9 @@ export function WarRoomExpectativaRankingModal({
                     </option>
                   ))}
                 </select>
-                <IconSelector
+                <ChevronsUpDown
                   className="wr-expectativa-ranking-modal__filter-select-icon"
-                  stroke={1.75}
+                  strokeWidth={1.5}
                   aria-hidden
                 />
               </span>
@@ -1011,9 +1092,9 @@ export function WarRoomExpectativaRankingModal({
                     </option>
                   ))}
                 </select>
-                <IconSelector
+                <ChevronsUpDown
                   className="wr-expectativa-ranking-modal__filter-select-icon"
-                  stroke={1.75}
+                  strokeWidth={1.5}
                   aria-hidden
                 />
               </span>
@@ -1034,9 +1115,9 @@ export function WarRoomExpectativaRankingModal({
                     </option>
                   ))}
                 </select>
-                <IconSelector
+                <ChevronsUpDown
                   className="wr-expectativa-ranking-modal__filter-select-icon"
-                  stroke={1.75}
+                  strokeWidth={1.5}
                   aria-hidden
                 />
               </span>
@@ -1057,9 +1138,9 @@ export function WarRoomExpectativaRankingModal({
                     </option>
                   ))}
                 </select>
-                <IconSelector
+                <ChevronsUpDown
                   className="wr-expectativa-ranking-modal__filter-select-icon"
-                  stroke={1.75}
+                  strokeWidth={1.5}
                   aria-hidden
                 />
               </span>
@@ -1080,9 +1161,9 @@ export function WarRoomExpectativaRankingModal({
                     </option>
                   ))}
                 </select>
-                <IconSelector
+                <ChevronsUpDown
                   className="wr-expectativa-ranking-modal__filter-select-icon"
-                  stroke={1.75}
+                  strokeWidth={1.5}
                   aria-hidden
                 />
               </span>
@@ -1093,7 +1174,7 @@ export function WarRoomExpectativaRankingModal({
             <span className="wr-expectativa-ranking-modal__count tabular-nums">
               {loadingEmendas ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                   Emendas…
                 </span>
               ) : (
@@ -1102,7 +1183,7 @@ export function WarRoomExpectativaRankingModal({
             </span>
             <div className="wr-expectativa-ranking-modal__export" role="group" aria-label="Exportar">
               <span className="wr-expectativa-ranking-modal__export-label">
-                <IconDownload className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                <Download className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                 Exportar
               </span>
               <button
@@ -1112,9 +1193,9 @@ export function WarRoomExpectativaRankingModal({
                 onClick={() => exportar('csv')}
               >
                 {exportBusy === 'csv' ? (
-                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <IconFileTypeCsv className="h-3.5 w-3.5" stroke={1.75} />
+                  <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.5} />
                 )}
                 CSV
               </button>
@@ -1125,9 +1206,9 @@ export function WarRoomExpectativaRankingModal({
                 onClick={() => exportar('xlsx')}
               >
                 {exportBusy === 'xlsx' ? (
-                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <IconFileSpreadsheet className="h-3.5 w-3.5" stroke={1.75} />
+                  <Sheet className="h-3.5 w-3.5" strokeWidth={1.5} />
                 )}
                 XLS
               </button>
@@ -1138,9 +1219,9 @@ export function WarRoomExpectativaRankingModal({
                 onClick={() => exportar('pdf')}
               >
                 {exportBusy === 'pdf' ? (
-                  <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.5} />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <IconFileTypePdf className="h-3.5 w-3.5" stroke={1.75} />
+                  <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />
                 )}
                 PDF
               </button>
@@ -1256,7 +1337,7 @@ export function WarRoomExpectativaRankingModal({
                 <th className="wr-expectativa-ranking-modal__center">Obras</th>
                 <th className="wr-expectativa-ranking-modal__num wr-expectativa-ranking-modal__group-edge">
                   <TerritorioSortableHeaderButton
-                    label="Visitas"
+                    label="Últ.visita"
                     active={sortCol === 'diasVisita'}
                     asc={sortAsc}
                     onClick={() => alternarSort('diasVisita')}
@@ -1283,8 +1364,16 @@ export function WarRoomExpectativaRankingModal({
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((row) => (
-                <tr key={row.municipio}>
+              {filtradas.map((row, rowIndex) => (
+                <tr
+                  key={row.municipio}
+                  className="wr-expectativa-ranking-modal__data-row"
+                  style={
+                    {
+                      ['--wr-row-stagger' as string]: `${Math.min(rowIndex, 28) * 40}ms`,
+                    } as CSSProperties
+                  }
+                >
                   <td className="wr-expectativa-ranking-modal__cidade">
                     <span className="wr-expectativa-ranking-modal__cidade-inner">
                       <span className="wr-expectativa-ranking-modal__cidade-nome">
@@ -1303,9 +1392,9 @@ export function WarRoomExpectativaRankingModal({
                               setAgendaModalMunicipio(row.municipio)
                             }}
                           >
-                            <IconCalendarEvent
+                            <Calendar
                               className="h-3.5 w-3.5"
-                              stroke={1.75}
+                              strokeWidth={1.5}
                               aria-hidden
                             />
                           </button>
@@ -1314,10 +1403,14 @@ export function WarRoomExpectativaRankingModal({
                     </span>
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatWarRoomNumber(row.expectativa)}
+                    <EnterWarRoomNumber value={row.expectativa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__peso-cell">
-                    <PesoProgressBar peso={row.peso} maxPeso={maxPesoFiltrado} />
+                    <PesoProgressBar
+                      peso={row.peso}
+                      maxPeso={maxPesoFiltrado}
+                      resetKey={enterAnimKey}
+                    />
                   </td>
                   <td
                     className="wr-expectativa-ranking-modal__num tabular-nums"
@@ -1327,7 +1420,7 @@ export function WarRoomExpectativaRankingModal({
                         : undefined
                     }
                   >
-                    {formatInt(row.eleitores)}
+                    <EnterInt value={row.eleitores} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__col-pesquisa wr-expectativa-ranking-modal__group-edge">
                     {row.pesquisa ? (
@@ -1395,28 +1488,32 @@ export function WarRoomExpectativaRankingModal({
                         >
                           <span className="wr-expectativa-ranking-modal__pesquisa-pct-group">
                             {row.pesquisaTendencia === 'alta' ? (
-                              <IconTrendingUp
+                              <TrendingUp
                                 className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--alta"
-                                stroke={2}
+                                strokeWidth={1.5}
                                 aria-label="Crescimento"
                               />
                             ) : null}
                             {row.pesquisaTendencia === 'baixa' ? (
-                              <IconTrendingDown
+                              <TrendingDown
                                 className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--baixa"
-                                stroke={2}
+                                strokeWidth={1.5}
                                 aria-label="Queda"
                               />
                             ) : null}
                             {row.pesquisaTendencia === 'estavel' ? (
-                              <IconMinus
+                              <Minus
                                 className="wr-expectativa-ranking-modal__trend wr-expectativa-ranking-modal__trend--estavel"
-                                stroke={2}
+                                strokeWidth={1.5}
                                 aria-label="Estabilidade"
                               />
                             ) : null}
                             <span className="wr-expectativa-ranking-modal__pesquisa-pct">
-                              {formatPctPesquisa(row.pesquisaPctUltima)}
+                              {row.pesquisaPctUltima != null ? (
+                                <EnterPct value={row.pesquisaPctUltima} resetKey={enterAnimKey} />
+                              ) : (
+                                formatPctPesquisa(row.pesquisaPctUltima)
+                              )}
                             </span>
                           </span>
                         </span>
@@ -1453,7 +1550,9 @@ export function WarRoomExpectativaRankingModal({
                       row.projPesquisaVotos == null) ||
                     (loadingPesquisas && row.pesquisa == null)
                       ? '…'
-                      : formatInt(row.projPesquisaVotos)}
+                      : (
+                        <EnterInt value={row.projPesquisaVotos} resetKey={enterAnimKey} />
+                      )}
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {row.metaVsProjDiff != null ? (
@@ -1461,6 +1560,7 @@ export function WarRoomExpectativaRankingModal({
                         diff={row.metaVsProjDiff}
                         meta={row.expectativa}
                         projVotos={row.projPesquisaVotos}
+                        resetKey={enterAnimKey}
                       />
                     ) : (
                       <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
@@ -1536,9 +1636,9 @@ export function WarRoomExpectativaRankingModal({
                           )}
                           aria-label={`Precisa visitar ${row.municipio}: ${tituloVisitaAlerta(row.visitaAlertaNivel)}`}
                         >
-                          <IconAlertTriangle
+                          <AlertTriangle
                             className="h-3.5 w-3.5"
-                            stroke={1.75}
+                            strokeWidth={1.5}
                             aria-hidden
                           />
                         </span>
@@ -1566,7 +1666,7 @@ export function WarRoomExpectativaRankingModal({
                           })
                         }}
                       >
-                        <IconSend className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                        <Send className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       </button>
                     ) : (
                       <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
@@ -1584,10 +1684,12 @@ export function WarRoomExpectativaRankingModal({
                     Total ({filtradas.length.toLocaleString('pt-BR')})
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatWarRoomNumber(totais.expectativa)}
+                    <EnterWarRoomNumber value={totais.expectativa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__col-peso tabular-nums">
-                    {formatPesoPct(totais.peso)}
+                    <span className="wr-expectativa-ranking-modal__enter-num">
+                      {formatPesoPct(totais.peso)}
+                    </span>
                   </td>
                   <td
                     className="wr-expectativa-ranking-modal__num tabular-nums"
@@ -1597,16 +1699,16 @@ export function WarRoomExpectativaRankingModal({
                         : undefined
                     }
                   >
-                    {formatInt(totais.eleitores)}
+                    <EnterInt value={totais.eleitores} resetKey={enterAnimKey} />
                   </td>
                   <td
                     className="wr-expectativa-ranking-modal__center tabular-nums wr-expectativa-ranking-modal__group-edge"
                     title="Com pesquisa"
                   >
-                    {totais.comPesquisa.toLocaleString('pt-BR')}
+                    <EnterInt value={totais.comPesquisa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    {formatWarRoomNumber(totais.projPesquisa)}
+                    <EnterWarRoomNumber value={totais.projPesquisa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
                     {totais.metaVsProjDiff != null ? (
@@ -1614,6 +1716,7 @@ export function WarRoomExpectativaRankingModal({
                         diff={totais.metaVsProjDiff}
                         meta={totais.expectativa}
                         projVotos={totais.projPesquisa}
+                        resetKey={enterAnimKey}
                       />
                     ) : (
                       <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
@@ -1625,19 +1728,19 @@ export function WarRoomExpectativaRankingModal({
                     className="wr-expectativa-ranking-modal__center tabular-nums wr-expectativa-ranking-modal__group-edge"
                     title="Com emendas"
                   >
-                    {totais.comEmendas.toLocaleString('pt-BR')}
+                    <EnterInt value={totais.comEmendas} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__center tabular-nums" title="Com obras">
-                    {totais.comObras.toLocaleString('pt-BR')}
+                    <EnterInt value={totais.comObras} resetKey={enterAnimKey} />
                   </td>
                   <td
                     className="wr-expectativa-ranking-modal__num tabular-nums wr-expectativa-ranking-modal__group-edge"
                     title="Com visita registrada"
                   >
-                    {totais.comUltimaVisita.toLocaleString('pt-BR')}
+                    <EnterInt value={totais.comUltimaVisita} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums" title="Com próxima visita">
-                    {totais.comProxVisita.toLocaleString('pt-BR')}
+                    <EnterInt value={totais.comProxVisita} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__col-comunicar">
                     —

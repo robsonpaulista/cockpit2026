@@ -3,24 +3,34 @@
  * Coleta Instagram (Apify) → Supabase — apenas concorrentes.
  * Candidato próprio (Jadyel / own_candidate) usa Graph API em lib/instagram-radar-own-sync.ts
  *
+ * Fluxo Apify:
+ *   1) resultsType "details" → foto de perfil → remove fundo → PNG #F3F4F4 → Storage `instagram-avatars`
+ *   2) resultsType "posts" → posts públicos
+ *
  * Uso:
  *   node scripts/collect-instagram-radar.mjs
  *   node scripts/collect-instagram-radar.mjs --slug jadyel-alencar
+ *   npm run instagram:avatars:reprocess   # só reprocessa avatares já salvos
  *
  * Env:
  *   APIFY_TOKEN
+ *   APIFY_TOKEN2              (opcional — divide a lista de concorrentes ao meio)
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   INSTAGRAM_RADAR_MAX_ACTORS (default 10)
  *   INSTAGRAM_RADAR_POSTS_LIMIT (default 12)
  *   INSTAGRAM_RADAR_MAX_CHARGE_USD (default 0.25)
  *   INSTAGRAM_RADAR_POSTS_WINDOW (default "30 days")
+ *   INSTAGRAM_AVATAR_SKIP_BG=1  (pula remoção de fundo IA; só redimensiona)
+ *
+ * Schema: database/add-political-actors-instagram-avatar.sql
  */
 
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
+import { persistInstagramAvatarFromUrl } from './lib/instagram-avatar-storage.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -131,18 +141,18 @@ function parseApifyItem(item) {
   }
 }
 
-async function startApifyRun(token, directUrls) {
+async function startApifyRun(token, directUrls, { resultsType, resultsLimit, onlyPostsNewerThan, maxChargeUsd }) {
   const input = {
     directUrls,
-    resultsType: 'posts',
-    resultsLimit: POSTS_LIMIT,
-    onlyPostsNewerThan: POSTS_WINDOW,
+    resultsType,
+    resultsLimit,
   }
+  if (onlyPostsNewerThan) input.onlyPostsNewerThan = onlyPostsNewerThan
 
   const qs = new URLSearchParams({
     token,
     waitForFinish: '600',
-    maxTotalChargeUsd: String(MAX_CHARGE_USD),
+    maxTotalChargeUsd: String(maxChargeUsd),
   })
 
   const res = await fetch(`https://api.apify.com/v2/acts/${APIFY_ACTOR}/runs?${qs}`, {
@@ -153,15 +163,76 @@ async function startApifyRun(token, directUrls) {
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Coleta de concorrentes falhou (${res.status}): ${err.slice(0, 400)}`)
+    throw new Error(`Coleta Apify (${resultsType}) falhou (${res.status}): ${err.slice(0, 400)}`)
   }
 
   const run = await res.json()
   const data = run.data ?? run
   if (data.status === 'FAILED' || data.status === 'ABORTED') {
-    throw new Error(`Coleta de concorrentes ${data.status}: ${data.statusMessage ?? 'unknown'}`)
+    throw new Error(`Coleta Apify (${resultsType}) ${data.status}: ${data.statusMessage ?? 'unknown'}`)
   }
   return data
+}
+
+function parseProfileDetail(item) {
+  const username = normalizeUsername(
+    item.username || item.ownerUsername || (item.inputUrl ? item.inputUrl.split('instagram.com/')[1] : null),
+  )
+  const pic = item.profilePicUrlHD || item.profilePicUrl || null
+  if (!username || !pic) return null
+  return { username, profilePicUrl: String(pic) }
+}
+
+async function syncAvatarsFromDetails(supabase, token, capped, usernameToActor, totals) {
+  if (capped.length === 0) return
+
+  const directUrls = capped.map((a) => `https://www.instagram.com/${a.username}/`)
+  const detailsCharge = Math.min(0.08, MAX_CHARGE_USD)
+
+  logProgress(`Avatares: ${capped.length} perfis · details · teto US$ ${detailsCharge}`)
+
+  try {
+    const run = await startApifyRun(token, directUrls, {
+      resultsType: 'details',
+      resultsLimit: 1,
+      maxChargeUsd: detailsCharge,
+    })
+    const datasetId = run.defaultDatasetId
+    const items = await fetchDatasetItems(token, datasetId)
+    totals.estimatedCostUsd =
+      Math.round((totals.estimatedCostUsd + (items.length / 1000) * POST_USD_PER_1000) * 10000) / 10000
+    if (run.id) {
+      totals.apifyDetailsRunId = totals.apifyDetailsRunId
+        ? `${totals.apifyDetailsRunId},${run.id}`
+        : run.id
+    }
+
+    let saved = 0
+    for (const item of items) {
+      const parsed = parseProfileDetail(item)
+      if (!parsed) continue
+      const actor = usernameToActor.get(parsed.username)
+      if (!actor) continue
+      try {
+        await persistInstagramAvatarFromUrl(supabase, {
+          actorId: actor.id,
+          slug: actor.slug,
+          imageUrl: parsed.profilePicUrl,
+        })
+        saved += 1
+      } catch (err) {
+        totals.errors.push(
+          `${actor.slug}: avatar — ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }
+    totals.avatarsUpdated = (totals.avatarsUpdated ?? 0) + saved
+    logProgress(`Avatares salvos: ${saved}/${capped.length}`)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    totals.errors.push(`Avatares (details): ${msg}`)
+    logProgress(`Avatares falhou (posts seguem): ${msg}`)
+  }
 }
 
 async function fetchDatasetItems(token, datasetId) {
@@ -187,10 +258,110 @@ async function fetchDatasetItems(token, datasetId) {
   return items
 }
 
+function resolveApifyTokens() {
+  const token1 = process.env.APIFY_TOKEN?.trim() || null
+  const token2 = process.env.APIFY_TOKEN2?.trim() || null
+  return [token1, token2].filter(Boolean)
+}
+
+/** Divide atores ao meio quando há 2+ tokens (primeiro lote fica com o 1º token). */
+function splitActorsAcrossTokens(actors, tokens) {
+  if (tokens.length === 0) return []
+  if (tokens.length === 1 || actors.length <= 1) {
+    return [{ token: tokens[0], actors, label: 'token1' }]
+  }
+  const mid = Math.ceil(actors.length / 2)
+  return [
+    { token: tokens[0], actors: actors.slice(0, mid), label: 'token1' },
+    { token: tokens[1], actors: actors.slice(mid), label: 'token2' },
+  ].filter((shard) => shard.actors.length > 0)
+}
+
+async function collectPostsForShard(supabase, token, shardActors, usernameToActor, totals, byActorSlug, label) {
+  if (shardActors.length === 0) return
+
+  const directUrls = shardActors.map((a) => `https://www.instagram.com/${a.username}/`)
+  const expectedPosts = shardActors.length * POSTS_LIMIT
+  const estimatedCost = (expectedPosts / 1000) * POST_USD_PER_1000
+
+  logProgress(
+    `[${label}] ${shardActors.length} perfis × ${POSTS_LIMIT} posts · teto US$ ${MAX_CHARGE_USD} · estimativa ~US$ ${estimatedCost.toFixed(3)}`,
+  )
+
+  const run = await startApifyRun(token, directUrls, {
+    resultsType: 'posts',
+    resultsLimit: POSTS_LIMIT,
+    onlyPostsNewerThan: POSTS_WINDOW,
+    maxChargeUsd: MAX_CHARGE_USD,
+  })
+  const runId = run.id
+  const datasetId = run.defaultDatasetId
+  totals.apifyRunId = totals.apifyRunId ? `${totals.apifyRunId},${runId}` : runId
+  logProgress(`[${label}] Apify run ${runId} concluído · dataset ${datasetId}`)
+
+  const rawItems = await fetchDatasetItems(token, datasetId)
+  logProgress(`[${label}] ${rawItems.length} itens no dataset Apify`)
+  totals.estimatedCostUsd =
+    Math.round((totals.estimatedCostUsd + (rawItems.length / 1000) * POST_USD_PER_1000) * 10000) / 10000
+
+  for (const item of rawItems) {
+    const parsed = parseApifyItem(item)
+    if (!parsed) continue
+
+    let actor = parsed.instagram_username ? usernameToActor.get(parsed.instagram_username) : null
+    if (!actor) {
+      const inputUrl = item.inputUrl || item.inputURL
+      if (inputUrl) {
+        const fromUrl = normalizeUsername(inputUrl.split('instagram.com/')[1])
+        if (fromUrl) actor = usernameToActor.get(fromUrl)
+      }
+    }
+    if (!actor) continue
+
+    const row = {
+      politico_id: actor.id,
+      instagram_username: actor.username,
+      post_id: parsed.post_id,
+      posted_at: parsed.posted_at,
+      post_type: parsed.post_type,
+      caption: parsed.caption,
+      likes_count: parsed.likes_count,
+      comments_count: parsed.comments_count,
+      post_url: parsed.post_url,
+      thumbnail_url: parsed.thumbnail_url,
+      collected_at: new Date().toISOString(),
+    }
+
+    const { data: existing } = await supabase
+      .from('instagram_radar_posts')
+      .select('id')
+      .eq('politico_id', actor.id)
+      .eq('post_id', parsed.post_id)
+      .maybeSingle()
+
+    if (existing?.id) {
+      const { error: upErr } = await supabase.from('instagram_radar_posts').update(row).eq('id', existing.id)
+      if (upErr) totals.errors.push(`${actor.slug}: ${upErr.message}`)
+      else totals.postsUpdated += 1
+    } else {
+      const { error: insErr } = await supabase.from('instagram_radar_posts').insert(row)
+      if (insErr) totals.errors.push(`${actor.slug}: ${insErr.message}`)
+      else totals.postsInserted += 1
+    }
+
+    totals.postsFound += 1
+    const acc = byActorSlug.get(actor.slug) ?? { found: 0, inserted: 0, updated: 0 }
+    acc.found += 1
+    if (existing?.id) acc.updated += 1
+    else acc.inserted += 1
+    byActorSlug.set(actor.slug, acc)
+  }
+}
+
 async function main() {
-  const token = process.env.APIFY_TOKEN?.trim()
-  if (!token) {
-    throw new Error('Coleta de concorrentes não configurada no servidor.')
+  const tokens = resolveApifyTokens()
+  if (tokens.length === 0) {
+    throw new Error('Coleta de concorrentes não configurada (APIFY_TOKEN ou APIFY_TOKEN2).')
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -253,90 +424,44 @@ async function main() {
     logProgress(`Limitando a ${MAX_ACTORS} perfis (INSTAGRAM_RADAR_MAX_ACTORS). ${prepared.length - MAX_ACTORS} ignorados.`)
   }
 
-  const directUrls = capped.map((a) => `https://www.instagram.com/${a.username}/`)
-  const expectedPosts = capped.length * POSTS_LIMIT
-  const estimatedCost = (expectedPosts / 1000) * POST_USD_PER_1000
+  const shards = splitActorsAcrossTokens(capped, tokens)
+  const usernameToActor = new Map(capped.map((a) => [a.username, a]))
 
   logProgress(
-    `${capped.length} perfis × ${POSTS_LIMIT} posts · teto US$ ${MAX_CHARGE_USD} · estimativa ~US$ ${estimatedCost.toFixed(3)}`
+    tokens.length > 1
+      ? `Split Apify: ${shards.map((s) => `${s.label}=${s.actors.length}`).join(' · ')} (APIFY_TOKEN + APIFY_TOKEN2)`
+      : `1 token Apify · ${capped.length} perfis`,
   )
 
-  const run = await startApifyRun(token, directUrls)
-  const runId = run.id
-  const datasetId = run.defaultDatasetId
-  logProgress(`Apify run ${runId} concluído · dataset ${datasetId}`)
-
-  const rawItems = await fetchDatasetItems(token, datasetId)
-  logProgress(`${rawItems.length} itens no dataset Apify`)
-
-  const usernameToActor = new Map(capped.map((a) => [a.username, a]))
-  const results = []
   const totals = {
     actorsProcessed: capped.length,
     postsFound: 0,
     postsInserted: 0,
     postsUpdated: 0,
-    estimatedCostUsd: Math.round(((rawItems.length / 1000) * POST_USD_PER_1000) * 10000) / 10000,
-    apifyRunId: runId,
+    avatarsUpdated: 0,
+    estimatedCostUsd: 0,
+    apifyRunId: null,
+    apifyDetailsRunId: null,
     ownCandidateSynced: 0,
     errors: [],
   }
 
   const byActorSlug = new Map()
 
-  for (const item of rawItems) {
-    const parsed = parseApifyItem(item)
-    if (!parsed) continue
-
-    let actor = parsed.instagram_username ? usernameToActor.get(parsed.instagram_username) : null
-    if (!actor) {
-      const inputUrl = item.inputUrl || item.inputURL
-      if (inputUrl) {
-        const fromUrl = normalizeUsername(inputUrl.split('instagram.com/')[1])
-        if (fromUrl) actor = usernameToActor.get(fromUrl)
-      }
-    }
-    if (!actor) continue
-
-    const row = {
-      politico_id: actor.id,
-      instagram_username: actor.username,
-      post_id: parsed.post_id,
-      posted_at: parsed.posted_at,
-      post_type: parsed.post_type,
-      caption: parsed.caption,
-      likes_count: parsed.likes_count,
-      comments_count: parsed.comments_count,
-      post_url: parsed.post_url,
-      thumbnail_url: parsed.thumbnail_url,
-      collected_at: new Date().toISOString(),
-    }
-
-    const { data: existing } = await supabase
-      .from('instagram_radar_posts')
-      .select('id')
-      .eq('politico_id', actor.id)
-      .eq('post_id', parsed.post_id)
-      .maybeSingle()
-
-    if (existing?.id) {
-      const { error: upErr } = await supabase.from('instagram_radar_posts').update(row).eq('id', existing.id)
-      if (upErr) totals.errors.push(`${actor.slug}: ${upErr.message}`)
-      else totals.postsUpdated += 1
-    } else {
-      const { error: insErr } = await supabase.from('instagram_radar_posts').insert(row)
-      if (insErr) totals.errors.push(`${actor.slug}: ${insErr.message}`)
-      else totals.postsInserted += 1
-    }
-
-    totals.postsFound += 1
-    const acc = byActorSlug.get(actor.slug) ?? { found: 0, inserted: 0, updated: 0 }
-    acc.found += 1
-    if (existing?.id) acc.updated += 1
-    else acc.inserted += 1
-    byActorSlug.set(actor.slug, acc)
+  for (const shard of shards) {
+    await syncAvatarsFromDetails(supabase, shard.token, shard.actors, usernameToActor, totals)
+    await collectPostsForShard(
+      supabase,
+      shard.token,
+      shard.actors,
+      usernameToActor,
+      totals,
+      byActorSlug,
+      shard.label,
+    )
   }
 
+  const results = []
   for (const a of capped) {
     const acc = byActorSlug.get(a.slug) ?? { found: 0, inserted: 0, updated: 0 }
     results.push({

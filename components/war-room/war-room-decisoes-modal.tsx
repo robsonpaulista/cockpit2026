@@ -1,13 +1,9 @@
 'use client'
 
+import { ChevronDown, ChevronRight, ListTree, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconListDetails,
-  IconX,
-} from '@tabler/icons-react'
+
 import type { WarRoomDecisao } from '@/lib/war-room/decisoes'
 import type { WarRoomDecisaoSecao } from '@/lib/war-room/decisoes-secoes'
 import { cn } from '@/lib/utils'
@@ -98,7 +94,7 @@ export function WarRoomDecisoesModal({ secoes, onClose, onActivate }: Props) {
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconListDetails className="h-4 w-4" stroke={1.75} />
+              <ListTree className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">War Room · Alertas</p>
@@ -113,7 +109,7 @@ export function WarRoomDecisoesModal({ secoes, onClose, onActivate }: Props) {
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
@@ -146,12 +142,12 @@ export function WarRoomDecisoesModal({ secoes, onClose, onActivate }: Props) {
                     aria-controls={panelId}
                     onClick={() => toggleSecao(secao.id)}
                   >
-                    <IconChevronDown
+                    <ChevronDown
                       className={cn(
                         'wr-decisoes-modal__group-chevron h-4 w-4 shrink-0',
                         !aberto && 'wr-decisoes-modal__group-chevron--closed',
                       )}
-                      stroke={1.75}
+                      strokeWidth={1.5}
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1 text-left">
@@ -212,9 +208,9 @@ export function WarRoomDecisoesModal({ secoes, onClose, onActivate }: Props) {
                               ) : null}
                             </div>
                             {canActivate ? (
-                              <IconChevronRight
+                              <ChevronRight
                                 className="wr-decisoes-modal__chevron h-4 w-4 shrink-0"
-                                stroke={1.75}
+                                strokeWidth={1.5}
                                 aria-hidden
                               />
                             ) : null}

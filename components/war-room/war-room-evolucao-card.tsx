@@ -1,7 +1,8 @@
 'use client'
 
+import { GanttChart, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconLoader2, IconTimeline } from '@tabler/icons-react'
+
 import {
   CartesianGrid,
   Legend,
@@ -209,12 +210,12 @@ export function WarRoomEvolucaoCard({ className }: Props) {
       status={resolveGenericLoadingStatus(loading, !loading && eventos.length === 0)}
       href="/dashboard/territorio/ipt"
       linkLabel="Ver no IPT"
-      icon={IconTimeline}
+      icon={GanttChart}
       badge={<WarRoomChangeBadge change={change} />}
     >
       {loading && eventos.length === 0 ? (
         <div className="flex flex-1 items-center justify-center gap-2 py-4 text-[12px] text-[var(--wr-muted)]">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando movimentos…
         </div>
       ) : eventosFluxo.length === 0 ? (

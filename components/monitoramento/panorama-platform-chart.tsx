@@ -288,6 +288,8 @@ interface PanoramaPlatformChartProps {
   className?: string
   staggerIndex?: number
   animationEpoch?: number
+  /** Cor base do heatmap comparativo (WR: azul institucional). */
+  heatmapComparativeBase?: string
 }
 
 export function PanoramaPlatformChart({
@@ -295,6 +297,7 @@ export function PanoramaPlatformChart({
   className,
   staggerIndex = 0,
   animationEpoch = 0,
+  heatmapComparativeBase,
 }: PanoramaPlatformChartProps) {
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
@@ -355,6 +358,7 @@ export function PanoramaPlatformChart({
           scaleMode={heatmapScaleMode}
           onScaleModeChange={setHeatmapScaleMode}
           hideScaleControls
+          comparativeBaseColor={heatmapComparativeBase}
           className="min-h-0 flex-1"
         />
       ) : isMetaAds ? (

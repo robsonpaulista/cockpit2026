@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 import { usePermissions } from '@/hooks/use-permissions'
 import {
   sidebarNavIconClass,
@@ -12,6 +13,7 @@ import { sidebarItemIconOnlyClass } from '@/lib/sidebar-layout'
 import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sidebar-apify-styles'
 import { JARVIS_SIDEBAR_DIVIDER } from '@/lib/jarvis-sidebar-styles'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
+import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
 import {
   RESUMO_ELEICOES_TAB_ATENDIMENTO,
   resumoEleicoesHubHref,
@@ -138,6 +140,7 @@ export function SidebarMapaCampanhaBlock({
   onNavigate,
 }: Props) {
   const pathname = usePathname() ?? ''
+  const isWarRoom = isWarRoomCleanRoute(pathname)
   const { canAccess, loading } = usePermissions()
 
   const links = loading
@@ -175,7 +178,7 @@ export function SidebarMapaCampanhaBlock({
       <div className={cn('flex flex-col', iconOnly ? 'gap-1' : 'gap-0.5')}>
         {links.map((link) => {
           const active = isCampanhaLinkActive(link, pathname, searchKey)
-          const Icon = resolveSidebarTablerIcon(link.icon, false)
+          const iconClass = sidebarNavIconClass(active)
           return (
             <div key={link.id} className="group relative">
               <Link
@@ -189,7 +192,17 @@ export function SidebarMapaCampanhaBlock({
                   iconOnly && 'justify-center px-1.5',
                 )}
               >
-                <SidebarTablerIcon icon={Icon} className={sidebarNavIconClass(active)} />
+                {isWarRoom ? (
+                  <SidebarLucideIcon
+                    icon={resolveSidebarLucideIcon(link.icon)}
+                    className={iconClass}
+                  />
+                ) : (
+                  <SidebarTablerIcon
+                    icon={resolveSidebarTablerIcon(link.icon, false)}
+                    className={iconClass}
+                  />
+                )}
                 {!iconOnly ? (
                   <span className="truncate text-[13px] leading-[17px] font-medium">
                     {link.label}

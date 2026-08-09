@@ -1,14 +1,7 @@
 'use client'
 
+import { CheckCircle2, ChevronRight, Flag, MessageCircle, User, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import {
-  IconBrandWhatsapp,
-  IconCircleCheck,
-  IconChevronRight,
-  IconFlag,
-  IconUser,
-  type Icon,
-} from '@tabler/icons-react'
 import {
   WAR_ROOM_CRM_FUNNEL_STEPS,
   type WarRoomCrmFunnelIcone,
@@ -16,11 +9,11 @@ import {
 import { formatWarRoomPct } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
 
-const ICON_BY_TIPO: Record<WarRoomCrmFunnelIcone, Icon> = {
-  whatsapp: IconBrandWhatsapp,
-  user: IconUser,
-  check: IconCircleCheck,
-  flag: IconFlag,
+const ICON_BY_TIPO: Record<WarRoomCrmFunnelIcone, LucideIcon> = {
+  whatsapp: MessageCircle,
+  user: User,
+  check: CheckCircle2,
+  flag: Flag,
 }
 
 type Props = {
@@ -46,7 +39,7 @@ export function WarRoomCrmCard({ className }: Props) {
           return (
             <li key={step.key} className="wr-crm-funil__row">
               <span className="wr-crm-funil__icon" aria-hidden>
-                <StepIcon className="h-3.5 w-3.5" stroke={1.6} />
+                <StepIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
               </span>
               <span className="wr-crm-funil__label truncate">{step.label}</span>
               <span className="wr-crm-funil__value tabular-nums">
@@ -75,7 +68,7 @@ export function WarRoomCrmCard({ className }: Props) {
 
       <Link href="/dashboard/whatsapp" className="wr-crm-funil__footer">
         <span>Acessar CRM</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
       </Link>
     </section>
   )

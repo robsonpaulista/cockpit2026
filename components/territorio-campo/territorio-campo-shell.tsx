@@ -10,6 +10,7 @@ import {
   DashboardPageMetaStrip,
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
+import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import {
   TERRITORIO_CAMPO_PAGE_TITLE,
@@ -21,7 +22,8 @@ import {
 import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
-import '@/app/dashboard/shared/ipt-page-palette.css'
+import '@/app/dashboard/war-room/war-room-fonts.css'
+import '@/app/dashboard/war-room/war-room-clean.css'
 
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
@@ -52,14 +54,17 @@ export function TerritorioCampoShell({
     'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
 
   useEffect(() => {
-    document.body.setAttribute('data-ipt-palette', '')
+    document.body.setAttribute('data-war-room-clean', '')
+    document.body.setAttribute('data-wr-copiloto', '')
     return () => {
-      document.body.removeAttribute('data-ipt-palette')
+      document.body.removeAttribute('data-war-room-clean')
+      document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
 
   return (
     <DashboardPageShell>
+      <WarRoomFontBootstrap />
       <DashboardPageChrome>
         {topbarVisible ? (
           <DashboardPageMetaStrip>
@@ -78,7 +83,11 @@ export function TerritorioCampoShell({
         />
       </DashboardPageChrome>
       <DashboardPageContent
-        className={cn(typographyContentRootClass, isBaseTab && territorioBaseTextClass)}
+        className={cn(
+          typographyContentRootClass,
+          'wr-page-canvas--scroll',
+          isBaseTab && territorioBaseTextClass,
+        )}
       >
         {children}
       </DashboardPageContent>

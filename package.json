@@ -26,9 +26,11 @@
     "recface:server": "bash scripts/run-recface-server.sh",
     "db:backup": "node scripts/backup-supabase.mjs",
     "db:backup:full": "node scripts/backup-supabase.mjs --full",
-    "db:backup:upload": "node scripts/backup-supabase.mjs --upload"
+    "db:backup:upload": "node scripts/backup-supabase.mjs --upload",
+    "instagram:avatars:reprocess": "node scripts/reprocess-instagram-avatars.mjs"
   },
   "dependencies": {
+    "@imgly/background-removal-node": "^1.4.5",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
@@ -68,6 +70,7 @@
     "rss-parser": "^3.13.0",
     "satori": "^0.10.14",
     "shapefile": "^0.6.6",
+    "sharp": "^0.32.6",
     "tailwind-merge": "^3.4.0",
     "three": "^0.169.0",
     "trendsearch": "^0.2.1",

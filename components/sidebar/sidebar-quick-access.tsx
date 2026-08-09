@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 import {
   isSidebarQuickAccessActive,
   SIDEBAR_QUICK_ACCESS_ITEMS,
@@ -18,6 +19,7 @@ import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sideba
 import { JARVIS_SIDEBAR_DIVIDER, JARVIS_SIDEBAR_SECTION } from '@/lib/jarvis-sidebar-styles'
 import { usePermissions } from '@/hooks/use-permissions'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
+import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
 
 type Props = {
   collapsed: boolean
@@ -35,6 +37,7 @@ export function SidebarQuickAccess({
   onNavigate,
 }: Props) {
   const pathname = usePathname() ?? ''
+  const isWarRoom = isWarRoomCleanRoute(pathname)
   const { canAccess, loading } = usePermissions()
 
   const items = loading
@@ -77,7 +80,7 @@ export function SidebarQuickAccess({
       <ul className="space-y-0.5">
         {items.map((item) => {
           const active = isSidebarQuickAccessActive(item, pathname, searchKey)
-          const Icon = resolveSidebarTablerIcon(item.icon, false)
+          const iconClass = sidebarNavIconClass(active)
 
           return (
             <li key={item.id} className="group relative">
@@ -91,7 +94,17 @@ export function SidebarQuickAccess({
                   iconOnly && 'justify-center px-1.5',
                 )}
               >
-                <SidebarTablerIcon icon={Icon} className={sidebarNavIconClass(active)} />
+                {isWarRoom ? (
+                  <SidebarLucideIcon
+                    icon={resolveSidebarLucideIcon(item.icon)}
+                    className={iconClass}
+                  />
+                ) : (
+                  <SidebarTablerIcon
+                    icon={resolveSidebarTablerIcon(item.icon, false)}
+                    className={iconClass}
+                  />
+                )}
                 {!iconOnly ? (
                   <span className="truncate text-[13px] leading-[17px]">{item.label}</span>
                 ) : null}

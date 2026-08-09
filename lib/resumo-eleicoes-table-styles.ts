@@ -66,31 +66,47 @@ export function resumoLinhaTabela(
 }
 
 export function resumoKpiValueClass(): string {
-  return 'text-center text-xl font-bold leading-none tracking-tight tabular-nums text-text-primary'
+  return 'text-center text-xl font-bold leading-none tracking-tight tabular-nums text-[var(--palette-petrol)]'
 }
 
 export function resumoKpiLabelClass(): string {
-  return 'text-[11px] font-medium leading-none tracking-wide text-text-secondary'
+  return 'text-xs font-semibold leading-none tracking-tight text-[var(--palette-petrol)]'
 }
 
 export function resumoKpiMetaClass(): string {
-  return 'mt-1 text-center text-[11px] leading-tight text-text-secondary'
+  return 'mt-1 text-center text-[11px] leading-tight text-[var(--palette-aux)]'
 }
 
 export function resumoKpiLinkClass(): string {
-  return 'text-[11px] font-medium text-[#f04b23] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
+  return 'text-[11px] font-semibold text-[var(--palette-accent)] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
 }
 
 export function resumoKpiCardClass(): string {
-  return 'flex min-w-0 flex-col items-center rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-2.5 py-2.5 text-center'
+  return 'flex min-w-0 flex-col items-center rounded-xl border border-[var(--palette-divider)] bg-[var(--palette-card)] px-2.5 py-2.5 text-center'
 }
 
 export function resumoKpiHeaderClass(): string {
   return 'mb-1.5 flex w-full items-center justify-center gap-1.5'
 }
 
+export function resumoKpiIconWrapClass(): string {
+  return 'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--mon-brand-soft)]'
+}
+
 export function resumoKpiIconClass(): string {
-  return 'h-3.5 w-3.5 shrink-0 text-[#f04b23]'
+  return 'h-3 w-3 shrink-0 text-[var(--palette-accent)]'
+}
+
+export function resumoKpiBarTrackClass(): string {
+  return 'relative mx-auto mt-1.5 h-5 w-[4.75rem] overflow-hidden rounded-full bg-[var(--palette-chart-bg)]'
+}
+
+export function resumoKpiBarFillClass(): string {
+  return 'absolute inset-y-0 left-0 rounded-full bg-[var(--palette-accent)] transition-[width] duration-500 ease-out'
+}
+
+export function resumoKpiBarLabelClass(): string {
+  return 'relative z-10 flex h-full items-center justify-center text-[10px] font-bold tabular-nums leading-none text-[var(--palette-petrol)]'
 }
 
 /** Coral fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */

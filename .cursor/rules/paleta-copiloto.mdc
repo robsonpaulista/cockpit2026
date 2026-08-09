@@ -1,0 +1,30 @@
+---
+description: Paleta oficial Copiloto (#022B3A · #005B8F · #F04B23) em toda a aplicação
+alwaysApply: true
+---
+
+# Paleta oficial Cockpit 2026
+
+Documentação: `docs/paleta-copiloto.md`  
+Tokens: `app/design-tokens-copiloto.css`
+
+## Core (obrigatório)
+
+- Petróleo `#022B3A` — texto, sidebar
+- Azul `#005B8F` — primário de UI / dados
+- Accent `#F04B23` — CTA/alerta pontual; **ano 2026 na logomarca**
+- Fundo `#F5F6F8` · Card `#FFFFFF` · Aux `#6B7280`
+
+## Logomarca (sidebar)
+
+- **COCKPIT** = branco `#FFFFFF`
+- **2026** = coral `#F04B23` (`--palette-accent`)
+- Proibido `#f04b23` / laranja legado no wordmark
+
+## Ao escrever UI / CSS
+
+1. Preferir `var(--palette-*)`, `var(--wr-*)` ou `var(--brand-accent)`.
+2. Proibido introduzir marca em `#f04b23`, `#c43d1c`, `#e0a030`, `#f4b43e` (laranja/ouro legado).
+3. Sidebar: header e corpo com a **mesma** cor (`--palette-petrol` / `#022B3A`).
+4. Accent coral só em ênfase pontual; botões recorrentes usam azul institucional.
+5. Qualquer tela nova ou refactor deve sair alinhada a esta paleta — sem exceção de “tema local”.

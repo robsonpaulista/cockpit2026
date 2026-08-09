@@ -1,8 +1,8 @@
 'use client'
 
+import { Check, ChevronRight, Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { IconCheck, IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import {
   WarRoomMiniPager,
   warRoomPageCount,
@@ -122,7 +122,7 @@ function AgendaTimeline({
             <div className="wr-agenda-dia__rail" aria-hidden>
               <span className="wr-agenda-dia__dot">
                 {status === 'concluido' ? (
-                  <IconCheck className="wr-agenda-dia__check" stroke={2.5} aria-hidden />
+                  <Check className="wr-agenda-dia__check" strokeWidth={1.5} aria-hidden />
                 ) : null}
               </span>
             </div>
@@ -217,7 +217,7 @@ export function WarRoomAgendaCard({
       <div className="wr-agenda-dia__content">
         {loading ? (
           <div className="wr-agenda-dia__state">
-            <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" strokeWidth={1.5} />
           </div>
         ) : error ? (
           <p className="wr-agenda-dia__state wr-agenda-dia__state--error">{error}</p>
@@ -238,7 +238,7 @@ export function WarRoomAgendaCard({
         />
         <Link href="/dashboard/agenda" className="wr-agenda-dia__footer">
           <span>Ver agenda completa</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       </div>
     </section>

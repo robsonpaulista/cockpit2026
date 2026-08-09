@@ -4,6 +4,7 @@ export const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`
 export type ResolvedInstagramBusiness = {
   instagramBusinessId: string
   ownerUsername: string
+  profilePictureUrl: string | null
 }
 
 /**
@@ -15,10 +16,14 @@ export async function resolveInstagramBusinessAccount(
   accessToken: string
 ): Promise<ResolvedInstagramBusiness> {
   const res = await fetch(
-    `${GRAPH_BASE}/${pageOrBusinessAccountId}?fields=instagram_business_account{id,username}&access_token=${encodeURIComponent(accessToken)}`
+    `${GRAPH_BASE}/${pageOrBusinessAccountId}?fields=instagram_business_account{id,username,profile_picture_url}&access_token=${encodeURIComponent(accessToken)}`
   )
   const json = (await res.json()) as {
-    instagram_business_account?: { id?: string; username?: string }
+    instagram_business_account?: {
+      id?: string
+      username?: string
+      profile_picture_url?: string
+    }
     error?: { message?: string }
   }
   if (!res.ok) {
@@ -31,5 +36,6 @@ export async function resolveInstagramBusinessAccount(
   return {
     instagramBusinessId: ig.id,
     ownerUsername: ig.username || '',
+    profilePictureUrl: ig.profile_picture_url?.trim() || null,
   }
 }

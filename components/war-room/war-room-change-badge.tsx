@@ -1,6 +1,7 @@
 'use client'
 
-import { IconSparkles } from '@tabler/icons-react'
+
+import { Sparkles } from 'lucide-react'
 import type { WarRoomCardChange } from '@/lib/war-room/change-snapshots'
 import { cn } from '@/lib/utils'
 
@@ -21,7 +22,7 @@ export function WarRoomChangeBadge({ change, className }: Props) {
       )}
       title={change.summary}
     >
-      <IconSparkles className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
+      <Sparkles className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
       <span className="truncate normal-case tracking-normal">{change.summary}</span>
     </span>
   )

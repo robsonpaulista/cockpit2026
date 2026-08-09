@@ -1,8 +1,9 @@
 'use client'
 
+import { ChevronRight, Loader2, Send } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { IconChevronRight, IconLoader2, IconSend } from '@tabler/icons-react'
+
 import {
   WAR_ROOM_DISPAROS,
   type WarRoomDisparo,
@@ -156,7 +157,7 @@ export function WarRoomDisparosCard({ className }: Props) {
 
       {loading && rows.length === 0 ? (
         <div className="wr-disparos-clean__state">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando campanhas…
         </div>
       ) : error && rows.length === 0 ? (
@@ -179,7 +180,7 @@ export function WarRoomDisparosCard({ className }: Props) {
                 }
               >
                 <span className="wr-disparos-clean__icon" aria-hidden>
-                  <IconSend className="h-3.5 w-3.5" stroke={1.6} />
+                  <Send className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </span>
                 <span className="wr-disparos-clean__label truncate">{row.campanha}</span>
                 <span className="wr-disparos-clean__value tabular-nums">
@@ -212,7 +213,7 @@ export function WarRoomDisparosCard({ className }: Props) {
 
       <Link href="/dashboard/whatsapp" className="wr-disparos-clean__footer">
         <span>Ver todos</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
       </Link>
 
       {detalheCampanha ? (

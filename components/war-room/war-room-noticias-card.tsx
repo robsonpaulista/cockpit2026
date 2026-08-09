@@ -1,8 +1,8 @@
 'use client'
 
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import { WarRoomNoticiasDesempenhoView } from '@/components/war-room/war-room-noticias-desempenho-view'
@@ -209,7 +209,7 @@ export function WarRoomNoticiasCard({ className }: Props) {
 
       {initialLoading ? (
         <div className="wr-noticias-clean__state">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando notícias…
         </div>
       ) : erro ? (
@@ -247,7 +247,7 @@ export function WarRoomNoticiasCard({ className }: Props) {
         className="wr-noticias-clean__footer"
       >
         <span>Abrir radar</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
       </Link>
     </section>
   )

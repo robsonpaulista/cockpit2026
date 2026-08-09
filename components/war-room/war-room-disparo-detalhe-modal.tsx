@@ -1,13 +1,9 @@
 'use client'
 
+import { ChevronDown, Loader2, Send, X } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  IconChevronDown,
-  IconLoader2,
-  IconSend,
-  IconX,
-} from '@tabler/icons-react'
+
 import type { FluxoCampanhaDetalhe } from '@/lib/fluxo-campanhas'
 import { cn } from '@/lib/utils'
 
@@ -117,7 +113,7 @@ export function WarRoomDisparoDetalheModal({
         <header className="wr-disparo-detalhe-modal__header">
           <div className="min-w-0">
             <p className="wr-disparo-detalhe-modal__eyebrow">
-              <IconSend className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+              <Send className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
               Disparo · cidade → liderança
             </p>
             <h2 id={tituloId} className="wr-disparo-detalhe-modal__title truncate">
@@ -138,14 +134,14 @@ export function WarRoomDisparoDetalheModal({
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
         <div className="wr-disparo-detalhe-modal__body">
           {loading ? (
             <div className="wr-disparo-detalhe-modal__state">
-              <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
               Carregando detalhe…
             </div>
           ) : error ? (
@@ -170,12 +166,12 @@ export function WarRoomDisparoDetalheModal({
                       aria-controls={panelId}
                       onClick={() => toggleCidade(cid.cidade)}
                     >
-                      <IconChevronDown
+                      <ChevronDown
                         className={cn(
                           'wr-disparo-detalhe-modal__chevron h-4 w-4 shrink-0',
                           open && 'wr-disparo-detalhe-modal__chevron--open',
                         )}
-                        stroke={1.75}
+                        strokeWidth={1.5}
                         aria-hidden
                       />
                       <span className="wr-disparo-detalhe-modal__cidade-nome truncate">

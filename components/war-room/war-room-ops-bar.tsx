@@ -1,10 +1,7 @@
 'use client'
 
+import { BarChart3, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import {
-  IconChartBar,
-  IconSunHigh,
-} from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 
 const TZ = 'America/Sao_Paulo'
@@ -83,7 +80,7 @@ export function WarRoomOpsBar({
       <div className="wr-status-bar__item">
         <span className="wr-status-bar__label">Clima político</span>
         <span className="wr-status-bar__value">
-          <IconSunHigh className="wr-status-bar__icon wr-status-bar__icon--sun" stroke={1.75} aria-hidden />
+          <Sun className="wr-status-bar__icon wr-status-bar__icon--sun" strokeWidth={1.5} aria-hidden />
           Favorável
         </span>
       </div>
@@ -111,7 +108,7 @@ export function WarRoomOpsBar({
       >
         <span className="wr-status-bar__label">Desempenho</span>
         <span className="wr-status-bar__value">
-          <IconChartBar className="wr-status-bar__icon" stroke={1.75} aria-hidden />
+          <BarChart3 className="wr-status-bar__icon" strokeWidth={1.5} aria-hidden />
           {desempenhoActive ? 'Ativo' : 'Padrão'}
         </span>
       </button>

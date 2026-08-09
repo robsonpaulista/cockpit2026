@@ -50,6 +50,7 @@ export async function GET() {
         active,
         notes,
         instagram_username,
+        instagram_avatar_url,
         created_at,
         updated_at,
         youtube_search_terms (
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
         notes: body.notes ?? null,
         instagram_username: igUser,
       })
-      .select('id, name, slug, actor_type, active, notes, instagram_username, created_at, updated_at')
+      .select('id, name, slug, actor_type, active, notes, instagram_username, instagram_avatar_url, created_at, updated_at')
       .single()
 
     if (actorError) throw new Error(actorError.message)

@@ -7,7 +7,12 @@
  * - Plano Free: US$ 5/mês em créditos pré-pagos (não acumulam)
  *
  * Coleta padrão: até 10 perfis × 12 posts = 120 posts ≈ US$ 0,18/run
- * Semanal (4×/mês) ≈ US$ 0,72/mês — dentro do free.
+ * + details (1/perfil) ≈ US$ 0,015 — avatar de perfil
+ * Semanal (4×/mês) ≈ US$ 0,80/mês — dentro do free.
+ *
+ * Multi-conta (opcional):
+ *   APIFY_TOKEN + APIFY_TOKEN2 → divide a lista de concorrentes ao meio
+ *   (cada conta free ≈ US$ 5/mês).
  */
 
 /** Preço por post (US$ 1,50 / 1000) — documentação Apify mai/2026 */

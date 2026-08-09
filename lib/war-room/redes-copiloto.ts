@@ -61,6 +61,17 @@ export function formatPostTime(iso: string, timeZone: string = WAR_ROOM_REDES_TZ
   }).format(d)
 }
 
+/** Rótulo do feed: horário (hoje) · ONTEM · dd/mm. */
+export function formatFeedDateLabel(iso: string, timeZone: string = WAR_ROOM_REDES_TZ): string {
+  const dayKey = calendarDateInTz(iso, timeZone)
+  if (!dayKey) return '—'
+  const today = todayKeyInTz(timeZone)
+  if (dayKey === today) return formatPostTime(iso, timeZone) || 'Hoje'
+  const yesterday = cutoffKeyDaysAgo(2, timeZone)
+  if (dayKey === yesterday) return 'Ontem'
+  return formatDataCurta(iso, timeZone)
+}
+
 export function cutoffKeyDaysAgo(days: number, timeZone: string = WAR_ROOM_REDES_TZ): string {
   const now = new Date()
   const cutoff = new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000)
@@ -107,6 +118,7 @@ export type WarRoomRedesTopPost = {
   engagement: number
   isToday: boolean
   dayKey: string
+  postedAt: string
   url?: string
   thumbnail?: string
   caption?: string
@@ -128,20 +140,18 @@ export function buildWarRoomRedesTopPosts(
       const isToday = dayKey === today
       return {
         id: getInstagramPostIdentifier(post),
-        dateLabel: isToday ? formatPostTime(post.postedAt) || 'Hoje' : formatDataCurta(post.postedAt),
+        dateLabel: formatFeedDateLabel(post.postedAt),
         header: instagramCaptionHeader(post.caption) || 'Sem cabeçalho',
         engagement: post.metrics.engagement || 0,
         isToday,
         dayKey,
+        postedAt: post.postedAt,
         url: post.url,
         thumbnail: post.thumbnail,
         caption: post.caption,
       }
     })
-    .sort((a, b) => {
-      if (a.isToday !== b.isToday) return a.isToday ? -1 : 1
-      return b.engagement - a.engagement
-    })
+    .sort((a, b) => b.postedAt.localeCompare(a.postedAt))
 }
 
 export function buildWarRoomRedesDesempenhoKpis(opts: {

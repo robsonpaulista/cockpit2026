@@ -9,14 +9,15 @@ import {
 } from '@/lib/war-room/agenda-proximos'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
+import { WarRoomCopilotoPanoramaView } from '@/components/war-room/war-room-copiloto-panorama-view'
 import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { cn } from '@/lib/utils'
 
-type CopilotoTab = 'cidades' | 'redes'
+type CopilotoTab = 'cidades' | 'redes' | 'panorama'
 
 /**
- * Visão Copiloto — abas Cidades (ranking expectativa) e Redes Sociais.
+ * Visão Copiloto — abas Cidades, Redes Sociais e Panorama.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
@@ -49,7 +50,10 @@ export function WarRoomCopilotoView() {
       <nav className="wr-copiloto-tabs" aria-label="Seções do Copiloto">
         <button
           type="button"
-          className={cn('wr-copiloto-tabs__btn', tab === 'cidades' && 'wr-copiloto-tabs__btn--active')}
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'cidades' && 'wr-copiloto-tabs__btn--active',
+          )}
           aria-pressed={tab === 'cidades'}
           onClick={() => setTab('cidades')}
         >
@@ -57,41 +61,59 @@ export function WarRoomCopilotoView() {
         </button>
         <button
           type="button"
-          className={cn('wr-copiloto-tabs__btn', tab === 'redes' && 'wr-copiloto-tabs__btn--active')}
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'redes' && 'wr-copiloto-tabs__btn--active',
+          )}
           aria-pressed={tab === 'redes'}
           onClick={() => setTab('redes')}
         >
           Redes Sociais
         </button>
+        <button
+          type="button"
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'panorama' && 'wr-copiloto-tabs__btn--active',
+          )}
+          aria-pressed={tab === 'panorama'}
+          onClick={() => setTab('panorama')}
+        >
+          Radar
+        </button>
       </nav>
 
-      {tab === 'redes' ? (
-        <WarRoomCopilotoRedesView />
-      ) : loading && municipios.length === 0 ? (
-        <div className="wr-copiloto-view__state">
-          <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" />
-          <span>Carregando ranking do Copiloto…</span>
-        </div>
-      ) : error && municipios.length === 0 ? (
-        <div className="wr-copiloto-view__state">
-          <p>{error}</p>
-          <button
-            type="button"
-            className="wr-copiloto-view__retry"
-            onClick={() => void recarregar()}
-          >
-            Tentar de novo
-          </button>
-        </div>
-      ) : (
-        <WarRoomExpectativaRankingModal
-          variant="page"
-          municipios={municipios}
-          obras={obras}
-          agendaPorMunicipio={agendaPorMunicipio}
-          onClose={() => setViewMode('padrao')}
-        />
-      )}
+      <div key={tab} className="wr-copiloto-view__panel">
+        {tab === 'redes' ? (
+          <WarRoomCopilotoRedesView />
+        ) : tab === 'panorama' ? (
+          <WarRoomCopilotoPanoramaView />
+        ) : loading && municipios.length === 0 ? (
+          <div className="wr-copiloto-view__state">
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" strokeWidth={1.5} />
+            <span>Carregando ranking do Copiloto…</span>
+          </div>
+        ) : error && municipios.length === 0 ? (
+          <div className="wr-copiloto-view__state">
+            <p>{error}</p>
+            <button
+              type="button"
+              className="wr-copiloto-view__retry wr-copiloto-press"
+              onClick={() => void recarregar()}
+            >
+              Tentar de novo
+            </button>
+          </div>
+        ) : (
+          <WarRoomExpectativaRankingModal
+            variant="page"
+            municipios={municipios}
+            obras={obras}
+            agendaPorMunicipio={agendaPorMunicipio}
+            onClose={() => setViewMode('padrao')}
+          />
+        )}
+      </div>
     </div>
   )
 }

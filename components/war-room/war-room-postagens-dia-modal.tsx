@@ -1,16 +1,8 @@
 'use client'
 
+import { Bookmark, Eye, Heart, Image, MessageCircle, Share2, X } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  IconBookmark,
-  IconEye,
-  IconHeart,
-  IconMessageCircle,
-  IconPhoto,
-  IconShare,
-  IconX,
-} from '@tabler/icons-react'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
 
@@ -70,7 +62,7 @@ export function WarRoomPostagensDiaModal({ posts, onClose }: Props) {
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconPhoto className="h-4 w-4" stroke={1.75} />
+              <Image className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">Redes sociais · Instagram</p>
@@ -85,7 +77,7 @@ export function WarRoomPostagensDiaModal({ posts, onClose }: Props) {
             onClick={onClose}
             aria-label="Fechar"
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
@@ -109,35 +101,35 @@ export function WarRoomPostagensDiaModal({ posts, onClose }: Props) {
                 <dl className="wr-postagens-modal__metrics">
                   <div>
                     <dt>
-                      <IconEye className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      <Eye className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       Visualizações
                     </dt>
                     <dd className="tabular-nums">{formatWarRoomNumber(post.views)}</dd>
                   </div>
                   <div>
                     <dt>
-                      <IconHeart className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      <Heart className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       Curtidas
                     </dt>
                     <dd className="tabular-nums">{formatWarRoomNumber(post.likes)}</dd>
                   </div>
                   <div>
                     <dt>
-                      <IconMessageCircle className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       Comentários
                     </dt>
                     <dd className="tabular-nums">{formatWarRoomNumber(post.comments)}</dd>
                   </div>
                   <div>
                     <dt>
-                      <IconShare className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       Compartilhamentos
                     </dt>
                     <dd className="tabular-nums">{formatWarRoomNumber(post.shares)}</dd>
                   </div>
                   <div>
                     <dt>
-                      <IconBookmark className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                      <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       Salvamentos
                     </dt>
                     <dd className="tabular-nums">{formatWarRoomNumber(post.saves)}</dd>

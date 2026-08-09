@@ -1,20 +1,7 @@
 'use client'
 
+import { Building2, Calendar, Check, Clock, Flag, Image, Megaphone, Sheet, Truck, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import {
-  IconBuildingBridge,
-  IconCalendarEvent,
-  IconCheck,
-  IconClock,
-  IconFileSpreadsheet,
-  IconFlag,
-  IconPhoto,
-  IconSpeakerphone,
-  IconTruck,
-  IconUsers,
-  IconUsersGroup,
-  type Icon,
-} from '@tabler/icons-react'
 import {
   AGENDA_FLUXO_PRIORIDADE_LABEL,
   AGENDA_FLUXO_STATUS_LABEL,
@@ -58,15 +45,15 @@ const PRESENCA_STEPS: AgendaFluxoStepId[] = [
   'comunicacao_lideres',
 ]
 
-const STEP_ICONS: Record<AgendaFluxoStepId, Icon> = {
-  agendamento: IconCalendarEvent,
-  comunicacao_lideres: IconUsers,
-  obras_cidade: IconBuildingBridge,
-  emendas_destinadas: IconFileSpreadsheet,
-  material_impulso: IconPhoto,
-  impulso_autorizado: IconSpeakerphone,
-  envio_material: IconTruck,
-  mobilizacao: IconUsersGroup,
+const STEP_ICONS: Record<AgendaFluxoStepId, LucideIcon> = {
+  agendamento: Calendar,
+  comunicacao_lideres: Users,
+  obras_cidade: Building2,
+  emendas_destinadas: Sheet,
+  material_impulso: Image,
+  impulso_autorizado: Megaphone,
+  envio_material: Truck,
+  mobilizacao: UsersRound,
 }
 
 type Props = {
@@ -304,9 +291,9 @@ export function WarRoomAgendaFluxoPanel({
                 <span className="wr-agenda-fluxo__icon-wrap" aria-hidden>
                   <span className="wr-agenda-fluxo__icon">
                     {done && !PRESENCA_STEPS.includes(step.id) ? (
-                      <IconCheck className="h-4 w-4" stroke={2.25} />
+                      <Check className="h-4 w-4" strokeWidth={1.5} />
                     ) : (
-                      <Icon className="h-4 w-4" stroke={1.75} />
+                      <Icon className="h-4 w-4" strokeWidth={1.5} />
                     )}
                   </span>
                 </span>
@@ -327,7 +314,7 @@ export function WarRoomAgendaFluxoPanel({
           </p>
           <div className="wr-agenda-fluxo__context-title-row">
             <span className="wr-agenda-fluxo__context-icon" aria-hidden>
-              <ActiveIcon className="h-4 w-4" stroke={1.75} />
+              <ActiveIcon className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <h3 className="wr-agenda-fluxo__title">
               {activeStep.titulo}
@@ -494,9 +481,9 @@ export function WarRoomAgendaFluxoPanel({
                   >
                     <span className="wr-agenda-fluxo__dep-mark" aria-hidden>
                       {d.ok ? (
-                        <IconCheck className="h-3.5 w-3.5" stroke={2.25} />
+                        <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
                       ) : (
-                        <IconClock className="h-3.5 w-3.5" stroke={1.75} />
+                        <Clock className="h-3.5 w-3.5" strokeWidth={1.5} />
                       )}
                     </span>
                     <span>
@@ -514,7 +501,7 @@ export function WarRoomAgendaFluxoPanel({
           <div className="wr-agenda-fluxo__meta-block">
             <p className="wr-agenda-fluxo__meta-label">Prazo</p>
             <div className="wr-agenda-fluxo__prazo">
-              <IconCalendarEvent className="h-4 w-4 shrink-0" stroke={1.75} aria-hidden />
+              <Calendar className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
               <span>{prazoLabel ?? 'Sem data'}</span>
               {prazoLabel ? <span className="wr-agenda-fluxo__prazo-tag">Agenda</span> : null}
             </div>
@@ -535,7 +522,7 @@ export function WarRoomAgendaFluxoPanel({
                   aria-pressed={prioridade === p}
                   onClick={() => setPrioridade(p)}
                 >
-                  <IconFlag className="h-3 w-3" stroke={2} aria-hidden />
+                  <Flag className="h-3 w-3" strokeWidth={1.5} aria-hidden />
                   {AGENDA_FLUXO_PRIORIDADE_LABEL[p]}
                 </button>
               ))}

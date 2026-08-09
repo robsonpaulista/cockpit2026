@@ -17,6 +17,8 @@ interface PanoramaBoardProps {
   loading?: boolean
   refreshing?: boolean
   animationEpoch?: number
+  /** Cor base do heatmap “Todos” (ex.: azul WR no Copiloto). */
+  heatmapComparativeBase?: string
 }
 
 export function PanoramaBoard({
@@ -24,6 +26,7 @@ export function PanoramaBoard({
   loading = false,
   refreshing = false,
   animationEpoch = 0,
+  heatmapComparativeBase,
 }: PanoramaBoardProps) {
   if (loading) {
     return <PanoramaBoardSkeleton />
@@ -62,6 +65,7 @@ export function PanoramaBoard({
                 chart={chart}
                 staggerIndex={chartIndex}
                 animationEpoch={animationEpoch}
+                heatmapComparativeBase={heatmapComparativeBase}
               />
             ))}
           </div>
@@ -80,6 +84,7 @@ export function PanoramaBoard({
                 chart={chart}
                 staggerIndex={detailCharts.length + chartIndex}
                 animationEpoch={animationEpoch}
+                heatmapComparativeBase={heatmapComparativeBase}
               />
             ))}
           </div>

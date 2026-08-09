@@ -1,12 +1,8 @@
 'use client'
 
+import { ChevronRight, Heart, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  IconChevronRight,
-  IconHeart,
-  IconLoader2,
-} from '@tabler/icons-react'
 import {
   fetchInstagramData,
   fetchInstagramHistory,
@@ -604,7 +600,7 @@ export function WarRoomRedesCard({ className }: Props) {
 
       {initialLoading ? (
         <div className="wr-redes-clean__state">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando Instagram…
         </div>
       ) : !configured ? (
@@ -653,7 +649,7 @@ export function WarRoomRedesCard({ className }: Props) {
                     <span className="wr-redes-clean__date tabular-nums">{post.dateLabel}</span>
                     <span className="wr-redes-clean__header-text truncate">{post.header}</span>
                     <span className="wr-redes-clean__eng tabular-nums">
-                      <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                      <Heart className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.5} aria-hidden />
                       {formatWarRoomNumber(post.engagement)}
                     </span>
                   </li>
@@ -693,7 +689,7 @@ export function WarRoomRedesCard({ className }: Props) {
                     <span className="wr-redes-clean__date tabular-nums">{post.dateLabel}</span>
                     <span className="wr-redes-clean__header-text truncate">{post.header}</span>
                     <span className="wr-redes-clean__eng tabular-nums">
-                      <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                      <Heart className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.5} aria-hidden />
                       {formatWarRoomNumber(post.engagement)}
                     </span>
                   </li>
@@ -722,7 +718,7 @@ export function WarRoomRedesCard({ className }: Props) {
               <span className="wr-redes-clean__theme truncate">{theme.label}</span>
               <span className="wr-redes-clean__posts tabular-nums">{theme.posts}</span>
               <span className="wr-redes-clean__eng tabular-nums">
-                <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                <Heart className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.5} aria-hidden />
                 {formatWarRoomNumber(theme.avgEngagement)}
               </span>
             </li>
@@ -744,7 +740,7 @@ export function WarRoomRedesCard({ className }: Props) {
         )}
         <Link href="/dashboard/conteudo/redes" className="wr-redes-clean__footer">
           <span>Abrir Instagram</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       </div>
 

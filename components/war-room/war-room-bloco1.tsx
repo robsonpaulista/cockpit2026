@@ -1,13 +1,7 @@
 'use client'
 
+import { Calendar, ChevronRight, Loader2, MapPin, Plane } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  IconCalendarEvent,
-  IconChevronRight,
-  IconLoader2,
-  IconMapPin,
-  IconPlane,
-} from '@tabler/icons-react'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import { useWarRoomCidade } from '@/components/war-room/war-room-cidade-context'
 import {
@@ -133,7 +127,7 @@ function ExpectativaItem({
           aria-hidden
         >
           {index === 0 ? (
-            <IconMapPin className="h-[18px] w-[18px]" stroke={1.6} />
+            <MapPin className="h-[18px] w-[18px]" strokeWidth={1.5} />
           ) : (
             <span className="wr-expectativa-clean__rank">{index + 1}</span>
           )}
@@ -156,7 +150,7 @@ function ExpectativaItem({
                 onOpenAgenda()
               }}
             >
-              <IconCalendarEvent className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+              <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
             </button>
           ) : null}
 
@@ -172,7 +166,7 @@ function ExpectativaItem({
                 onOpenVisita()
               }}
             >
-              <IconPlane className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+              <Plane className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
             </button>
           ) : ultimaVisitaLabel ? (
             <button
@@ -429,7 +423,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
 
       {loading && universo.length === 0 ? (
         <div className="wr-decisoes-fila__empty flex items-center justify-center">
-          <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" strokeWidth={1.5} />
         </div>
       ) : error ? (
         <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
@@ -485,7 +479,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
               Ver ranking completo
               {universo.length > 0 ? ` (${universo.length})` : ''}
             </span>
-            <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+            <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
           </button>
         </div>
       ) : null}

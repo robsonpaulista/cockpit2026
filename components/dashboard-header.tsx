@@ -18,6 +18,7 @@ import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
 import { DASHBOARD_TOPBAR_H_CLASS } from '@/lib/dashboard-chrome-layout'
+import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -101,7 +102,7 @@ export function DashboardHeader() {
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
   const isHome = isDashboardHomePath(p)
-  const isWarRoom = p.startsWith('/dashboard/war-room')
+  const isWarRoom = isWarRoomCleanRoute(p)
 
   /** War Room mantém a top bar mesmo com a sidebar expandida (alinha marca + cronômetro). */
   if ((!showTopbar && !isWarRoom) || isHome) {

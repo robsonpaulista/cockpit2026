@@ -10,6 +10,10 @@ export type PoliticalActor = {
   active: boolean
   notes: string | null
   instagram_username: string | null
+  /** Foto de perfil estável (Storage). Null até a primeira coleta. */
+  instagram_avatar_url?: string | null
+  instagram_avatar_path?: string | null
+  instagram_avatar_updated_at?: string | null
   created_at: string
   updated_at: string
 }

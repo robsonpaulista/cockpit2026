@@ -1,8 +1,8 @@
 'use client'
 
+import { Calendar, Route, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconCalendarEvent, IconMapRoute, IconX } from '@tabler/icons-react'
 import type { IptMunicipio } from '@/lib/ipt'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
 import { AGENDA_PROXIMOS_JANELA_DIAS } from '@/lib/war-room/agenda-proximos'
@@ -98,7 +98,7 @@ export function WarRoomAgendaProximosModal({
           <header className="wr-visita-modal__head wr-agenda-proximos__head">
             <div className="wr-visita-modal__head-main min-w-0">
               <span className="wr-visita-modal__icon" aria-hidden>
-                <IconCalendarEvent className="h-4 w-4" stroke={1.75} />
+                <Calendar className="h-4 w-4" strokeWidth={1.5} />
               </span>
               <div className="min-w-0">
                 <p className="wr-visita-modal__eyebrow">Expectativa de votos · Agenda</p>
@@ -114,7 +114,7 @@ export function WarRoomAgendaProximosModal({
                   className="wr-agenda-proximos__sugestao-btn"
                   onClick={() => setSugestaoAberta(true)}
                 >
-                  <IconMapRoute className="h-3.5 w-3.5 shrink-0" stroke={1.75} aria-hidden />
+                  <Route className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
                   <span>Sugerir agenda no TD · até {selecionado.dataLabel}</span>
                 </button>
               ) : null}
@@ -124,7 +124,7 @@ export function WarRoomAgendaProximosModal({
                 onClick={onClose}
                 aria-label="Fechar"
               >
-                <IconX className="h-4 w-4" stroke={1.75} />
+                <X className="h-4 w-4" strokeWidth={1.5} />
               </button>
             </div>
           </header>

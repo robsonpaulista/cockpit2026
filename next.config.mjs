@@ -16,6 +16,7 @@ const nextConfig = {
       '@huggingface/transformers',
       'onnxruntime-node',
       'sharp',
+      '@imgly/background-removal-node',
       'trendsearch',
       'effect',
       '@effect/platform-node',
@@ -33,15 +34,23 @@ const nextConfig = {
       '/api/instagram-radar/collect': [
         './scripts/collect-instagram-radar.mjs',
         './scripts/lib/supabase-client.mjs',
+        './scripts/lib/instagram-avatar-storage.mjs',
+        './scripts/lib/instagram-avatar-flatten.mjs',
         './node_modules/@supabase/supabase-js/**/*',
+        './node_modules/@imgly/background-removal-node/**/*',
+        './node_modules/onnxruntime-node/**/*',
+        './node_modules/sharp/**/*',
       ],
     },
   },
   webpack: (config, { isServer }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      sharp$: false,
-      'onnxruntime-node$': false,
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        sharp$: false,
+        'onnxruntime-node$': false,
+        '@imgly/background-removal-node$': false,
+      }
     }
     if (isServer) {
       config.resolve.alias['kokoro-js'] = false

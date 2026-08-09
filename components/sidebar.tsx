@@ -12,6 +12,7 @@ import {
   type Icon as TablerIcon,
 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
+import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { useIdleSplash } from '@/contexts/idle-splash-context'
@@ -39,6 +40,14 @@ import {
   SIDEBAR_ICON_STROKE,
   SidebarTablerIcon,
 } from '@/lib/sidebar-tabler-icons'
+import {
+  resolveSidebarLucideIcon,
+  SidebarLucideIcon,
+  WR_SIDEBAR_ICON_SIZE,
+  WR_SIDEBAR_ICON_STROKE,
+} from '@/lib/sidebar-lucide-icons'
+import type { LucideIcon } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Menu, X } from 'lucide-react'
 import {
   TERRITORIO_CAMPO_TAB_PANORAMA,
   territorioCampoHref,
@@ -108,10 +117,71 @@ function sidebarMenuIconClass(active: boolean, filmNav: boolean, isGradientHome:
   return sidebarNavIconClass(active)
 }
 
+function SidebarMenuGlyph({
+  Icon,
+  iconEngine,
+  filmNav,
+  className,
+}: {
+  Icon: TablerIcon | LucideIcon
+  iconEngine: 'tabler' | 'lucide'
+  filmNav: boolean
+  className?: string
+}) {
+  if (iconEngine === 'lucide') {
+    return (
+      <SidebarLucideIcon
+        icon={Icon as LucideIcon}
+        size={filmNav ? 16 : WR_SIDEBAR_ICON_SIZE}
+        strokeWidth={WR_SIDEBAR_ICON_STROKE}
+        className={className}
+      />
+    )
+  }
+  return (
+    <SidebarTablerIcon
+      icon={Icon as TablerIcon}
+      size={filmNav ? 16 : SIDEBAR_ICON_SIZE}
+      stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+      className={className}
+    />
+  )
+}
+
+function SidebarCollapseChevron({
+  isWarRoom,
+  filmNav,
+  className,
+}: {
+  isWarRoom: boolean
+  filmNav?: boolean
+  className?: string
+}) {
+  if (isWarRoom) {
+    return (
+      <ChevronLeft
+        size={WR_SIDEBAR_ICON_SIZE}
+        strokeWidth={WR_SIDEBAR_ICON_STROKE}
+        className={cn('cockpit-icon', className)}
+        aria-hidden
+      />
+    )
+  }
+  return (
+    <IconChevronLeft
+      size={SIDEBAR_ICON_SIZE}
+      stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+      className={cn('cockpit-icon', className)}
+      aria-hidden
+    />
+  )
+}
+
 interface SidebarNavItemProps {
   item: SidebarMenuItem
   sectionLabel: string | undefined
-  Icon: TablerIcon
+  Icon: TablerIcon | LucideIcon
+  iconEngine: 'tabler' | 'lucide'
   hasSubmenu: boolean
   submenuOpen: boolean
   isActive: boolean
@@ -221,6 +291,7 @@ function SidebarNavItem({
   item,
   sectionLabel,
   Icon,
+  iconEngine,
   hasSubmenu,
   submenuOpen,
   isActive,
@@ -307,10 +378,10 @@ function SidebarNavItem({
                 : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
             )}
           >
-            <SidebarTablerIcon
-              icon={Icon}
-              size={filmNav ? 16 : SIDEBAR_ICON_SIZE}
-              stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+            <SidebarMenuGlyph
+              Icon={Icon}
+              iconEngine={iconEngine}
+              filmNav={filmNav}
               className={sidebarMenuIconClass(isActive, filmNav, isGradientHome, isActive)}
             />
             {(!collapsed || mobileOpen) && (
@@ -335,17 +406,31 @@ function SidebarNavItem({
                 )}>
                   {menuLabel(item.id, item.label)}
                 </span>
-                <IconChevronDown
-                  size={SIDEBAR_ICON_SIZE}
-                  stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
-                  className={cn(
-                    'cockpit-icon ml-auto shrink-0 text-text-secondary/85 transition-transform',
-                    submenuOpen && 'rotate-180',
-                    isGradientHome && 'text-[rgba(148,195,220,0.55)]',
-                    filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90'),
-                  )}
-                  aria-hidden
-                />
+                {iconEngine === 'lucide' ? (
+                  <ChevronDown
+                    size={WR_SIDEBAR_ICON_SIZE}
+                    strokeWidth={WR_SIDEBAR_ICON_STROKE}
+                    className={cn(
+                      'cockpit-icon ml-auto shrink-0 text-text-secondary/85 transition-transform',
+                      submenuOpen && 'rotate-180',
+                      isGradientHome && 'text-[rgba(148,195,220,0.55)]',
+                      filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90'),
+                    )}
+                    aria-hidden
+                  />
+                ) : (
+                  <IconChevronDown
+                    size={SIDEBAR_ICON_SIZE}
+                    stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+                    className={cn(
+                      'cockpit-icon ml-auto shrink-0 text-text-secondary/85 transition-transform',
+                      submenuOpen && 'rotate-180',
+                      isGradientHome && 'text-[rgba(148,195,220,0.55)]',
+                      filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90'),
+                    )}
+                    aria-hidden
+                  />
+                )}
               </>
             )}
           </button>
@@ -446,10 +531,10 @@ function SidebarNavItem({
               : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
           )}
         >
-          <SidebarTablerIcon
-            icon={Icon}
-            size={filmNav ? 16 : SIDEBAR_ICON_SIZE}
-            stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+          <SidebarMenuGlyph
+            Icon={Icon}
+            iconEngine={iconEngine}
+            filmNav={filmNav}
             className={sidebarMenuIconClass(isActive, filmNav, isGradientHome, isActive)}
           />
           {(!collapsed || mobileOpen) && (
@@ -558,7 +643,7 @@ export function Sidebar() {
   const isGradientHome = false
   const hasFixedPageChrome = useDashboardFixedChromeActive()
   const topbarVisible = useDashboardTopbarVisible()
-  const isWarRoom = pathname.startsWith('/dashboard/war-room')
+  const isWarRoom = isWarRoomCleanRoute(pathname)
   const collapsedPageHeaderSpacerClass = dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible)
   const showCollapsedSubnavSpacer =
     hasFixedPageChrome &&
@@ -671,13 +756,29 @@ export function Sidebar() {
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
-          <IconX
-            size={filmNav ? 16 : 20}
-            stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
-            className={cn(
-              'cockpit-icon',
-              isGradientHome ? 'text-[#00D4FF]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
-            )}
+          isWarRoom ? (
+            <X
+              size={20}
+              strokeWidth={WR_SIDEBAR_ICON_STROKE}
+              className="cockpit-icon text-white"
+              aria-hidden
+            />
+          ) : (
+            <IconX
+              size={filmNav ? 16 : 20}
+              stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+              className={cn(
+                'cockpit-icon',
+                isGradientHome ? 'text-[#00D4FF]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
+              )}
+              aria-hidden
+            />
+          )
+        ) : isWarRoom ? (
+          <Menu
+            size={20}
+            strokeWidth={WR_SIDEBAR_ICON_STROKE}
+            className="cockpit-icon text-white"
             aria-hidden
           />
         ) : (
@@ -761,11 +862,10 @@ export function Sidebar() {
                     )}
                     aria-label="Toggle sidebar"
                   >
-                      <IconChevronLeft
-                        size={SIDEBAR_ICON_SIZE}
-                        stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
-                        className={cn('cockpit-icon', isGradientHome ? 'text-[#00D4FF]' : 'text-white/70')}
-                        aria-hidden
+                      <SidebarCollapseChevron
+                        isWarRoom={isWarRoom}
+                        filmNav={filmNav}
+                        className={isGradientHome ? 'text-[#00D4FF]' : 'text-white/70'}
                       />
                   </button>
                 )}
@@ -784,11 +884,10 @@ export function Sidebar() {
                     )}
                     aria-label="Toggle sidebar"
                   >
-                    <IconChevronLeft
-                      size={SIDEBAR_ICON_SIZE}
-                      stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
-                      className={cn('cockpit-icon rotate-180', isGradientHome ? 'text-[#00D4FF]' : 'text-text-primary')}
-                      aria-hidden
+                    <SidebarCollapseChevron
+                      isWarRoom={isWarRoom}
+                      filmNav={filmNav}
+                      className={cn('rotate-180', isGradientHome ? 'text-[#00D4FF]' : 'text-text-primary')}
                     />
                   </button>
                 </div>
@@ -809,12 +908,7 @@ export function Sidebar() {
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
                         aria-label="Expandir sidebar"
                       >
-                        <IconChevronLeft
-                          size={SIDEBAR_ICON_SIZE}
-                          stroke={SIDEBAR_ICON_STROKE}
-                          className="cockpit-icon rotate-180"
-                          aria-hidden
-                        />
+                        <SidebarCollapseChevron isWarRoom={isWarRoom} className="rotate-180" />
                       </button>
                     ) : null}
                   </div>
@@ -831,12 +925,7 @@ export function Sidebar() {
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
                         aria-label="Expandir sidebar"
                       >
-                        <IconChevronLeft
-                          size={SIDEBAR_ICON_SIZE}
-                          stroke={SIDEBAR_ICON_STROKE}
-                          className="cockpit-icon rotate-180"
-                          aria-hidden
-                        />
+                        <SidebarCollapseChevron isWarRoom={isWarRoom} className="rotate-180" />
                       </button>
                     </div>
                   ) : null}
@@ -877,7 +966,10 @@ export function Sidebar() {
               {visibleItems.map((item: SidebarMenuItem) => {
                 // Bloco único e plano — sem rótulos de seção.
                 const sectionLabel: string | undefined = undefined
-                const Icon = resolveSidebarTablerIcon(item.icon, isCockpit)
+                const iconEngine = isWarRoom ? 'lucide' : 'tabler'
+                const Icon = isWarRoom
+                  ? resolveSidebarLucideIcon(item.icon)
+                  : resolveSidebarTablerIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
@@ -895,6 +987,7 @@ export function Sidebar() {
                     item={item}
                     sectionLabel={sectionLabel}
                     Icon={Icon}
+                    iconEngine={iconEngine}
                     hasSubmenu={hasSubmenu}
                     submenuOpen={submenuOpen}
                     isActive={isActive}

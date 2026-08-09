@@ -14,7 +14,7 @@ export type OwnInstagramRadarReady = {
 /** Apify — lê process.env com fallback para .env.local se o dev server não recarregou. */
 export function isApifyConfigured(): boolean {
   ensureEnvLocalLoaded()
-  return Boolean(process.env.APIFY_TOKEN?.trim())
+  return Boolean(process.env.APIFY_TOKEN?.trim() || process.env.APIFY_TOKEN2?.trim())
 }
 
 export async function getOwnInstagramRadarReady(

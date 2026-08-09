@@ -43,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .from('political_actors')
       .update(updates)
       .eq('id', params.id)
-      .select('id, name, slug, actor_type, active, notes, instagram_username, created_at, updated_at')
+      .select('id, name, slug, actor_type, active, notes, instagram_username, instagram_avatar_url, created_at, updated_at')
       .single()
 
     if (error) throw new Error(error.message)

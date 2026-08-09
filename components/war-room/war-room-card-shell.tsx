@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import type { Icon } from '@tabler/icons-react'
+import type { LucideIcon } from 'lucide-react'
 import {
   WAR_ROOM_CARD_STATUS_LABEL,
   type WarRoomCardStatus,
@@ -16,7 +16,7 @@ type Props = {
   statusDetail?: string
   href?: string
   linkLabel?: string
-  icon?: Icon
+  icon?: LucideIcon
   badge?: ReactNode
   className?: string
   contentClassName?: string
@@ -66,7 +66,7 @@ export function WarRoomCardShell({
         <div className="wr-card__heading-block">
           <h2 className="wr-card__title">
             {IconCmp ? (
-              <IconCmp className="wr-card__title-icon" stroke={1.5} aria-hidden />
+              <IconCmp className="wr-card__title-icon" strokeWidth={1.5} aria-hidden />
             ) : null}
             <span className="truncate">{title}</span>
             {badge}

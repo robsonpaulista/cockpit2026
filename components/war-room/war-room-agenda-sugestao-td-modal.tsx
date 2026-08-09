@@ -1,8 +1,8 @@
 'use client'
 
+import { Route, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconMapRoute, IconX } from '@tabler/icons-react'
 import type { IptMunicipio } from '@/lib/ipt'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
@@ -208,7 +208,7 @@ export function WarRoomAgendaSugestaoTdModal({
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconMapRoute className="h-4 w-4" stroke={1.75} />
+              <Route className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">Expectativa de votos · Agenda</p>
@@ -223,7 +223,7 @@ export function WarRoomAgendaSugestaoTdModal({
             onClick={onClose}
             aria-label="Fechar"
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 

@@ -1,11 +1,8 @@
 'use client'
 
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  IconChevronRight,
-  IconLoader2,
-} from '@tabler/icons-react'
 import {
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
@@ -423,7 +420,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
 
       {loading && fila.length === 0 ? (
         <div className="wr-decisoes-fila__empty flex items-center justify-center gap-2">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando…
         </div>
       ) : error && fila.length === 0 ? (
@@ -473,7 +470,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
           disabled={fila.length === 0 && !loading}
         >
           <span>Ver todas ({total})</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </button>
       </div>
 

@@ -7,6 +7,7 @@ import {
 } from '@/components/monitoramento/panorama-news-day-modal'
 import {
   heatmapCellColor,
+  heatmapCellTextColor,
   heatmapGlobalMax,
   heatmapLegendBaseColor,
   heatmapRowMax,
@@ -54,11 +55,16 @@ function formatHeatmapCellValue(value: number): string {
   return Math.round(value).toLocaleString('pt-BR')
 }
 
-/** Contraste do texto sobre a intensidade da célula. */
-function heatmapValueTextClass(value: number, scaleMax: number): string {
-  if (value <= 0 || scaleMax <= 0) return 'text-text-muted/70'
-  const t = value / scaleMax
-  return t >= 0.55 ? 'text-white' : 'text-text-primary/85'
+/** Contraste do texto sobre a intensidade da célula — baseado na luminância real. */
+function heatmapValueTone(
+  baseHex: string,
+  value: number,
+  scaleMax: number,
+  mode: HeatmapScaleMode,
+  comparativeBase?: string,
+): 'on-dark' | 'on-light' {
+  const color = heatmapCellTextColor(baseHex, value, scaleMax, mode, comparativeBase)
+  return color === '#ffffff' ? 'on-dark' : 'on-light'
 }
 
 interface PanoramaMentionHeatmapProps {
@@ -86,6 +92,8 @@ interface PanoramaMentionHeatmapProps {
    * (ex.: Comparativo candidatos no Copiloto Redes).
    */
   fillAvailableHeight?: boolean
+  /** Cor base do modo “Todos” (default coral IPT; WR usa azul institucional). */
+  comparativeBaseColor?: string
 }
 
 export function PanoramaHeatmapScaleToggle({
@@ -132,6 +140,7 @@ export function PanoramaMentionHeatmap({
   comparativeMax,
   showValues = false,
   fillAvailableHeight = false,
+  comparativeBaseColor,
 }: PanoramaMentionHeatmapProps) {
   const [internalScaleMode, setInternalScaleMode] = useState<HeatmapScaleMode>('comparative')
   const scaleMode = scaleModeProp ?? internalScaleMode
@@ -145,7 +154,7 @@ export function PanoramaMentionHeatmap({
     }
     return fromRows
   }, [rows, comparativeMax])
-  const legendBase = heatmapLegendBaseColor(scaleMode)
+  const legendBase = heatmapLegendBaseColor(scaleMode, comparativeBaseColor)
 
   const monthTicks: Array<{ index: number; label: string }> = []
   let lastMonth = ''
@@ -182,7 +191,7 @@ export function PanoramaMentionHeatmap({
     : 'pl-[128px]'
   const nameTypeClass = compact
     ? 'pmh-name leading-snug'
-    : cn(typographyBodyMediumClass, 'text-text-secondary')
+    : cn('pmh-name', typographyBodyMediumClass, 'text-text-secondary')
   const mutedTypeClass = compact
     ? 'pmh-muted leading-snug'
     : typographyBodyMutedClass
@@ -257,7 +266,13 @@ export function PanoramaMentionHeatmap({
                         value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default',
                       )}
                       style={{
-                        backgroundColor: heatmapCellColor(row.color, value, scaleMax, scaleMode),
+                        backgroundColor: heatmapCellColor(
+                          row.color,
+                          value,
+                          scaleMax,
+                          scaleMode,
+                          comparativeBaseColor
+                        ),
                         animationDelay: `${rowIndex * 22 + i * 5}ms`,
                       }}
                       title={`${row.name} · ${formatDayLabel(dates[i])}: ${value} ${metricWord}${
@@ -287,9 +302,17 @@ export function PanoramaMentionHeatmap({
                       {showValues ? (
                         <span
                           className={cn(
-                            'pointer-events-none select-none font-semibold leading-none tabular-nums tracking-tight',
+                            'wr-heatmap-cell-val pointer-events-none select-none font-semibold leading-none tabular-nums tracking-tight',
                             fillAvailableHeight ? 'text-[10px] min-[900px]:text-[11px]' : 'text-[9px]',
-                            heatmapValueTextClass(value, scaleMax),
+                            heatmapValueTone(
+                              row.color,
+                              value,
+                              scaleMax,
+                              scaleMode,
+                              comparativeBaseColor,
+                            ) === 'on-dark'
+                              ? 'wr-heatmap-cell-val--on-dark'
+                              : 'wr-heatmap-cell-val--on-light',
                           )}
                         >
                           {value > 0 ? formatHeatmapCellValue(value) : '0'}
@@ -342,7 +365,7 @@ export function PanoramaMentionHeatmap({
               key={t}
               className="h-3 w-4 rounded-[2px]"
               style={{
-                backgroundColor: heatmapCellColor(legendBase, t, 1, scaleMode),
+                backgroundColor: heatmapCellColor(legendBase, t, 1, scaleMode, comparativeBaseColor),
               }}
             />
           ))}

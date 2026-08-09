@@ -39,6 +39,7 @@ export async function GET() {
         actor_type,
         active,
         instagram_username,
+        instagram_avatar_url,
         notes,
         created_at,
         updated_at,

@@ -1,7 +1,7 @@
 'use client'
 
+import { Check, Loader2, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { IconCheck, IconLoader2, IconPencil } from '@tabler/icons-react'
 import {
   saveInstagramProfileVisitsManual,
   type InstagramProfileVisitManual,
@@ -97,7 +97,7 @@ export function WarRoomRedesVisitasManualForm({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <IconPencil className="h-3 w-3 shrink-0" stroke={1.75} aria-hidden />
+        <Pencil className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
         {open ? 'Fechar lançamento' : 'Informar visitas (manual)'}
       </button>
 
@@ -147,9 +147,9 @@ export function WarRoomRedesVisitasManualForm({
               onClick={() => void handleSave()}
             >
               {saving ? (
-                <IconLoader2 className="h-3.5 w-3.5 animate-spin" stroke={1.75} />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
               ) : okMsg ? (
-                <IconCheck className="h-3.5 w-3.5" stroke={1.75} />
+                <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
               ) : null}
               {saving ? 'Salvando…' : okMsg ? 'Salvo' : 'Salvar'}
             </button>

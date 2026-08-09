@@ -1,8 +1,8 @@
 'use client'
 
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import {
   useWarRoomCardChange,
@@ -150,7 +150,7 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
 
       {inicial ? (
         <div className="wr-visitas-cidade__state">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando visitas…
         </div>
       ) : error && totalVisitas === 0 ? (
@@ -208,7 +208,7 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
       <div className="wr-visitas-cidade__footer-bar">
         <Link href="/dashboard/campo" className="wr-visitas-cidade__footer">
           <span>Abrir Campo</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       </div>
     </section>

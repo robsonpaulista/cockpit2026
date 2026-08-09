@@ -1,7 +1,7 @@
 'use client'
 
+import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import { IconChevronRight } from '@tabler/icons-react'
 import {
   WAR_ROOM_MOBILIZACAO_MOCK,
   type WarRoomMobilizacaoFunilTone,
@@ -126,7 +126,7 @@ export function WarRoomMobilizacaoCard({ className }: Props) {
 
       <Link href="/dashboard/mobilizacao" className="wr-mob-funil__footer">
         <span>Ver plano completo</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
       </Link>
     </section>
   )

@@ -1,15 +1,9 @@
 'use client'
 
+import { ChevronDown, Instagram, Loader2, RefreshCw, Trophy, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
-import {
-  IconHeart,
-  IconLoader2,
-  IconRefresh,
-  IconTrophy,
-  IconX,
-} from '@tabler/icons-react'
 import {
   fetchInstagramData,
   fetchInstagramHistory,
@@ -24,10 +18,6 @@ import {
 import { WarRoomCopilotoCandidatosEngajamentoChart } from '@/components/war-room/war-room-copiloto-candidatos-engajamento-chart'
 import { WarRoomCopilotoJadyelAnuncios } from '@/components/war-room/war-room-copiloto-jadyel-anuncios'
 import { WarRoomCopilotoRedesDesempenho } from '@/components/war-room/war-room-copiloto-redes-desempenho'
-import {
-  COMPARISON_METRICS,
-  formatMetricValue,
-} from '@/lib/instagram-metric-comparison'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import { computeThemeComparison } from '@/lib/instagram-theme-comparison'
 import { instagramCaptionHeader } from '@/lib/instagram-caption-municipio'
@@ -61,36 +51,32 @@ type PostClassification = {
   isBoosted?: boolean
 }
 
-const POSTS_VISIBLE = 8
-const THEMES_PAGE_SIZE = 5
+type ThemeSortKey = 'engagement' | 'views'
+type FeedViewId = 'feed' | 'comparativo'
 
-const THEME_METRICS = COMPARISON_METRICS.filter(
-  (metric) =>
-    metric.key !== 'avgSaves' &&
-    metric.key !== 'avgLikes' &&
-    metric.key !== 'avgComments' &&
-    metric.key !== 'avgShares',
-)
+const FEED_PREVIEW = 5
+const THEMES_PREVIEW = 5
 
-const THEME_METRIC_SHORT: Partial<Record<(typeof COMPARISON_METRICS)[number]['key'], string>> = {
-  avgViews: 'Views',
-  avgEngagement: 'Eng.',
-}
+const FEED_VIEW_OPTIONS: Array<{ id: FeedViewId; label: string }> = [
+  { id: 'feed', label: 'Feed' },
+  { id: 'comparativo', label: 'Comparativo' },
+]
 
-function engajamentoHint(stats: {
-  avgLikes: number
-  avgComments: number
-  avgShares: number
-}): string {
-  return [
-    `Curt. ${formatMetricValue('avgLikes', stats.avgLikes)}`,
-    `Com. ${formatMetricValue('avgComments', stats.avgComments)}`,
-    `Comp. ${formatMetricValue('avgShares', stats.avgShares)}`,
-  ].join(' · ')
+function formatLastUpdateLabel(date: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function ThemeRankTrophy({ rank }: { rank: number }) {
-  if (rank < 1 || rank > 3) return null
+  // Sempre renderiza o slot: se null, o grid perde a coluna e o texto “corta” (ex. item 04).
+  if (rank < 1 || rank > 3) {
+    return <span className="wr-copiloto-list-card__theme-icon" aria-hidden />
+  }
   const lugarClass =
     rank === 1
       ? 'wr-expectativa-ranking-modal__pesquisa-trophy--ouro'
@@ -98,13 +84,10 @@ function ThemeRankTrophy({ rank }: { rank: number }) {
         ? 'wr-expectativa-ranking-modal__pesquisa-trophy--prata'
         : 'wr-expectativa-ranking-modal__pesquisa-trophy--bronze'
   return (
-    <span
-      className="wr-copiloto-redes__theme-rank"
-      aria-label={`${rank}º lugar`}
-    >
-      <IconTrophy
+    <span className="wr-copiloto-list-card__theme-icon" aria-label={`${rank}º lugar`}>
+      <Trophy
         className={cn('wr-expectativa-ranking-modal__pesquisa-trophy', lugarClass)}
-        stroke={1.75}
+        strokeWidth={1.5}
         aria-hidden
       />
     </span>
@@ -147,11 +130,15 @@ export function WarRoomCopilotoRedesView() {
   const [error, setError] = useState<string | null>(null)
   const [configured, setConfigured] = useState(false)
   const [topPostModalTheme, setTopPostModalTheme] = useState<string | null>(null)
-  const [themesPage, setThemesPage] = useState(0)
+  const [themeSort, setThemeSort] = useState<ThemeSortKey>('engagement')
+  const [feedExpanded, setFeedExpanded] = useState(false)
+  const [themesExpanded, setThemesExpanded] = useState(false)
+  const [feedView, setFeedView] = useState<FeedViewId>('feed')
   const [radarActors, setRadarActors] = useState<PoliticalActorWithTerms[]>([])
   const [radarPosts, setRadarPosts] = useState<InstagramRadarPostWithActor[]>([])
   const [radarLoading, setRadarLoading] = useState(true)
   const [radarError, setRadarError] = useState<string | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
   const topPostModalTitleId = useId()
 
   const loadClassifications = async () => {
@@ -212,6 +199,7 @@ export function WarRoomCopilotoRedesView() {
       setMetrics(data)
       setHistory(hist)
       setManualVisitsByDate(visitsManual.byDate)
+      setLastUpdatedAt(new Date())
       await loadClassifications()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar Instagram')
@@ -235,6 +223,7 @@ export function WarRoomCopilotoRedesView() {
       }
       setRadarActors(json.actors ?? [])
       setRadarPosts(json.posts ?? [])
+      setLastUpdatedAt(new Date())
     } catch (err) {
       setRadarError(
         err instanceof Error ? err.message : 'Erro ao carregar comparativo de candidatos',
@@ -278,15 +267,15 @@ export function WarRoomCopilotoRedesView() {
     [radarActors, radarPosts, days],
   )
 
-  const postsHoje = useMemo(
-    () => topPosts.filter((p) => p.isToday).slice(0, POSTS_VISIBLE),
-    [topPosts],
-  )
-
   const postsInPeriod = useMemo(() => {
     const ids = new Set(topPosts.map((p) => p.id))
     return (metrics?.posts ?? []).filter((p) => ids.has(getInstagramPostIdentifier(p)))
   }, [metrics, topPosts])
+
+  const feedVisible = useMemo(
+    () => (feedExpanded ? topPosts : topPosts.slice(0, FEED_PREVIEW)),
+    [feedExpanded, topPosts],
+  )
 
   const themeStats = useMemo(() => {
     if (postsInPeriod.length === 0 || Object.keys(classifications).length === 0) return null
@@ -339,33 +328,40 @@ export function WarRoomCopilotoRedesView() {
     if (!themeStats) return []
     const comparison = computeThemeComparison(themeStats)
     return Object.entries(themeStats)
-      .sort(([keyA, a], [keyB, b]) => {
-        const winsA = comparison.highlightsByKey[keyA]?.length ?? 0
-        const winsB = comparison.highlightsByKey[keyB]?.length ?? 0
-        if (winsB !== winsA) return winsB - winsA
-        return b.avgEngagement - a.avgEngagement
+      .sort(([, a], [, b]) => {
+        if (themeSort === 'views') {
+          if (b.views !== a.views) return b.views - a.views
+          return b.engagement - a.engagement
+        }
+        if (b.engagement !== a.engagement) return b.engagement - a.engagement
+        return b.views - a.views
       })
       .map(([theme, stats]) => ({
         theme,
         stats,
         isLeader: comparison.overallLeader === theme,
       }))
-  }, [themeStats])
+  }, [themeStats, themeSort])
 
-  const themesPageCount = Math.max(1, Math.ceil(themeRows.length / THEMES_PAGE_SIZE))
-  const themesPageSafe = Math.min(themesPage, themesPageCount - 1)
-  const themeRowsPage = useMemo(
-    () =>
-      themeRows.slice(
-        themesPageSafe * THEMES_PAGE_SIZE,
-        themesPageSafe * THEMES_PAGE_SIZE + THEMES_PAGE_SIZE,
+  const themeMetricMax = useMemo(() => {
+    if (themeRows.length === 0) return 1
+    return Math.max(
+      1,
+      ...themeRows.map((row) =>
+        themeSort === 'views' ? row.stats.views : row.stats.engagement,
       ),
-    [themeRows, themesPageSafe],
+    )
+  }, [themeRows, themeSort])
+
+  const themeRowsVisible = useMemo(
+    () => (themesExpanded ? themeRows : themeRows.slice(0, THEMES_PREVIEW)),
+    [themesExpanded, themeRows],
   )
 
   useEffect(() => {
-    setThemesPage(0)
-  }, [period, themeRows.length])
+    setThemesExpanded(false)
+    setFeedExpanded(false)
+  }, [period])
 
   const bestPostByTheme = useMemo(() => {
     const best = new Map<string, BestPostByTheme>()
@@ -404,7 +400,7 @@ export function WarRoomCopilotoRedesView() {
   if (loading && !metrics) {
     return (
       <div className="wr-copiloto-view__state">
-        <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" />
+        <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" strokeWidth={1.5} />
         <span>Carregando Redes Sociais…</span>
       </div>
     )
@@ -433,105 +429,210 @@ export function WarRoomCopilotoRedesView() {
   }
 
   return (
-    <div className="wr-copiloto-redes wr-copiloto-redes--page">
-      <header className="wr-copiloto-redes__toolbar">
-        <h2 className="wr-copiloto-redes__title">Redes Sociais</h2>
-        <div className="wr-copiloto-redes__period" role="group" aria-label="Período">
+    <div className="wr-copiloto-redes wr-copiloto-redes--page wr-copiloto-reveal">
+      <header
+        className="wr-copiloto-redes__toolbar wr-copiloto-reveal__card"
+        style={{ ['--wr-reveal-i' as string]: 0 }}
+      >
+        <nav className="wr-copiloto-redes__period-tabs" aria-label="Período">
           {COPILOTO_REDES_PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               className={cn(
-                'wr-copiloto-redes__period-btn',
-                period === opt.value && 'wr-copiloto-redes__period-btn--active',
+                'wr-copiloto-redes__period-tab',
+                period === opt.value && 'wr-copiloto-redes__period-tab--active',
               )}
               onClick={() => setPeriod(opt.value)}
+              aria-pressed={period === opt.value}
             >
               {opt.label}
             </button>
           ))}
+        </nav>
+
+        <div className="wr-copiloto-redes__toolbar-actions">
+          <p className="wr-copiloto-redes__last-update">
+            <span className="wr-copiloto-redes__last-update-label">Última atualização:</span>{' '}
+            <span className="wr-copiloto-redes__last-update-value">
+              {lastUpdatedAt ? formatLastUpdateLabel(lastUpdatedAt) : '—'}
+            </span>
+          </p>
+
+          <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__ghost-btn">
+            <Instagram className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            Instagram
+          </Link>
+
+          <button
+            type="button"
+            className="wr-copiloto-redes__ghost-btn"
+            onClick={() => {
+              void load()
+              void loadRadarCandidatos()
+            }}
+            disabled={loading || radarLoading}
+          >
+            <RefreshCw
+              className={cn('h-3.5 w-3.5', (loading || radarLoading) && 'animate-spin')}
+              strokeWidth={1.5}
+              aria-hidden
+            />
+            Atualizar
+          </button>
         </div>
-        <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__section-link">
-          Abrir Instagram
-        </Link>
-        <button
-          type="button"
-          className="wr-copiloto-redes__refresh"
-          onClick={() => {
-            void load()
-            void loadRadarCandidatos()
-          }}
-          disabled={loading || radarLoading}
-        >
-          <IconRefresh
-            className={cn('h-4 w-4', (loading || radarLoading) && 'animate-spin')}
-            stroke={1.75}
-            aria-hidden
-          />
-          Atualizar
-        </button>
       </header>
 
       <div className="wr-copiloto-redes__cols wr-copiloto-redes__cols--split">
         <div className="wr-copiloto-redes__main">
-          <section className="wr-copiloto-redes__band" aria-label="Análise Feed">
-            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--posts">
-              Análise Feed
+          <section
+            className={cn(
+              'wr-copiloto-redes__band wr-copiloto-redes__band--feed wr-copiloto-reveal__card',
+              feedView === 'comparativo' && 'wr-copiloto-redes__band--feed-comparativo',
+            )}
+            style={{ ['--wr-reveal-i' as string]: 1 }}
+            aria-label="Feed do período"
+          >
+            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--posts wr-copiloto-redes__group-th--split">
+              <span className="wr-copiloto-redes__group-th-title">
+                Feed do período
+                {feedView === 'feed' ? (
+                  <span className="wr-copiloto-redes__group-th-badge tabular-nums">
+                    {topPosts.length} posts
+                  </span>
+                ) : (
+                  <span className="wr-copiloto-redes__group-th-badge tabular-nums">
+                    {candidatosEngajamento.lines.length} candidatos · {periodLabel}
+                  </span>
+                )}
+              </span>
+              <div className="wr-copiloto-redes__view-tabs" role="tablist" aria-label="Visão do feed">
+                {FEED_VIEW_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={feedView === opt.id}
+                    className={cn(
+                      'wr-copiloto-redes__view-tab',
+                      feedView === opt.id && 'wr-copiloto-redes__view-tab--active',
+                    )}
+                    onClick={() => setFeedView(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {feedView === 'feed' ? (
+                <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__group-th-link">
+                  Ver tudo →
+                </Link>
+              ) : null}
             </div>
             <div className="wr-copiloto-redes__band-body">
-              <table className="wr-copiloto-redes__table">
-                <thead>
-                  <tr>
-                    <th className="wr-copiloto-redes__th-time">Hora</th>
-                    <th>Header</th>
-                    <th className="wr-copiloto-redes__num">
-                      <span className="wr-copiloto-redes__eng-head">
-                        Eng. <IconHeart className="h-3 w-3" stroke={1.75} aria-hidden />
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="wr-copiloto-redes__section-row">
-                    <td colSpan={3}>Hoje</td>
-                  </tr>
-                  {postsHoje.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="wr-copiloto-redes__empty-cell">
-                        Nenhuma postagem hoje.
-                      </td>
-                    </tr>
-                  ) : (
-                    postsHoje.map((post) => (
-                      <tr key={post.id}>
-                        <td className="wr-copiloto-redes__th-time tabular-nums">{post.dateLabel}</td>
-                        <td className="wr-copiloto-redes__cell-truncate" title={post.header}>
-                          {post.header}
-                        </td>
-                        <td className="wr-copiloto-redes__num tabular-nums">
-                          {formatWarRoomNumber(post.engagement)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={2}>{postsHoje.length} hoje</td>
-                    <td className="wr-copiloto-redes__num">{topPosts.length} no período</td>
-                  </tr>
-                </tfoot>
-              </table>
+              {feedView === 'comparativo' ? (
+                radarLoading && candidatosEngajamento.empty ? (
+                  <p className="wr-copiloto-redes__empty wr-copiloto-redes__empty--inline">
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-[var(--wr-accent,#F04B23)]"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    Carregando candidatos…
+                  </p>
+                ) : radarError ? (
+                  <p className="wr-copiloto-redes__empty">{radarError}</p>
+                ) : (
+                  <WarRoomCopilotoCandidatosEngajamentoChart model={candidatosEngajamento} />
+                )
+              ) : topPosts.length === 0 ? (
+                <p className="wr-copiloto-redes__empty">
+                  Nenhuma postagem nos últimos {periodLabel}.
+                </p>
+              ) : (
+                <div className="wr-copiloto-list-card">
+                  <ul className="wr-copiloto-list-card__list" aria-label="Posts do período">
+                    {feedVisible.map((post) => {
+                      const rowInner = (
+                        <>
+                          <span className="wr-copiloto-list-card__time-chip tabular-nums">
+                            {post.dateLabel}
+                          </span>
+                          <span className="wr-copiloto-list-card__main">
+                            <span className="wr-copiloto-list-card__title" title={post.header}>
+                              {post.header}
+                            </span>
+                          </span>
+                          <span className="wr-copiloto-list-card__metrics wr-copiloto-list-card__metrics--feed">
+                            <span className="wr-copiloto-list-card__metric-primary tabular-nums">
+                              {formatWarRoomNumber(post.engagement)}
+                            </span>
+                            <span className="wr-copiloto-list-card__metric-secondary">
+                              engajamento
+                            </span>
+                          </span>
+                        </>
+                      )
+                      return (
+                        <li key={post.id} className="wr-copiloto-list-card__row">
+                          {post.url ? (
+                            <a
+                              href={post.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--link wr-copiloto-list-card__row-inner--feed"
+                            >
+                              {rowInner}
+                            </a>
+                          ) : (
+                            <div className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--feed">
+                              {rowInner}
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {topPosts.length > FEED_PREVIEW ? (
+                    <button
+                      type="button"
+                      className="wr-copiloto-list-card__more"
+                      onClick={() => setFeedExpanded((v) => !v)}
+                    >
+                      {feedExpanded ? (
+                        'Ver menos'
+                      ) : (
+                        <>
+                          Ver mais publicações
+                          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                        </>
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </section>
 
           <div className="wr-copiloto-redes__temas-anuncios">
             <section
-              className="wr-copiloto-redes__band wr-copiloto-redes__band--temas"
+              className="wr-copiloto-redes__band wr-copiloto-redes__band--temas wr-copiloto-reveal__card"
+              style={{ ['--wr-reveal-i' as string]: 2 }}
               aria-label="Desempenho por tema"
             >
-              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--temas">
-                Desempenho por tema
+              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--temas wr-copiloto-redes__group-th--split">
+                <span className="wr-copiloto-redes__group-th-title">Desempenho por tema</span>
+                <label className="wr-copiloto-redes__sort">
+                  <span className="sr-only">Ordenar temas por</span>
+                  <select
+                    className="wr-copiloto-redes__sort-select"
+                    value={themeSort}
+                    onChange={(e) => setThemeSort(e.target.value as ThemeSortKey)}
+                  >
+                    <option value="engagement">Engajamento</option>
+                    <option value="views">Views</option>
+                  </select>
+                </label>
               </div>
               <div className="wr-copiloto-redes__band-body">
                 {themeRows.length === 0 ? (
@@ -539,97 +640,66 @@ export function WarRoomCopilotoRedesView() {
                     Sem temas classificados nos últimos {periodLabel}.
                   </p>
                 ) : (
-                  <div className="wr-copiloto-redes__themes-panel">
-                    <div className="wr-copiloto-redes__table-scroll">
-                      <table className="wr-copiloto-redes__table">
-                        <thead>
-                          <tr>
-                            <th>Tema</th>
-                            <th className="wr-copiloto-redes__num">Posts</th>
-                            {THEME_METRICS.map((metric) => (
-                              <th key={metric.key} className="wr-copiloto-redes__num">
-                                {THEME_METRIC_SHORT[metric.key]}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {themeRowsPage.map(({ theme, stats }, pageIndex) => {
-                            const rank = themesPageSafe * THEMES_PAGE_SIZE + pageIndex + 1
-                            const hasTopPost = bestPostByTheme.has(theme)
-                            return (
-                              <tr key={theme}>
-                                <td
-                                  className="wr-copiloto-redes__cell-tema"
-                                  title={theme}
+                  <div className="wr-copiloto-list-card wr-copiloto-list-card--dense">
+                    <ol className="wr-copiloto-list-card__list" aria-label="Ranking de temas">
+                      {themeRowsVisible.map(({ theme, stats }, index) => {
+                        const rank = index + 1
+                        const metricValue =
+                          themeSort === 'views' ? stats.views : stats.engagement
+                        const barPct = Math.round((metricValue / themeMetricMax) * 100)
+                        const rankLabel = String(rank).padStart(2, '0')
+                        return (
+                          <li key={theme} className="wr-copiloto-list-card__row">
+                            <button
+                              type="button"
+                              className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--btn"
+                              title="Ver top postagem deste tema"
+                              onClick={() => setTopPostModalTheme(theme)}
+                            >
+                              <span className="wr-copiloto-list-card__rank tabular-nums">
+                                {rankLabel}
+                              </span>
+                              <ThemeRankTrophy rank={rank} />
+                              <span className="wr-copiloto-list-card__main">
+                                <span className="wr-copiloto-list-card__title" title={theme}>
+                                  {theme}
+                                </span>
+                                <span className="wr-copiloto-list-card__sub">
+                                  {stats.posts} post{stats.posts === 1 ? '' : 's'}
+                                  {' · '}
+                                  {formatWarRoomNumber(stats.views)} views
+                                </span>
+                              </span>
+                              <span className="wr-copiloto-list-card__metrics">
+                                <span className="wr-copiloto-list-card__metric-primary tabular-nums">
+                                  {formatWarRoomNumber(stats.engagement)}
+                                </span>
+                                <span
+                                  className="wr-copiloto-list-card__bar"
+                                  role="presentation"
+                                  aria-hidden
                                 >
-                                  <ThemeRankTrophy rank={rank} />
-                                  <span className="wr-copiloto-redes__cell-truncate">{theme}</span>
-                                </td>
-                                <td className="wr-copiloto-redes__num">
-                                  {hasTopPost ? (
-                                    <button
-                                      type="button"
-                                      className="wr-copiloto-redes__posts-btn tabular-nums"
-                                      title="Ver top postagem deste tema"
-                                      onClick={() => setTopPostModalTheme(theme)}
-                                    >
-                                      {stats.posts}
-                                    </button>
-                                  ) : (
-                                    <span className="tabular-nums">{stats.posts}</span>
-                                  )}
-                                </td>
-                                {THEME_METRICS.map((metric) => (
-                                  <td
-                                    key={metric.key}
-                                    className="wr-copiloto-redes__num tabular-nums"
-                                    title={
-                                      metric.key === 'avgEngagement'
-                                        ? engajamentoHint(stats)
-                                        : undefined
-                                    }
-                                  >
-                                    {formatMetricValue(metric.key, stats[metric.key])}
-                                  </td>
-                                ))}
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {themesPageCount > 1 ? (
-                      <div
-                        className="wr-copiloto-redes__pager"
-                        role="navigation"
-                        aria-label="Páginas de temas"
+                                  <span
+                                    className="wr-copiloto-list-card__bar-fill"
+                                    style={{ width: `${barPct}%` }}
+                                  />
+                                </span>
+                              </span>
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                    {themeRows.length > THEMES_PREVIEW ? (
+                      <button
+                        type="button"
+                        className="wr-copiloto-list-card__more"
+                        onClick={() => setThemesExpanded((v) => !v)}
                       >
-                        <button
-                          type="button"
-                          className="wr-copiloto-redes__pager-btn"
-                          disabled={themesPageSafe <= 0}
-                          onClick={() => setThemesPage((p) => Math.max(0, p - 1))}
-                        >
-                          Anterior
-                        </button>
-                        <span className="wr-copiloto-redes__pager-status tabular-nums">
-                          {themesPageSafe + 1} / {themesPageCount}
-                          <span className="wr-copiloto-redes__pager-count">
-                            · {themeRows.length} temas
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          className="wr-copiloto-redes__pager-btn"
-                          disabled={themesPageSafe >= themesPageCount - 1}
-                          onClick={() =>
-                            setThemesPage((p) => Math.min(themesPageCount - 1, p + 1))
-                          }
-                        >
-                          Próxima
-                        </button>
-                      </div>
+                        {themesExpanded
+                          ? 'Ver menos'
+                          : `Ver todos os temas →`}
+                      </button>
                     ) : null}
                   </div>
                 )}
@@ -637,45 +707,27 @@ export function WarRoomCopilotoRedesView() {
             </section>
 
             <section
-              className="wr-copiloto-redes__band wr-copiloto-redes__band--anuncios"
+              className="wr-copiloto-redes__band wr-copiloto-redes__band--anuncios wr-copiloto-reveal__card"
+              style={{ ['--wr-reveal-i' as string]: 3 }}
               aria-label="Anúncios ativos Jadyel Alencar"
             >
-              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--anuncios">
-                Anúncios ativos · Jadyel Alencar
+              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--anuncios wr-copiloto-redes__group-th--split">
+                <span className="wr-copiloto-redes__group-th-title">
+                  Anúncios ativos · Jadyel Alencar
+                </span>
               </div>
               <div className="wr-copiloto-redes__band-body">
                 <WarRoomCopilotoJadyelAnuncios />
               </div>
             </section>
           </div>
-
-          <section
-            className="wr-copiloto-redes__band wr-copiloto-redes__band--candidatos"
-            aria-label="Comparativo candidatos engajamento diário"
-          >
-            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--candidatos">
-              Comparativo candidatos · engajamento diário · últimos {periodLabel}
-            </div>
-            <div className="wr-copiloto-redes__band-body">
-              {radarLoading && candidatosEngajamento.empty ? (
-                <p className="wr-copiloto-redes__empty wr-copiloto-redes__empty--inline">
-                  <IconLoader2
-                    className="h-4 w-4 animate-spin text-[var(--wr-accent,#F04B23)]"
-                    aria-hidden
-                  />
-                  Carregando candidatos…
-                </p>
-              ) : radarError ? (
-                <p className="wr-copiloto-redes__empty">{radarError}</p>
-              ) : (
-                <WarRoomCopilotoCandidatosEngajamentoChart model={candidatosEngajamento} />
-              )}
-            </div>
-          </section>
         </div>
 
         <section className="wr-copiloto-redes__side" aria-label="Indicadores">
-          <div className="wr-copiloto-redes__band wr-copiloto-redes__band--indicadores">
+          <div
+            className="wr-copiloto-redes__band wr-copiloto-redes__band--indicadores wr-copiloto-reveal__card"
+            style={{ ['--wr-reveal-i' as string]: 4 }}
+          >
             <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--indicadores">
               Indicadores
             </div>
@@ -714,7 +766,7 @@ export function WarRoomCopilotoRedesView() {
                     aria-label="Fechar"
                     onClick={() => setTopPostModalTheme(null)}
                   >
-                    <IconX className="h-4 w-4" stroke={1.75} aria-hidden />
+                    <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                   </button>
                 </header>
 

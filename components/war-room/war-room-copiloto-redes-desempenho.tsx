@@ -64,22 +64,21 @@ function DesempenhoMetaCard({
     <article className="wr-copiloto-redes-desempenho__card" data-wr-kpi={kpi.id}>
       <header className="wr-copiloto-redes-desempenho__head">
         <h3 className="wr-copiloto-redes-desempenho__label">{kpi.label}</h3>
+        <div className="wr-copiloto-redes-desempenho__head-value">
+          <p className="wr-copiloto-redes-desempenho__total tabular-nums">
+            {kpi.valueLabel ?? formatWarRoomNumber(kpi.total)}
+          </p>
+          <span
+            className={cn(
+              'wr-copiloto-redes-desempenho__delta tabular-nums',
+              up && 'wr-copiloto-redes-desempenho__delta--up',
+              down && 'wr-copiloto-redes-desempenho__delta--down',
+            )}
+          >
+            {formatDelta(kpi.deltaPct)}
+          </span>
+        </div>
       </header>
-
-      <div className="wr-copiloto-redes-desempenho__value-row">
-        <p className="wr-copiloto-redes-desempenho__total tabular-nums">
-          {kpi.valueLabel ?? formatWarRoomNumber(kpi.total)}
-        </p>
-        <span
-          className={cn(
-            'wr-copiloto-redes-desempenho__delta tabular-nums',
-            up && 'wr-copiloto-redes-desempenho__delta--up',
-            down && 'wr-copiloto-redes-desempenho__delta--down',
-          )}
-        >
-          {formatDelta(kpi.deltaPct)}
-        </span>
-      </div>
 
       {!compact && (kpi.followersPct != null || kpi.nonFollowersPct != null) ? (
         <p className="wr-copiloto-redes-desempenho__split">
@@ -110,8 +109,8 @@ function DesempenhoMetaCard({
               }
             >
               <CartesianGrid
-                stroke="color-mix(in srgb, var(--wr-slate, #424E5C) 12%, transparent)"
-                strokeDasharray="0"
+                stroke="color-mix(in srgb, var(--wr-slate, #424E5C) 6%, transparent)"
+                strokeDasharray="3 6"
                 vertical={false}
               />
               <XAxis
@@ -119,14 +118,14 @@ function DesempenhoMetaCard({
                 tickLine={false}
                 axisLine={false}
                 interval={tickEvery}
-                minTickGap={compact ? 36 : 28}
+                minTickGap={compact ? 40 : 28}
                 tick={{ fontSize: compact ? 9 : 10, fill: 'var(--wr-aux, #6b7280)' }}
-                height={compact ? 18 : 24}
+                height={compact ? 16 : 24}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                width={compact ? 34 : 42}
+                width={compact ? 30 : 42}
                 tickFormatter={formatAxis}
                 tick={{ fontSize: compact ? 9 : 10, fill: 'var(--wr-aux, #6b7280)' }}
               />
@@ -137,19 +136,26 @@ function DesempenhoMetaCard({
                 ]}
                 labelFormatter={(label) => String(label)}
                 contentStyle={{
-                  borderRadius: 10,
-                  border: '1px solid var(--wr-divider, #e5e7eb)',
+                  borderRadius: 12,
+                  border: '1px solid color-mix(in srgb, var(--wr-slate) 10%, transparent)',
+                  boxShadow: '0 8px 24px color-mix(in srgb, var(--wr-petrol) 8%, transparent)',
                   fontSize: 12,
+                  background: 'var(--wr-card, #fff)',
                 }}
               />
               <Line
-                type="basis"
+                type="monotone"
                 dataKey="value"
                 name={kpi.label}
-                stroke="var(--wr-inst, #005b8f)"
-                strokeWidth={2}
-                dot={{ r: compact ? 2 : 2.5, fill: 'var(--wr-inst, #005b8f)', strokeWidth: 0 }}
-                activeDot={{ r: 3.5 }}
+                stroke="color-mix(in srgb, var(--wr-petrol, #022b3a) 72%, var(--wr-aux, #6b7280))"
+                strokeWidth={compact ? 1.75 : 2}
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: 'var(--wr-petrol, #022b3a)',
+                  stroke: 'var(--wr-card, #fff)',
+                  strokeWidth: 2,
+                }}
                 isAnimationActive={false}
               />
             </LineChart>

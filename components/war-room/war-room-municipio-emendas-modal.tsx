@@ -1,7 +1,8 @@
 'use client'
 
+import { Sheet, X } from 'lucide-react'
 import { useEffect, useId, useMemo } from 'react'
-import { IconFileSpreadsheet, IconX } from '@tabler/icons-react'
+
 import {
   emendaEstaPaga,
   filtrarEmendasPorMunicipio,
@@ -93,7 +94,7 @@ export function WarRoomMunicipioEmendasModal({
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconFileSpreadsheet className="h-4 w-4" stroke={1.75} />
+              <Sheet className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">War Room · Emendas</p>
@@ -108,7 +109,7 @@ export function WarRoomMunicipioEmendasModal({
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 

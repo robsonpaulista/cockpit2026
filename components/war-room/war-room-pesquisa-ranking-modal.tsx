@@ -1,8 +1,8 @@
 'use client'
 
+import { BarChart3, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconChartBar, IconX } from '@tabler/icons-react'
 import {
   type WarRoomPesquisaConsolidadaReal,
 } from '@/lib/war-room/pesquisas-consolidadas'
@@ -72,7 +72,7 @@ export function WarRoomPesquisaRankingModal({ pesquisa, onClose }: Props) {
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconChartBar className="h-4 w-4" stroke={1.75} />
+              <BarChart3 className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">
@@ -90,7 +90,7 @@ export function WarRoomPesquisaRankingModal({ pesquisa, onClose }: Props) {
             aria-label="Fechar"
             onClick={onClose}
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 

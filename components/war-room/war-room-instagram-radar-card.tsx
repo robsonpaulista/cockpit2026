@@ -1,15 +1,8 @@
 'use client'
 
+import { ChevronRight, ExternalLink, Instagram, Loader2, Megaphone, User } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  IconAd2,
-  IconBrandInstagram,
-  IconChevronRight,
-  IconExternalLink,
-  IconLoader2,
-  IconUser,
-} from '@tabler/icons-react'
 import { buildInstagramRadarCompareRows } from '@/lib/instagram-radar-aggregate'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import {
@@ -369,7 +362,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
       {isDesempenho ? (
         igInitial ? (
           <div className="wr-ig-radar__state">
-            <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
             Carregando movimentação…
           </div>
         ) : igErro ? (
@@ -394,7 +387,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
       ) : showEngajamento ? (
         igInitial ? (
           <div className="wr-ig-radar__state">
-            <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
             Carregando engajamento…
           </div>
         ) : igErro ? (
@@ -459,7 +452,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
                             <span className="tabular-nums">
                               {formatWarRoomNumber(row.topEngagement)}
                             </span>
-                            <IconExternalLink
+                            <ExternalLink
                               className="h-3 w-3 shrink-0 opacity-70"
                               aria-hidden
                             />
@@ -488,7 +481,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
         )
       ) : adsInitial ? (
         <div className="wr-ig-radar__state">
-          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
           Carregando anúncios…
         </div>
       ) : adsErro ? (
@@ -528,7 +521,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
             {anuncioRows.slice(0, LIST_VISIBLE).map((row) => (
               <li key={row.slug} className="wr-meta-ads-clean__row">
                 <span className="wr-meta-ads-clean__icon" aria-hidden>
-                  <IconUser className="h-3.5 w-3.5" stroke={1.6} />
+                  <User className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </span>
                 <span className="wr-meta-ads-clean__label truncate" title={row.name}>
                   {row.name}
@@ -576,10 +569,10 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
           className="wr-ig-radar__footer"
         >
           <span className="inline-flex items-center gap-1.5">
-            <IconBrandInstagram className="h-3.5 w-3.5" stroke={1.6} aria-hidden />
+            <Instagram className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
             Abrir Instagram
           </span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       ) : (
         <Link
@@ -587,10 +580,10 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
           className="wr-ig-radar__footer"
         >
           <span className="inline-flex items-center gap-1.5">
-            <IconAd2 className="h-3.5 w-3.5" stroke={1.6} aria-hidden />
+            <Megaphone className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
             Abrir Anúncios
           </span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       )}
     </section>

@@ -61,6 +61,7 @@ export type PanoramaInstagramTableRow = {
   slug: string
   name: string
   color: string
+  avatarUrl: string | null
   instagramUsername: string | null
   postCount: number
   postsPerWeek: number
@@ -309,6 +310,7 @@ function buildInstagramTable(
       slug: row.actor.slug,
       name: row.actor.name,
       color: colorBySlug.get(row.actor.slug) ?? '#6B7280',
+      avatarUrl: row.actor.instagram_avatar_url?.trim() || null,
       instagramUsername: row.instagramUsername,
       postCount: row.postCount,
       postsPerWeek: row.postsPerWeek,

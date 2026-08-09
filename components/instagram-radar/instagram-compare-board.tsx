@@ -77,6 +77,33 @@ function PostList({ posts }: { posts: InstagramRadarPostWithActor[] }) {
   )
 }
 
+function ActorAvatar({
+  name,
+  avatarUrl,
+}: {
+  name: string
+  avatarUrl: string | null | undefined
+}) {
+  const initial = (name.trim().charAt(0) || '?').toUpperCase()
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-[rgb(var(--color-border-tertiary)/0.7)]"
+      />
+    )
+  }
+  return (
+    <span
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--mon-brand-soft)] text-xs font-semibold text-[var(--palette-accent)]"
+      aria-hidden
+    >
+      {initial}
+    </span>
+  )
+}
+
 function ActorRow({ row }: { row: InstagramRadarCompareActorRow }) {
   const [open, setOpen] = useState(false)
   const { actor } = row
@@ -93,6 +120,7 @@ function ActorRow({ row }: { row: InstagramRadarCompareActorRow }) {
         ) : (
           <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden />
         )}
+        <ActorAvatar name={actor.name} avatarUrl={actor.instagram_avatar_url} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-text-primary">{actor.name}</span>

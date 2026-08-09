@@ -1,8 +1,8 @@
 'use client'
 
+import { Loader2, Plane, X } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { IconLoader2, IconPlane, IconX } from '@tabler/icons-react'
 
 type Props = {
   municipio: string
@@ -119,7 +119,7 @@ export function WarRoomUltimaVisitaModal({ municipio, onClose }: Props) {
         <header className="wr-visita-modal__head">
           <div className="wr-visita-modal__head-main min-w-0">
             <span className="wr-visita-modal__icon" aria-hidden>
-              <IconPlane className="h-4 w-4" stroke={1.75} />
+              <Plane className="h-4 w-4" strokeWidth={1.5} />
             </span>
             <div className="min-w-0">
               <p className="wr-visita-modal__eyebrow">Expectativa de votos · Campo</p>
@@ -134,7 +134,7 @@ export function WarRoomUltimaVisitaModal({ municipio, onClose }: Props) {
             onClick={onClose}
             aria-label="Fechar"
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </header>
 
@@ -144,9 +144,9 @@ export function WarRoomUltimaVisitaModal({ municipio, onClose }: Props) {
 
         {loading ? (
           <div className="wr-visita-modal__state">
-            <IconLoader2
+            <Loader2
               className="h-5 w-5 animate-spin text-[var(--wr-gold)]"
-              stroke={1.5}
+              strokeWidth={1.5}
               aria-hidden
             />
             Carregando última visita…

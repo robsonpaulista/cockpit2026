@@ -1,8 +1,8 @@
 'use client'
 
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import {
   WAR_ROOM_PESQUISAS_ANDAMENTO,
   type WarRoomPesquisaAndamento,
@@ -233,7 +233,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
 
       {loading && rows.length === 0 && filtro !== 'andamento' ? (
         <div className="wr-pesquisas-clean__state">
-          <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" strokeWidth={1.5} />
         </div>
       ) : showDesempenho ? (
         pollsRaw.length === 0 ? (
@@ -376,7 +376,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
       {!showDesempenho ? (
         <Link href="/dashboard/pesquisa" className="wr-pesquisas-clean__footer">
           <span>Ver todas as pesquisas</span>
-          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+          <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </Link>
       ) : null}
 

@@ -10,10 +10,12 @@ import {
   DashboardPageMetaStrip,
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
+import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
+import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
-import '@/app/dashboard/shared/ipt-page-palette.css'
-import '@/app/dashboard/pesquisa/pesquisa-clean.css'
+import '@/app/dashboard/war-room/war-room-fonts.css'
+import '@/app/dashboard/war-room/war-room-clean.css'
 
 export type PesquisaTab = 'panorama' | 'tendencia' | 'cadastradas' | 'gerar-publico'
 
@@ -43,16 +45,17 @@ export function PesquisaShell({
     'Competitividade eleitoral por município. Os rankings mostram os candidatos mais bem posicionados em cada cidade e são consolidados pelo eleitorado local para formar uma visão territorial da disputa.'
 
   useEffect(() => {
-    document.body.setAttribute('data-ipt-palette', '')
-    document.body.setAttribute('data-pesquisa-clean', '')
+    document.body.setAttribute('data-war-room-clean', '')
+    document.body.setAttribute('data-wr-copiloto', '')
     return () => {
-      document.body.removeAttribute('data-ipt-palette')
-      document.body.removeAttribute('data-pesquisa-clean')
+      document.body.removeAttribute('data-war-room-clean')
+      document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
 
   return (
     <DashboardPageShell>
+      <WarRoomFontBootstrap />
       <DashboardPageChrome>
         {topbarVisible ? (
           <DashboardPageMetaStrip>
@@ -68,7 +71,11 @@ export function PesquisaShell({
           actions={tabActions}
         />
       </DashboardPageChrome>
-      <DashboardPageContent className={typographyContentRootClass}>{children}</DashboardPageContent>
+      <DashboardPageContent
+        className={cn(typographyContentRootClass, 'wr-page-canvas--scroll')}
+      >
+        {children}
+      </DashboardPageContent>
     </DashboardPageShell>
   )
 }

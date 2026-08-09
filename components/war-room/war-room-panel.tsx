@@ -1,12 +1,7 @@
 'use client'
 
+import { Activity, Bell, Bot, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  IconActivity,
-  IconRefresh,
-  IconRobot,
-  IconBell,
-} from '@tabler/icons-react'
 import {
   DashboardPageChrome,
   DashboardPageContent,
@@ -56,7 +51,9 @@ import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas
 import { WarRoomCopilotoView } from '@/components/war-room/war-room-copiloto-view'
 import { isAgendaEventParaConhecimento } from '@/lib/war-room/agenda-proximos'
 import '@/app/dashboard/shared/ipt-page-palette.css'
+import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
+import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 
 const WAR_ROOM_TZ = 'America/Sao_Paulo'
 
@@ -118,6 +115,7 @@ export function WarRoomPanel() {
     <WarRoomCidadeProvider>
       <WarRoomRefreshProvider>
         <WarRoomViewModeProvider>
+          <WarRoomFontBootstrap />
           <WarRoomPanelInner />
         </WarRoomViewModeProvider>
       </WarRoomRefreshProvider>
@@ -263,9 +261,9 @@ function WarRoomPanelInner() {
         disabled={refreshing}
         className="inline-flex items-center gap-1.5 rounded-[10px] border border-[var(--wr-border)] bg-[var(--wr-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--wr-muted)] transition-colors hover:bg-[var(--wr-page-bg)] disabled:opacity-50"
       >
-        <IconRefresh
-          className={cn('h-4 w-4', refreshing && 'animate-spin')}
-          stroke={1.5}
+        <RefreshCw
+          className={cn('wr-icon', refreshing && 'animate-spin')}
+          strokeWidth={1.5}
         />
         Atualizar
       </button>
@@ -287,7 +285,7 @@ function WarRoomPanelInner() {
             aria-pressed={isCopiloto}
             onClick={toggleCopiloto}
           >
-            <IconRobot className="h-4 w-4 shrink-0" stroke={1.75} aria-hidden />
+            <Bot className="wr-icon shrink-0" strokeWidth={1.5} aria-hidden />
             {isCopiloto ? 'Sair do Copiloto' : 'Acionar Copiloto'}
           </button>
           <button
@@ -311,7 +309,7 @@ function WarRoomPanelInner() {
               })
             }}
           >
-            <IconBell className="h-[18px] w-[18px]" stroke={1.75} aria-hidden />
+            <Bell className="wr-icon" strokeWidth={1.5} aria-hidden />
             {notificationCount > 0 ? (
               <span className="wr-topbar-clean__bell-badge">
                 {notificationCount > 99 ? '99+' : notificationCount}
@@ -390,7 +388,7 @@ function WarRoomPanelInner() {
               </div>
 
               <p className="mb-4 flex items-center gap-1.5 text-[11px] text-[var(--wr-muted)]">
-                <IconActivity className="h-3.5 w-3.5" stroke={1.5} />
+                <Activity className="h-3.5 w-3.5" strokeWidth={1.5} />
                 War Room · Cockpit 2026
               </p>
             </>

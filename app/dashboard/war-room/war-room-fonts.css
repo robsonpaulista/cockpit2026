@@ -1,0 +1,45 @@
+/**
+ * Tipografia War Room — Lufga (quando houver arquivos) + Outfit (fallback).
+ * Escala: Headline lg/sm · Body lg/M/sm (guia Opsloop / Lufga).
+ */
+
+@font-face {
+  font-family: 'Lufga';
+  src: url('/fonts/lufga/Lufga-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lufga';
+  src: url('/fonts/lufga/Lufga-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Regular cobre 500–700 até existirem arquivos Medium/SemiBold/Bold */
+@font-face {
+  font-family: 'Lufga';
+  src: url('/fonts/lufga/Lufga-Regular.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lufga';
+  src: url('/fonts/lufga/Lufga-Regular.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lufga';
+  src: url('/fonts/lufga/Lufga-Regular.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

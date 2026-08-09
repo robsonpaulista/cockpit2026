@@ -1,6 +1,7 @@
 'use client'
 
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function warRoomPageCount(total: number, pageSize: number): number {
@@ -40,7 +41,7 @@ export function WarRoomMiniPager({
         onClick={() => onChange(page - 1)}
         className="wr-pager-btn"
       >
-        <IconChevronLeft className="h-3.5 w-3.5" stroke={1.5} />
+        <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
       </button>
       <span className="wr-mini-pager__label min-w-[2.5rem] text-center tabular-nums">
         {page + 1}/{pages}
@@ -52,7 +53,7 @@ export function WarRoomMiniPager({
         onClick={() => onChange(page + 1)}
         className="wr-pager-btn"
       >
-        <IconChevronRight className="h-3.5 w-3.5" stroke={1.5} />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
       </button>
     </div>
   )

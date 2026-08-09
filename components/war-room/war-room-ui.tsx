@@ -1,11 +1,6 @@
 'use client'
 
-import {
-  IconAlertTriangle,
-  IconArrowDown,
-  IconArrowRight,
-  IconArrowUp,
-} from '@tabler/icons-react'
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type WarRoomHBarTone = 'teal' | 'violet' | 'blue' | 'warn' | 'positive' | 'critical'
@@ -108,11 +103,11 @@ export function WarRoomRing({ pct, size = 72, label, sublabel, className }: WarR
 
 export type WarRoomTrendDirection = 'up' | 'down' | 'flat' | 'warn'
 
-const TREND_ICON: Record<WarRoomTrendDirection, typeof IconArrowUp> = {
-  up: IconArrowUp,
-  down: IconArrowDown,
-  flat: IconArrowRight,
-  warn: IconAlertTriangle,
+const TREND_ICON: Record<WarRoomTrendDirection, LucideIcon> = {
+  up: ArrowUp,
+  down: ArrowDown,
+  flat: ArrowRight,
+  warn: AlertTriangle,
 }
 
 const TREND_COLOR_CLASS: Record<WarRoomTrendDirection, string> = {
@@ -133,7 +128,7 @@ export function WarRoomTrend({ direction, className }: WarRoomTrendProps) {
   return (
     <Icon
       className={cn('h-3.5 w-3.5 shrink-0', TREND_COLOR_CLASS[direction], className)}
-      stroke={2}
+      strokeWidth={1.5}
       aria-hidden
     />
   )

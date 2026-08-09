@@ -6,6 +6,7 @@ import type { PanoramaHighlight } from '@/lib/monitoramento-panorama'
 import type { PanoramaInstagramTableRow } from '@/lib/monitoramento-panorama-charts'
 import {
   typographyBodyClass,
+  typographyBodyMediumClass,
   typographyBodyMutedClass,
   typographyTableThClass,
 } from '@/lib/typography-chrome'
@@ -37,6 +38,39 @@ function topPostHint(row: PanoramaInstagramTableRow): string | undefined {
   return eng
 }
 
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+}
+
+function CandidateAvatar({
+  name,
+  avatarUrl,
+}: {
+  name: string
+  avatarUrl: string | null
+}) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="wr-panorama-ig-table__avatar"
+      />
+    )
+  }
+  return (
+    <span
+      className="wr-panorama-ig-table__avatar wr-panorama-ig-table__avatar--fallback"
+      aria-hidden
+    >
+      {initialsFromName(name)}
+    </span>
+  )
+}
+
 interface PanoramaInstagramTableProps {
   rows: PanoramaInstagramTableRow[]
   animationEpoch?: number
@@ -51,7 +85,7 @@ export function PanoramaInstagramTable({
   const withoutUsername = rows.filter((r) => !r.instagramUsername)
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col gap-1', className)}>
+    <div className={cn('wr-panorama-ig-table flex h-full min-h-0 flex-col gap-1', className)}>
       <div className="min-h-0 flex-1 max-md:overflow-x-hidden md:overflow-x-auto">
         <table
           className={cn(
@@ -106,23 +140,23 @@ export function PanoramaInstagramTable({
                 >
                   <td className="px-2 py-0.5">
                     <div
-                      className="flex min-w-0 items-baseline gap-1.5"
+                      className="wr-panorama-ig-table__candidato"
                       title={
                         row.instagramUsername
-                          ? `${row.name} (@${row.instagramUsername})`
-                          : row.name
+                          ? `@${row.instagramUsername}`
+                          : 'sem @ cadastrado'
                       }
                     >
-                      <span className="min-w-0 truncate font-medium text-text-primary">{row.name}</span>
-                      {row.instagramUsername ? (
-                        <span className="shrink-0 whitespace-nowrap text-text-muted max-md:text-[10px]">
-                          @{row.instagramUsername}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 whitespace-nowrap text-amber-700 max-md:text-[10px]">
-                          sem @
-                        </span>
-                      )}
+                      <CandidateAvatar name={row.name} avatarUrl={row.avatarUrl} />
+                      <span
+                        className={cn(
+                          'pmh-name min-w-0 truncate',
+                          typographyBodyMediumClass,
+                          'text-text-secondary'
+                        )}
+                      >
+                        {row.name}
+                      </span>
                     </div>
                   </td>
                   <td className={cn('px-2 py-0.5 text-right tabular-nums', cellHighlight(row.highlights.postCount))}>

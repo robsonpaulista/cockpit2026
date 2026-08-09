@@ -18,7 +18,10 @@ export type InstagramRadarPost = {
 }
 
 export type InstagramRadarPostWithActor = InstagramRadarPost & {
-  political_actors?: Pick<PoliticalActor, 'id' | 'name' | 'slug' | 'actor_type'> | null
+  political_actors?: Pick<
+    PoliticalActor,
+    'id' | 'name' | 'slug' | 'actor_type' | 'instagram_avatar_url'
+  > | null
 }
 
 export type InstagramRadarCollectProgress = {

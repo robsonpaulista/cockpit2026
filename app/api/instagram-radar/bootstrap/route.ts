@@ -46,6 +46,7 @@ export async function GET(request: Request) {
           active,
           notes,
           instagram_username,
+          instagram_avatar_url,
           created_at,
           updated_at,
           youtube_search_terms (
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
         .order('name', { ascending: true }),
       supabase
         .from('instagram_radar_posts')
-        .select(`*, political_actors!inner ( id, name, slug, actor_type )`)
+        .select(`*, political_actors!inner ( id, name, slug, actor_type, instagram_avatar_url )`)
         .gte('posted_at', cutoffIso)
         .order('posted_at', { ascending: false })
         .limit(limit),

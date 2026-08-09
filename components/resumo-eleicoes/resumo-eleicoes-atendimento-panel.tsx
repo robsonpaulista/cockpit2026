@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef, useCallback, type MouseEvent as R
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned, Target } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, ArrowUp, ArrowDown, FileText, Loader2, MapPinned, Target } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -47,6 +47,10 @@ import {
   resumoKpiCardClass,
   resumoKpiHeaderClass,
   resumoKpiIconClass,
+  resumoKpiIconWrapClass,
+  resumoKpiBarTrackClass,
+  resumoKpiBarFillClass,
+  resumoKpiBarLabelClass,
 } from '@/lib/resumo-eleicoes-table-styles'
 import {
   ResumoEleicoesCidadesTabela,
@@ -2043,12 +2047,20 @@ export function ResumoEleicoesAtendimentoPanel() {
         ? 'Expectativa 2026'
         : 'Aferido 2026'
   const diferencaCenarioVs2022 = resumoCidade ? votosCenarioAtivo - resumoCidade.votacaoFinal2022 : 0
-  const statusComparativoCurto =
+  const percentualCrescimentoVs2022 =
+    resumoCidade && resumoCidade.votacaoFinal2022 > 0
+      ? (diferencaCenarioVs2022 / resumoCidade.votacaoFinal2022) * 100
+      : null
+  const deltaAbsVs2022Fmt =
     diferencaCenarioVs2022 > 0
-      ? `+${diferencaCenarioVs2022.toLocaleString('pt-BR')} vs 22`
+      ? `+${diferencaCenarioVs2022.toLocaleString('pt-BR')}`
       : diferencaCenarioVs2022 < 0
-        ? `${diferencaCenarioVs2022.toLocaleString('pt-BR')} vs 22`
-        : '= 2022'
+        ? diferencaCenarioVs2022.toLocaleString('pt-BR')
+        : '0'
+  const crescimentoPctFmt =
+    percentualCrescimentoVs2022 !== null
+      ? `${percentualCrescimentoVs2022 > 0 ? '+' : ''}${percentualCrescimentoVs2022.toFixed(1).replace('.', ',')}%`
+      : null
   const percentualAlcance =
     eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
       ? (votosCenarioAtivo / eleitoresMunicipioAtivo) * 100
@@ -2192,11 +2204,19 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const summaryCardBaseClass = resumoKpiCardClass()
   const kpiHeaderClass = resumoKpiHeaderClass()
+  const kpiIconWrapClass = resumoKpiIconWrapClass()
   const kpiIconClass = resumoKpiIconClass()
   const kpiLabelClass = resumoKpiLabelClass()
   const kpiValueClass = resumoKpiValueClass()
   const kpiMetaClass = resumoKpiMetaClass()
   const kpiLinkClass = resumoKpiLinkClass()
+  const kpiBarTrackClass = resumoKpiBarTrackClass()
+  const kpiBarFillClass = resumoKpiBarFillClass()
+  const kpiBarLabelClass = resumoKpiBarLabelClass()
+  const alcancePctFmt =
+    percentualAlcance !== null ? percentualAlcance.toFixed(1).replace('.', ',') : null
+  const alcanceBarWidth =
+    percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : 0
 
   return (
     <div className="w-full min-w-0">
@@ -2308,7 +2328,9 @@ export function ResumoEleicoesAtendimentoPanel() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
-                  <Users className={kpiIconClass} aria-hidden />
+                  <span className={kpiIconWrapClass}>
+                    <Users className={kpiIconClass} aria-hidden />
+                  </span>
                   <p className={kpiLabelClass}>Eleitores</p>
                 </div>
                 <p className={kpiValueClass}>
@@ -2316,39 +2338,80 @@ export function ResumoEleicoesAtendimentoPanel() {
                     ? eleitoresMunicipioAtivo.toLocaleString('pt-BR')
                     : '-'}
                 </p>
-                <p className={kpiMetaClass} title="Alcance sobre o eleitorado">
-                  {percentualAlcance !== null ? `${percentualAlcance.toFixed(1).replace('.', ',')}% alcance` : '—'}
-                </p>
+                {alcancePctFmt !== null ? (
+                  <div
+                    className={kpiBarTrackClass}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(alcanceBarWidth)}
+                    aria-label={`Alcance do eleitorado: ${alcancePctFmt}%`}
+                    title={`${alcancePctFmt}% alcance`}
+                  >
+                    <div
+                      className={kpiBarFillClass}
+                      style={{ width: `${alcanceBarWidth}%` }}
+                      aria-hidden
+                    />
+                    <span className={kpiBarLabelClass}>{alcancePctFmt}%</span>
+                  </div>
+                ) : (
+                  <p className={kpiMetaClass}>—</p>
+                )}
               </div>
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
-                  <Target className={kpiIconClass} aria-hidden />
-                  <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
-                </div>
-                <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
-                <p
-                  className={cn(
-                    kpiMetaClass,
-                    diferencaCenarioVs2022 > 0
-                      ? 'text-status-success'
-                      : diferencaCenarioVs2022 < 0
-                        ? 'text-status-danger'
-                        : undefined,
-                  )}
-                >
-                  {statusComparativoCurto}
-                </p>
-              </div>
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <Vote className={kpiIconClass} aria-hidden />
+                  <span className={kpiIconWrapClass}>
+                    <Vote className={kpiIconClass} aria-hidden />
+                  </span>
                   <p className={kpiLabelClass}>Votos 2022</p>
                 </div>
                 <p className={kpiValueClass}>{resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}</p>
+                <p className={kpiMetaClass}>Referência federal</p>
               </div>
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
-                  <Crown className={kpiIconClass} aria-hidden />
+                  <span className={kpiIconWrapClass}>
+                    <Target className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
+                </div>
+                <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
+                <div className="mt-1 flex w-full flex-col items-center gap-0.5">
+                  <p
+                    className={cn(
+                      'flex items-center gap-0.5 text-[11px] font-semibold leading-none tabular-nums',
+                      diferencaCenarioVs2022 > 0
+                        ? 'text-status-success'
+                        : diferencaCenarioVs2022 < 0
+                          ? 'text-status-danger'
+                          : 'text-[var(--palette-aux)]',
+                    )}
+                  >
+                    {diferencaCenarioVs2022 > 0 ? (
+                      <ArrowUp className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                    ) : diferencaCenarioVs2022 < 0 ? (
+                      <ArrowDown className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                    ) : null}
+                    <span>{deltaAbsVs2022Fmt}</span>
+                    <span className="font-medium text-[var(--palette-petrol)]/55">vs.</span>
+                    <span>2022</span>
+                  </p>
+                  {crescimentoPctFmt !== null ? (
+                    <p className="text-[10px] leading-tight text-[var(--palette-aux)]">
+                      {crescimentoPctFmt} de{' '}
+                      {diferencaCenarioVs2022 < 0 ? 'queda' : 'crescimento'}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] leading-tight text-[var(--palette-aux)]">Sem base 2022</p>
+                  )}
+                </div>
+              </div>
+              <div className={summaryCardBaseClass}>
+                <div className={kpiHeaderClass}>
+                  <span className={kpiIconWrapClass}>
+                    <Crown className={kpiIconClass} aria-hidden />
+                  </span>
                   <p className={kpiLabelClass}>Lideranças</p>
                 </div>
                 <p className={kpiValueClass}>{resumoCidade.liderancas.toLocaleString('pt-BR')}</p>
@@ -2357,16 +2420,20 @@ export function ResumoEleicoesAtendimentoPanel() {
                     <button type="button" onClick={marcarLiderancasDoCard} className={kpiLinkClass}>
                       Marcar
                     </button>
-                    <span className="text-text-muted/50">·</span>
+                    <span className="text-[var(--palette-aux)]/45">·</span>
                     <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={kpiLinkClass}>
                       Detalhes
                     </button>
                   </p>
-                ) : null}
+                ) : (
+                  <p className={kpiMetaClass}>Total cadastrado</p>
+                )}
               </div>
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
-                  <BarChart3 className={kpiIconClass} aria-hidden />
+                  <span className={kpiIconWrapClass}>
+                    <BarChart3 className={kpiIconClass} aria-hidden />
+                  </span>
                   <p className={kpiLabelClass}>Pesquisas</p>
                 </div>
                 <p className={kpiValueClass}>
