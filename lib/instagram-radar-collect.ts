@@ -334,7 +334,13 @@ export async function collectInstagramRadar(options?: {
         cwd: process.cwd(),
         timeout: 900_000,
         maxBuffer: 8 * 1024 * 1024,
-        env: { ...process.env },
+        env: {
+          ...process.env,
+          // Em Vercel a function não traz ONNX/imgly — evita falha ao importar.
+          ...(process.env.VERCEL || process.env.VERCEL_ENV
+            ? { INSTAGRAM_AVATAR_SKIP_BG: '1' }
+            : {}),
+        },
       })
 
       if (stderr.trim()) {

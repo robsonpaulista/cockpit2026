@@ -13,6 +13,8 @@ export const AVATAR_OUTPUT_SIZE = 320
 const require = createRequire(import.meta.url)
 
 function skipBgRemoval() {
+  // Vercel serverless não inclui o pack ONNX (~GB); só resize/flatten com sharp.
+  if (process.env.VERCEL === '1' || process.env.VERCEL_ENV) return true
   const v = String(process.env.INSTAGRAM_AVATAR_SKIP_BG || '').trim().toLowerCase()
   return v === '1' || v === 'true' || v === 'yes'
 }

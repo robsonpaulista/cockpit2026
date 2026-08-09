@@ -31,15 +31,24 @@ const nextConfig = {
         './node_modules/ws/**/*',
         './node_modules/@supabase/supabase-js/**/*',
       ],
+      /** Script Apify + sharp (resize). Sem imgly/onnx — estouram o limite 250MB da function. */
       '/api/instagram-radar/collect': [
         './scripts/collect-instagram-radar.mjs',
         './scripts/lib/supabase-client.mjs',
         './scripts/lib/instagram-avatar-storage.mjs',
         './scripts/lib/instagram-avatar-flatten.mjs',
         './node_modules/@supabase/supabase-js/**/*',
-        './node_modules/@imgly/background-removal-node/**/*',
-        './node_modules/onnxruntime-node/**/*',
         './node_modules/sharp/**/*',
+      ],
+    },
+    outputFileTracingExcludes: {
+      '/api/instagram-radar/collect': [
+        './node_modules/@imgly/**/*',
+        './node_modules/onnxruntime-node/**/*',
+        './node_modules/@huggingface/**/*',
+        './node_modules/kokoro-js/**/*',
+        './node_modules/playwright/**/*',
+        './node_modules/playwright-core/**/*',
       ],
     },
   },
