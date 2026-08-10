@@ -15,16 +15,10 @@ import {
 import {
   fetchInstagramProfileVisitsManual,
 } from '@/lib/instagram-profile-visits-manual'
-import { WarRoomCopilotoCandidatosEngajamentoChart } from '@/components/war-room/war-room-copiloto-candidatos-engajamento-chart'
 import { WarRoomCopilotoJadyelAnuncios } from '@/components/war-room/war-room-copiloto-jadyel-anuncios'
 import { WarRoomCopilotoRedesDesempenho } from '@/components/war-room/war-room-copiloto-redes-desempenho'
-import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import { computeThemeComparison } from '@/lib/instagram-theme-comparison'
 import { instagramCaptionHeader } from '@/lib/instagram-caption-municipio'
-import {
-  buildTopCandidatosEngajamentoDiario,
-  type CandidatosEngajamentoChartModel,
-} from '@/lib/war-room/instagram-candidatos-engajamento'
 import {
   buildWarRoomRedesDesempenhoKpis,
   buildWarRoomRedesTopPosts,
@@ -35,16 +29,7 @@ import {
   type CopilotoRedesPeriod,
 } from '@/lib/war-room/redes-copiloto'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
-import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
-
-const CANDIDATOS_FETCH_LIMIT = 400
-
-type RadarBootstrapPayload = {
-  error?: string
-  actors?: PoliticalActorWithTerms[]
-  posts?: InstagramRadarPostWithActor[]
-}
 
 type PostClassification = {
   theme?: string
@@ -52,15 +37,9 @@ type PostClassification = {
 }
 
 type ThemeSortKey = 'engagement' | 'views'
-type FeedViewId = 'feed' | 'comparativo'
 
 const FEED_PREVIEW = 5
 const THEMES_PREVIEW = 5
-
-const FEED_VIEW_OPTIONS: Array<{ id: FeedViewId; label: string }> = [
-  { id: 'feed', label: 'Feed' },
-  { id: 'comparativo', label: 'Comparativo' },
-]
 
 function formatLastUpdateLabel(date: Date): string {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -133,11 +112,6 @@ export function WarRoomCopilotoRedesView() {
   const [themeSort, setThemeSort] = useState<ThemeSortKey>('engagement')
   const [feedExpanded, setFeedExpanded] = useState(false)
   const [themesExpanded, setThemesExpanded] = useState(false)
-  const [feedView, setFeedView] = useState<FeedViewId>('feed')
-  const [radarActors, setRadarActors] = useState<PoliticalActorWithTerms[]>([])
-  const [radarPosts, setRadarPosts] = useState<InstagramRadarPostWithActor[]>([])
-  const [radarLoading, setRadarLoading] = useState(true)
-  const [radarError, setRadarError] = useState<string | null>(null)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
   const topPostModalTitleId = useId()
 
@@ -209,39 +183,9 @@ export function WarRoomCopilotoRedesView() {
     }
   }, [period, days])
 
-  const loadRadarCandidatos = useCallback(async () => {
-    setRadarLoading(true)
-    setRadarError(null)
-    try {
-      const res = await fetch(
-        `/api/instagram-radar/bootstrap?days=${days}&limit=${CANDIDATOS_FETCH_LIMIT}`,
-        { cache: 'no-store' },
-      )
-      const json = (await res.json()) as RadarBootstrapPayload
-      if (!res.ok) {
-        throw new Error(json.error || 'Falha ao carregar comparativo de candidatos')
-      }
-      setRadarActors(json.actors ?? [])
-      setRadarPosts(json.posts ?? [])
-      setLastUpdatedAt(new Date())
-    } catch (err) {
-      setRadarError(
-        err instanceof Error ? err.message : 'Erro ao carregar comparativo de candidatos',
-      )
-      setRadarActors([])
-      setRadarPosts([])
-    } finally {
-      setRadarLoading(false)
-    }
-  }, [days])
-
   useEffect(() => {
     void load()
   }, [load])
-
-  useEffect(() => {
-    void loadRadarCandidatos()
-  }, [loadRadarCandidatos])
 
   useEffect(() => {
     if (!topPostModalTheme) return
@@ -255,16 +199,6 @@ export function WarRoomCopilotoRedesView() {
   const topPosts = useMemo(
     () => buildWarRoomRedesTopPosts(metrics?.posts ?? [], days),
     [metrics, days],
-  )
-
-  const candidatosEngajamento = useMemo<CandidatosEngajamentoChartModel>(
-    () =>
-      buildTopCandidatosEngajamentoDiario({
-        actors: radarActors,
-        posts: radarPosts,
-        days,
-      }),
-    [radarActors, radarPosts, days],
   )
 
   const postsInPeriod = useMemo(() => {
@@ -469,12 +403,11 @@ export function WarRoomCopilotoRedesView() {
             className="wr-copiloto-redes__ghost-btn"
             onClick={() => {
               void load()
-              void loadRadarCandidatos()
             }}
-            disabled={loading || radarLoading}
+            disabled={loading}
           >
             <RefreshCw
-              className={cn('h-3.5 w-3.5', (loading || radarLoading) && 'animate-spin')}
+              className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
               strokeWidth={1.5}
               aria-hidden
             />
@@ -486,66 +419,23 @@ export function WarRoomCopilotoRedesView() {
       <div className="wr-copiloto-redes__cols wr-copiloto-redes__cols--split">
         <div className="wr-copiloto-redes__main">
           <section
-            className={cn(
-              'wr-copiloto-redes__band wr-copiloto-redes__band--feed wr-copiloto-reveal__card',
-              feedView === 'comparativo' && 'wr-copiloto-redes__band--feed-comparativo',
-            )}
+            className="wr-copiloto-redes__band wr-copiloto-redes__band--feed wr-copiloto-reveal__card"
             style={{ ['--wr-reveal-i' as string]: 1 }}
             aria-label="Feed do período"
           >
             <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--posts wr-copiloto-redes__group-th--split">
               <span className="wr-copiloto-redes__group-th-title">
                 Feed do período
-                {feedView === 'feed' ? (
-                  <span className="wr-copiloto-redes__group-th-badge tabular-nums">
-                    {topPosts.length} posts
-                  </span>
-                ) : (
-                  <span className="wr-copiloto-redes__group-th-badge tabular-nums">
-                    {candidatosEngajamento.lines.length} candidatos · {periodLabel}
-                  </span>
-                )}
+                <span className="wr-copiloto-redes__group-th-badge tabular-nums">
+                  {topPosts.length} posts
+                </span>
               </span>
-              <div className="wr-copiloto-redes__view-tabs" role="tablist" aria-label="Visão do feed">
-                {FEED_VIEW_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={feedView === opt.id}
-                    className={cn(
-                      'wr-copiloto-redes__view-tab',
-                      feedView === opt.id && 'wr-copiloto-redes__view-tab--active',
-                    )}
-                    onClick={() => setFeedView(opt.id)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {feedView === 'feed' ? (
-                <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__group-th-link">
-                  Ver tudo →
-                </Link>
-              ) : null}
+              <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__group-th-link">
+                Ver tudo →
+              </Link>
             </div>
             <div className="wr-copiloto-redes__band-body">
-              {feedView === 'comparativo' ? (
-                radarLoading && candidatosEngajamento.empty ? (
-                  <p className="wr-copiloto-redes__empty wr-copiloto-redes__empty--inline">
-                    <Loader2
-                      className="h-4 w-4 animate-spin text-[var(--wr-accent,#F04B23)]"
-                      strokeWidth={1.5}
-                      aria-hidden
-                    />
-                    Carregando candidatos…
-                  </p>
-                ) : radarError ? (
-                  <p className="wr-copiloto-redes__empty">{radarError}</p>
-                ) : (
-                  <WarRoomCopilotoCandidatosEngajamentoChart model={candidatosEngajamento} />
-                )
-              ) : topPosts.length === 0 ? (
+              {topPosts.length === 0 ? (
                 <p className="wr-copiloto-redes__empty">
                   Nenhuma postagem nos últimos {periodLabel}.
                 </p>

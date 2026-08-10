@@ -10,6 +10,8 @@ export type InstagramRadarPost = {
   caption: string | null
   likes_count: number
   comments_count: number
+  /** Views de vídeo/reels quando a fonte envia; 0 caso contrário. */
+  views_count?: number
   post_url: string
   thumbnail_url: string | null
   collected_at: string
@@ -22,6 +24,14 @@ export type InstagramRadarPostWithActor = InstagramRadarPost & {
     PoliticalActor,
     'id' | 'name' | 'slug' | 'actor_type' | 'instagram_avatar_url'
   > | null
+}
+
+/** Agregado de comentários Apify (contas únicas) por político. */
+export type InstagramRadarCommenterStats = {
+  politicoId: string
+  uniqueCommenters: number
+  commentsSampled: number
+  postsWithComments: number
 }
 
 export type InstagramRadarCollectProgress = {
@@ -42,6 +52,13 @@ export type InstagramRadarCollectStatus = {
   nextCollectAt: string | null
   hoursUntilNextCollect: number | null
   collectInProgress: boolean
+  /** Comentários: 1× / 7 dias (independente dos posts) */
+  canCollectComments: boolean
+  commentsCooldownEnabled: boolean
+  commentsCooldownDays: number
+  lastCommentsStartedAt: string | null
+  nextCommentsCollectAt: string | null
+  hoursUntilNextCommentsCollect: number | null
   apifyConfigured: boolean
   ownAccountConfigured: boolean
   ownInstagramSource?: 'env' | 'metrics_history' | 'radar_posts' | 'none'
@@ -70,6 +87,9 @@ export type InstagramRadarCollectScriptResult = {
     postsFound: number
     postsInserted: number
     postsUpdated: number
+    commentsFound?: number
+    commentsSkipped?: boolean
+    commentsNextAt?: string | null
     estimatedCostUsd: number
     apifyRunId: string | null
     ownCandidateSynced: number

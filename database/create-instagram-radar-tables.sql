@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS instagram_radar_posts (
   caption TEXT,
   likes_count INTEGER NOT NULL DEFAULT 0,
   comments_count INTEGER NOT NULL DEFAULT 0,
+  views_count INTEGER NOT NULL DEFAULT 0,
   post_url TEXT NOT NULL,
   thumbnail_url TEXT,
   collected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

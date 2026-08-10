@@ -1,0 +1,1152 @@
+/* Radar Competitivo — pele iOS / macOS light (scoped). */
+
+.rc-ios {
+  /* Alinhado ao Intelligence Center (War Room clean) */
+  --rc-bg: #f7f7f6;
+  --rc-bg-2: #f3f3f1;
+  --rc-surface: #ffffff;
+  --rc-surface-glass: rgba(255, 255, 255, 0.82);
+  --rc-surface-subtle: #f3f3f1;
+  --rc-text: #20201e;
+  --rc-text-2: #52524f;
+  --rc-text-3: #777773;
+  --rc-border: rgba(20, 20, 20, 0.08);
+  --rc-border-soft: rgba(20, 20, 20, 0.05);
+  --rc-sep: #ebebe8;
+  --rc-accent: #f04b23;
+  --rc-accent-gold: #f04b23;
+  --rc-accent-light: #fff1ef;
+  --rc-track: #ececea;
+  --rc-mix-image: #022b3a;
+  --rc-mix-reels: #005b8f;
+  --rc-mix-carousel: #f04b23;
+  --rc-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, sans-serif;
+  --rc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --rc-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.04);
+  --rc-r: 18px;
+  --rc-r-sm: 14px;
+  --rc-r-xs: 10px;
+  --rc-ease: 140ms ease;
+
+  box-sizing: border-box;
+  color: var(--rc-text);
+  font-family: var(--rc-font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.rc-ios *,
+.rc-ios *::before,
+.rc-ios *::after {
+  box-sizing: border-box;
+}
+
+.rc-ios-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.rc-ios-board {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 40% at 28% -5%, rgba(255, 255, 255, 0.75), transparent 52%),
+    radial-gradient(ellipse 50% 35% at 82% 12%, rgba(180, 185, 190, 0.09), transparent 48%),
+    var(--rc-bg);
+  border: 1px solid var(--rc-border-soft);
+  box-shadow: var(--rc-shadow-md);
+}
+
+/* —— Main shell —— */
+.rc-ios-main {
+  display: grid;
+  grid-template-rows:
+    auto
+    minmax(0, 1.2fr)
+    minmax(0, 1.15fr);
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 8px 10px 10px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.rc-ios-panel__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.rc-ios-compare-cta {
+  display: none;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rc-border);
+  background: #fff;
+  color: var(--rc-text);
+  font-size: 11px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.rc-ios-compare-cta--visible {
+  display: inline-flex;
+}
+
+/* —— Panels —— */
+.rc-ios-panel {
+  background: var(--rc-surface);
+  border-radius: var(--rc-r);
+  border: 1px solid rgba(60, 60, 67, 0.08);
+  box-shadow: var(--rc-shadow-sm);
+  min-width: 0;
+  min-height: 0;
+}
+
+.rc-ios-panel--glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(60, 60, 67, 0.06),
+    var(--rc-shadow-sm);
+}
+
+.rc-ios-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+
+.rc-ios-panel__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-panel__hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--rc-text-3);
+  font-weight: 500;
+}
+
+.rc-ios-panel--glass > .rc-ios-panel__head {
+  padding: 5px 10px 2px;
+}
+
+.rc-ios-panel--glass .rc-ios-panel__title {
+  font-size: 10px;
+}
+
+.rc-ios-panel--glass .rc-ios-panel__hint {
+  font-size: 9px;
+}
+
+/* —— Profiles strip (compacta) —— */
+.rc-ios-profiles {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0;
+  padding: 2px 4px 4px;
+  overflow: hidden;
+}
+
+.rc-ios-profile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  min-width: 0;
+  transition:
+    background var(--rc-ease),
+    opacity var(--rc-ease),
+    box-shadow var(--rc-ease);
+}
+
+/* Sem underline/borda por cor de candidato — IDs 01–09 identificam */
+.rc-ios-profile::after {
+  content: none;
+}
+
+.rc-ios-profile--dim {
+  opacity: 0.55;
+}
+
+.rc-ios-profile--selected {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
+  box-shadow: var(--rc-shadow-sm);
+  opacity: 1;
+}
+
+.rc-ios-profile__rank {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text-2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rc-ios-profile__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--rc-surface-subtle);
+  border: 1.5px solid var(--rc-border);
+}
+
+.rc-ios-profile__avatar--fb {
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-profile__name {
+  margin: 0;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+}
+
+.rc-ios-profile__user {
+  margin: 0;
+  max-width: 100%;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--rc-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+/* Colunas alinhadas: ranking|mapa|pulso  ≡  dna|tops+comunidade|conexões */
+.rc-ios-mid,
+.rc-ios-bottom {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.85fr) minmax(0, 1.55fr) minmax(220px, 1fr);
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rc-ios-rank {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 6px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-rank__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 4px;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.rc-ios-rank__row {
+  display: grid;
+  grid-template-columns: 18px 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  height: auto;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--rc-border-soft);
+  transition: background var(--rc-ease);
+}
+
+.rc-ios-rank__row:hover {
+  background: rgba(120, 120, 128, 0.06);
+}
+
+.rc-ios-rank__pos {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text-2) !important; /* ignora cor por candidato */
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-rank__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--rc-surface-subtle);
+}
+
+.rc-ios-rank__avatar--fb {
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-rank__name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-rank__star {
+  flex-shrink: 0;
+  color: var(--rc-accent-gold);
+}
+
+.rc-ios-rank__val {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text);
+}
+
+/* —— Performance map —— */
+.rc-ios-map {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-map__table {
+  display: grid;
+  grid-template-columns: minmax(96px, 118px) repeat(6, minmax(0, 1fr));
+  gap: 0;
+  padding: 0 8px 8px;
+  flex: 1;
+  min-height: 0;
+  align-content: space-evenly;
+}
+
+.rc-ios-map__th {
+  padding: 4px 4px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rc-text-3);
+  border-bottom: 1px solid var(--rc-sep);
+}
+
+.rc-ios-map__th--name {
+  color: transparent;
+}
+
+.rc-ios-map__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 4px 4px 2px;
+  border-bottom: 1px solid var(--rc-border-soft);
+}
+
+.rc-ios-map__name span {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-map__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--rc-text-3) !important;
+}
+
+.rc-ios-map__cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-bottom: 1px solid var(--rc-border-soft);
+  min-width: 0;
+}
+
+.rc-ios-bar {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rc-track);
+  overflow: hidden;
+}
+
+.rc-ios-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--rc-bar-color, #005b8f);
+  opacity: 0.85;
+}
+
+.rc-ios-map__val {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text);
+}
+
+.rc-ios-map__win {
+  width: 10px;
+  color: var(--rc-accent-gold);
+  flex-shrink: 0;
+}
+
+/* —— Pulse —— */
+.rc-ios-pulse {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-pulse__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 8px 8px;
+}
+
+.rc-ios-pulse__chart {
+  min-width: 0;
+  min-height: 0;
+}
+
+.rc-ios-pulse__legend {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rc-ios-pulse__legend-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-pulse__legend-item span:nth-child(2) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--rc-text);
+}
+
+.rc-ios-pulse__legend-item strong {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text);
+}
+
+.rc-ios-pulse__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* —— Bottom modules —— */
+.rc-ios-dna {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-dna__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rc-ios-dna__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-ios-dna__rank {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text-2) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-dna__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rc-ios-dna__stack {
+  display: flex;
+  height: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--rc-surface-subtle);
+}
+
+.rc-ios-dna__seg {
+  height: 100%;
+}
+
+.rc-ios-dna__pcts {
+  display: flex;
+  gap: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-dna__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 8px;
+  font-size: 9.5px;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-dna__legend-note {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-dna__legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+/* —— Performance por formato (substitui grafo) —— */
+.rc-ios-fperf {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+}
+
+.rc-ios-fperf__cols-head {
+  display: grid;
+  grid-template-columns: 22px repeat(3, minmax(0, 1fr)) minmax(5.75rem, 6.5rem);
+  gap: 6px;
+  padding: 0 10px 4px;
+  align-items: end;
+}
+
+.rc-ios-fperf__col-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-fperf__col-label--image {
+  color: var(--rc-mix-image);
+}
+
+.rc-ios-fperf__col-label--reels {
+  color: var(--rc-mix-reels);
+}
+
+.rc-ios-fperf__col-label--carousel {
+  color: var(--rc-mix-carousel);
+}
+
+.rc-ios-fperf__col-label--share {
+  text-align: right;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-fperf__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.rc-ios-fperf__row {
+  display: grid;
+  grid-template-columns: 22px repeat(3, minmax(0, 1fr)) minmax(5.75rem, 6.5rem);
+  gap: 6px;
+  align-items: center;
+  min-height: 0;
+}
+
+.rc-ios-fperf__rank {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-fperf__cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rc-ios-fperf__cell--empty .rc-ios-fperf__val {
+  color: var(--rc-text-3);
+  font-weight: 500;
+}
+
+.rc-ios-fperf__bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 3.25rem;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rc-track);
+  overflow: hidden;
+}
+
+.rc-ios-fperf__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.9;
+}
+
+.rc-ios-fperf__fill--image {
+  background: var(--rc-mix-image);
+}
+
+.rc-ios-fperf__fill--reels {
+  background: var(--rc-mix-reels);
+}
+
+.rc-ios-fperf__fill--carousel {
+  background: var(--rc-mix-carousel);
+}
+
+.rc-ios-fperf__val {
+  flex: 0 0 auto;
+  min-width: 2.2rem;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--rc-text);
+  line-height: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-fperf__share {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-fperf__share-item {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.rc-ios-fperf__share-item--image {
+  color: var(--rc-mix-image);
+}
+
+.rc-ios-fperf__share-item--reels {
+  color: var(--rc-mix-reels);
+}
+
+.rc-ios-fperf__share-item--carousel {
+  color: var(--rc-mix-carousel);
+}
+
+/* —— Top posts + format perf stack —— */
+.rc-ios-center-stack {
+  display: grid;
+  grid-template-rows: minmax(110px, 0.85fr) minmax(0, 1.25fr);
+  gap: 8px;
+  min-height: 0;
+  height: 100%;
+}
+
+.rc-ios-tops {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-tops__strip {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 10px 8px;
+  flex: 1;
+  min-height: 0;
+  align-content: stretch;
+}
+
+.rc-ios-top {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--rc-ease);
+}
+
+.rc-ios-top:hover {
+  transform: scale(1.01);
+}
+
+.rc-ios-top__media {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--rc-surface-subtle);
+}
+
+.rc-ios-top__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rc-ios-top__media-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.rc-ios-top__media-fallback span {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(29, 29, 31, 0.55);
+}
+
+.rc-ios-top__media--empty {
+  display: grid;
+  place-items: center;
+  color: var(--rc-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px dashed rgba(60, 60, 67, 0.14);
+  background: transparent;
+}
+
+.rc-ios-top--empty {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.rc-ios-top__eng {
+  flex: 0 0 auto;
+}
+
+.rc-ios-top__badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.rc-ios-top__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 6px 6px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.rc-ios-top__meta img,
+.rc-ios-top__meta span.rc-ios-top__av {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  background: #333;
+}
+
+.rc-ios-top__av {
+  display: grid;
+  place-items: center;
+  font-size: 7px;
+}
+
+.rc-ios-top__eng {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text);
+  padding-left: 2px;
+}
+
+.rc-ios-connections__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rc-ios-connections__format {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-connections {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rc-ios-connections__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.rc-ios-connections__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--rc-surface-subtle);
+}
+
+.rc-ios-connections__row img,
+.rc-ios-connections__row .rc-ios-connections__av {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rc-ios-connections__av {
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 600;
+  background: #e8e8ed;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-connections__name {
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-connections__score {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--rc-text);
+}
+
+.rc-ios-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  color: var(--rc-text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+.wr-copiloto-redes__band--feed-comparativo .wr-copiloto-redes__band-body:has(.rc-ios-stage) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.wr-copiloto-redes__main > .wr-copiloto-redes__band--feed-comparativo {
+  min-height: 0;
+}
+
+/* —— Alcance de conversa (substitui Pulso line chart) —— */
+.rc-ios-reach {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 10px 8px;
+  gap: 4px;
+}
+
+.rc-ios-reach__head {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1.2fr) 2.6rem minmax(0, 1fr) 3.6rem;
+  gap: 6px;
+  align-items: end;
+  padding: 0 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--rc-text-3);
+}
+
+/* Rank (col 1) + nome (col 2) → label “Perfil” ocupa as duas */
+.rc-ios-reach__h-perfil {
+  grid-column: 1 / 3;
+  min-width: 0;
+}
+
+.rc-ios-reach__h-posts {
+  grid-column: 3;
+  text-align: right;
+}
+
+.rc-ios-reach__h-unique {
+  grid-column: 4;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-ios-reach__h-recur {
+  grid-column: 5;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-ios-reach__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.rc-ios-reach__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1.2fr) 2.6rem minmax(0, 1fr) 3.6rem;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.rc-ios-reach__row--dim {
+  opacity: 0.4;
+}
+
+.rc-ios-reach__rank {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-reach__name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-reach__posts {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+  text-align: right;
+}
+
+.rc-ios-reach__unique {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rc-ios-reach__bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rc-track);
+  overflow: hidden;
+}
+
+.rc-ios-reach__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--rc-mix-reels);
+  opacity: 0.9;
+}
+
+.rc-ios-reach__val {
+  flex: 0 0 auto;
+  min-width: 2.2rem;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--rc-text);
+  text-align: right;
+}
+
+.rc-ios-reach__recur {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+  text-align: right;
+}
+
+.rc-ios-reach__empty {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--rc-surface-subtle);
+  color: var(--rc-text-2);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.rc-ios-reach__empty code {
+  font-size: 10px;
+}

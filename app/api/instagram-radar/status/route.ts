@@ -22,7 +22,9 @@ export async function GET() {
     } else if (status.ownAccountConfigured && status.ownInstagramSource === 'metrics_history') {
       message = `Jadyel: dados da página Redes & Instagram (${status.ownInstagramPostsInHistory ?? 0} posts no histórico). Concorrentes: coleta automatizada.`
     } else if (status.canCollect) {
-      message = `Coleta liberada · Jadyel via ${status.ownAccountConfigured ? 'conta autenticada/histórico ✓' : '—'} · concorrentes ${status.apifyConfigured ? '✓' : '(opcional)'}.`
+      message = `Coleta liberada · Jadyel via ${status.ownAccountConfigured ? 'conta autenticada/histórico ✓' : '—'} · concorrentes ${status.apifyConfigured ? '✓' : '(opcional)'}${
+        status.canCollectComments ? '' : ' · comentários em cooldown semanal'
+      }.`
     } else if (status.cooldownEnabled && !status.canCollect && status.nextCollectAt) {
       message = `Próxima coleta disponível em ${new Date(status.nextCollectAt).toLocaleString('pt-BR')}.`
     }

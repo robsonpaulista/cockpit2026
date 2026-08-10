@@ -78,6 +78,7 @@ export async function GET(request: Request) {
         setupRequired: true,
         actors: [] as PoliticalActorWithTerms[],
         posts: [] as InstagramRadarPostWithActor[],
+        commenterStats: [],
         status,
         configured: isYoutubeApiConfigured(),
         lookbackDays: days,
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
         setupRequired: true,
         actors: (actorsRes.data ?? []) as PoliticalActorWithTerms[],
         posts: [] as InstagramRadarPostWithActor[],
+        commenterStats: [],
         status,
         configured: isYoutubeApiConfigured(),
         lookbackDays: days,
@@ -97,6 +99,60 @@ export async function GET(request: Request) {
 
     if (actorsError) throw new Error(actorsError.message)
     if (postsError) throw new Error(postsError.message)
+
+    const posts = (postsRes.data ?? []) as InstagramRadarPostWithActor[]
+    const postIds = [...new Set(posts.map((p) => p.post_id).filter(Boolean))]
+    const politicoIds = [...new Set(posts.map((p) => p.politico_id).filter(Boolean))]
+
+    let commenterStats: Array<{
+      politicoId: string
+      uniqueCommenters: number
+      commentsSampled: number
+      postsWithComments: number
+    }> = []
+
+    if (politicoIds.length > 0 && postIds.length > 0) {
+      const { data: commentRows, error: commentsError } = await supabase
+        .from('instagram_radar_comments')
+        .select('politico_id, post_id, commenter_username')
+        .in('politico_id', politicoIds)
+        .in('post_id', postIds)
+        .limit(25000)
+
+      if (commentsError && !isSupabaseMissingTableError(commentsError)) {
+        // Tabela ausente = setup ainda não rodou; segue sem stats.
+        if (!String(commentsError.message || '').includes('instagram_radar_comments')) {
+          throw new Error(commentsError.message)
+        }
+      } else if (!commentsError && commentRows) {
+        const byPolitico = new Map<
+          string,
+          { users: Set<string>; comments: number; posts: Set<string> }
+        >()
+        for (const row of commentRows) {
+          const pid = row.politico_id as string
+          const user = String(row.commenter_username || '')
+            .trim()
+            .toLowerCase()
+          if (!pid || !user) continue
+          const acc = byPolitico.get(pid) ?? {
+            users: new Set<string>(),
+            comments: 0,
+            posts: new Set<string>(),
+          }
+          acc.users.add(user)
+          acc.comments += 1
+          if (row.post_id) acc.posts.add(String(row.post_id))
+          byPolitico.set(pid, acc)
+        }
+        commenterStats = [...byPolitico.entries()].map(([politicoId, acc]) => ({
+          politicoId,
+          uniqueCommenters: acc.users.size,
+          commentsSampled: acc.comments,
+          postsWithComments: acc.posts.size,
+        }))
+      }
+    }
 
     let message = ''
     if (!status.apifyConfigured && !status.ownAccountConfigured) {
@@ -114,7 +170,8 @@ export async function GET(request: Request) {
       setupRequired: false,
       configured: isYoutubeApiConfigured(),
       actors: (actorsRes.data ?? []) as PoliticalActorWithTerms[],
-      posts: (postsRes.data ?? []) as InstagramRadarPostWithActor[],
+      posts,
+      commenterStats,
       status: { ...status, message },
       lookbackDays: days,
     })

@@ -11,10 +11,18 @@ export type OwnInstagramRadarReady = {
   lastSnapshotDate: string | null
 }
 
-/** Apify — lê process.env com fallback para .env.local se o dev server não recarregou. */
+/** Apify — lê process.env com fallback para .env.local se o dev server não recarregou.
+ * Preferência operacional: TOKEN2..5 (TOKEN1 pode estar no limite).
+ */
 export function isApifyConfigured(): boolean {
   ensureEnvLocalLoaded()
-  return Boolean(process.env.APIFY_TOKEN?.trim() || process.env.APIFY_TOKEN2?.trim())
+  return Boolean(
+    process.env.APIFY_TOKEN2?.trim() ||
+      process.env.APIFY_TOKEN3?.trim() ||
+      process.env.APIFY_TOKEN4?.trim() ||
+      process.env.APIFY_TOKEN5?.trim() ||
+      process.env.APIFY_TOKEN?.trim(),
+  )
 }
 
 export async function getOwnInstagramRadarReady(

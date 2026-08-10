@@ -59,5 +59,8 @@ export async function GET() {
     },
     limits: budget,
     cooldown: '1 coleta a cada 7 dias (INSTAGRAM_RADAR_SKIP_COOLDOWN=1 para desativar)',
+    commentsCooldown:
+      'Comentários: 1× / 7 dias (INSTAGRAM_RADAR_SKIP_COMMENTS_COOLDOWN=1 para forçar). Posts podem rodar independente.',
+    apifyTokens: 'APIFY_TOKEN2..5 (TOKEN1 desativado)',
   })
 }

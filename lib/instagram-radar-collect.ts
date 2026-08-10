@@ -5,7 +5,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getInstagramRadarBudgetSummary } from '@/lib/instagram-radar-aggregate'
 import {
   isInstagramRadarCooldownEnabled,
+  isInstagramRadarCommentsCooldownEnabled,
   INSTAGRAM_RADAR_COOLDOWN_MS,
+  INSTAGRAM_RADAR_COMMENTS_COOLDOWN_MS,
 } from '@/lib/instagram-radar-config'
 import { getOwnInstagramRadarReady, isApifyConfigured } from '@/lib/instagram-radar-ready-check'
 import {
@@ -141,6 +143,64 @@ async function hasApifyTargets(
   return (count ?? 0) > 0
 }
 
+async function getCommentsCollectGate(supabase: SupabaseClient): Promise<{
+  canCollectComments: boolean
+  commentsCooldownEnabled: boolean
+  commentsCooldownDays: number
+  lastCommentsStartedAt: string | null
+  nextCommentsCollectAt: string | null
+  hoursUntilNextCommentsCollect: number | null
+}> {
+  const commentsCooldownEnabled = isInstagramRadarCommentsCooldownEnabled()
+  const commentsCooldownDays = INSTAGRAM_RADAR_COMMENTS_COOLDOWN_MS / (24 * 3_600_000)
+  const empty = {
+    canCollectComments: true,
+    commentsCooldownEnabled,
+    commentsCooldownDays,
+    lastCommentsStartedAt: null as string | null,
+    nextCommentsCollectAt: null as string | null,
+    hoursUntilNextCommentsCollect: null as number | null,
+  }
+
+  const { data, error } = await supabase
+    .from('instagram_radar_comments_collect_state')
+    .select('last_started_at')
+    .eq('id', 1)
+    .maybeSingle()
+
+  if (error) {
+    if (error.message.includes('does not exist') || error.code === '42P01' || error.code === 'PGRST205') {
+      return empty
+    }
+    throw new Error(error.message)
+  }
+
+  const lastCommentsStartedAt = data?.last_started_at ?? null
+  const lastStarted = lastCommentsStartedAt ? new Date(lastCommentsStartedAt).getTime() : 0
+  if (!lastStarted || !commentsCooldownEnabled) {
+    return { ...empty, lastCommentsStartedAt }
+  }
+
+  const elapsed = Date.now() - lastStarted
+  const withinCooldown = elapsed < INSTAGRAM_RADAR_COMMENTS_COOLDOWN_MS
+  const nextCommentsCollectAt = withinCooldown
+    ? new Date(lastStarted + INSTAGRAM_RADAR_COMMENTS_COOLDOWN_MS).toISOString()
+    : null
+  const msUntil = nextCommentsCollectAt
+    ? new Date(nextCommentsCollectAt).getTime() - Date.now()
+    : null
+
+  return {
+    canCollectComments: !withinCooldown,
+    commentsCooldownEnabled,
+    commentsCooldownDays,
+    lastCommentsStartedAt,
+    nextCommentsCollectAt,
+    hoursUntilNextCommentsCollect:
+      msUntil !== null ? Math.max(0, Math.ceil(msUntil / 3_600_000)) : null,
+  }
+}
+
 export async function getInstagramRadarCollectStatus(
   supabase: SupabaseClient
 ): Promise<InstagramRadarCollectStatus> {
@@ -150,6 +210,7 @@ export async function getInstagramRadarCollectStatus(
   const apifyConfigured = isApifyConfigured()
   const ownReady = await getOwnInstagramRadarReady(supabase)
   const cooldownEnabled = isInstagramRadarCooldownEnabled()
+  const commentsGate = await getCommentsCollectGate(supabase)
 
   const [{ data, error }, runningRes] = await Promise.all([
     supabase
@@ -169,6 +230,14 @@ export async function getInstagramRadarCollectStatus(
 
   const inProgress = collectInProgress || Boolean(runningRes.data?.started_at)
 
+  const baseLimits = {
+    maxActors: budget.maxActors,
+    postsPerProfile: budget.postsPerProfile,
+    maxChargeUsd: budget.maxChargeUsd,
+    estimatedCostPerRunUsd: budget.estimatedCostPerRunUsd,
+    freeMonthlyUsd: budget.freeMonthlyUsd,
+  }
+
   if (error) {
     if (error.message.includes('does not exist') || error.code === '42P01') {
       return {
@@ -181,17 +250,12 @@ export async function getInstagramRadarCollectStatus(
         nextCollectAt: null,
         hoursUntilNextCollect: null,
         collectInProgress: inProgress,
+        ...commentsGate,
         apifyConfigured,
         ownAccountConfigured: ownReady.ready,
         ownInstagramSource: ownReady.source,
         ownInstagramPostsInHistory: ownReady.postsInHistory,
-        limits: {
-          maxActors: budget.maxActors,
-          postsPerProfile: budget.postsPerProfile,
-          maxChargeUsd: budget.maxChargeUsd,
-          estimatedCostPerRunUsd: budget.estimatedCostPerRunUsd,
-          freeMonthlyUsd: budget.freeMonthlyUsd,
-        },
+        limits: baseLimits,
       }
     }
     throw new Error(error.message)
@@ -218,17 +282,12 @@ export async function getInstagramRadarCollectStatus(
     nextCollectAt,
     hoursUntilNextCollect: msUntil !== null ? Math.max(0, Math.ceil(msUntil / 3_600_000)) : null,
     collectInProgress: inProgress,
+    ...commentsGate,
     apifyConfigured,
     ownAccountConfigured: ownReady.ready,
     ownInstagramSource: ownReady.source,
     ownInstagramPostsInHistory: ownReady.postsInHistory,
-    limits: {
-      maxActors: budget.maxActors,
-      postsPerProfile: budget.postsPerProfile,
-      maxChargeUsd: budget.maxChargeUsd,
-      estimatedCostPerRunUsd: budget.estimatedCostPerRunUsd,
-      freeMonthlyUsd: budget.freeMonthlyUsd,
-    },
+    limits: baseLimits,
   }
 }
 

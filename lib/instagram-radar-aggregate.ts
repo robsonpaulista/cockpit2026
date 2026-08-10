@@ -5,6 +5,7 @@ import {
   getInstagramRadarMaxChargeUsd,
   getInstagramRadarPostsLimit,
 } from '@/lib/instagram-radar-config'
+import { isInstagramRadarReelLike } from '@/lib/instagram-radar-post-classify'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 
@@ -16,6 +17,7 @@ export type InstagramRadarComparePostRow = {
   posted_at: string | null
   likes_count: number
   comments_count: number
+  views_count: number
   engagement: number
 }
 
@@ -28,14 +30,14 @@ export type InstagramRadarCompareActorRow = {
   avgLikes: number
   avgComments: number
   avgEngagement: number
+  /** Média de views em reels/vídeos; fallback curtidas se views = 0. */
+  avgReelViews: number
   topPost: InstagramRadarComparePostRow | null
   posts: InstagramRadarPostWithActor[]
 }
 
-function isReelPost(post: InstagramRadarPostWithActor): boolean {
-  const type = post.post_type?.toLowerCase() ?? ''
-  if (type.includes('reel')) return true
-  return post.post_url.includes('/reel/')
+function postViews(post: InstagramRadarPostWithActor): number {
+  return Number(post.views_count ?? 0) || 0
 }
 
 function daysInWindow(lookbackDays: number): number {
@@ -70,7 +72,19 @@ export function buildInstagramRadarCompareRows(
       const count = actorPosts.length
       const totalLikes = actorPosts.reduce((s, p) => s + p.likes_count, 0)
       const totalComments = actorPosts.reduce((s, p) => s + p.comments_count, 0)
-      const reelCount = actorPosts.filter(isReelPost).length
+      const reelPosts = actorPosts.filter(isInstagramRadarReelLike)
+      const reelCount = reelPosts.length
+      const reelViewsKnown = reelPosts.filter((p) => postViews(p) > 0)
+      const avgReelViews =
+        reelViewsKnown.length > 0
+          ? Math.round(
+              reelViewsKnown.reduce((s, p) => s + postViews(p), 0) / reelViewsKnown.length,
+            )
+          : reelPosts.length > 0
+            ? Math.round(
+                reelPosts.reduce((s, p) => s + p.likes_count, 0) / reelPosts.length,
+              )
+            : 0
 
       const top = [...actorPosts].sort(
         (a, b) => b.likes_count + b.comments_count - (a.likes_count + a.comments_count)
@@ -85,6 +99,7 @@ export function buildInstagramRadarCompareRows(
             posted_at: top.posted_at,
             likes_count: top.likes_count,
             comments_count: top.comments_count,
+            views_count: postViews(top),
             engagement: top.likes_count + top.comments_count,
           }
         : null
@@ -98,6 +113,7 @@ export function buildInstagramRadarCompareRows(
         avgLikes: count > 0 ? Math.round(totalLikes / count) : 0,
         avgComments: count > 0 ? Math.round(totalComments / count) : 0,
         avgEngagement: count > 0 ? Math.round((totalLikes + totalComments) / count) : 0,
+        avgReelViews,
         topPost,
         posts: actorPosts,
       }

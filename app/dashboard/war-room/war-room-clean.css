@@ -11,27 +11,43 @@
    ========================================================================== */
 
 body[data-war-room-clean] {
-  /* --- Neutros premium ------------------------------------------------- */
+  /* --- Neutros Intelligence Center ----------------------------------- */
   --wr-bg: #f7f7f6;
   --wr-surface: #ffffff;
-  --wr-surface-subtle: #f4f4f2;
-  --wr-surface-hover: #f4f4f2;
-  --wr-border: #e8e8e6;
-  --wr-divider: #eeeeec;
-  --wr-text-primary: #20201f;
-  --wr-text-secondary: #686865;
-  --wr-text-muted: #969692;
-  --wr-black: #20201f;
-  --wr-primary: #191918;
-  --wr-brand: #f04a2c; /* marca pontual — NÃO UI padrão */
-  --wr-accent: var(--wr-primary); /* UI comum = carvão; brand via --wr-brand */
-  --wr-accent-soft: #f4f4f2;
-  --wr-success: #3d8b5c;
-  --wr-success-soft: #f2f7f4;
-  --wr-danger: #c4544a;
-  --wr-danger-soft: #faf3f2;
-  --wr-icon: #969692;
-  --wr-icon-active: #20201f;
+  --wr-surface-subtle: #f3f3f1;
+  --wr-surface-hover: #ececea;
+  --wr-border: #e1e1de;
+  --wr-divider: #ebebe8;
+  --wr-text-primary: #20201e;
+  --wr-text-secondary: #52524f;
+  --wr-text-muted: #777773;
+  --wr-black: #111110;
+  --wr-primary: #20201e;
+  --wr-brand: #f04b23; /* coral — wordmark 2026 / alerta pontual */
+  --wr-accent: var(--wr-primary);
+  --wr-accent-soft: #fff1ef;
+  --wr-attention: #f04b23;
+  --wr-attention-soft: #fff1ef;
+  --wr-success: #299a55;
+  --wr-success-soft: #edf7f0;
+  --wr-danger: #e95b50;
+  --wr-danger-soft: #fff1ef;
+  --wr-icon: #6f6f6b;
+  --wr-icon-active: #20201e;
+
+  /* --- Materiais ----------------------------------------------------- */
+  --wr-glass: rgba(255, 255, 255, 0.68);
+  --wr-glass-strong: rgba(255, 255, 255, 0.82);
+  --wr-glass-sidebar: rgba(246, 246, 244, 0.74);
+  --wr-glass-blur: blur(20px) saturate(135%);
+  --wr-glass-border: rgba(20, 20, 20, 0.05);
+  --wr-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --wr-shadow-2: 0 6px 20px rgba(0, 0, 0, 0.04);
+  --wr-shadow-floating: 0 10px 35px rgba(0, 0, 0, 0.06);
+  --wr-shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --wr-ease: 140ms ease;
+  --wr-micro-heatmap-pos: rgba(41, 154, 85, 0.035);
+  --wr-micro-heatmap-neg: rgba(233, 91, 80, 0.035);
 
   /* --- Legacy aliases (markup existente) ------------------------------- */
   --wr-slate: var(--wr-text-primary);
@@ -40,33 +56,31 @@ body[data-war-room-clean] {
   --wr-white: var(--wr-surface);
   --wr-canvas: var(--wr-bg);
   --wr-page-bg: var(--wr-bg);
-  --wr-shell-glass: var(--wr-bg);
-  --wr-shell-blur: 0px;
-  --wr-header-bg: var(--wr-bg);
-  --wr-sidebar-bg: #f7f7f6;
-  --wr-sidebar-active: #20201f;
+  --wr-shell-glass: var(--wr-glass);
+  --wr-shell-blur: 20px;
+  --wr-header-bg: var(--wr-glass);
+  --wr-sidebar-bg: var(--wr-glass-sidebar);
+  --wr-sidebar-active: var(--wr-text-primary);
   --wr-sidebar-year: var(--wr-brand);
-  --wr-sidebar-text: #20201f;
-  --wr-sidebar-text-strong: #20201f;
-  --wr-sidebar-hover: #f4f4f2;
-  --wr-sidebar-active-bg: #ffffff;
-  --wr-sidebar-border: #e8e8e6;
-  --wr-sidebar-blur: 0px;
+  --wr-sidebar-text: var(--wr-text-secondary);
+  --wr-sidebar-text-strong: var(--wr-text-primary);
+  --wr-sidebar-hover: rgba(255, 255, 255, 0.45);
+  --wr-sidebar-active-bg: var(--wr-glass-strong);
+  --wr-sidebar-border: var(--wr-glass-border);
+  --wr-sidebar-blur: 28px;
   --wr-surface-inner: var(--wr-surface-subtle);
-  --wr-border-strong: #e5e5e3;
+  --wr-border-strong: #d8d8d4;
 
   --wr-text: var(--wr-text-primary);
   --wr-muted: var(--wr-text-muted);
   --wr-soft: var(--wr-text-muted);
   --wr-disabled: color-mix(in srgb, var(--wr-text-muted) 55%, var(--wr-bg));
 
-  /* Sem subtom azul — aliases semânticos neutros */
   --wr-teal: var(--wr-text-secondary);
   --wr-blue: var(--wr-text-secondary);
   --wr-violet: var(--wr-text-secondary);
   --wr-positive: var(--wr-success);
-  --wr-warn: var(--wr-text-secondary);
-  --wr-attention: var(--wr-text-secondary);
+  --wr-warn: var(--wr-attention);
   --wr-critical: var(--wr-danger);
   --wr-inactive: var(--wr-text-muted);
 
@@ -78,7 +92,7 @@ body[data-war-room-clean] {
   --wr-neutral: var(--wr-text-muted);
 
   --wr-orange-tint: var(--wr-surface-subtle);
-  --wr-yellow-tint: var(--wr-surface-subtle);
+  --wr-yellow-tint: var(--wr-attention-soft);
   --wr-blue-tint: var(--wr-surface-subtle);
   --wr-violet-tint: var(--wr-surface-subtle);
   --wr-critical-tint: var(--wr-danger-soft);
@@ -91,21 +105,24 @@ body[data-war-room-clean] {
   --wr-petrol: var(--wr-text-primary);
   --wr-inst: var(--wr-text-secondary);
   --wr-reject: var(--wr-danger);
-  --wr-yellow-soft: var(--wr-surface-subtle);
-  --wr-yellow-strong: var(--wr-text-secondary);
+  --wr-yellow-soft: var(--wr-attention-soft);
+  --wr-yellow-strong: var(--wr-attention);
   --wr-inst-soft: var(--wr-surface-subtle);
 
   /* --- Geometry ----------------------------------------------------- */
+  --wr-radius-sm: 8px;
+  --wr-radius-md: 10px;
   --wr-radius: 10px;
-  --wr-radius-sm: 10px;
-  --wr-radius-lg: 18px;
-  --wr-gap: 14px;
+  --wr-radius-lg: 14px;
+  --wr-radius-xl: 18px;
+  --wr-gap: 12px;
   --wr-card-pad: 16px;
   --wr-icon-size: 18px;
   --wr-icon-stroke: 1.5;
   --wr-icon-box: 36px;
 
-  --wr-font: 'Inter', var(--font-sans-fallback), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wr-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter',
+    var(--font-sans-fallback), system-ui, 'Segoe UI', sans-serif;
 
   --wr-type-headline-lg-size: 28px;
   --wr-type-headline-lg-lh: 1.25;
@@ -146,8 +163,8 @@ body[data-war-room-clean] {
   --wr-type-soft-color: var(--wr-text-muted);
   --wr-type-thead-size: 11px;
   --wr-type-thead-weight: 500;
-  --wr-type-thead-tracking: 0.06em;
-  --wr-type-thead-color: #797975;
+  --wr-type-thead-tracking: 0.04em;
+  --wr-type-thead-color: var(--wr-text-muted);
   --wr-type-filter-size: 12px;
   --wr-type-filter-weight: 400;
   --wr-type-filter-color: var(--wr-text-secondary);
@@ -163,27 +180,26 @@ body[data-war-room-clean] {
   --wr-chrome-offset: 11.5rem;
   --wr-board-h: calc(100dvh - var(--wr-chrome-offset));
 
-  /* Primário UI = carvão (não dourado/laranja) */
-  --color-primary: 25 25 24;
-  --color-primary-hover: 40 40 38;
-  --color-primary-tint: 244 244 242;
-  --brand-accent: var(--wr-primary);
-  --brand-accent-hover: color-mix(in srgb, var(--wr-primary) 82%, #000);
-  --cockpit-gold: var(--wr-text-secondary);
+  --color-primary: 32 32 30;
+  --color-primary-hover: 17 17 16;
+  --color-primary-tint: 243 243 241;
+  --brand-accent: var(--wr-brand);
+  --brand-accent-hover: color-mix(in srgb, var(--wr-brand) 82%, #000);
+  --cockpit-gold: var(--wr-brand);
   --mon-brand: var(--wr-primary);
   --mon-brand-deep: var(--wr-primary);
   --mon-brand-soft: var(--wr-surface-subtle);
-  --accent-gold: 104 104 101;
-  --accent-gold-dark: 32 32 31;
-  --accent-gold-soft: 244 244 242;
-  --strategic-yellow: 104 104 101;
+  --accent-gold: 240 75 35;
+  --accent-gold-dark: 32 32 30;
+  --accent-gold-soft: 255 241 239;
+  --strategic-yellow: 82 82 79;
   --bg-app: 247 247 246;
   --bg-surface: 255 255 255;
-  --bg-sidebar: 247 247 246;
+  --bg-sidebar: 246 246 244;
 
   --palette-petrol: var(--wr-text-primary);
   --palette-inst: var(--wr-text-secondary);
-  --palette-accent: var(--wr-primary);
+  --palette-accent: var(--wr-brand);
   --palette-bg: var(--wr-bg);
   --palette-card: var(--wr-surface);
   --palette-aux: var(--wr-text-muted);
@@ -191,8 +207,8 @@ body[data-war-room-clean] {
   --palette-neutral-bar: var(--wr-border);
   --palette-divider: var(--wr-divider);
   --palette-inst-soft: var(--wr-surface-subtle);
-  --palette-yellow-soft: var(--wr-surface-subtle);
-  --palette-yellow-strong: var(--wr-text-secondary);
+  --palette-yellow-soft: var(--wr-attention-soft);
+  --palette-yellow-strong: var(--wr-attention);
   --palette-reject: var(--wr-danger);
 
   font-family: var(--wr-font);
@@ -1417,18 +1433,24 @@ body[data-war-room-clean] .wr-page-canvas .tabular-nums:not(
 }
 
 body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__trend--alta {
-  color: #686865 !important;
+  color: var(--wr-success) !important;
 }
 
 body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__trend--baixa {
-  color: #c4544a !important;
+  color: var(--wr-danger) !important;
 }
 
-body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__flag--sim,
+body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__flag--sim {
+  background: #f2f2f0 !important;
+  color: var(--wr-text-secondary) !important;
+  border-radius: var(--wr-radius-sm);
+  font-weight: 500 !important;
+}
+
 body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__flag--nao {
   background: #f4f4f2 !important;
-  color: #686865 !important;
-  border-radius: 8px;
+  color: var(--wr-text-muted) !important;
+  border-radius: var(--wr-radius-sm);
   font-weight: 400 !important;
 }
 
@@ -7765,12 +7787,14 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 
 .wr-copiloto-tabs {
   display: inline-flex;
+  flex-wrap: wrap;
   align-self: flex-start;
   gap: 2px;
   margin: 0 0 12px;
   padding: 0;
   border-radius: 0;
   background: transparent;
+  max-width: 100%;
 }
 
 .wr-copiloto-tabs__btn {
@@ -8652,7 +8676,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 
 .wr-copiloto-redes__main > .wr-copiloto-redes__band--feed-comparativo {
   flex: 1 1 0;
-  min-height: 220px;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -8662,6 +8686,443 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
+  padding: 0;
+}
+
+.wr-copiloto-redes__cols--radar {
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.wr-copiloto-redes__cols--radar .wr-copiloto-redes__main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.wr-copiloto-redes__cols--radar .wr-copiloto-redes__band--feed-comparativo {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-copiloto-redes__cols--radar .wr-copiloto-redes__band--feed-comparativo .wr-copiloto-redes__band-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-copiloto-redes__cols--radar .rc-ios {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.wr-copiloto-comparativo {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wr-copiloto-comparativo__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex: 0 0 auto;
+  padding: 10px 18px 14px;
+}
+
+.wr-copiloto-comparativo__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.wr-copiloto-comparativo__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0 12px 12px;
+  overflow: hidden;
+}
+
+.wr-copiloto-comparativo__body > .rc-ios {
+  flex: 1 1 auto;
+  min-height: min(72vh, 880px);
+  height: 100%;
+}
+
+.wr-copiloto-comparativo__error {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wr-accent, #f04b23) 10%, #fff);
+  color: var(--wr-petrol, #022b3a);
+  font-size: 12.5px;
+}
+
+.wr-copiloto-comparativo__state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 240px;
+  color: var(--wr-aux, #6b7280);
+  font-size: 13px;
+}
+
+/* —— Copiloto · Obras / Emendas —— */
+.wr-copiloto-obras,
+.wr-copiloto-emendas {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 0;
+  font-family: var(--wr-font);
+  color: var(--wr-text-primary, #20201e);
+}
+
+.wr-copiloto-obras__toolbar,
+.wr-copiloto-emendas__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex: 0 0 auto;
+  padding: 10px 18px 12px;
+}
+
+.wr-copiloto-obras__toolbar-meta,
+.wr-copiloto-emendas__toolbar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wr-copiloto-obras__title,
+.wr-copiloto-emendas__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-copiloto-obras__hint,
+.wr-copiloto-emendas__hint {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--wr-text-muted, #777773);
+}
+
+.wr-copiloto-obras__toolbar-actions,
+.wr-copiloto-emendas__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.wr-copiloto-obras__body,
+.wr-copiloto-emendas__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  padding: 0 12px 12px;
+  overflow: auto;
+}
+
+.wr-copiloto-obras__body > .wr-mapa-obras-embedded,
+.wr-copiloto-emendas__body > .wr-emendas-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Chips / selects Copiloto (Obras + Emendas) */
+.wr-copiloto-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--wr-border, #e1e1de);
+  border-radius: 8px;
+  background: var(--wr-card, #fff);
+  color: var(--wr-text-secondary, #52524f);
+  font-family: var(--wr-font);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.wr-copiloto-filter-chip:hover {
+  background: var(--wr-surface-hover, #ececea);
+  border-color: var(--wr-border-strong, #d8d8d4);
+  color: var(--wr-text-primary, #20201e);
+}
+
+.wr-copiloto-filter-chip--active {
+  background: var(--wr-surface-subtle, #f3f3f1);
+  border-color: color-mix(in srgb, #20201e 22%, transparent);
+  color: var(--wr-text-primary, #20201e);
+  font-weight: 500;
+}
+
+.wr-copiloto-filter-select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, #333 12%, transparent);
+  border-radius: 10px;
+  background: var(--wr-card, #fff);
+  color: var(--wr-text-primary, #20201e);
+  font-family: var(--wr-font);
+  font-size: 12.5px;
+  font-weight: 400;
+  outline: none;
+}
+
+.wr-copiloto-filter-select:focus {
+  border-color: color-mix(in srgb, #333 28%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, #333 8%, transparent);
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-obras, .wr-copiloto-emendas, .wr-emendas-modal) {
+  font-family: var(--wr-font);
+  color: var(--wr-text-primary, #20201e);
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal) {
+  --color-primary: 32 32 30;
+  --accent-gold: #52524f;
+  --accent-gold-soft: #ececea;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) :is(
+  .text-text-primary,
+  .text-\[var\(--wr-text-primary\,\#022B3A\)\]
+) {
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) :is(
+  .text-text-muted,
+  .text-secondary,
+  .text-text-secondary
+) {
+  color: var(--wr-text-muted, #777773) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal) :is(
+  .text-accent-gold,
+  [class*='text-accent-gold']
+) {
+  color: var(--wr-text-secondary, #52524f) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
+  :is(
+    .border-card,
+    .border-border-card,
+    [class*='border-card'],
+    .border-card\/80,
+    .bg-border-card
+  ) {
+  border-color: var(--wr-border, #e1e1de) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
+  :is(.bg-bg-surface, .bg-surface, .bg-bg-app, .bg-background, .bg-background\/50) {
+  background-color: var(--wr-surface, #fff) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel)
+  :is(.bg-bg-app\/40, .bg-bg-app\/60, .bg-bg-app\/80, .bg-bg-app\/40) {
+  background-color: var(--wr-surface-subtle, #f3f3f1) !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded .rounded-xl,
+body[data-war-room-clean] .wr-emendas-panel .rounded-xl,
+body[data-war-room-clean] .wr-emendas-panel .rounded-2xl {
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) :is(
+  h2,
+  .text-base.font-semibold,
+  .font-semibold
+) {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded .text-sm,
+body[data-war-room-clean] .wr-emendas-panel .text-sm {
+  font-size: var(--wr-type-row-size, 13px) !important;
+  font-weight: 400;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded .text-xs,
+body[data-war-room-clean] .wr-emendas-panel .text-xs {
+  font-size: var(--wr-type-meta-size, 12px) !important;
+}
+
+/* Tabelas (Lista obras + Emendas) ≈ ranking Cidades */
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table thead th {
+  color: #797975 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid #eeeeec !important;
+  background: transparent !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tbody td {
+  color: #20201f !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  border-bottom: 1px solid #eeeeec !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tbody tr:hover td,
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel)
+  table
+  tbody
+  tr[class*='hover:bg-accent-gold']:hover
+  td {
+  background: #f4f4f2 !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tfoot td {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--wr-text-primary, #20201e) !important;
+  border-top: 1px solid #e8e8e6 !important;
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
+  :is(
+    .hover\:bg-accent-gold-soft\/25:hover,
+    .hover\:bg-accent-gold-soft\/50:hover,
+    .hover\:bg-accent-gold-soft\/60:hover,
+    .hover\:bg-accent-gold-soft\/70:hover,
+    .hover\:border-accent-gold\/40:hover
+  ) {
+  background: var(--wr-surface-hover, #ececea) !important;
+  border-color: var(--wr-border-strong, #d8d8d4) !important;
+}
+
+body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
+  :is([class*='ring-accent-gold'], [class*='focus:ring-accent-gold']) {
+  --tw-ring-color: color-mix(in srgb, #333 12%, transparent) !important;
+}
+
+body[data-war-room-clean] .wr-emendas-panel button[class*='border-card'],
+body[data-war-room-clean] .wr-mapa-obras-embedded button[class*='border-card'] {
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__panel {
+  border: 1px solid color-mix(in srgb, #333 10%, transparent) !important;
+  border-radius: 14px !important;
+  background: var(--wr-surface, #fff) !important;
+  box-shadow: 0 18px 48px color-mix(in srgb, #20201e 12%, transparent) !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal input,
+body[data-war-room-clean] .wr-emendas-modal select,
+body[data-war-room-clean] .wr-emendas-modal textarea {
+  border-color: var(--wr-border, #e1e1de) !important;
+  background: var(--wr-surface, #fff) !important;
+  color: var(--wr-text-primary, #20201e) !important;
+  font-family: var(--wr-font) !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal input:focus,
+body[data-war-room-clean] .wr-emendas-modal select:focus,
+body[data-war-room-clean] .wr-emendas-modal textarea:focus {
+  --tw-ring-color: color-mix(in srgb, #333 12%, transparent);
+  border-color: color-mix(in srgb, #333 28%, transparent) !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal label > span {
+  color: var(--wr-text-secondary, #52524f) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded__view-tabs {
+  border-bottom: 1px solid var(--wr-divider, #ebebe8) !important;
+  margin-bottom: 4px;
+}
+
+/* Botões Territories (chromeButtonClass) dentro do embed → ghost Copiloto */
+body[data-war-room-clean] .wr-mapa-obras-embedded button.inline-flex.items-center.justify-center {
+  height: 34px;
+  border-radius: 8px !important;
+  border-color: color-mix(in srgb, #424e5c 14%, transparent) !important;
+  background: var(--wr-card, #fff) !important;
+  color: color-mix(in srgb, #022b3a 82%, #6b7280) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded button.inline-flex.items-center.justify-center:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #022b3a 28%, transparent) !important;
+  color: #022b3a !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded input,
+body[data-war-room-clean] .wr-mapa-obras-embedded select {
+  border-color: color-mix(in srgb, #333 12%, transparent) !important;
+  border-radius: 10px !important;
+  background: var(--wr-card, #fff) !important;
+  color: var(--wr-text-primary, #20201e) !important;
+  font-family: var(--wr-font) !important;
+  font-size: 12.5px !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded input:focus,
+body[data-war-room-clean] .wr-mapa-obras-embedded select:focus {
+  --tw-ring-color: color-mix(in srgb, #333 12%, transparent);
+  border-color: color-mix(in srgb, #333 28%, transparent) !important;
+}
+
+.wr-copiloto-redes--page:has(.wr-copiloto-redes__cols--radar) {
+  min-height: min(82vh, 960px);
 }
 
 /* Comparativo legado (removido do markup; mantido por segurança). */
@@ -12208,4 +12669,1159 @@ body[data-war-room-clean] .wr-page-canvas .wr-heatmap-cell-val--on-light {
   animation: none !important;
   opacity: 1 !important;
   transform: none !important;
+}
+
+/* ==========================================================================
+   Intelligence Center v2 — materialidade (glass / surfaces / Cidades)
+   Camada final: eleva shell + Cidades sem alterar lógica.
+   ========================================================================== */
+
+/* Utilitários de material */
+body[data-war-room-clean] .wr-glass {
+  background: var(--wr-glass);
+  backdrop-filter: var(--wr-glass-blur);
+  -webkit-backdrop-filter: var(--wr-glass-blur);
+  border: 1px solid var(--wr-glass-border);
+  box-shadow: var(--wr-shadow-glass);
+}
+
+body[data-war-room-clean] .wr-surface-data {
+  background: var(--wr-surface);
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-lg);
+  box-shadow: var(--wr-shadow-1);
+}
+
+body[data-war-room-clean] .wr-capsule-ctrl {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--wr-radius-md);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  color: var(--wr-text-secondary);
+  transition:
+    background var(--wr-ease),
+    border-color var(--wr-ease),
+    box-shadow var(--wr-ease),
+    transform var(--wr-ease);
+}
+
+body[data-war-room-clean] .wr-capsule-ctrl:hover {
+  background: rgba(255, 255, 255, 0.88);
+  transform: translateY(-1px);
+  box-shadow: var(--wr-shadow-1);
+}
+
+/* --- Ambiente (plano 1) ----------------------------------------------- */
+body[data-war-room-clean] {
+  background:
+    radial-gradient(ellipse 70% 45% at 8% -8%, rgba(175, 185, 195, 0.11), transparent 58%),
+    radial-gradient(ellipse 55% 40% at 92% 4%, rgba(255, 255, 255, 0.55), transparent 52%),
+    radial-gradient(ellipse 45% 28% at 48% 108%, rgba(190, 190, 188, 0.07), transparent 48%),
+    var(--wr-bg) !important;
+}
+
+body[data-war-room-clean] .relative.flex.h-screen.overflow-hidden,
+body[data-war-room-clean] .relative.flex.flex-1.flex-col.overflow-hidden,
+body[data-war-room-clean] main {
+  background: transparent !important;
+}
+
+/* Canvas: ambiente leve — dados ficam nas superfícies internas */
+body[data-war-room-clean] .wr-page-canvas,
+body[data-war-room-clean] .wr-page-canvas--copiloto,
+body[data-war-room-clean][data-wr-copiloto] .wr-page-canvas--copiloto,
+body[data-war-room-clean] .wr-page-canvas--scroll {
+  background: rgba(255, 255, 255, 0.42) !important;
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-xl) !important;
+  box-shadow: var(--wr-shadow-2) !important;
+}
+
+/* --- Sidebar frosted (dock executivo) --------------------------------- */
+body[data-war-room-clean] aside[data-sidebar-shell],
+body[data-war-room-clean] aside.sidebar-apify-shell,
+body[data-war-room-clean] aside.sidebar-cockpit-shell {
+  background: var(--wr-glass-sidebar) !important;
+  backdrop-filter: blur(28px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(135%) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] > div,
+body[data-war-room-clean] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean] aside[data-sidebar-shell] > div > div:last-child,
+body[data-war-room-clean] aside.sidebar-apify-shell > div > div:first-child,
+body[data-war-room-clean] aside.sidebar-cockpit-shell > div > div:first-child,
+body[data-war-room-clean] aside[data-sidebar-shell] .h-\[7rem\],
+body[data-war-room-clean] aside[data-sidebar-shell] .min-h-\[7rem\],
+body[data-war-room-clean] aside[data-sidebar-shell] .max-h-\[7rem\] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] nav .my-2,
+body[data-war-room-clean] aside[data-sidebar-shell] nav hr,
+body[data-war-room-clean] aside[data-sidebar-shell] .border-t,
+body[data-war-room-clean] aside[data-sidebar-shell] [class*='border-t'] {
+  border-color: transparent !important;
+  opacity: 0.35;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a,
+body[data-war-room-clean] aside[data-sidebar-shell] button {
+  color: var(--wr-text-secondary) !important;
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  transition:
+    color var(--wr-ease),
+    background-color var(--wr-ease),
+    border-color var(--wr-ease),
+    box-shadow var(--wr-ease),
+    transform var(--wr-ease);
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button:hover {
+  color: var(--wr-text-primary) !important;
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  box-shadow: none !important;
+  transform: translateY(-1px);
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon {
+  color: var(--wr-icon) !important;
+  opacity: 1;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
+body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\],
+body[data-war-room-clean] aside[data-sidebar-shell] .bg-\[linear-gradient\(135deg\,\#243443_0\%\,\#2f4353_52\%\,\#3b5466_100\%\)\] {
+  background: rgba(255, 255, 255, 0.82) !important;
+  background-image: none !important;
+  color: var(--wr-text-primary) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--wr-shadow-1) !important;
+  font-weight: 500 !important;
+  position: relative;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\]::before,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\]::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--wr-text-primary);
+  opacity: 0.55;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon {
+  color: var(--wr-icon-active) !important;
+  opacity: 1;
+}
+
+/* --- Header command bar ----------------------------------------------- */
+body[data-war-room-clean] header.wr-topbar-clean,
+body[data-war-room-clean] header.sticky {
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  border-bottom: 1px solid var(--wr-glass-border) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__title {
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  text-transform: none !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__countdown,
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__countdown-value,
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__countdown-label {
+  color: var(--wr-text-muted) !important;
+  font-weight: 400 !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto,
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__bell,
+body[data-war-room-clean] header.wr-topbar-clean .user-avatar-patch {
+  height: 36px !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  box-shadow: none !important;
+  color: var(--wr-text-secondary) !important;
+  font-weight: 500 !important;
+  transition:
+    background var(--wr-ease),
+    transform var(--wr-ease),
+    box-shadow var(--wr-ease);
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__bell {
+  width: 36px !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto:hover,
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__bell:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto--active {
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: var(--wr-text-primary) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* --- Segmented control (tabs Copiloto) -------------------------------- */
+body[data-war-room-clean] .wr-copiloto-tabs,
+body[data-war-room-clean][data-wr-copiloto] .wr-copiloto-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  align-self: flex-start;
+  gap: 2px !important;
+  margin: 0 0 14px !important;
+  padding: 3px !important;
+  border-radius: 12px !important;
+  background: #efefed !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+body[data-war-room-clean] .wr-copiloto-tabs__btn,
+body[data-war-room-clean][data-wr-copiloto] .wr-copiloto-tabs__btn {
+  position: relative;
+  height: 32px !important;
+  padding: 0 14px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--wr-text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em;
+  box-shadow: none !important;
+  transition:
+    color var(--wr-ease),
+    background var(--wr-ease),
+    box-shadow var(--wr-ease),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-war-room-clean] .wr-copiloto-tabs__btn::after,
+body[data-war-room-clean] .wr-copiloto-tabs__btn--active::after {
+  display: none !important;
+  content: none !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-tabs__btn:hover {
+  color: var(--wr-text-secondary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-tabs__btn--active,
+body[data-war-room-clean][data-wr-copiloto] .wr-copiloto-tabs__btn--active {
+  background: #ffffff !important;
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(0);
+}
+
+/* --- Cidades: control surface + tabela -------------------------------- */
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-xl) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__toolbar,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__toolbar--as-header {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 10px 12px 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+  border-bottom: 1px solid var(--wr-glass-border) !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__toolbar-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--wr-text-primary) !important;
+  letter-spacing: -0.01em;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__search,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__export-btn {
+  height: 34px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--wr-text-secondary) !important;
+  box-shadow: none !important;
+  transition: background var(--wr-ease), border-color var(--wr-ease), transform var(--wr-ease);
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__search:hover,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap:hover,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__export-btn:hover:not(:disabled) {
+  background: #f5f5f3 !important;
+  transform: translateY(-1px);
+  color: var(--wr-text-primary) !important;
+  border-color: #e1e1de !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__search:focus-within,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap:focus-within {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+  background: #ffffff !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__export-btn:hover:not(:disabled) {
+  background: #ffffff !important;
+  color: var(--wr-text-primary) !important;
+  border-color: #e1e1de !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-field-label {
+  color: var(--wr-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__export {
+  border-left: 1px solid var(--wr-divider) !important;
+  margin-left: 4px;
+  padding-left: 12px;
+}
+
+/* Tabela — plano de dados sólido */
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table-wrap,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-visita-modal__body {
+  margin: 10px 12px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface) !important;
+  box-shadow: var(--wr-shadow-1);
+  overflow: auto;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--wr-surface);
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em;
+  color: var(--wr-text-muted) !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  thead
+  tr.wr-expectativa-ranking-modal__group-row
+  th {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wr-text-secondary) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table tbody td {
+  border-bottom: 1px solid var(--wr-divider) !important;
+  background: transparent !important;
+  transition: background 140ms ease;
+  color: var(--wr-text-primary) !important;
+  font-weight: 400;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table tbody tr:hover td {
+  background: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__num,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__cidade {
+  color: var(--wr-text-primary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__flag--sim {
+  background: #f2f2f0 !important;
+  color: var(--wr-text-secondary) !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 2px 8px !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__flag--nao {
+  background: #f4f4f2 !important;
+  color: var(--wr-text-muted) !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  padding: 2px 8px !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__trend--alta,
+body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__meta-proj--ok,
+body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__meta-proj-icon--up {
+  color: var(--wr-success) !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__trend--baixa,
+body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__meta-proj--under,
+body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__meta-proj-icon--down {
+  color: var(--wr-danger) !important;
+}
+
+/* Microheatmap sutil */
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  td:has(.wr-expectativa-ranking-modal__trend--alta),
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  td:has(.wr-expectativa-ranking-modal__meta-proj--ok) {
+  background: var(--wr-micro-heatmap-pos);
+}
+
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  td:has(.wr-expectativa-ranking-modal__trend--baixa),
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  td:has(.wr-expectativa-ranking-modal__meta-proj--under) {
+  background: var(--wr-micro-heatmap-neg);
+}
+
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  tr:hover
+  td:has(.wr-expectativa-ranking-modal__trend--alta),
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  tr:hover
+  td:has(.wr-expectativa-ranking-modal__meta-proj--ok) {
+  background: color-mix(in srgb, var(--wr-micro-heatmap-pos) 70%, #fafaf9);
+}
+
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  tr:hover
+  td:has(.wr-expectativa-ranking-modal__trend--baixa),
+body[data-war-room-clean]
+  .wr-expectativa-ranking-modal__page-panel
+  .wr-expectativa-ranking-modal__table
+  tbody
+  tr:hover
+  td:has(.wr-expectativa-ranking-modal__meta-proj--under) {
+  background: color-mix(in srgb, var(--wr-micro-heatmap-neg) 70%, #fafaf9);
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__totais td {
+  background: var(--wr-surface-subtle) !important;
+  color: var(--wr-text-primary) !important;
+  border-top: 1px solid var(--wr-border) !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__flag--btn:hover,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__flag--btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06) !important;
+  outline-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Live state discreto (quando markup existir) */
+body[data-war-room-clean] .wr-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wr-success);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+body[data-war-room-clean] .wr-live-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-muted);
+}
+
+@media (max-width: 1100px) {
+  body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-war-room-clean] aside[data-sidebar-shell] a,
+  body[data-war-room-clean] aside[data-sidebar-shell] button,
+  body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto,
+  body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__bell,
+  body[data-war-room-clean] .wr-copiloto-tabs__btn,
+  body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__export-btn,
+  body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__search,
+  body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap,
+  body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__table tbody td {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* --- Cidades: filtros como chips numa linha --------------------------- */
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filtros {
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-field {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0 !important;
+  height: 34px;
+  padding: 0 2px 0 10px;
+  border: 1px solid #e7e7e4;
+  border-radius: var(--wr-radius-md);
+  background: #ffffff;
+  transition: background var(--wr-ease), border-color var(--wr-ease), transform var(--wr-ease);
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-field:hover {
+  background: #f5f5f3;
+  transform: translateY(-1px);
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-field-label {
+  position: static !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--wr-text-muted) !important;
+  white-space: nowrap;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-field-label::after {
+  content: ':';
+  margin-right: 2px;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap {
+  border: 0 !important;
+  background: transparent !important;
+  min-width: 96px !important;
+  height: 32px !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap:hover,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select-wrap:focus-within {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__filter-select {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--wr-text-primary) !important;
+  padding-right: 28px !important;
+  padding-left: 4px !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__toolbar-intro {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+body[data-war-room-clean] .wr-expectativa-ranking-modal__page-panel .wr-expectativa-ranking-modal__toolbar {
+  align-items: center !important;
+}
+
+/* ==========================================================================
+   Intelligence Center v2 — Redes / Radar / Comparativo
+   ========================================================================== */
+
+/* --- Shared: period / view segmented controls --------------------------- */
+body[data-war-room-clean] .wr-copiloto-redes__period-tabs,
+body[data-war-room-clean] .wr-copiloto-redes__view-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 3px !important;
+  border-radius: 12px !important;
+  background: #efefed !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__period-tab,
+body[data-war-room-clean] .wr-copiloto-redes__view-tab {
+  position: relative;
+  height: 32px !important;
+  padding: 0 12px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--wr-text-muted) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em;
+  box-shadow: none !important;
+  transition:
+    color var(--wr-ease),
+    background var(--wr-ease),
+    box-shadow var(--wr-ease);
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__period-tab::after,
+body[data-war-room-clean] .wr-copiloto-redes__period-tab--active::after,
+body[data-war-room-clean] .wr-copiloto-redes__view-tab::after,
+body[data-war-room-clean] .wr-copiloto-redes__view-tab--active::after {
+  display: none !important;
+  content: none !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__period-tab:hover,
+body[data-war-room-clean] .wr-copiloto-redes__view-tab:hover {
+  color: var(--wr-text-secondary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__period-tab--active,
+body[data-war-room-clean] .wr-copiloto-redes__view-tab--active {
+  background: #ffffff !important;
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* --- Shared ghost / capsule controls ------------------------------------ */
+body[data-war-room-clean] .wr-copiloto-redes__ghost-btn {
+  height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--wr-text-secondary) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  transition:
+    background var(--wr-ease),
+    border-color var(--wr-ease),
+    color var(--wr-ease),
+    transform var(--wr-ease),
+    box-shadow var(--wr-ease);
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__ghost-btn:hover:not(:disabled) {
+  background: #f5f5f3 !important;
+  border-color: #e1e1de !important;
+  color: var(--wr-text-primary) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__last-update,
+body[data-war-room-clean] .wr-copiloto-panorama__last-update {
+  color: var(--wr-text-muted) !important;
+  font-size: 12px !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__last-update-value,
+body[data-war-room-clean] .wr-copiloto-panorama__last-update-value {
+  color: var(--wr-text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+/* --- Redes Sociais ------------------------------------------------------ */
+body[data-war-room-clean] .wr-copiloto-redes--page {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-xl) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--wr-text-primary) !important;
+  overflow: hidden;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__toolbar {
+  margin: 10px 12px 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__cols {
+  padding: 10px 12px 12px;
+  gap: 10px;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__band {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__group-th,
+body[data-war-room-clean] .wr-copiloto-redes__group-th-title {
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__group-th-badge {
+  background: var(--wr-surface-subtle) !important;
+  color: var(--wr-text-muted) !important;
+  border: 1px solid var(--wr-divider);
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__group-th-link {
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__group-th-link:hover {
+  color: var(--wr-text-primary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__sort-select {
+  height: 30px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background-color: #ffffff !important;
+  color: var(--wr-text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__sort-select:hover {
+  background-color: #f5f5f3 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__time-chip {
+  background: #f2f2f0 !important;
+  color: var(--wr-text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__row {
+  border-bottom: 1px solid var(--wr-divider) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__row-inner--link:hover,
+body[data-war-room-clean] .wr-copiloto-list-card__row-inner--btn:hover {
+  background: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__title,
+body[data-war-room-clean] .wr-copiloto-redes__band--feed .wr-copiloto-list-card__title {
+  color: var(--wr-text-primary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__metric-primary,
+body[data-war-room-clean] .wr-copiloto-redes__band--feed .wr-copiloto-list-card__metric-primary {
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-list-card__metric-secondary,
+body[data-war-room-clean] .wr-copiloto-redes__band--feed .wr-copiloto-list-card__metric-secondary {
+  color: var(--wr-text-muted) !important;
+}
+
+/* Tabelas Redes */
+body[data-war-room-clean] .wr-copiloto-redes__table-scroll {
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-md);
+  background: var(--wr-surface);
+  overflow: auto;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__table thead th {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--wr-divider) !important;
+  color: var(--wr-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__table tbody td,
+body[data-war-room-clean] .wr-copiloto-redes__table tfoot td {
+  border-bottom: 1px solid var(--wr-divider) !important;
+  color: var(--wr-text-primary) !important;
+  font-weight: 400 !important;
+  transition: background 140ms ease;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__table tbody tr:hover td {
+  background: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__table tfoot td {
+  background: var(--wr-surface-subtle) !important;
+  color: var(--wr-text-secondary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__cell-link:hover {
+  color: var(--wr-text-primary) !important;
+  text-decoration: none;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__num {
+  font-weight: 500 !important;
+}
+
+/* KPI / desempenho cards */
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__card {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__label {
+  color: var(--wr-text-muted) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__total {
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__split,
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__legend {
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes-desempenho__legend-swatch {
+  background: var(--wr-text-secondary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__empty,
+body[data-war-room-clean] .wr-copiloto-comparativo__state,
+body[data-war-room-clean] .wr-copiloto-panorama__state {
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-comparativo__error,
+body[data-war-room-clean] .wr-copiloto-panorama__error {
+  background: var(--wr-danger-soft) !important;
+  color: var(--wr-text-primary) !important;
+  border: 1px solid color-mix(in srgb, var(--wr-danger) 18%, transparent);
+}
+
+/* Top post modal */
+body[data-war-room-clean] .wr-copiloto-redes__top-post-modal {
+  border-radius: var(--wr-radius-xl) !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  box-shadow: var(--wr-shadow-floating) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__top-post-link {
+  color: var(--wr-text-secondary) !important;
+}
+
+/* --- Radar (Panorama) --------------------------------------------------- */
+body[data-war-room-clean] .wr-copiloto-panorama {
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-xl);
+  background: transparent;
+  overflow: hidden;
+  color: var(--wr-text-primary);
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__toolbar {
+  margin: 10px 12px 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__title {
+  color: var(--wr-text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__body {
+  padding: 10px 12px 12px !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board {
+  gap: 10px;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='rounded-xl'],
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='rounded-2xl'],
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='rounded-lg'],
+body[data-war-room-clean] .wr-copiloto-panorama__board article {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board h3,
+body[data-war-room-clean] .wr-copiloto-panorama__board h4 {
+  color: var(--wr-text-primary) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board p,
+body[data-war-room-clean] .wr-copiloto-panorama__board span,
+body[data-war-room-clean] .wr-copiloto-panorama__board li {
+  color: var(--wr-text-secondary);
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board .text-text-primary,
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='text-text-primary'],
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='text-primary'] {
+  color: var(--wr-text-primary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board .text-text-secondary,
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='text-text-muted'],
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='text-muted'] {
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board th {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--wr-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board td {
+  border-bottom: 1px solid var(--wr-divider) !important;
+  color: var(--wr-text-primary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board tbody tr:hover td {
+  background: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-panorama-ig-table {
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-md);
+  overflow: hidden;
+  background: var(--wr-surface);
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama .pmh-name {
+  color: var(--wr-text-primary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='bg-[#F4FAF0]'],
+body[data-war-room-clean] .wr-copiloto-panorama__board .bg-\[\#F4FAF0\] {
+  background: var(--wr-micro-heatmap-pos) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board [class*='bg-[#FDF6F6]'],
+body[data-war-room-clean] .wr-copiloto-panorama__board .bg-\[\#FDF6F6\] {
+  background: var(--wr-micro-heatmap-neg) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board .recharts-cartesian-grid line {
+  stroke: var(--wr-divider) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-panorama__board .recharts-text,
+body[data-war-room-clean] .wr-copiloto-panorama__board .recharts-cartesian-axis-tick text,
+body[data-war-room-clean] .wr-copiloto-panorama__board .recharts-legend-item-text {
+  fill: var(--wr-text-muted) !important;
+}
+
+/* --- Comparativo + Radar Competitivo board ------------------------------ */
+body[data-war-room-clean] .wr-copiloto-comparativo {
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-xl);
+  background: transparent;
+  overflow: hidden;
+}
+
+body[data-war-room-clean] .wr-copiloto-comparativo__toolbar {
+  margin: 10px 12px 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-comparativo__body {
+  padding: 10px 12px 12px !important;
+}
+
+body[data-war-room-clean] .rc-ios {
+  --rc-bg: var(--wr-bg);
+  --rc-bg-2: var(--wr-surface-subtle);
+  --rc-surface: var(--wr-surface);
+  --rc-surface-glass: var(--wr-glass-strong);
+  --rc-surface-subtle: var(--wr-surface-subtle);
+  --rc-text: var(--wr-text-primary);
+  --rc-text-2: var(--wr-text-secondary);
+  --rc-text-3: var(--wr-text-muted);
+  --rc-border: rgba(20, 20, 20, 0.08);
+  --rc-border-soft: var(--wr-glass-border);
+  --rc-sep: var(--wr-divider);
+  --rc-accent: var(--wr-brand);
+  --rc-accent-gold: var(--wr-brand);
+  --rc-accent-light: var(--wr-attention-soft);
+  --rc-track: var(--wr-surface-hover);
+  --rc-shadow-sm: var(--wr-shadow-1);
+  --rc-shadow-md: var(--wr-shadow-2);
+  --rc-r: var(--wr-radius-xl);
+  --rc-r-sm: var(--wr-radius-lg);
+  --rc-r-xs: var(--wr-radius-md);
+  --rc-ease: var(--wr-ease);
+}
+
+body[data-war-room-clean] .rc-ios-board {
+  background:
+    radial-gradient(ellipse 70% 40% at 20% -5%, rgba(255, 255, 255, 0.7), transparent 50%),
+    radial-gradient(ellipse 50% 35% at 85% 10%, rgba(180, 185, 190, 0.08), transparent 48%),
+    var(--wr-bg) !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-xl) !important;
+  box-shadow: var(--wr-shadow-2) !important;
+}
+
+body[data-war-room-clean] .rc-ios-panel {
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean] .rc-ios-panel--glass {
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] .rc-ios-panel__title {
+  color: var(--wr-text-secondary) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em;
+}
+
+body[data-war-room-clean] .rc-ios-panel__hint {
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .rc-ios-profile:hover {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+body[data-war-room-clean] .rc-ios-profile.is-active,
+body[data-war-room-clean] .rc-ios-profile[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--wr-shadow-1);
+  border-radius: var(--wr-radius-md);
+}
+
+/* Candidatos / heatmap residual */
+body[data-war-room-clean] .wr-copiloto-redes-candidatos__row:not(.wr-copiloto-redes-candidatos__row--head):hover {
+  background: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-redes__main,
+body[data-war-room-clean] .wr-copiloto-redes__side {
+  border-color: transparent !important;
+}
+
+@media (max-width: 1100px) {
+  body[data-war-room-clean] .wr-copiloto-redes__toolbar,
+  body[data-war-room-clean] .wr-copiloto-panorama__toolbar,
+  body[data-war-room-clean] .wr-copiloto-comparativo__toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }

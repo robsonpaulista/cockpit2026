@@ -36,6 +36,7 @@ type RadarPostRow = {
   caption: string | null
   likes_count: number
   comments_count: number
+  views_count: number
   post_url: string
   thumbnail_url: string | null
   collected_at: string
@@ -132,6 +133,7 @@ async function fetchMediaFromGraphWithCredentials(
     caption: item.caption ?? null,
     likes_count: item.like_count ?? 0,
     comments_count: item.comments_count ?? 0,
+    views_count: 0,
     post_url: item.permalink ?? `https://www.instagram.com/p/${item.id}/`,
     thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
     collected_at: collectedAt,
@@ -194,6 +196,7 @@ async function fetchMediaFromGraph(limit: number): Promise<{
     caption: item.caption ?? null,
     likes_count: item.like_count ?? 0,
     comments_count: item.comments_count ?? 0,
+    views_count: 0,
     post_url: item.permalink ?? `https://www.instagram.com/p/${item.id}/`,
     thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
     collected_at: collectedAt,
@@ -249,6 +252,7 @@ async function fetchMediaFromHistory(
       caption: r.caption ?? null,
       likes_count: r.metrics.likes,
       comments_count: r.metrics.comments,
+      views_count: Number(r.metrics.views ?? 0) || 0,
       post_url: r.url || `https://www.instagram.com/p/${r.id}/`,
       thumbnail_url: r.thumbnail ?? null,
       collected_at: collectedAt,

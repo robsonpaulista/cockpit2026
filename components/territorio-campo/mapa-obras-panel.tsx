@@ -67,7 +67,12 @@ const MAPA_OBRAS_TAB_SPLASH_CLASS =
 
 type MapaObrasVisao = 'mapa' | 'lista'
 
-export function MapaObrasPanel() {
+type MapaObrasPanelProps = {
+  /** Embutido no War Room Copiloto — sem negative margins / splash full-bleed da Base Eleitoral */
+  embedded?: boolean
+}
+
+export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [visaoPainel, setVisaoPainel] = useState<MapaObrasVisao>('mapa')
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
@@ -82,9 +87,13 @@ export function MapaObrasPanel() {
   const [pavimentacao3dVariant, setPavimentacao3dVariant] = useState<ObraPavimentacao3dVariant>('oncoming')
   const [maquinario3dVariant, setMaquinario3dVariant] = useState<ObraMaquinario3dVariant>('trator')
   const [mostrarTodosPopups, setMostrarTodosPopups] = useState<boolean>(false)
-  const [splashConcluido, setSplashConcluido] = useState<boolean>(false)
+  const [splashConcluido, setSplashConcluido] = useState<boolean>(embedded)
   const [animacaoEntradaMapa, setAnimacaoEntradaMapa] = useState<boolean>(false)
   const [selectedMarcadorKey, setSelectedMarcadorKey] = useState<string | null>(null)
+
+  const splashShellClass = embedded
+    ? 'flex min-h-[min(62dvh,560px)] w-full flex-1 flex-col'
+    : MAPA_OBRAS_TAB_SPLASH_CLASS
 
   const temaConfig = useMemo(() => obraMapaTemaConfig(temaAtivo), [temaAtivo])
 
@@ -219,7 +228,7 @@ export function MapaObrasPanel() {
 
   if (loading && !splashConcluido && visaoPainel === 'mapa') {
     return (
-      <div className={cn(MAPA_OBRAS_TAB_SPLASH_CLASS, 'items-center justify-center bg-bg-surface text-sm text-text-muted')}>
+      <div className={cn(splashShellClass, 'items-center justify-center bg-bg-surface text-sm text-text-muted')}>
         <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
         Carregando obras…
       </div>
@@ -231,10 +240,19 @@ export function MapaObrasPanel() {
       <MapaObrasSplash
         obras={obras}
         onConcluir={concluirSplash}
-        className={cn(MAPA_OBRAS_TAB_SPLASH_CLASS, 'min-h-full flex-1')}
+        className={cn(splashShellClass, 'min-h-full flex-1')}
       />
     )
   }
+
+  const chipClass = (active: boolean) =>
+    embedded
+      ? cn('wr-copiloto-filter-chip', active && 'wr-copiloto-filter-chip--active')
+      : chromeFilterChipClass(active)
+  const actionBtnClass = embedded ? 'wr-copiloto-redes__ghost-btn' : chromeButtonClass
+  const selectClass = embedded
+    ? 'wr-copiloto-filter-select max-w-[9rem] truncate sm:max-w-[11rem]'
+    : 'max-w-[9rem] truncate rounded-lg border border-card bg-bg-app px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-[11rem]'
 
   const filtrosMapa = (
     <div
@@ -249,10 +267,10 @@ export function MapaObrasPanel() {
             key={tema.id}
             type="button"
             onClick={() => onTemaChange(tema.id)}
-            className={chromeFilterChipClass(temaAtivo === tema.id)}
+            className={chipClass(temaAtivo === tema.id)}
           >
             {tema.label}
-            <span className="ml-1 tabular-nums text-text-muted">
+            <span className="ml-1 tabular-nums opacity-70">
               ({tema.id === 'todos' ? totalObrasTemas : contagemPorTema[tema.id as (typeof OBRA_MAPA_TEMAS_OBRA)[number]] ?? 0})
             </span>
           </button>
@@ -265,7 +283,7 @@ export function MapaObrasPanel() {
             key={f.id}
             type="button"
             onClick={() => setFiltroFase(f.id)}
-            className={chromeFilterChipClass(filtroFase === f.id)}
+            className={chipClass(filtroFase === f.id)}
           >
             {f.label}
           </button>
@@ -284,7 +302,7 @@ export function MapaObrasPanel() {
               setSelectedMarcadorKey(null)
             }}
             title="Filtrar por município"
-            className="max-w-[9rem] truncate rounded-lg border border-card bg-bg-app px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-[11rem]"
+            className={selectClass}
           >
             <option value="">Todos ({municipiosDisponiveis.length})</option>
             {municipiosDisponiveis.map((municipio) => (
@@ -299,22 +317,54 @@ export function MapaObrasPanel() {
   )
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 border-b border-card pb-3">
-        <button
-          type="button"
-          onClick={() => setVisaoPainel('mapa')}
-          className={chromeFilterChipClass(visaoPainel === 'mapa')}
-        >
-          Mapa
-        </button>
-        <button
-          type="button"
-          onClick={() => setVisaoPainel('lista')}
-          className={chromeFilterChipClass(visaoPainel === 'lista')}
-        >
-          Lista e status
-        </button>
+    <div className={cn('flex flex-col gap-4', embedded && 'wr-mapa-obras-embedded min-h-0 flex-1')}>
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-2 border-b border-card pb-3',
+          embedded && 'wr-mapa-obras-embedded__view-tabs border-0 pb-1',
+        )}
+      >
+        {embedded ? (
+          <nav className="wr-copiloto-redes__period-tabs" aria-label="Visão de obras">
+            <button
+              type="button"
+              onClick={() => setVisaoPainel('mapa')}
+              className={cn(
+                'wr-copiloto-redes__period-tab',
+                visaoPainel === 'mapa' && 'wr-copiloto-redes__period-tab--active',
+              )}
+            >
+              Mapa
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisaoPainel('lista')}
+              className={cn(
+                'wr-copiloto-redes__period-tab',
+                visaoPainel === 'lista' && 'wr-copiloto-redes__period-tab--active',
+              )}
+            >
+              Lista e status
+            </button>
+          </nav>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setVisaoPainel('mapa')}
+              className={chromeFilterChipClass(visaoPainel === 'mapa')}
+            >
+              Mapa
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisaoPainel('lista')}
+              className={chromeFilterChipClass(visaoPainel === 'lista')}
+            >
+              Lista e status
+            </button>
+          </>
+        )}
       </div>
 
       {visaoPainel === 'lista' ? (
@@ -335,7 +385,7 @@ export function MapaObrasPanel() {
             <h2 className="text-base font-semibold text-text-primary">{temaConfig.titulo}</h2>
             <p className={cn('mt-1 max-w-2xl', typographyBodyMutedClass)}>{temaConfig.descricao}</p>
           </div>
-          <button type="button" onClick={() => void carregar()} className={chromeButtonClass} disabled={loading}>
+          <button type="button" onClick={() => void carregar()} className={actionBtnClass} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
             Atualizar
           </button>
@@ -359,7 +409,10 @@ export function MapaObrasPanel() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
-              <MapPinned className="h-4 w-4 text-accent-gold" aria-hidden />
+              <MapPinned
+                className={cn('h-4 w-4', embedded ? 'text-[var(--wr-text-secondary,#52524f)]' : 'text-accent-gold')}
+                aria-hidden
+              />
               {temaAtivo === 'todos'
                 ? `${marcadoresFiltrados.length} marcador(es) no mapa`
                 : `${new Set(marcadoresFiltrados.map((m) => m.municipio)).size} município(s) no mapa`}
