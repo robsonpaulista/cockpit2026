@@ -4,7 +4,8 @@
  * Escopo: body[data-ipt-operacional]
  */
 
-body[data-ipt-operacional] {
+/* Tokens cream legado desativados sob clean — bridge remapeia para wr-* */
+body[data-ipt-operacional]:not([data-war-room-clean]) {
   --page-bg: #f6f5f2;
   --surface: #ffffff;
   --surface-muted: #fafaf8;
@@ -193,7 +194,7 @@ body[data-ipt-operacional] .ipt-missao-card__cta {
   opacity: 0.95;
 }
 
-body[data-ipt-operacional] .ipt-missao-card--base {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--base {
   border-style: solid !important;
   border-color: #005b8f !important;
   border-width: 1.5px !important;
@@ -340,13 +341,13 @@ body[data-ipt-operacional] .ipt-operacional__map-filter {
   border-color: var(--border) !important;
 }
 
-body[data-ipt-operacional] .ipt-btn-exportar,
-body[data-ipt-operacional] .ipt-btn-atualizar,
-body[data-ipt-operacional] .ipt-lens-toggle__btn {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-btn-exportar,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-btn-atualizar,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-lens-toggle__btn {
   border-radius: 999px !important;
 }
 
-body[data-ipt-operacional] .ipt-btn-atualizar {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-btn-atualizar {
   box-shadow: 0 2px 8px color-mix(in srgb, #005b8f 28%, transparent);
 }
 

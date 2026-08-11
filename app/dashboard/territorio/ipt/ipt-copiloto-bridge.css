@@ -163,3 +163,363 @@ body[data-ipt-operacional]:not([data-war-room-clean]) .cockpit-icon.text-\[\#f04
 body[data-ipt-operacional]:not([data-war-room-clean]) .bg-\[\#f04b23\] {
   background-color: var(--palette-inst) !important;
 }
+
+/* ==========================================================================
+   IPT = padrão Cidades (War Room · Copiloto)
+   Camada final: sobrescreve operacional/clean cream/azul/Source Sans.
+   Escopo: body[data-war-room-clean][data-ipt-operacional]
+   ========================================================================== */
+
+body[data-war-room-clean][data-ipt-operacional] {
+  /* Tokens IPT → wr-* (Cidades) */
+  --page-bg: var(--wr-bg, #f7f7f6);
+  --surface: var(--wr-surface, #ffffff);
+  --surface-muted: var(--wr-surface-subtle, #f3f3f1);
+  --border: var(--wr-border, #e1e1de);
+  --border-strong: var(--wr-border-strong, #d8d8d4);
+  --text: var(--wr-text-primary, #20201e);
+  --text-muted: var(--wr-text-muted, #777773);
+  --text-soft: var(--wr-text-secondary, #52524f);
+
+  --ipt-orange-deep: var(--wr-text-primary, #20201e);
+  --ipt-orange: var(--wr-text-primary, #20201e);
+  --ipt-orange-light: var(--wr-text-secondary, #52524f);
+  --ipt-gray: var(--wr-text-secondary, #52524f);
+  --ipt-gray-mid: var(--wr-text-muted, #777773);
+  --ipt-gray-soft: var(--wr-surface-subtle, #f3f3f1);
+  --ipt-gray-border: var(--wr-border, #e1e1de);
+
+  --cockpit-gold: var(--wr-text-primary, #20201e);
+  --mission-research: var(--wr-text-primary, #20201e);
+  --mission-research-bg: var(--wr-surface-subtle, #f3f3f1);
+  --mission-digital: var(--wr-text-muted, #777773);
+  --mission-digital-bg: var(--wr-surface-subtle, #f3f3f1);
+  --mission-works: var(--wr-text-primary, #20201e);
+  --mission-works-bg: var(--wr-surface-subtle, #f3f3f1);
+  --mission-field: var(--wr-brand, #f04b23);
+  --mission-field-bg: var(--wr-accent-soft, #fff1ef);
+
+  --acao-bg: var(--wr-text-primary, #20201e);
+  --alerta-texto: var(--wr-brand, #f04b23);
+  --bg-app: 247 247 246;
+  --bg-surface: 255 255 255;
+
+  /* Tipografia = Cidades */
+  font-family: var(--wr-font) !important;
+  font-size: var(--wr-type-body-m-size, 13px) !important;
+  font-weight: 400;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--wr-text-primary, #20201e);
+}
+
+body[data-war-room-clean][data-ipt-operacional] strong,
+body[data-war-room-clean][data-ipt-operacional] b {
+  font-weight: 600;
+}
+
+/* Shell / main — mesmo cinza da página Cidades */
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional.ipt-page-shell,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-body,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-body.ipt-operacional,
+body[data-war-room-clean][data-ipt-operacional] main {
+  background: var(--wr-bg, #f7f7f6) !important;
+  background-color: var(--wr-bg, #f7f7f6) !important;
+  color: var(--wr-text-primary, #20201e) !important;
+  font-family: var(--wr-font) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Sidebar clara — reforço máximo (vence pétroleo legado) */
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell],
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-cockpit-shell,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child {
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  background-image: none !important;
+  border-color: #e8e8e6 !important;
+  color: #20201e !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] :is(a, button, span, p, label),
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] .cockpit-icon {
+  color: #52524f !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] :is(a, button)[aria-current='page'],
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] :is(a, button).bg-white\/\[0\.06\],
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] [data-active='true'] {
+  color: #20201e !important;
+}
+
+/* Títulos — escala Cidades (não 22px / preto) */
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-title,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-title--compact {
+  font-family: var(--wr-font) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.35 !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco__title,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__title,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar__title {
+  font-family: var(--wr-font) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-lead,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-lead--compact,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco__sub,
+body[data-war-room-clean][data-ipt-operacional] .ipt-fluxo-hint,
+body[data-war-room-clean][data-ipt-operacional] .ipt-exec-banner__label,
+body[data-war-room-clean][data-ipt-operacional] .ipt-exec-banner__meta,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missoes__grupo-label,
+body[data-war-room-clean][data-ipt-operacional] .ipt-painel-cidade__eyebrow,
+body[data-war-room-clean][data-ipt-operacional] .ipt-painel-cidade__section-label,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__cols,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__lead,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__missao-eyebrow,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__comp-label,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar__label {
+  color: var(--wr-text-muted, #777773) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+/* Anula tipografia “tudo preto” do operacional */
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__muni {
+  color: var(--wr-text-primary, #20201e) !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__metric,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__metric em,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__titulo,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc strong,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__bullets li,
+body[data-war-room-clean][data-ipt-operacional] .ipt-exec-banner__text,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-mapa__seal,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__comp-card em,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar__metric-copy em,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar__metric-copy small {
+  color: var(--wr-text-secondary, #52524f) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__titulo {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__desc,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__bullets li {
+  font-size: 12px !important;
+  color: var(--wr-text-muted, #777773) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__desc strong {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+/* Cards / blocos — superfície branca Cidades */
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card,
+body[data-war-room-clean][data-ipt-operacional] .ipt-exec-banner,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar,
+body[data-war-room-clean][data-ipt-operacional] .ipt-resumo-bar__metric {
+  border: 1px solid var(--wr-glass-border, rgba(20, 20, 20, 0.05)) !important;
+  border-radius: var(--wr-radius-lg, 14px) !important;
+  background: var(--wr-surface, #ffffff) !important;
+  box-shadow: var(--wr-shadow-1, 0 1px 2px rgba(0, 0, 0, 0.03)) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-exec-banner {
+  background: var(--wr-surface, #ffffff) !important;
+  background-image: none !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card {
+  border-radius: var(--wr-radius-lg, 14px) !important;
+  padding: 12px 14px !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:hover:not(:disabled) {
+  background: var(--wr-surface, #ffffff) !important;
+  border-color: var(--wr-border, #e1e1de) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active:hover:not(:disabled),
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active:hover:not(:disabled) {
+  border-color: #20201e !important;
+  background: #ffffff !important;
+  box-shadow: var(--wr-shadow-1) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--base {
+  border-color: var(--wr-border, #e1e1de) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__icon {
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+  border-color: var(--wr-border, #e1e1de) !important;
+  color: var(--wr-text-secondary, #52524f) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon {
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__cta,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__ver-mais {
+  color: var(--wr-text-secondary, #52524f) !important;
+  font-size: 12px !important;
+}
+
+/* Lista prioridades — hover cinza, sem azul institucional */
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__cols {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  color: var(--wr-text-muted, #777773) !important;
+  border-bottom: 1px solid var(--wr-divider, #ebebe8) !important;
+  background: #ffffff !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row {
+  border-color: var(--wr-divider, #ebebe8) !important;
+  background: #ffffff !important;
+  font-size: 13px !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row:hover,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row--active {
+  background: #fafaf9 !important;
+  background-color: #fafaf9 !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__more {
+  color: var(--wr-text-secondary, #52524f) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-mapa__body {
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__stats > div,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__comp-card {
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+  border-color: var(--wr-border, #e1e1de) !important;
+  border-radius: var(--wr-radius-md, 10px) !important;
+}
+
+/* Controles — radius Cidades, sem pill 999px / glow azul */
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-exportar,
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar,
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-evolucao,
+body[data-war-room-clean][data-ipt-operacional] .ipt-lens-toggle__btn,
+body[data-war-room-clean][data-ipt-operacional] .ipt-operacional__map-filter,
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__chips li,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-detalhe__badge {
+  border-radius: var(--wr-radius-md, 10px) !important;
+  box-shadow: none !important;
+  font-family: var(--wr-font) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-exportar,
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-evolucao {
+  height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e7e7e4 !important;
+  background: #ffffff !important;
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-exportar:hover:not(:disabled),
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-evolucao:hover:not(:disabled) {
+  background: #f5f5f3 !important;
+  border-color: #d8d8d4 !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar {
+  height: 34px !important;
+  padding: 0 14px !important;
+  background: #20201e !important;
+  border: 1px solid #20201e !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
+  background: #111110 !important;
+  border-color: #111110 !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao {
+  border: 1px solid var(--wr-border, #e1e1de) !important;
+  background: var(--wr-surface-subtle, #f3f3f1) !important;
+  border-radius: var(--wr-radius-md, 10px) !important;
+  padding: 3px !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active,
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active:hover {
+  background: #20201e !important;
+  border-color: #20201e !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+}
+
+/* Selects / filtros header */
+body[data-war-room-clean][data-ipt-operacional] .ipt-header-actions :is(button, select, [role='combobox']),
+body[data-war-room-clean][data-ipt-operacional] .ipt-td-select,
+body[data-war-room-clean][data-ipt-operacional] .ipt-municipio-select {
+  border-radius: var(--wr-radius-md, 10px) !important;
+  font-family: var(--wr-font) !important;
+  font-size: 12px !important;
+}
+
+/* Neutraliza azul institucional / cream residual no miolo */
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional :is(
+  .text-\[\#005b8f\],
+  .text-\[\#022B3A\],
+  .text-\[\#022b3a\],
+  .text-\[\#f04b23\]
+) {
+  color: var(--wr-text-primary, #20201e) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional .text-\[\#f04b23\][data-brand='accent'],
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional .ipt-alerta,
+body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional [data-tone='danger'] {
+  color: var(--wr-brand, #f04b23) !important;
+}

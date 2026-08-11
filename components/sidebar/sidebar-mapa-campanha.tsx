@@ -184,7 +184,6 @@ export function SidebarMapaCampanhaBlock({
               <Link
                 href={link.href}
                 onClick={() => onNavigate(link.href)}
-                title={iconOnly ? link.label : undefined}
                 aria-label={link.label}
                 className={cn(
                   sidebarNavItemClass(active),

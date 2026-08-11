@@ -372,6 +372,7 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
           obras={obras}
           atualizando={loading}
           onAtualizar={() => carregar()}
+          embedded={embedded}
         />
       ) : (
         <>

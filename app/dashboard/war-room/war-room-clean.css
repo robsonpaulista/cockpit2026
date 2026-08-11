@@ -8966,7 +8966,20 @@ body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-em
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
   :is(.bg-bg-surface, .bg-surface, .bg-bg-app, .bg-background, .bg-background\/50) {
-  background-color: var(--wr-surface, #fff) !important;
+  background-color: transparent !important;
+}
+
+body[data-war-room-clean] .wr-emendas-panel {
+  background: transparent !important;
+}
+
+body[data-war-room-clean] .wr-emendas-panel > .flex.min-h-0.flex-1.flex-col {
+  background: transparent !important;
+}
+
+body[data-war-room-clean] .wr-emendas-panel table thead tr.bg-white,
+body[data-war-room-clean] .wr-emendas-panel table thead tr[class*='bg-white'] {
+  background: transparent !important;
 }
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel)
@@ -9003,22 +9016,23 @@ body[data-war-room-clean] .wr-emendas-panel .text-xs {
   font-size: var(--wr-type-meta-size, 12px) !important;
 }
 
-/* Tabelas (Lista obras + Emendas) ≈ ranking Cidades */
+/* Tabelas (Lista obras + Emendas) ≈ ranking Cidades — superfície branca */
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table thead th {
-  color: #797975 !important;
+  color: var(--wr-text-muted) !important;
   font-size: 11px !important;
   font-weight: 500 !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.02em !important;
   text-transform: uppercase !important;
-  border-bottom: 1px solid #eeeeec !important;
-  background: transparent !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tbody td {
-  color: #20201f !important;
+  color: var(--wr-text-primary) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
-  border-bottom: 1px solid #eeeeec !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+  background: transparent !important;
 }
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tbody tr:hover td,
@@ -9027,15 +9041,15 @@ body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel)
   tbody
   tr[class*='hover:bg-accent-gold']:hover
   td {
-  background: #f4f4f2 !important;
+  background: #fafaf9 !important;
 }
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel) table tfoot td {
   font-size: 13px !important;
   font-weight: 500 !important;
   color: var(--wr-text-primary, #20201e) !important;
-  border-top: 1px solid #e8e8e6 !important;
-  background: var(--wr-surface-subtle, #f3f3f1) !important;
+  border-top: 1px solid var(--wr-divider) !important;
+  background: transparent !important;
 }
 
 body[data-war-room-clean] :is(.wr-mapa-obras-embedded, .wr-emendas-panel, .wr-emendas-modal)
@@ -13932,12 +13946,14 @@ body[data-war-room-clean] main :is(
   border-color: var(--wr-border, #e1e1de) !important;
 }
 
+/* Só classes de fundo reais — NÃO [class*='bg-accent-gold-soft']
+   (isso casava com hover:bg-accent-gold-soft/* e pintava linhas de cinza o tempo todo) */
 body[data-war-room-clean] main :is(
   .bg-accent-gold-soft\/25,
   .bg-accent-gold-soft\/50,
   .bg-accent-gold-soft\/60,
   .bg-accent-gold-soft\/70,
-  [class*='bg-accent-gold-soft']
+  .bg-accent-gold-soft
 ) {
   background-color: var(--wr-surface-subtle, #f3f3f1) !important;
 }
@@ -13977,6 +13993,22 @@ body[data-war-room-clean][data-ipt-palette] aside.sidebar-apify-shell {
   border-color: #e8e8e6 !important;
   color: #20201e !important;
   box-shadow: none !important;
+}
+
+/* Tooltip sidebar recolhida — mesmo cinza da sidebar + fonte padrão */
+body[data-war-room-clean] .sidebar-nav-tooltip,
+body[data-war-room-clean] aside[data-sidebar-shell] [role='tooltip'],
+body[data-war-room-clean] aside.sidebar-apify-shell [role='tooltip'] {
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  color: #20201e !important;
+  border: 1px solid #e8e8e6 !important;
+  border-radius: 8px !important;
+  font-family: var(--wr-font) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.35 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] > div,
@@ -14112,3 +14144,281 @@ body[data-war-room-clean] main :is(
 }
 
 
+
+/* ==========================================================================
+   Copiloto — chrome unificado (padrão Cidades em todas as abas)
+   Toolbars · filtros · botões · tabelas
+   ========================================================================== */
+
+body[data-war-room-clean] :is(
+  .wr-copiloto-obras__toolbar,
+  .wr-copiloto-emendas__toolbar,
+  .wr-copiloto-redes__toolbar,
+  .wr-copiloto-panorama__toolbar,
+  .wr-copiloto-comparativo__toolbar
+) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 10px 12px 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] :is(
+  .wr-copiloto-obras__title,
+  .wr-copiloto-emendas__title,
+  .wr-copiloto-redes__title,
+  .wr-copiloto-panorama__title,
+  .wr-copiloto-comparativo__title
+) {
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--wr-text-primary) !important;
+  text-transform: none !important;
+}
+
+body[data-war-room-clean] :is(
+  .wr-copiloto-obras__hint,
+  .wr-copiloto-emendas__hint,
+  .wr-copiloto-redes__hint,
+  .wr-copiloto-panorama__hint
+) {
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--wr-text-muted) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-redes__ghost-btn,
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-export-btn,
+body[data-war-room-clean] .wr-expectativa-ranking-modal__export-btn {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--wr-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  gap: 6px !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-redes__ghost-btn:hover:not(:disabled),
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-export-btn:hover:not(:disabled),
+body[data-war-room-clean] .wr-expectativa-ranking-modal__export-btn:hover:not(:disabled) {
+  background: #f5f5f3 !important;
+  color: var(--wr-text-primary) !important;
+  border-color: #e1e1de !important;
+  transform: translateY(-1px);
+}
+
+body[data-war-room-clean] .wr-copiloto-view :is(
+  .wr-copiloto-filter-select,
+  .wr-copiloto-filter-field
+) {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--wr-text-primary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-select:hover,
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-field:hover {
+  background: #f5f5f3 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-select:focus,
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-field:focus-within {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+  background: #ffffff !important;
+  outline: none !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-chip {
+  height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--wr-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-chip:hover {
+  background: #f5f5f3 !important;
+  color: var(--wr-text-primary) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-view .wr-copiloto-filter-chip--active {
+  background: #f3f3f1 !important;
+  border-color: color-mix(in srgb, #20201e 18%, transparent) !important;
+  color: var(--wr-text-primary) !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-filtros,
+body[data-war-room-clean] .wr-emendas-panel .wr-copiloto-filtros,
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 0 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-filtros .wr-copiloto-filter-field {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0 !important;
+  height: 34px !important;
+  padding: 0 2px 0 10px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-filtros .wr-copiloto-filter-field-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--wr-text-muted) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap;
+}
+
+body[data-war-room-clean] .wr-copiloto-filtros .wr-copiloto-filter-field-label::after {
+  content: ':';
+  margin-right: 4px;
+}
+
+body[data-war-room-clean] .wr-copiloto-filtros .wr-copiloto-filter-field :is(input, select) {
+  height: 32px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 8px 0 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--wr-text-primary) !important;
+  min-width: 5.5rem;
+  outline: none !important;
+}
+
+/* Tabela Emendas/Obras — mesmo plano branco sólido de Cidades */
+body[data-war-room-clean] :is(
+  .wr-copiloto-table-wrap,
+  .wr-emendas-panel .wr-copiloto-table-wrap,
+  .wr-mapa-obras-embedded .wr-copiloto-table-wrap
+) {
+  margin: 0 !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-surface, #ffffff) !important;
+  box-shadow: var(--wr-shadow-1);
+  overflow: hidden;
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)
+  table.wr-copiloto-table,
+body[data-war-room-clean] :is(.wr-emendas-panel, .wr-mapa-obras-embedded) table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: var(--wr-surface, #ffffff) !important;
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)
+  table
+  thead
+  th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 12px !important;
+  color: var(--wr-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)
+  table
+  tbody
+  tr {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)
+  table
+  tbody
+  td {
+  padding: 8px 12px !important;
+  color: var(--wr-text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  border-bottom: 1px solid var(--wr-divider) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)
+  table
+  tbody
+  tr:hover
+  td {
+  background: #fafaf9 !important;
+  background-color: #fafaf9 !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros input[type='search'],
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros select {
+  height: 34px !important;
+  border: 1px solid #e7e7e4 !important;
+  border-radius: var(--wr-radius-md) !important;
+  background: #ffffff !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--wr-text-primary) !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros input[type='search']:focus,
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros select:focus {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--wr-shadow-1) !important;
+  outline: none !important;
+}

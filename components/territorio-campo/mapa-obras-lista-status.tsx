@@ -155,6 +155,8 @@ interface MapaObrasListaStatusProps {
   onAtualizar?: () => void | Promise<void>
   atualizando?: boolean
   onStatusSalvo?: () => void
+  /** Chrome Copiloto (filtros/tabela iguais a Cidades). */
+  embedded?: boolean
 }
 
 /** Lista das obras no mapa — mesma planilha Sheets da guia Demandas. */
@@ -163,6 +165,7 @@ export function MapaObrasListaStatus({
   onAtualizar,
   atualizando = false,
   onStatusSalvo,
+  embedded = false,
 }: MapaObrasListaStatusProps) {
   const [busca, setBusca] = useState('')
   const [filtroMunicipio, setFiltroMunicipio] = useState('')
@@ -422,39 +425,52 @@ export function MapaObrasListaStatus({
   const todosExpandidos =
     blocosPorTipo.length > 0 && blocosPorTipo.every((b) => tiposExpandidos.has(b.key))
 
+  const actionBtnClass = embedded ? 'wr-copiloto-redes__ghost-btn' : chromeButtonClass
+  const exportBtnClass = embedded
+    ? 'wr-copiloto-export-btn wr-copiloto-redes__ghost-btn'
+    : chromeButtonClass
+  const selectClass = embedded
+    ? 'wr-copiloto-filter-select max-w-[14rem] truncate'
+    : 'max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
+  const searchClass = embedded
+    ? 'wr-copiloto-filter-select min-w-[12rem] flex-1 sm:max-w-xs'
+    : 'min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs'
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-card bg-bg-surface p-4">
-        <h2 className="text-base font-semibold text-text-primary">
-          Obras da planilha de Demandas
-        </h2>
-        <p className={cn('mt-1 max-w-3xl', typographyBodyMutedClass)}>
-          Mesma fonte e filtros da guia Demandas. Vincule cada obra ao plano de
-          trabalho na pasta do Drive (compartilhada com a service account).
-        </p>
-        <p className="mt-2 text-xs text-text-secondary">
-          {linksLoading
-            ? 'Carregando vínculos Drive…'
-            : `${vinculados.toLocaleString('pt-BR')} plano${vinculados === 1 ? '' : 's'} vinculado${vinculados === 1 ? '' : 's'}`}
-        </p>
-        {linksError ? (
-          <p className="mt-2 text-xs text-status-danger">{linksError}</p>
-        ) : null}
-      </div>
+      {!embedded ? (
+        <div className="rounded-xl border border-card bg-bg-surface p-4">
+          <h2 className="text-base font-semibold text-text-primary">
+            Obras da planilha de Demandas
+          </h2>
+          <p className={cn('mt-1 max-w-3xl', typographyBodyMutedClass)}>
+            Mesma fonte e filtros da guia Demandas. Vincule cada obra ao plano de
+            trabalho na pasta do Drive (compartilhada com a service account).
+          </p>
+          <p className="mt-2 text-xs text-text-secondary">
+            {linksLoading
+              ? 'Carregando vínculos Drive…'
+              : `${vinculados.toLocaleString('pt-BR')} plano${vinculados === 1 ? '' : 's'} vinculado${vinculados === 1 ? '' : 's'}`}
+          </p>
+          {linksError ? (
+            <p className="mt-2 text-xs text-status-danger">{linksError}</p>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn(embedded ? 'wr-copiloto-filtros' : 'flex flex-wrap items-center gap-2')}>
         <input
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar município, obra, status, plano…"
-          className="min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs"
+          className={searchClass}
         />
         <select
           value={filtroMunicipio}
           onChange={(e) => setFiltroMunicipio(e.target.value)}
           title="Filtrar por município"
-          className="max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+          className={selectClass}
         >
           <option value="">Todos os municípios</option>
           {opcoesMunicipio.map((municipio) => (
@@ -467,7 +483,7 @@ export function MapaObrasListaStatus({
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
           title="Filtrar por tipo"
-          className="rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+          className={selectClass}
         >
           <option value="">Todos os tipos</option>
           {opcoesTipo.map((tipo) => (
@@ -480,7 +496,7 @@ export function MapaObrasListaStatus({
           value={filtroStatus}
           onChange={(e) => setFiltroStatus(e.target.value)}
           title="Filtrar por status"
-          className="max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+          className={selectClass}
         >
           <option value="">Todos os status</option>
           {opcoesStatus.map((status) => (
@@ -497,7 +513,7 @@ export function MapaObrasListaStatus({
               setFiltroTipo('')
               setFiltroStatus('')
             }}
-            className={cn(chromeButtonClass, 'h-8 px-2 text-[11px]')}
+            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
           >
             Limpar filtros
           </button>
@@ -507,7 +523,7 @@ export function MapaObrasListaStatus({
           onClick={() => void atualizar()}
           disabled={atualizando || atualizandoLocal || linksLoading}
           title="Recarregar obras da planilha e vínculos do Drive"
-          className={cn(chromeButtonClass, 'h-8 px-2 text-[11px] disabled:opacity-50')}
+          className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
         >
           {atualizando || atualizandoLocal ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -521,7 +537,7 @@ export function MapaObrasListaStatus({
           onClick={() => setExportModalOpen(true)}
           disabled={filtradas.length === 0}
           title="Exportar seleção filtrada (CSV, Excel ou PDF)"
-          className={cn(chromeButtonClass, 'h-8 px-2 text-[11px] disabled:opacity-50')}
+          className={cn(exportBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
         >
           <Download className="h-3.5 w-3.5" aria-hidden />
           Exportar
@@ -531,7 +547,7 @@ export function MapaObrasListaStatus({
             type="button"
             onClick={todosExpandidos ? recolherTodosTipos : expandirTodosTipos}
             title={todosExpandidos ? 'Recolher todos os tipos' : 'Expandir todos os tipos'}
-            className={cn(chromeButtonClass, 'h-8 px-2 text-[11px]')}
+            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
           >
             {todosExpandidos ? 'Recolher tipos' : 'Expandir tipos'}
           </button>
@@ -545,9 +561,20 @@ export function MapaObrasListaStatus({
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-card bg-bg-surface">
+      <div
+        className={cn(
+          embedded
+            ? 'wr-copiloto-table-wrap'
+            : 'overflow-hidden rounded-xl border border-card bg-bg-surface',
+        )}
+      >
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+          <table
+            className={cn(
+              'min-w-full text-left text-sm',
+              embedded && 'wr-copiloto-table',
+            )}
+          >
             <thead className="border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary">
               <tr>
                 <th className="px-3 py-2.5 whitespace-nowrap">Data demanda</th>
@@ -654,7 +681,7 @@ export function MapaObrasListaStatus({
                                             href={link.drive_web_view_link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                                            className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
                                           >
                                             <ExternalLink className="h-3 w-3" aria-hidden />
                                             Abrir
@@ -663,7 +690,7 @@ export function MapaObrasListaStatus({
                                         <button
                                           type="button"
                                           onClick={() => setObraParaVincular(obra)}
-                                          className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                                          className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
                                         >
                                           <Link2 className="h-3 w-3" aria-hidden />
                                           {planoDriveTemArquivo(link) ? 'Trocar' : 'Editar'}
@@ -676,8 +703,8 @@ export function MapaObrasListaStatus({
                                       onClick={() => setObraParaVincular(obra)}
                                       disabled={linksLoading}
                                       className={cn(
-                                        chromeButtonClass,
-                                        'h-8 px-2 text-[11px] disabled:opacity-50',
+                                        actionBtnClass,
+                                        !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50',
                                       )}
                                     >
                                       {linksLoading ? (

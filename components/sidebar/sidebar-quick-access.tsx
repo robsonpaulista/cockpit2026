@@ -87,7 +87,6 @@ export function SidebarQuickAccess({
               <Link
                 href={item.href}
                 onClick={() => onNavigate(item.href)}
-                title={iconOnly ? item.label : undefined}
                 className={cn(
                   sidebarNavItemClass(active),
                   sidebarItemIconOnlyClass(collapsed, mobileOpen),

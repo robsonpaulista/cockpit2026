@@ -321,7 +321,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
   const isCockpit = false
   const pageShellClass = isCopiloto ? 'wr-emendas-panel bg-transparent' : 'bg-white'
   const sectionShellClass = isCopiloto
-    ? 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-[color-mix(in_srgb,#333333_8%,transparent)] bg-[var(--wr-surface,#fff)] p-4 shadow-none sm:p-5'
+    ? 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-[color-mix(in_srgb,#333333_8%,transparent)] bg-transparent p-4 shadow-none sm:p-5'
     : isCockpit
       ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
       : 'rounded-2xl bg-surface p-6 shadow-sm'
@@ -701,7 +701,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
       : 'min-w-[6.5rem] max-w-[11rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
 
   const tableShellClass = isCopiloto
-    ? 'flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[var(--wr-border,#e1e1de)] bg-white'
+    ? 'wr-copiloto-table-wrap flex min-h-0 flex-col overflow-hidden'
     : isCockpit
       ? 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]'
       : 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-card bg-white'
@@ -726,6 +726,15 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
           ? 'border-white/20 bg-white/5 text-text-primary hover:bg-white/10'
           : 'border-card bg-transparent text-text-primary hover:bg-background',
       )
+
+  const exportBtnClass = isCopiloto
+    ? 'wr-copiloto-export-btn wr-copiloto-redes__ghost-btn'
+    : ghostBtnClass
+
+  const filterFieldClass = isCopiloto ? 'wr-copiloto-filter-field' : 'flex min-w-0 shrink-0 items-center gap-1.5'
+  const filterLabelClass = isCopiloto
+    ? 'wr-copiloto-filter-field-label'
+    : 'text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap'
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', pageShellClass)}>
@@ -771,7 +780,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                 onClick={handleExportXlsx}
                 disabled={loading}
                 title="Exportar para Excel: registros filtrados e colunas visíveis"
-                className={ghostBtnClass}
+                className={exportBtnClass}
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Excel
@@ -781,7 +790,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                 onClick={handleExportPdf}
                 disabled={loading}
                 title="Exportar para PDF: registros filtrados e colunas visíveis"
-                className={ghostBtnClass}
+                className={exportBtnClass}
               >
                 <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 PDF
@@ -810,16 +819,27 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
             </div>
           )}
 
-          <div className={cn(innerPanelClass, 'mb-4 shrink-0')}>
-            <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-              <Filter className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
-              <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+          <div
+            className={cn(
+              isCopiloto ? 'wr-copiloto-filtros mb-4 shrink-0' : cn(innerPanelClass, 'mb-4 shrink-0'),
+            )}
+          >
+            <div
+              className={cn(
+                'flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]',
+                isCopiloto && 'w-full flex-wrap gap-2',
+              )}
+            >
+              {!isCopiloto ? (
+                <>
+                  <Filter className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
+                  <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                </>
+              ) : null}
 
-              <label className="flex min-w-0 shrink-0 items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Exercício
-                </span>
+              <label className={cn(filterFieldClass, !isCopiloto && 'flex min-w-0 shrink-0 items-center gap-1.5')}>
+                <span className={filterLabelClass}>Exercício</span>
                 <input
                   type="number"
                   min={1900}
@@ -829,40 +849,51 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                   value={filterExercicio}
                   onChange={(ev) => setFilterExercicio(ev.target.value)}
                   placeholder="Ano"
-                  className={filterInputClass}
+                  className={isCopiloto ? undefined : filterInputClass}
                 />
               </label>
 
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              {!isCopiloto ? (
+                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              ) : null}
 
-              <label className="flex min-w-[8rem] max-w-[14rem] flex-1 items-center gap-1.5 shrink-0">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Emenda
-                </span>
+              <label
+                className={cn(
+                  filterFieldClass,
+                  !isCopiloto && 'flex min-w-[8rem] max-w-[14rem] flex-1 items-center gap-1.5 shrink-0',
+                )}
+              >
+                <span className={filterLabelClass}>Emenda</span>
                 <input
                   type="search"
                   value={filterEmenda}
                   onChange={(ev) => setFilterEmenda(ev.target.value)}
                   placeholder="Contém…"
-                  className={cn(filterInputClass, 'min-w-[6rem] max-w-none flex-1')}
+                  className={isCopiloto ? undefined : cn(filterInputClass, 'min-w-[6rem] max-w-none flex-1')}
                   autoComplete="off"
                 />
               </label>
 
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              {!isCopiloto ? (
+                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              ) : null}
 
-              <label className="flex min-w-0 max-w-[min(22rem,48vw)] shrink-0 items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Município / Benef.
-                </span>
+              <label
+                className={cn(
+                  filterFieldClass,
+                  !isCopiloto && 'flex min-w-0 max-w-[min(22rem,48vw)] shrink-0 items-center gap-1.5',
+                )}
+              >
+                <span className={filterLabelClass}>Município / Benef.</span>
                 <select
                   value={filterMunicipio}
                   onChange={(ev) => setFilterMunicipio(ev.target.value)}
                   title="Valores cadastrados na base — filtro exato"
-                  className={cn(
-                    filterSelectClass,
-                    'min-w-[9rem] max-w-[min(18rem,40vw)] flex-1 truncate',
-                  )}
+                  className={
+                    isCopiloto
+                      ? undefined
+                      : cn(filterSelectClass, 'min-w-[9rem] max-w-[min(18rem,40vw)] flex-1 truncate')
+                  }
                 >
                   <option value="">Todos</option>
                   {municipiosBeneficiariosNaBase.map((m) => (
@@ -873,16 +904,16 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                 </select>
               </label>
 
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              {!isCopiloto ? (
+                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+              ) : null}
 
-              <label className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Status
-                </span>
+              <label className={cn(filterFieldClass, !isCopiloto && 'flex items-center gap-1.5 shrink-0')}>
+                <span className={filterLabelClass}>Status</span>
                 <select
                   value={filterStatus}
                   onChange={(ev) => setFilterStatus(ev.target.value as FiltroStatusEmenda)}
-                  className={filterSelectClass}
+                  className={isCopiloto ? undefined : filterSelectClass}
                   title="Pagas: valor pago maior que zero"
                 >
                   <option value="all">Todos</option>
@@ -893,7 +924,9 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
 
               {filtrosAtivos ? (
                 <>
-                  <span className="hidden md:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  {!isCopiloto ? (
+                    <span className="hidden md:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -1024,6 +1057,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                 <table
                   className={cn(
                     'w-full text-left text-sm',
+                    isCopiloto && 'wr-copiloto-table',
                     activeColumnList.length > 10
                       ? 'min-w-[1400px]'
                       : activeColumnList.length > 6
@@ -1037,7 +1071,11 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <tr
                       className={cn(
                         'sticky top-0 z-10 border-b',
-                        isCockpit ? 'border-white/10 bg-white/[0.06]' : 'border-card bg-white',
+                        isCopiloto
+                          ? 'border-[var(--wr-divider,#ebebe8)] bg-transparent'
+                          : isCockpit
+                            ? 'border-white/10 bg-white/[0.06]'
+                            : 'border-card bg-white',
                       )}
                     >
                       {activeColumnList.map((col) => {
@@ -1093,8 +1131,11 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                       <tr
                         key={r.id}
                         className={cn(
-                          'border-b hover:bg-accent-gold-soft/25',
-                          isCockpit ? 'border-white/10' : 'border-card/80',
+                          'border-b',
+                          isCopiloto
+                            ? 'border-[var(--wr-divider,#ebebe8)]'
+                            : 'hover:bg-accent-gold-soft/25',
+                          isCockpit ? 'border-white/10' : !isCopiloto && 'border-card/80',
                         )}
                       >
                       {activeColumnList.map((col) => (

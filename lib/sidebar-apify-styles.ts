@@ -77,8 +77,7 @@ export const sidebarApifySearchKbdClass = cn(
 )
 
 export const sidebarApifyTooltipClass = cn(
-  'fixed z-[200] whitespace-nowrap rounded-md border border-white/12 bg-[#141518] px-2.5 py-1.5 text-white/90 shadow-[0_8px_24px_rgb(0_0_0/0.45)]',
-  typographyBodyMediumClass
+  'sidebar-nav-tooltip fixed z-[200] whitespace-nowrap rounded-md border border-[#e8e8e6] bg-[#f7f7f6] px-2.5 py-1.5 text-[13px] font-medium leading-snug text-[#20201e] shadow-[0_4px_12px_rgba(0,0,0,0.08)]',
 )
 
 export const sidebarApifyMobileToggleClass =
