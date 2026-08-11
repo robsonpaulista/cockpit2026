@@ -43,19 +43,34 @@ body[data-ipt-operacional] .ipt-page-body {
   color: var(--palette-petrol);
 }
 
-/* Sidebar IPT = petróleo (igual ao restante do app); header = corpo */
-body[data-ipt-operacional] aside[data-sidebar-shell],
-body[data-ipt-operacional] aside.sidebar-apify-shell,
-body[data-ipt-operacional] aside.sidebar-cockpit-shell,
-body[data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
-body[data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child {
+/* Sidebar IPT = petróleo — só fora do tema clean */
+body[data-ipt-operacional]:not([data-war-room-clean]) aside[data-sidebar-shell],
+body[data-ipt-operacional]:not([data-war-room-clean]) aside.sidebar-apify-shell,
+body[data-ipt-operacional]:not([data-war-room-clean]) aside.sidebar-cockpit-shell,
+body[data-ipt-operacional]:not([data-war-room-clean]) aside[data-sidebar-shell] > div > div:first-child,
+body[data-ipt-operacional]:not([data-war-room-clean]) aside[data-sidebar-shell] > div > div:last-child {
   background: var(--palette-petrol) !important;
   background-color: var(--palette-petrol) !important;
   background-image: none !important;
   border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
 }
 
-body[data-ipt-operacional] aside[data-sidebar-shell] > div {
+/* Com tema clean do dashboard: sidebar clara (nunca petróleo/azul) */
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell],
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-cockpit-shell,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child {
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  background-image: none !important;
+  border-color: #e8e8e6 !important;
+  color: #20201e !important;
+  box-shadow: none !important;
+}
+
+body[data-ipt-operacional]:not([data-war-room-clean]) aside[data-sidebar-shell] > div {
   background: transparent !important;
 }
 
@@ -75,6 +90,41 @@ body[data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
   border-color: #004870 !important;
 }
 
+/* Clean dashboard: botões sem azul institucional legado */
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar {
+  background: #20201e !important;
+  border-color: #20201e !important;
+  color: #fff !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
+  background: #111110 !important;
+  border-color: #111110 !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active,
+body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active:hover {
+  background: #20201e !important;
+  border-color: #20201e !important;
+  color: #fff !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__ver-mais {
+  color: #52524f !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active,
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active {
+  border-color: #20201e !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row:hover,
+body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row--active {
+  background: #f3f3f1 !important;
+}
+
 body[data-ipt-operacional] .ipt-btn-exportar,
 body[data-ipt-operacional] .ipt-btn-evolucao {
   border-color: var(--palette-neutral-bar) !important;
@@ -82,36 +132,34 @@ body[data-ipt-operacional] .ipt-btn-evolucao {
   color: var(--palette-petrol) !important;
 }
 
-body[data-ipt-operacional] .ipt-territorio-visao__btn--active,
-body[data-ipt-operacional] .ipt-territorio-visao__btn--active:hover {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-territorio-visao__btn--active,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-territorio-visao__btn--active:hover {
   background: var(--palette-inst) !important;
   border-color: var(--palette-inst) !important;
   color: #fff !important;
 }
 
-body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
-body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta,
-body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__ver-mais {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active .ipt-missao-card__cta,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active .ipt-missao-card__ver-mais {
   color: var(--palette-inst) !important;
 }
 
-body[data-ipt-operacional] .ipt-missao-card--active,
-body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--base.ipt-missao-card--active {
   border-color: var(--palette-inst) !important;
 }
 
-body[data-ipt-operacional] .ipt-bloco-lista__row:hover,
-body[data-ipt-operacional] .ipt-bloco-lista__row--active {
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-bloco-lista__row:hover,
+body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-bloco-lista__row--active {
   background: var(--palette-inst-soft) !important;
 }
 
-body[data-ipt-operacional] .text-\[\#f04b23\],
-body[data-ipt-operacional] .text-\[\#f04b23\],
-body[data-ipt-operacional] .cockpit-icon.text-\[\#f04b23\] {
+body[data-ipt-operacional]:not([data-war-room-clean]) .text-\[\#f04b23\],
+body[data-ipt-operacional]:not([data-war-room-clean]) .cockpit-icon.text-\[\#f04b23\] {
   color: var(--palette-inst) !important;
 }
 
-body[data-ipt-operacional] .bg-\[\#f04b23\],
-body[data-ipt-operacional] .bg-\[\#f04b23\] {
+body[data-ipt-operacional]:not([data-war-room-clean]) .bg-\[\#f04b23\] {
   background-color: var(--palette-inst) !important;
 }

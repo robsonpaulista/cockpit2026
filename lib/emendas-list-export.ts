@@ -42,6 +42,7 @@ export const EMENDAS_DEFAULT_VISIBLE_COLUMN_KEYS: readonly EmendaListColumnKey[]
   'valor_indicado',
   'valor_empenhado',
   'valor_pago',
+  'objeto',
 ]
 
 export function emendasDefaultVisibleColumnsRecord(): Record<EmendaListColumnKey, boolean> {

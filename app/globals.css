@@ -2828,39 +2828,39 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
    REPUBLICANOS PREMIUM (LIGHT) — polimento visual global
    ============================================================================= */
 
-/* Sidebar — tom petróleo da paleta oficial */
-.sidebar-apify-shell {
+/* Sidebar — tom petróleo da paleta oficial (fora do tema clean cinza) */
+body:not([data-war-room-clean]) .sidebar-apify-shell {
   background: var(--palette-petrol) !important;
   border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
   box-shadow: inset -1px 0 0 color-mix(in srgb, var(--palette-card) 6%, transparent) !important;
   color: color-mix(in srgb, var(--palette-card) 82%, transparent);
 }
 
-.sidebar-apify-shell > div {
+body:not([data-war-room-clean]) .sidebar-apify-shell > div {
   background: transparent !important;
 }
 
 /* Zona do título (logo) — mesma cor do restante da sidebar. */
-.sidebar-apify-shell > div > div:first-child {
+body:not([data-war-room-clean]) .sidebar-apify-shell > div > div:first-child {
   background: var(--palette-petrol) !important;
   border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
 }
 
 /* Links da sidebar — cor clara explícita (vence a regra global de `a:hover`). */
-.sidebar-apify-shell a {
+body:not([data-war-room-clean]) .sidebar-apify-shell a {
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
 }
 
-.sidebar-apify-shell a:hover {
+body:not([data-war-room-clean]) .sidebar-apify-shell a:hover {
   color: #ffffff;
   text-decoration: none;
 }
 
 /* Ícone ativo / hover — accent coral oficial */
-.sidebar-apify-shell .group:hover .cockpit-icon,
-.sidebar-apify-shell a:hover .cockpit-icon,
-.sidebar-apify-shell button:hover .cockpit-icon {
+body:not([data-war-room-clean]) .sidebar-apify-shell .group:hover .cockpit-icon,
+body:not([data-war-room-clean]) .sidebar-apify-shell a:hover .cockpit-icon,
+body:not([data-war-room-clean]) .sidebar-apify-shell button:hover .cockpit-icon {
   color: var(--palette-accent, #f04b23);
 }
 

@@ -53,7 +53,6 @@ import { isAgendaEventParaConhecimento } from '@/lib/war-room/agenda-proximos'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
-import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 
 const WAR_ROOM_TZ = 'America/Sao_Paulo'
 
@@ -115,7 +114,6 @@ export function WarRoomPanel() {
     <WarRoomCidadeProvider>
       <WarRoomRefreshProvider>
         <WarRoomViewModeProvider>
-          <WarRoomFontBootstrap />
           <WarRoomPanelInner />
         </WarRoomViewModeProvider>
       </WarRoomRefreshProvider>
@@ -205,7 +203,6 @@ function WarRoomPanelInner() {
   useEffect(() => {
     document.body.setAttribute('data-war-room-clean', '')
     return () => {
-      document.body.removeAttribute('data-war-room-clean')
       document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])

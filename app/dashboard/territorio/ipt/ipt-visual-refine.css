@@ -754,25 +754,24 @@ body[data-ipt-refine] .ipt-page-body {
 }
 
 /* --- Sidebar + ícones IPT (somente nesta rota) --- */
-/* Mesmo tom escuro da splash / login / demais páginas. */
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell {
+/* Legado escuro — desativado quando o dashboard está em tema clean. */
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell {
   background: var(--palette-petrol) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
 
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell > div {
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell > div {
   background: transparent !important;
 }
 
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell nav,
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell .sidebar-quick-access,
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell footer {
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell nav,
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell .sidebar-quick-access,
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell footer {
   background: transparent;
 }
 
-/* Zona do logo — mesmo preenchimento escuro do restante da sidebar. */
-body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell > div > div:first-child {
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell].sidebar-apify-shell > div > div:first-child {
   background: var(--palette-petrol) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
@@ -838,7 +837,7 @@ body[data-ipt-refine] .ipt-map-card__fullscreen .cockpit-icon {
 }
 
 /* Item ativo — barra dourada + realce escuro sutil (tema escuro). */
-body[data-ipt-refine] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\] {
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\] {
   border-left-width: 3px !important;
   border-left-color: #c99a2e !important;
   background: rgba(255, 255, 255, 0.06) !important;
@@ -846,7 +845,7 @@ body[data-ipt-refine] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\] {
   color: #ffffff !important;
 }
 
-body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\] {
+body[data-ipt-refine]:not([data-war-room-clean]) aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\] {
   border-left-width: 3px !important;
   border-left-color: #c99a2e !important;
   background: rgba(255, 255, 255, 0.06) !important;

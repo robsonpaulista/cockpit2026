@@ -191,7 +191,7 @@ function parseApifyItem(item) {
     comments_count: comments,
     views_count: views,
     post_url: url,
-    thumbnail_url: item.displayUrl || item.thumbnailUrl || null,
+    thumbnail_url: item.displayUrl || item.thumbnailUrl || item.imageUrl || item.images?.[0] || null,
   }
 }
 

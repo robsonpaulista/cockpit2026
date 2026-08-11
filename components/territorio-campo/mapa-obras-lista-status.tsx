@@ -1,10 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, ExternalLink, Link2, Loader2, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  Link2,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react'
 import {
   listarMunicipiosComObras,
   valorExibidoMapaObra,
+  isObraMaquinarioAgricola,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
 import {
@@ -26,13 +35,80 @@ import { MapaObrasListaExportModal } from '@/components/territorio-campo/mapa-ob
 
 type SortObraCol = 'municipio' | 'cota'
 
+const TIPO_SEM = '__sem_tipo__'
+const TIPO_INFRA = 'infraestrutura'
+const TIPO_MAQUINARIO = 'maquinario-agricola'
+const TIPO_SAUDE = 'saude'
+
 const TIPO_LABEL: Record<string, string> = {
   asfalto: 'Asfalto',
   paralelepipedo: 'Paralelepípedo',
   'quadras-esportivas': 'Quadras e areninhas',
-  'maquinario-agricola': 'Maquinário agrícola',
+  [TIPO_MAQUINARIO]: 'Maquinário agrícola',
   'passagens-cisternas': 'Passagens e cisternas',
+  [TIPO_INFRA]: 'Infraestrutura',
+  [TIPO_SAUDE]: 'Saúde',
   outros: 'Outros',
+}
+
+function normalizeTipoSlug(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+}
+
+function textoTemConstrucaoOuReforma(raw: string): boolean {
+  const n = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  return /\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b/.test(n)
+}
+
+/** Classifica bloco/tipo na lista: construção/reforma/revitalização → Infraestrutura;
+ * carreta/máquinas agrícolas → Maquinário agrícola; UBS → Saúde. */
+function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
+  const nome = obra.obra ?? ''
+  const nomeNorm = nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
+    return TIPO_SAUDE
+  }
+  if (textoTemConstrucaoOuReforma(nome)) {
+    return TIPO_INFRA
+  }
+  if (isObraMaquinarioAgricola(obra)) {
+    return TIPO_MAQUINARIO
+  }
+  const t = (obra.tipo ?? '').trim()
+  if (!t) return TIPO_SEM
+  const slug = normalizeTipoSlug(t)
+  if (slug === 'ubs' || slug === 'saude' || slug === TIPO_SAUDE) {
+    return TIPO_SAUDE
+  }
+  if (
+    slug === 'construcao' ||
+    slug === 'reforma' ||
+    slug === 'revitalizacao' ||
+    slug === TIPO_INFRA
+  ) {
+    return TIPO_INFRA
+  }
+  if (slug === 'carreta' || slug === 'carreta-agricola' || slug === TIPO_MAQUINARIO) {
+    return TIPO_MAQUINARIO
+  }
+  return t
+}
+
+function tipoLabelOf(key: string): string {
+  if (key === TIPO_SEM) return 'Sem tipo'
+  return TIPO_LABEL[key] ?? key
 }
 
 function formatCurrency(value?: number | null): string {
@@ -43,6 +119,33 @@ function formatCurrency(value?: number | null): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 20,
   }).format(value)
+}
+
+function formatDataDemanda(raw?: string | null): string {
+  if (!raw?.trim()) return '—'
+  const t = raw.trim()
+  // dd/mm/aaaa ou dd-mm-aaaa
+  const br = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/)
+  if (br) {
+    const d = br[1]!.padStart(2, '0')
+    const m = br[2]!.padStart(2, '0')
+    let y = br[3]!
+    if (y.length === 2) y = `20${y}`
+    return `${d}/${m}/${y}`
+  }
+  // ISO / Date parseable
+  const parsed = new Date(t)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString('pt-BR')
+  }
+  // Excel serial as string number
+  const serial = Number(t)
+  if (Number.isFinite(serial) && serial > 20000 && serial < 80000) {
+    const excelEpoch = Date.UTC(1899, 11, 30)
+    const ms = excelEpoch + Math.round(serial) * 86400000
+    return new Date(ms).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  }
+  return t
 }
 
 interface MapaObrasListaStatusProps {
@@ -73,6 +176,8 @@ export function MapaObrasListaStatus({
   const [obraParaVincular, setObraParaVincular] = useState<ObraMapaRow | null>(null)
   const [atualizandoLocal, setAtualizandoLocal] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  /** Blocos por TIPO — começam recolhidos. */
+  const [tiposExpandidos, setTiposExpandidos] = useState<Set<string>>(() => new Set())
 
   const carregarLinks = useCallback(async () => {
     setLinksLoading(true)
@@ -131,8 +236,8 @@ export function MapaObrasListaStatus({
   const opcoesTipo = useMemo(() => {
     const presentes = new Set<string>()
     for (const obra of obras) {
-      const tipo = (obra.tipo ?? '').trim()
-      if (tipo) presentes.add(tipo)
+      const key = tipoKeyOf(obra)
+      if (key !== TIPO_SEM) presentes.add(key)
     }
     const ordemConhecida = Object.keys(TIPO_LABEL)
     const conhecidos = ordemConhecida.filter((id) => presentes.has(id))
@@ -159,8 +264,7 @@ export function MapaObrasListaStatus({
         if (municipio !== filtroMunicipio) return false
       }
       if (filtroTipo) {
-        const tipo = (obra.tipo ?? '').trim()
-        if (tipo !== filtroTipo) return false
+        if (tipoKeyOf(obra) !== filtroTipo) return false
       }
       if (filtroStatus) {
         const status = (obra.status ?? '').trim()
@@ -174,6 +278,7 @@ export function MapaObrasListaStatus({
         obra.orgao,
         obra.status,
         obra.tipo,
+        obra.data_demanda,
         link?.drive_file_name,
         link?.nota_texto,
       ]
@@ -202,6 +307,52 @@ export function MapaObrasListaStatus({
       return compareTerritorioText(a.municipio || '', b.municipio || '', true)
     })
   }, [busca, filtroMunicipio, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
+
+  const blocosPorTipo = useMemo(() => {
+    const map = new Map<string, ObraMapaRow[]>()
+    for (const obra of filtradas) {
+      const key = tipoKeyOf(obra)
+      const list = map.get(key)
+      if (list) list.push(obra)
+      else map.set(key, [obra])
+    }
+
+    const ordem = Object.keys(TIPO_LABEL)
+    const keys = [...map.keys()].sort((a, b) => {
+      const ia = ordem.indexOf(a)
+      const ib = ordem.indexOf(b)
+      if (ia >= 0 && ib >= 0) return ia - ib
+      if (ia >= 0) return -1
+      if (ib >= 0) return 1
+      if (a === TIPO_SEM) return 1
+      if (b === TIPO_SEM) return -1
+      return tipoLabelOf(a).localeCompare(tipoLabelOf(b), 'pt-BR')
+    })
+
+    return keys.map((key) => {
+      const rows = map.get(key) ?? []
+      let valor = 0
+      let comValor = 0
+      for (const obra of rows) {
+        const v = valorExibidoMapaObra(obra)
+        if (v != null && Number.isFinite(v)) {
+          valor += v
+          comValor += 1
+        }
+      }
+      return {
+        key,
+        label: tipoLabelOf(key),
+        obras: rows,
+        valor: comValor > 0 ? valor : null,
+      }
+    })
+  }, [filtradas])
+
+  useEffect(() => {
+    if (!filtroTipo) return
+    setTiposExpandidos(new Set([filtroTipo]))
+  }, [filtroTipo])
 
   const totais = useMemo(() => {
     let valor = 0
@@ -236,7 +387,7 @@ export function MapaObrasListaStatus({
         busca.trim() ? `Busca: ${busca.trim()}` : null,
         filtroMunicipio ? `Município: ${filtroMunicipio}` : null,
         filtroTipo
-          ? `Tipo: ${TIPO_LABEL[filtroTipo] ?? filtroTipo}`
+          ? `Tipo: ${tipoLabelOf(filtroTipo)}`
           : null,
         filtroStatus ? `Status: ${filtroStatus}` : null,
         `Ordenação: ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
@@ -250,7 +401,26 @@ export function MapaObrasListaStatus({
     setSortAsc(next.asc)
   }
 
+  const toggleTipo = useCallback((key: string) => {
+    setTiposExpandidos((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  const expandirTodosTipos = useCallback(() => {
+    setTiposExpandidos(new Set(blocosPorTipo.map((b) => b.key)))
+  }, [blocosPorTipo])
+
+  const recolherTodosTipos = useCallback(() => {
+    setTiposExpandidos(new Set())
+  }, [])
+
   const vinculados = Object.keys(linksByObra).length
+  const todosExpandidos =
+    blocosPorTipo.length > 0 && blocosPorTipo.every((b) => tiposExpandidos.has(b.key))
 
   return (
     <div className="flex flex-col gap-4">
@@ -302,7 +472,7 @@ export function MapaObrasListaStatus({
           <option value="">Todos os tipos</option>
           {opcoesTipo.map((tipo) => (
             <option key={tipo} value={tipo}>
-              {TIPO_LABEL[tipo] ?? tipo}
+              {tipoLabelOf(tipo)}
             </option>
           ))}
         </select>
@@ -356,9 +526,22 @@ export function MapaObrasListaStatus({
           <Download className="h-3.5 w-3.5" aria-hidden />
           Exportar
         </button>
+        {blocosPorTipo.length > 0 ? (
+          <button
+            type="button"
+            onClick={todosExpandidos ? recolherTodosTipos : expandirTodosTipos}
+            title={todosExpandidos ? 'Recolher todos os tipos' : 'Expandir todos os tipos'}
+            className={cn(chromeButtonClass, 'h-8 px-2 text-[11px]')}
+          >
+            {todosExpandidos ? 'Recolher tipos' : 'Expandir tipos'}
+          </button>
+        ) : null}
         <span className="text-xs text-text-secondary">
           {filtradas.length.toLocaleString('pt-BR')} obra
           {filtradas.length === 1 ? '' : 's'}
+          {blocosPorTipo.length > 0
+            ? ` · ${blocosPorTipo.length} tipo${blocosPorTipo.length === 1 ? '' : 's'}`
+            : ''}
         </span>
       </div>
 
@@ -367,6 +550,7 @@ export function MapaObrasListaStatus({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary">
               <tr>
+                <th className="px-3 py-2.5 whitespace-nowrap">Data demanda</th>
                 <th className="px-3 py-2.5">
                   <TerritorioSortableHeaderButton
                     label="Município"
@@ -393,87 +577,131 @@ export function MapaObrasListaStatus({
               </tr>
             </thead>
             <tbody className="divide-y divide-card">
-              {filtradas.map((obra) => {
-                const link = linksByObra[obra.id]
+              {blocosPorTipo.map((bloco) => {
+                const aberto = tiposExpandidos.has(bloco.key)
                 return (
-                  <tr key={obra.id} className="align-top hover:bg-bg-app/30">
-                    <td className="px-3 py-3 font-medium text-text-primary">
-                      {obra.municipio}
-                    </td>
-                    <td className="max-w-md px-3 py-3 text-text-primary">{obra.obra}</td>
-                    <td className="px-3 py-3 text-text-secondary">
-                      {TIPO_LABEL[obra.tipo ?? ''] ?? obra.tipo ?? '—'}
-                    </td>
-                    <td className="px-3 py-3 tabular-nums text-text-secondary">
-                      {formatCurrency(valorExibidoMapaObra(obra))}
-                    </td>
-                    <td className="px-3 py-3 text-text-secondary">{obra.status ?? '—'}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex min-w-[9rem] flex-col gap-1.5">
-                        {link && (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
-                          <>
-                            <span
-                              className="line-clamp-2 text-xs text-text-primary"
-                              title={
-                                planoDriveTemArquivo(link)
-                                  ? link.drive_file_name ?? undefined
-                                  : link.nota_texto ?? undefined
-                              }
-                            >
-                              {planoDriveTemArquivo(link)
-                                ? link.drive_file_name || 'Arquivo vinculado'
-                                : link.nota_texto}
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {link.drive_web_view_link ? (
-                                <a
-                                  href={link.drive_web_view_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
-                                >
-                                  <ExternalLink className="h-3 w-3" aria-hidden />
-                                  Abrir
-                                </a>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() => setObraParaVincular(obra)}
-                                className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
-                              >
-                                <Link2 className="h-3 w-3" aria-hidden />
-                                {planoDriveTemArquivo(link) ? 'Trocar' : 'Editar'}
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setObraParaVincular(obra)}
-                            disabled={linksLoading}
-                            className={cn(
-                              chromeButtonClass,
-                              'h-8 px-2 text-[11px] disabled:opacity-50',
-                            )}
-                          >
-                            {linksLoading ? (
-                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                            ) : (
-                              <Link2 className="h-3 w-3" aria-hidden />
-                            )}
-                            Vincular
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <TipoBlockRows key={bloco.key}>
+                    <tr className="bg-bg-app/50">
+                      <td colSpan={7} className="p-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleTipo(bloco.key)}
+                          aria-expanded={aberto}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-bg-app/80"
+                        >
+                          {aberto ? (
+                            <ChevronDown
+                              className="h-4 w-4 shrink-0 text-text-secondary"
+                              strokeWidth={1.75}
+                              aria-hidden
+                            />
+                          ) : (
+                            <ChevronRight
+                              className="h-4 w-4 shrink-0 text-text-secondary"
+                              strokeWidth={1.75}
+                              aria-hidden
+                            />
+                          )}
+                          <span className="min-w-0 flex-1 text-sm font-medium text-text-primary">
+                            {bloco.label}
+                          </span>
+                          <span className="shrink-0 text-xs tabular-nums text-text-secondary">
+                            {bloco.obras.length.toLocaleString('pt-BR')} obra
+                            {bloco.obras.length === 1 ? '' : 's'}
+                            {bloco.valor != null ? ` · ${formatCurrency(bloco.valor)}` : ''}
+                          </span>
+                        </button>
+                      </td>
+                    </tr>
+                    {aberto
+                      ? bloco.obras.map((obra) => {
+                          const link = linksByObra[obra.id]
+                          return (
+                            <tr key={obra.id} className="align-top hover:bg-bg-app/30">
+                              <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-secondary">
+                                {formatDataDemanda(obra.data_demanda)}
+                              </td>
+                              <td className="px-3 py-3 font-medium text-text-primary">
+                                {obra.municipio}
+                              </td>
+                              <td className="max-w-md px-3 py-3 text-text-primary">{obra.obra}</td>
+                              <td className="px-3 py-3 text-text-secondary">
+                                {tipoLabelOf(tipoKeyOf(obra))}
+                              </td>
+                              <td className="px-3 py-3 tabular-nums text-text-secondary">
+                                {formatCurrency(valorExibidoMapaObra(obra))}
+                              </td>
+                              <td className="px-3 py-3 text-text-secondary">{obra.status ?? '—'}</td>
+                              <td className="px-3 py-3">
+                                <div className="flex min-w-[9rem] flex-col gap-1.5">
+                                  {link && (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
+                                    <>
+                                      <span
+                                        className="line-clamp-2 text-xs text-text-primary"
+                                        title={
+                                          planoDriveTemArquivo(link)
+                                            ? link.drive_file_name ?? undefined
+                                            : link.nota_texto ?? undefined
+                                        }
+                                      >
+                                        {planoDriveTemArquivo(link)
+                                          ? link.drive_file_name || 'Arquivo vinculado'
+                                          : link.nota_texto}
+                                      </span>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {link.drive_web_view_link ? (
+                                          <a
+                                            href={link.drive_web_view_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                                          >
+                                            <ExternalLink className="h-3 w-3" aria-hidden />
+                                            Abrir
+                                          </a>
+                                        ) : null}
+                                        <button
+                                          type="button"
+                                          onClick={() => setObraParaVincular(obra)}
+                                          className={cn(chromeButtonClass, 'h-7 px-2 text-[10px]')}
+                                        >
+                                          <Link2 className="h-3 w-3" aria-hidden />
+                                          {planoDriveTemArquivo(link) ? 'Trocar' : 'Editar'}
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setObraParaVincular(obra)}
+                                      disabled={linksLoading}
+                                      className={cn(
+                                        chromeButtonClass,
+                                        'h-8 px-2 text-[11px] disabled:opacity-50',
+                                      )}
+                                    >
+                                      {linksLoading ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                      ) : (
+                                        <Link2 className="h-3 w-3" aria-hidden />
+                                      )}
+                                      Vincular
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      : null}
+                  </TipoBlockRows>
                 )
               })}
             </tbody>
             {filtradas.length > 0 ? (
               <tfoot className="border-t-2 border-card bg-bg-app/80 text-sm font-semibold text-text-primary">
                 <tr>
-                  <td className="px-3 py-3" colSpan={3}>
+                  <td className="px-3 py-3" colSpan={4}>
                     Total
                     <span className="ml-2 font-normal text-text-secondary">
                       {totais.obras.toLocaleString('pt-BR')} obra
@@ -528,4 +756,9 @@ export function MapaObrasListaStatus({
       />
     </div>
   )
+}
+
+/** Agrupa vários `<tr>` sem wrapper inválido dentro de `<tbody>`. */
+function TipoBlockRows({ children }: { children: ReactNode }) {
+  return <>{children}</>
 }

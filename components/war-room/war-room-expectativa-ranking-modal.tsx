@@ -302,7 +302,7 @@ function MetaVsProjValue({
   const signed = `${diff > 0 ? '+' : ''}${formatWarRoomNumber(diff)}`
   const title = [
     projVotos != null ? `Proj. ${formatInt(projVotos)}` : null,
-    `Meta ${formatWarRoomNumber(meta)}`,
+    `Meta ${formatInt(meta)}`,
     `${signed} (Proj − Meta)`,
   ]
     .filter(Boolean)
@@ -1403,7 +1403,7 @@ export function WarRoomExpectativaRankingModal({
                     </span>
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    <EnterWarRoomNumber value={row.expectativa} resetKey={enterAnimKey} />
+                    <EnterInt value={row.expectativa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__peso-cell">
                     <PesoProgressBar
@@ -1684,7 +1684,7 @@ export function WarRoomExpectativaRankingModal({
                     Total ({filtradas.length.toLocaleString('pt-BR')})
                   </td>
                   <td className="wr-expectativa-ranking-modal__num tabular-nums">
-                    <EnterWarRoomNumber value={totais.expectativa} resetKey={enterAnimKey} />
+                    <EnterInt value={totais.expectativa} resetKey={enterAnimKey} />
                   </td>
                   <td className="wr-expectativa-ranking-modal__col-peso tabular-nums">
                     <span className="wr-expectativa-ranking-modal__enter-num">

@@ -112,6 +112,8 @@ export interface ObraMapaRow {
   /** Cota parlamentar / parcela atribuída na planilha (preferida no mapa). */
   cota?: number | null
   imagem_url?: string | null
+  /** Coluna DATA DEMANDA da planilha Sheets (quando vier das Demandas). */
+  data_demanda?: string | null
 }
 
 /**
@@ -264,7 +266,7 @@ export function isObraPassagensCisternas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'
 }
 
 const MAQUINARIO_AGRICOLA_RE =
-  /trator|escavadeira|retroescavadeira|arado|grade aradora|colheitadeira|plantadeira|pulverizador|subsolador|implemento agricola|maquinario agricola|maquina agricola|maquinario|entrega de trator|aquisicao de trator|trator agricola/
+  /trator|escavadeira|retroescavadeira|arado|grade aradora|colheitadeira|plantadeira|pulverizador|subsolador|implemento agricola|maquinario agricola|maquina agricola|maquinario|entrega de trator|aquisicao de trator|trator agricola|carreta agricola|carreta\b/
 
 export function isObraMaquinarioAgricola(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
   if (isObraPavimentacao(obra) || isObraQuadrasEsportivas(obra)) return false

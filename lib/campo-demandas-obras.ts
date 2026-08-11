@@ -123,6 +123,13 @@ function parseValorSheets(row: CampoDemandaObraRow): number | null {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+export function dataDemandaDaDemanda(row: CampoDemandaObraRow): string | null {
+  if (row.data_demanda != null && String(row.data_demanda).trim()) {
+    return String(row.data_demanda).trim()
+  }
+  return getSheetsField(row, [/^data\s*demanda$/i, /data_demanda/i, /^data$/i])
+}
+
 /**
  * Filtra linhas da planilha Demandas (Sheets) com as mesmas regras da guia Demandas.
  */
@@ -160,6 +167,7 @@ export function demandaToObraMapaRow(row: CampoDemandaObraRow): ObraMapaRow | nu
     valor_total: valor,
     cota: valor,
     imagem_url: null,
+    data_demanda: dataDemandaDaDemanda(row),
   }
 }
 

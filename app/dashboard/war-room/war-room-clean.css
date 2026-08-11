@@ -1,9 +1,10 @@
 /**
- * War Room — página isolada via body[data-war-room-clean]
+ * War Room / Dashboard — tema via body[data-war-room-clean]
  *
  * SaaS premium minimalista (Linear / Vercel / Notion / Apple):
  *   BG #F7F7F6 · Surface #FFF · Border #E8E8E6 · Text #20201F / #686865 / #969692
  *   Inter 400/500 · brand #F04A2C só no wordmark 2026 · sem gradientes/glow
+ *   Ativado em todo o /dashboard (layout + sidebar + topbar).
  */
 
 /* ==========================================================================
@@ -128,12 +129,14 @@ body[data-war-room-clean] {
   --wr-type-headline-lg-lh: 1.25;
   --wr-type-headline-sm-size: 20px;
   --wr-type-headline-sm-lh: 1.35;
-  --wr-type-body-lg-size: 16px;
+  /* Corpo UI = sidebar (13px). lg só um degrau para KPIs/títulos de bloco. */
+  --wr-type-body-lg-size: 14px;
   --wr-type-body-lg-lh: 1.45;
-  --wr-type-body-m-size: 14px;
+  --wr-type-body-m-size: 13px;
   --wr-type-body-m-lh: 1.45;
   --wr-type-body-sm-size: 13px;
   --wr-type-body-sm-lh: 1.5;
+  --wr-fs-ui: 13px;
 
   --wr-fs-hero: var(--wr-type-headline-sm-size);
   --wr-fs-title: var(--wr-type-body-m-size);
@@ -189,9 +192,10 @@ body[data-war-room-clean] {
   --mon-brand: var(--wr-primary);
   --mon-brand-deep: var(--wr-primary);
   --mon-brand-soft: var(--wr-surface-subtle);
-  --accent-gold: 240 75 35;
+  /* Acentos UI: cinza clean (coral só em --wr-brand / wordmark) */
+  --accent-gold: 82 82 79;
   --accent-gold-dark: 32 32 30;
-  --accent-gold-soft: 255 241 239;
+  --accent-gold-soft: 243 243 241;
   --strategic-yellow: 82 82 79;
   --bg-app: 247 247 246;
   --bg-surface: 255 255 255;
@@ -615,6 +619,12 @@ body[data-war-room-clean] main {
   --color-border-secondary: 200 202 202;
   background: transparent !important;
   color: var(--wr-text);
+  /* Padrão tipográfico = sidebar (13px) */
+  font-family: var(--wr-font);
+  font-size: var(--wr-fs-ui, 13px);
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Coluna do conteúdo — mesmo glass da sidebar (sem pintura diferente) */
@@ -9052,35 +9062,116 @@ body[data-war-room-clean] .wr-mapa-obras-embedded button[class*='border-card'] {
   font-weight: 500 !important;
 }
 
+body[data-war-room-clean] .wr-emendas-modal {
+  color-scheme: light;
+}
+
 body[data-war-room-clean] .wr-emendas-modal__panel {
   border: 1px solid color-mix(in srgb, #333 10%, transparent) !important;
   border-radius: 14px !important;
-  background: var(--wr-surface, #fff) !important;
-  box-shadow: 0 18px 48px color-mix(in srgb, #20201e 12%, transparent) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #20201e !important;
+  box-shadow: 0 18px 48px color-mix(in srgb, #20201e 14%, transparent) !important;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, calc(100dvh - 2rem));
+  overflow: hidden;
 }
 
+body[data-war-room-clean] .wr-emendas-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Painel inteiro opaco: header, corpo e rodapé — não só os campos */
+body[data-war-room-clean] .wr-emendas-modal__panel > .sticky,
+body[data-war-room-clean] .wr-emendas-modal__body,
+body[data-war-room-clean] .wr-emendas-modal__footer {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #20201e !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__panel > .sticky {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e1e1de !important;
+  z-index: 2;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__footer {
+  flex-shrink: 0;
+  border-top: 1px solid #e1e1de !important;
+  z-index: 2;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__field,
 body[data-war-room-clean] .wr-emendas-modal input,
 body[data-war-room-clean] .wr-emendas-modal select,
 body[data-war-room-clean] .wr-emendas-modal textarea {
-  border-color: var(--wr-border, #e1e1de) !important;
-  background: var(--wr-surface, #fff) !important;
-  color: var(--wr-text-primary, #20201e) !important;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 12px !important;
+  border: 1px solid #e1e1de !important;
+  border-radius: 10px !important;
+  background: #f3f3f1 !important;
+  background-color: #f3f3f1 !important;
+  color: #20201e !important;
+  -webkit-text-fill-color: #20201e !important;
+  caret-color: #20201e !important;
   font-family: var(--wr-font) !important;
   font-size: 13px !important;
-  border-radius: 10px !important;
+  font-weight: 400 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  color-scheme: light;
 }
 
+body[data-war-room-clean] .wr-emendas-modal__field::placeholder,
+body[data-war-room-clean] .wr-emendas-modal input::placeholder,
+body[data-war-room-clean] .wr-emendas-modal textarea::placeholder {
+  color: #777773 !important;
+  -webkit-text-fill-color: #777773 !important;
+  opacity: 1 !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__field:focus,
 body[data-war-room-clean] .wr-emendas-modal input:focus,
 body[data-war-room-clean] .wr-emendas-modal select:focus,
 body[data-war-room-clean] .wr-emendas-modal textarea:focus {
-  --tw-ring-color: color-mix(in srgb, #333 12%, transparent);
   border-color: color-mix(in srgb, #333 28%, transparent) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #333 8%, transparent) !important;
 }
 
 body[data-war-room-clean] .wr-emendas-modal label > span {
-  color: var(--wr-text-secondary, #52524f) !important;
+  color: #52524f !important;
   font-size: 11px !important;
   font-weight: 500 !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__body [class*='bg-bg-app'],
+body[data-war-room-clean] .wr-emendas-modal__body [class*='bg-bg-surface'] {
+  background-color: #f3f3f1 !important;
+  color: #20201e !important;
+}
+
+body[data-war-room-clean] .wr-emendas-modal input[type='date'] {
+  color-scheme: light;
+}
+
+body[data-war-room-clean] .wr-emendas-modal__footer .wr-copiloto-redes__ghost-btn,
+body[data-war-room-clean] .wr-emendas-modal__footer button {
+  background-color: #ffffff !important;
 }
 
 body[data-war-room-clean] .wr-mapa-obras-embedded__view-tabs {
@@ -13825,3 +13916,199 @@ body[data-war-room-clean] .wr-copiloto-redes__side {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ==========================================================================
+   Dashboard global — remapeia acentos “gold” legados no main/page shell
+   ========================================================================== */
+
+body[data-war-room-clean] main :is(.text-accent-gold, [class*='text-accent-gold']:not([class*='text-accent-gold-soft'])) {
+  color: var(--wr-text-secondary, #52524f) !important;
+}
+
+body[data-war-room-clean] main :is(
+  .border-accent-gold,
+  [class*='border-accent-gold']
+) {
+  border-color: var(--wr-border, #e1e1de) !important;
+}
+
+body[data-war-room-clean] main :is(
+  .bg-accent-gold-soft\/25,
+  .bg-accent-gold-soft\/50,
+  .bg-accent-gold-soft\/60,
+  .bg-accent-gold-soft\/70,
+  [class*='bg-accent-gold-soft']
+) {
+  background-color: var(--wr-surface-subtle, #f3f3f1) !important;
+}
+
+body[data-war-room-clean] main :is(
+  .ring-accent-gold,
+  .focus\:ring-accent-gold,
+  [class*='ring-accent-gold']
+) {
+  --tw-ring-color: color-mix(in srgb, #20201e 12%, transparent) !important;
+}
+
+body[data-war-room-clean] main .bg-bg-app {
+  background-color: var(--wr-bg, #f7f7f6) !important;
+}
+
+/* ==========================================================================
+   Sidebar clean — vence petróleo/azul de IPT, globals e páginas legacy
+   ========================================================================== */
+
+body[data-war-room-clean] aside[data-sidebar-shell],
+body[data-war-room-clean] aside.sidebar-apify-shell,
+body[data-war-room-clean] aside.sidebar-cockpit-shell,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell],
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-cockpit-shell,
+body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell],
+body[data-war-room-clean][data-ipt-refine] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-ipt-palette] aside[data-sidebar-shell],
+body[data-war-room-clean][data-ipt-palette] aside.sidebar-apify-shell {
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: 1px solid #e8e8e6 !important;
+  border-color: #e8e8e6 !important;
+  color: #20201e !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] > div,
+body[data-war-room-clean] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean] aside[data-sidebar-shell] > div > div:last-child,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child,
+body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell] > div,
+body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell] > div > div:first-child {
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  background-image: none !important;
+  border-color: #e8e8e6 !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] aside.sidebar-apify-shell a,
+body[data-war-room-clean] aside[data-sidebar-shell] a,
+body[data-war-room-clean] aside[data-sidebar-shell] button,
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell a,
+body[data-war-room-clean][data-ipt-refine] aside.sidebar-apify-shell a {
+  color: #52524f !important;
+}
+
+body[data-war-room-clean] aside.sidebar-apify-shell a:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] a:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button:hover {
+  color: #20201e !important;
+  background-color: #ececea !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] nav svg,
+body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access svg {
+  color: #6f6f6b !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon,
+body[data-war-room-clean] aside.sidebar-apify-shell .group:hover .cockpit-icon {
+  color: #20201e !important;
+}
+
+/* Item ativo — cinza, sem barra dourada/azul legado */
+body[data-war-room-clean] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\],
+body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\],
+body[data-war-room-clean] aside[data-sidebar-shell] a[aria-current='page'],
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #20201e !important;
+  border-left-color: #20201e !important;
+  border-color: #e8e8e6 !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+}
+
+/* ==========================================================================
+   Tipografia UI — textos internos = 13px (sidebar)
+   Títulos de página e valores de KPI podem ficar um degrau acima.
+   ========================================================================== */
+
+body[data-war-room-clean] main :is(
+  p,
+  span,
+  label,
+  li,
+  td,
+  th,
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  .text-xs,
+  .text-sm,
+  .text-base,
+  .text-\[10px\],
+  .text-\[10\.5px\],
+  .text-\[11px\],
+  .text-\[11\.5px\],
+  .text-\[12px\],
+  .text-\[12\.5px\],
+  .text-\[13\.5px\],
+  .text-\[14px\],
+  .text-\[15px\]
+) {
+  font-size: var(--wr-fs-ui, 13px) !important;
+  line-height: 1.45 !important;
+}
+
+/* Overlines / meta pequena (thead, chips legenda) — um degrau abaixo */
+body[data-war-room-clean] main :is(
+  .uppercase.tracking-wide,
+  .uppercase.tracking-\[0\.05em\],
+  .uppercase.tracking-\[0\.04em\],
+  [class*='tracking-[0.05em]'],
+  thead,
+  .wr-type-heading
+) {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+/* Título de página */
+body[data-war-room-clean] main h1,
+body[data-war-room-clean] main :is(.text-xl, .text-2xl, .\!text-xl) {
+  font-size: 20px !important;
+  line-height: 1.25 !important;
+  font-weight: 600 !important;
+}
+
+/* Títulos de seção / modal */
+body[data-war-room-clean] main h2,
+body[data-war-room-clean] main h3,
+body[data-war-room-clean] main .text-lg {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+}
+
+/* Valores de KPI / métricas em destaque — um degrau acima do corpo */
+body[data-war-room-clean] main :is(
+  [class*='kpi'] [class*='value'],
+  [class*='kpi-value'],
+  [class*='metric'],
+  .wr-type-value,
+  [data-kpi-value]
+) {
+  font-size: 14px !important;
+  line-height: 1.3 !important;
+}
+
+

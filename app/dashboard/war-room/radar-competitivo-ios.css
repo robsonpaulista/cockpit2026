@@ -367,7 +367,7 @@
 
 .rc-ios-map__table {
   display: grid;
-  grid-template-columns: minmax(96px, 118px) repeat(6, minmax(0, 1fr));
+  grid-template-columns: 28px repeat(6, minmax(0, 1fr));
   gap: 0;
   padding: 0 8px 8px;
   flex: 1;
@@ -386,32 +386,29 @@
 }
 
 .rc-ios-map__th--name {
-  color: transparent;
+  color: var(--rc-text-3);
+  text-align: center;
 }
 
 .rc-ios-map__name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   min-width: 0;
-  padding: 4px 4px 4px 2px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--rc-border-soft);
 }
 
-.rc-ios-map__name span {
+.rc-ios-map__num {
   font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--rc-text-2);
+  line-height: 1;
 }
 
 .rc-ios-map__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--rc-text-3) !important;
+  display: none;
 }
 
 .rc-ios-map__cell {

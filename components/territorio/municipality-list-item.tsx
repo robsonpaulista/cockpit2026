@@ -94,18 +94,18 @@ export function MunicipalityListItem({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={cn('truncate text-[13.5px] font-medium', territorioBaseTextClass)}>{cidade}</p>
-          <p className={cn('mt-px text-[11.5px]', territorioBaseTextClass)}>
+          <p className={cn('truncate text-[13px] font-medium', territorioBaseTextClass)}>{cidade}</p>
+          <p className={cn('mt-px text-[13px] text-black/55', territorioBaseTextClass)}>
             {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {votosReferenciaCol && totalVotos > 0 ? (
           <div className="ml-2 shrink-0 text-right">
-            <p className={cn('text-base font-medium tabular-nums', territorioBaseTextClass)}>
+            <p className={cn('text-[14px] font-medium tabular-nums', territorioBaseTextClass)} data-kpi-value>
               {Math.round(totalVotos).toLocaleString('pt-BR')}
             </p>
-            <p className={cn('text-[10.5px]', territorioBaseTextClass)}>{votosLabel}</p>
+            <p className={cn('text-[13px] text-black/55', territorioBaseTextClass)}>{votosLabel}</p>
           </div>
         ) : null}
 
@@ -114,7 +114,7 @@ export function MunicipalityListItem({
             type="button"
             onClick={onBriefing}
             className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium transition-colors hover:bg-bg-app',
+              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[13px] font-medium transition-colors hover:bg-bg-app',
               territorioBaseTextClass,
             )}
             aria-label={`Briefing de ${cidade}`}
@@ -126,7 +126,7 @@ export function MunicipalityListItem({
             type="button"
             onClick={onObras}
             className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium transition-colors hover:bg-bg-app',
+              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[13px] font-medium transition-colors hover:bg-bg-app',
               territorioBaseTextClass,
             )}
             aria-label={`Obras de ${cidade}`}
@@ -157,18 +157,18 @@ export function MunicipalityListItem({
                   aria-hidden
                 />
                 <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
-                  <span className={cn('truncate text-xs font-medium', territorioBaseTextClass)}>{nome}</span>
+                  <span className={cn('truncate text-[13px] font-medium', territorioBaseTextClass)}>{nome}</span>
                   {cargo ? (
                     <>
-                      <span className={cn('shrink-0 text-[11px]', territorioBaseTextClass)} aria-hidden>
+                      <span className={cn('shrink-0 text-[13px] text-black/45', territorioBaseTextClass)} aria-hidden>
                         ·
                       </span>
-                      <span className={cn('truncate text-[11px]', territorioBaseTextClass)}>{cargo}</span>
+                      <span className={cn('truncate text-[13px] text-black/55', territorioBaseTextClass)}>{cargo}</span>
                     </>
                   ) : null}
                 </div>
                 {votosReferenciaCol && votos > 0 ? (
-                  <p className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', territorioBaseTextClass)}>
+                  <p className={cn('shrink-0 text-[13px] font-medium tabular-nums', territorioBaseTextClass)}>
                     {votos.toLocaleString('pt-BR')}
                   </p>
                 ) : null}

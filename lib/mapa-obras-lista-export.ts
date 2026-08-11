@@ -5,6 +5,7 @@ import {
   classificarObraFase,
   OBRA_FASE_LABEL,
   valorExibidoMapaObra,
+  isObraMaquinarioAgricola,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
 import {
@@ -14,6 +15,7 @@ import {
 } from '@/lib/obras-mapa-plano-drive'
 
 export type MapaObraListaExportFieldId =
+  | 'data_demanda'
   | 'municipio'
   | 'obra'
   | 'tipo'
@@ -30,6 +32,7 @@ export type MapaObraListaExportField = {
 }
 
 export const MAPA_OBRAS_LISTA_EXPORT_FIELDS: MapaObraListaExportField[] = [
+  { id: 'data_demanda', label: 'Data demanda', defaultSelected: true },
   { id: 'municipio', label: 'Município', defaultSelected: true },
   { id: 'obra', label: 'Obra', defaultSelected: true },
   { id: 'tipo', label: 'Tipo', defaultSelected: true },
@@ -62,7 +65,48 @@ const TIPO_LABEL: Record<string, string> = {
   'quadras-esportivas': 'Quadras e areninhas',
   'maquinario-agricola': 'Maquinário agrícola',
   'passagens-cisternas': 'Passagens e cisternas',
+  infraestrutura: 'Infraestrutura',
+  saude: 'Saúde',
   outros: 'Outros',
+}
+
+function labelTipo(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
+  const nome = obra.obra ?? ''
+  const nomeNorm = nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
+    return 'Saúde'
+  }
+  if (/\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b/.test(nomeNorm)) {
+    return 'Infraestrutura'
+  }
+  if (isObraMaquinarioAgricola(obra)) {
+    return 'Maquinário agrícola'
+  }
+  const t = (obra.tipo ?? '').trim()
+  if (!t) return ''
+  const slug = t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+  if (slug === 'ubs' || slug === 'saude') {
+    return 'Saúde'
+  }
+  if (
+    slug === 'construcao' ||
+    slug === 'reforma' ||
+    slug === 'revitalizacao' ||
+    slug === 'infraestrutura'
+  ) {
+    return 'Infraestrutura'
+  }
+  if (slug === 'carreta' || slug === 'carreta-agricola' || slug === 'maquinario-agricola') {
+    return 'Maquinário agrícola'
+  }
+  return TIPO_LABEL[t] ?? t
 }
 
 let jspdfAutotableApplied = false
@@ -110,14 +154,32 @@ function formatCurrency(value?: number | null): string {
   }).format(value)
 }
 
-function labelCampo(id: MapaObraListaExportFieldId): string {
-  return MAPA_OBRAS_LISTA_EXPORT_FIELDS.find((f) => f.id === id)?.label ?? id
+function formatDataDemanda(raw?: string | null): string {
+  if (!raw?.trim()) return ''
+  const t = raw.trim()
+  const br = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/)
+  if (br) {
+    const d = br[1]!.padStart(2, '0')
+    const m = br[2]!.padStart(2, '0')
+    let y = br[3]!
+    if (y.length === 2) y = `20${y}`
+    return `${d}/${m}/${y}`
+  }
+  const parsed = new Date(t)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString('pt-BR')
+  }
+  const serial = Number(t)
+  if (Number.isFinite(serial) && serial > 20000 && serial < 80000) {
+    const excelEpoch = Date.UTC(1899, 11, 30)
+    const ms = excelEpoch + Math.round(serial) * 86400000
+    return new Date(ms).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  }
+  return t
 }
 
-function labelTipo(tipo?: string | null): string {
-  const t = (tipo ?? '').trim()
-  if (!t) return ''
-  return TIPO_LABEL[t] ?? t
+function labelCampo(id: MapaObraListaExportFieldId): string {
+  return MAPA_OBRAS_LISTA_EXPORT_FIELDS.find((f) => f.id === id)?.label ?? id
 }
 
 function textoPlanoDrive(link: ObraPlanoDriveLink | null | undefined): string {
@@ -177,9 +239,10 @@ export function buildMapaObraListaExportRows(
   return obras.map((obra) => {
     const fase = classificarObraFase(obra.status)
     return {
+      data_demanda: formatDataDemanda(obra.data_demanda),
       municipio: (obra.municipio || '').trim(),
       obra: (obra.obra || '').trim(),
-      tipo: labelTipo(obra.tipo),
+      tipo: labelTipo(obra),
       valor: formatCurrency(valorExibidoMapaObra(obra)),
       tema: (obra.orgao || '').trim(),
       status: (obra.status || '').trim(),
@@ -305,6 +368,7 @@ export function exportarMapaObrasListaPdf(opts: MapaObraListaExportOptions): voi
 
   const usableWidth = 277
   const weight: Record<MapaObraListaExportFieldId, number> = {
+    data_demanda: 0.9,
     municipio: 1.2,
     obra: 2.4,
     tipo: 1.1,

@@ -22,7 +22,6 @@ import {
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
 import { DataFreshnessIndicator } from '@/components/monitoramento/data-freshness-indicator'
-import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
@@ -94,7 +93,6 @@ export function MonitoramentoShell({
     document.body.setAttribute('data-war-room-clean', '')
     document.body.setAttribute('data-wr-copiloto', '')
     return () => {
-      document.body.removeAttribute('data-war-room-clean')
       document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
@@ -118,7 +116,6 @@ export function MonitoramentoShell({
 
   return (
     <DashboardPageShell>
-      <WarRoomFontBootstrap />
       <DashboardPageChrome>
         {topbarVisible ? (
           description ? <DashboardPageMetaStrip>{description}</DashboardPageMetaStrip> : null

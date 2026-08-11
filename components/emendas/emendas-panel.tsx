@@ -710,6 +710,14 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
     ? 'min-h-0 max-h-[min(68vh,calc(100dvh-16rem))] flex-1 overflow-auto overscroll-contain [scrollbar-width:thin]'
     : 'min-h-0 max-h-[min(70vh,calc(100dvh-14rem))] flex-1 overflow-auto overscroll-contain [scrollbar-width:thin]'
 
+  const fieldClass = isCopiloto
+    ? 'wr-emendas-modal__field'
+    : 'rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2'
+
+  const fieldClassWide = isCopiloto
+    ? 'wr-emendas-modal__field w-full'
+    : 'w-full rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2'
+
   const ghostBtnClass = isCopiloto
     ? 'wr-copiloto-redes__ghost-btn'
     : cn(
@@ -1150,11 +1158,16 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
         >
           <div
             className={cn(
-              'max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-border-card bg-bg-surface shadow-2xl',
-              isCopiloto && 'wr-emendas-modal__panel shadow-none',
+              'flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border-card bg-bg-surface shadow-2xl',
+              isCopiloto && 'wr-emendas-modal__panel shadow-none bg-white',
             )}
           >
-            <div className="sticky top-0 z-[1] flex items-center justify-between border-b border-border-card bg-bg-surface px-5 py-4">
+            <div
+              className={cn(
+                'sticky top-0 z-[1] flex shrink-0 items-center justify-between border-b border-border-card bg-bg-surface px-5 py-4',
+                isCopiloto && 'bg-white',
+              )}
+            >
               <h2 id="emenda-modal-title" className="text-base font-semibold text-text-primary">
                 {editingId ? 'Editar Emenda' : isDuplicating ? 'Duplicar Emenda' : 'Nova Emenda'}
               </h2>
@@ -1168,19 +1181,24 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
               </button>
             </div>
 
-            <div className="space-y-6 p-5">
+            <div
+              className={cn(
+                'min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5 [scrollbar-width:thin]',
+                isCopiloto && 'wr-emendas-modal__body bg-white',
+              )}
+            >
               <div className="flex flex-col gap-4 lg:flex-row lg:gap-8">
                 <div className="flex min-w-0 flex-1 flex-col gap-4">
                   <Field label="Bloco">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.bloco}
                       onChange={(ev) => setForm((s) => ({ ...s, bloco: ev.target.value }))}
                     />
                   </Field>
                   <Field label="Emenda">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.emenda}
                       onChange={(ev) => setForm((s) => ({ ...s, emenda: ev.target.value }))}
                       required
@@ -1193,7 +1211,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                       max={2100}
                       step={1}
                       inputMode="numeric"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.exercicio}
                       onChange={(ev) => setForm((s) => ({ ...s, exercicio: ev.target.value }))}
                       placeholder="Ano da emenda"
@@ -1206,7 +1224,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     </p>
                     <input
                       type="text"
-                      className="w-full rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClassWide}
                       value={form.municipio_beneficiario}
                       onChange={(ev) =>
                         setForm((s) => ({ ...s, municipio_beneficiario: ev.target.value }))
@@ -1226,7 +1244,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                         </span>
                         <input
                           type="text"
-                          className="w-full rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                          className={fieldClassWide}
                           placeholder="Buscar município (ex.: Teresina, Parnaíba…)"
                           value={municipioBusca}
                           onChange={(ev) => {
@@ -1242,7 +1260,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                           autoComplete="off"
                         />
                         <select
-                          className="w-full rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                          className={fieldClassWide}
                           style={{ maxHeight: 220, overflowY: 'auto' }}
                           value={
                             cities.find(
@@ -1277,14 +1295,14 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                   </Field>
                   <Field label="Funcional">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.funcional}
                       onChange={(ev) => setForm((s) => ({ ...s, funcional: ev.target.value }))}
                     />
                   </Field>
                   <Field label="GND">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.gnd}
                       onChange={(ev) => setForm((s) => ({ ...s, gnd: ev.target.value }))}
                     />
@@ -1293,7 +1311,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.valor_indicado}
                       onChange={(ev) => setForm((s) => ({ ...s, valor_indicado: ev.target.value }))}
                     />
@@ -1302,7 +1320,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.valor_empenhado}
                       onChange={(ev) => setForm((s) => ({ ...s, valor_empenhado: ev.target.value }))}
                     />
@@ -1311,7 +1329,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.valor_a_empenhar}
                       onChange={(ev) => setForm((s) => ({ ...s, valor_a_empenhar: ev.target.value }))}
                     />
@@ -1323,7 +1341,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.valor_pago}
                       onChange={(ev) => setForm((s) => ({ ...s, valor_pago: ev.target.value }))}
                     />
@@ -1332,14 +1350,14 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.valor_a_ser_pago}
                       onChange={(ev) => setForm((s) => ({ ...s, valor_a_ser_pago: ev.target.value }))}
                     />
                   </Field>
                   <Field label="Empenho">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.empenho}
                       onChange={(ev) => setForm((s) => ({ ...s, empenho: ev.target.value }))}
                     />
@@ -1347,21 +1365,21 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                   <Field label="Data do empenho">
                     <input
                       type="date"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.data_empenho}
                       onChange={(ev) => setForm((s) => ({ ...s, data_empenho: ev.target.value }))}
                     />
                   </Field>
                   <Field label="Portaria / Convênio">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.portaria_convenio}
                       onChange={(ev) => setForm((s) => ({ ...s, portaria_convenio: ev.target.value }))}
                     />
                   </Field>
                   <Field label="Nº da proposta">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.numero_proposta}
                       onChange={(ev) => setForm((s) => ({ ...s, numero_proposta: ev.target.value }))}
                     />
@@ -1369,14 +1387,14 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                   <Field label="Pagamento">
                     <input
                       type="date"
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.data_pagamento}
                       onChange={(ev) => setForm((s) => ({ ...s, data_pagamento: ev.target.value }))}
                     />
                   </Field>
                   <Field label="Lideranças">
                     <input
-                      className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                      className={fieldClass}
                       value={form.liderancas}
                       onChange={(ev) => setForm((s) => ({ ...s, liderancas: ev.target.value }))}
                     />
@@ -1386,7 +1404,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
 
               <Field label="Alteração">
                 <input
-                  className="rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                  className={fieldClass}
                   value={form.alteracao}
                   onChange={(ev) => setForm((s) => ({ ...s, alteracao: ev.target.value }))}
                 />
@@ -1394,14 +1412,19 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
               <Field label="Objeto">
                 <textarea
                   rows={4}
-                  className="resize-y rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2"
+                  className={cn(fieldClass, 'resize-y')}
                   value={form.objeto}
                   onChange={(ev) => setForm((s) => ({ ...s, objeto: ev.target.value }))}
                 />
               </Field>
             </div>
 
-            <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border-card bg-bg-surface px-5 py-4">
+            <div
+              className={cn(
+                'flex shrink-0 justify-end gap-2 border-t border-border-card bg-bg-surface px-5 py-4',
+                isCopiloto && 'wr-emendas-modal__footer bg-white',
+              )}
+            >
               <button
                 type="button"
                 onClick={closeModal}

@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
  * Escala tipográfica Cockpit / Apify
  * ───────────────────────────────────
  * Título de página / marca     → 20px (text-xl)
- * Corpo / navegação / tabelas  → 13px
+ * Corpo / navegação / tabelas  → 13px (= sidebar)
+ * KPI / métrica em destaque    → 14px
  * Rótulos de seção (overline)  → 11px uppercase
  */
 
@@ -36,9 +37,9 @@ export const typographySectionLabelClass =
 /** Abas horizontais (Panorama / Base / Visitas). */
 export const typographyTabClass = 'text-[13px] font-medium leading-none'
 
-/** Valores numéricos em destaque (KPIs). */
+/** Valores numéricos em destaque (KPIs) — um degrau acima do corpo. */
 export const typographyMetricValueClass =
-  'text-[13px] font-semibold tabular-nums leading-snug text-text-primary'
+  'text-[14px] font-semibold tabular-nums leading-snug text-text-primary'
 
 /** Link de ação discreto. */
 export const typographyLinkClass =

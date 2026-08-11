@@ -35,6 +35,7 @@ import {
   isDashboardHomePath,
 } from '@/lib/dashboard-home-chrome'
 import '@/components/jarvis/jarvis-neural.css'
+import { DashboardCleanThemeBootstrap } from '@/components/dashboard/dashboard-clean-theme'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
@@ -48,6 +49,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <CockpitStatusProvider>
+      <DashboardCleanThemeBootstrap />
       <DashboardHomeChromeProvider value={isHomeAccentChrome}>
         <DashboardPageChromeProvider>
         <DashboardTopbarExtrasProvider>

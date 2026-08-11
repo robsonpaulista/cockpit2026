@@ -1,7 +1,7 @@
 'use client'
 
 import { Loader2, Star } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import '@/app/dashboard/war-room/radar-competitivo-ios.css'
 import {
   buildRadarCompetitivoModel,
@@ -11,6 +11,7 @@ import {
   type RadarCommenterStatsInput,
 } from '@/lib/war-room/radar-competitivo-model'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
+import { proxiedInstagramMediaUrl } from '@/lib/instagram-cdn-proxy'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
@@ -95,13 +96,18 @@ function TopPostThumb({
   name: string
 }) {
   const [broken, setBroken] = useState(false)
-  const showImg = Boolean(thumbnailUrl) && !broken
+  const src = proxiedInstagramMediaUrl(thumbnailUrl)
+  const showImg = Boolean(src) && !broken
+
+  useEffect(() => {
+    setBroken(false)
+  }, [src])
 
   return (
     <>
       {showImg ? (
         <img
-          src={thumbnailUrl!}
+          src={src!}
           alt=""
           referrerPolicy="no-referrer"
           loading="lazy"
@@ -319,17 +325,18 @@ export function RadarCompetitivoBoard({
                   </p>
                 </div>
                 <div className="rc-ios-map__table">
-                  <div className="rc-ios-map__th rc-ios-map__th--name">.</div>
+                  <div className="rc-ios-map__th rc-ios-map__th--name">#</div>
                   <div className="rc-ios-map__th">Engajamento</div>
                   <div className="rc-ios-map__th">Views / Reels</div>
                   <div className="rc-ios-map__th">Comentários</div>
                   <div className="rc-ios-map__th">Reels</div>
                   <div className="rc-ios-map__th">Eficiência</div>
                   <div className="rc-ios-map__th">Audiência</div>
-                  {model.candidates.map((c) => (
+                  {model.candidates.map((c, i) => (
                     <MapRow
                       key={c.slug}
                       c={c}
+                      mapIndex={i}
                       maxes={maxes}
                       winners={w}
                     />
@@ -639,10 +646,12 @@ export function RadarCompetitivoBoard({
 
 function MapRow({
   c,
+  mapIndex,
   maxes,
   winners,
 }: {
   c: RadarCompetitivoCandidate
+  mapIndex: number
   maxes: {
     eng: number
     views: number
@@ -653,11 +662,11 @@ function MapRow({
   }
   winners: RadarCompetitivoModel['winners']
 }) {
+  const num = String(mapIndex + 1).padStart(2, '0')
   return (
     <>
-      <div className="rc-ios-map__name">
-        <span className="rc-ios-map__dot" />
-        <span>{c.name}</span>
+      <div className="rc-ios-map__name" title={c.name}>
+        <span className="rc-ios-map__num">{num}</span>
       </div>
       <MetricBar
         value={c.avgEngagement}

@@ -10,7 +10,6 @@ import {
   DashboardPageMetaStrip,
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
-import { WarRoomFontBootstrap } from '@/components/war-room/war-room-font-bootstrap'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
 import { cn } from '@/lib/utils'
@@ -66,14 +65,12 @@ export function ConteudoRedesShell({
     document.body.setAttribute('data-war-room-clean', '')
     document.body.setAttribute('data-wr-copiloto', '')
     return () => {
-      document.body.removeAttribute('data-war-room-clean')
       document.body.removeAttribute('data-wr-copiloto')
     }
   }, [])
 
   return (
     <DashboardPageShell>
-      <WarRoomFontBootstrap />
       <DashboardPageChrome>
         {topbarVisible ? (
           <DashboardPageMetaStrip>{description}</DashboardPageMetaStrip>
