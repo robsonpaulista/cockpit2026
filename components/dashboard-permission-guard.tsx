@@ -8,7 +8,7 @@ const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio', 'ipt',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'material-campanha',
   'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'backup', 'log_system', 'gestao_pesquisas',
-  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes', 'arquivos',
+  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes',
   'war-room',
 ])
 

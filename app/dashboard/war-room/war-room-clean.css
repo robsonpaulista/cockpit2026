@@ -14426,6 +14426,48 @@ body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros {
   backdrop-filter: var(--wr-glass-blur) !important;
   -webkit-backdrop-filter: var(--wr-glass-blur) !important;
   box-shadow: var(--wr-shadow-glass) !important;
+  position: relative !important;
+  z-index: 40 !important;
+  overflow: visible !important;
+}
+
+/* Dropdown multi-status: fundo opaco (overrides transparent bg-bg-surface no embed). */
+.wr-obras-status-menu,
+body[data-war-room-clean] .wr-obras-status-menu,
+body[data-war-room-clean] .wr-mapa-obras-embedded .wr-obras-status-menu {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--wr-border, #e1e1de) !important;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, #022b3a 12%, transparent),
+    0 2px 6px color-mix(in srgb, #022b3a 6%, transparent) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Modal exportar obras: fundo sólido + acima da UI embutida. */
+.wr-obras-export-modal,
+body[data-war-room-clean] .wr-obras-export-modal {
+  z-index: 100 !important;
+}
+
+.wr-obras-export-modal__panel,
+body[data-war-room-clean] .wr-obras-export-modal__panel {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--wr-border, #e1e1de) !important;
+  box-shadow:
+    0 16px 40px color-mix(in srgb, #022b3a 18%, transparent),
+    0 4px 12px color-mix(in srgb, #022b3a 8%, transparent) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--wr-text-primary, #20201e);
+}
+
+.wr-obras-export-modal__cols,
+body[data-war-room-clean] .wr-obras-export-modal__cols {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-filtros .wr-copiloto-filter-field {
@@ -14479,6 +14521,8 @@ body[data-war-room-clean] :is(
   background: var(--wr-surface, #ffffff) !important;
   box-shadow: var(--wr-shadow-1);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 body[data-war-room-clean] :is(.wr-copiloto-table-wrap, .wr-emendas-panel, .wr-mapa-obras-embedded)

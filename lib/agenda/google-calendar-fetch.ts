@@ -3,9 +3,17 @@ import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 
 export interface GoogleCalendarConfigInput {
   calendarId: string
-  serviceAccountEmail?: string
-  credentials: string | Record<string, unknown>
+  serviceAccountEmail?: string | null
+  /** Credenciais só no servidor (DB). Env tem prioridade. */
+  credentials?: string | Record<string, unknown> | null
   subjectUser?: string | null
+}
+
+export type GoogleCalendarPublicConfig = {
+  calendarId: string
+  serviceAccountEmail: string | null
+  subjectUser: string | null
+  hasServerCredentials: boolean
 }
 
 function formatPrivateKey(key: string): string {
@@ -14,15 +22,18 @@ function formatPrivateKey(key: string): string {
   return formattedKey
 }
 
-function getCredentialsFromBody(bodyCredentials?: string | Record<string, unknown>) {
+function getCredentialsFromStored(bodyCredentials?: string | Record<string, unknown> | null) {
   if (!bodyCredentials) return null
   try {
     const parsed =
       typeof bodyCredentials === 'string' ? JSON.parse(bodyCredentials) : bodyCredentials
+    const privateKey = formatPrivateKey(String(parsed.private_key || parsed.privateKey || ''))
+    const clientEmail = String(parsed.client_email || parsed.clientEmail || parsed.email || '')
+    if (!privateKey || !clientEmail) return null
     return {
       type: 'service_account' as const,
-      private_key: formatPrivateKey(String(parsed.private_key || parsed.privateKey || '')),
-      client_email: String(parsed.client_email || parsed.clientEmail || parsed.email || ''),
+      private_key: privateKey,
+      client_email: clientEmail,
       token_uri: String(parsed.token_uri || 'https://oauth2.googleapis.com/token'),
     }
   } catch {
@@ -30,7 +41,7 @@ function getCredentialsFromBody(bodyCredentials?: string | Record<string, unknow
   }
 }
 
-function getCredentialsFromEnv() {
+export function getGoogleCalendarCredentialsFromEnv() {
   let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_PRIVATE_KEY
   let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL
 
@@ -49,14 +60,26 @@ function getCredentialsFromEnv() {
   }
 }
 
+export function hasGoogleCalendarEnvCredentials(): boolean {
+  return Boolean(getGoogleCalendarCredentialsFromEnv())
+}
+
+/** Env primeiro; fallback só para credenciais já persistidas no servidor (nunca do browser). */
+export function resolveGoogleCalendarCredentials(
+  storedCredentials?: string | Record<string, unknown> | null,
+) {
+  return getGoogleCalendarCredentialsFromEnv() ?? getCredentialsFromStored(storedCredentials)
+}
+
 export async function fetchGoogleCalendarEvents(
-  config: GoogleCalendarConfigInput
+  config: GoogleCalendarConfigInput,
 ): Promise<CalendarEventRow[]> {
-  const credentialsObj =
-    getCredentialsFromBody(config.credentials) ?? getCredentialsFromEnv()
+  const credentialsObj = resolveGoogleCalendarCredentials(config.credentials)
 
   if (!credentialsObj?.client_email || !credentialsObj.private_key) {
-    throw new Error('Credenciais do Google Calendar não configuradas.')
+    throw new Error(
+      'Credenciais do Google Calendar não configuradas. Defina GOOGLE_SERVICE_ACCOUNT_EMAIL e GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY no ambiente.',
+    )
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -112,4 +135,20 @@ export async function fetchGoogleCalendarEvents(
     location: event.location || undefined,
     status: event.status || undefined,
   }))
+}
+
+export function toPublicGoogleCalendarConfig(row: {
+  calendar_id: string
+  service_account_email: string | null
+  credentials: unknown
+  subject_user: string | null
+}): GoogleCalendarPublicConfig {
+  const envCreds = getGoogleCalendarCredentialsFromEnv()
+  const hasStored = Boolean(row.credentials)
+  return {
+    calendarId: row.calendar_id,
+    serviceAccountEmail: envCreds?.client_email ?? row.service_account_email,
+    subjectUser: row.subject_user,
+    hasServerCredentials: Boolean(envCreds) || hasStored,
+  }
 }

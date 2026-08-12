@@ -1,142 +1,83 @@
 import { NextResponse } from 'next/server'
-import { google } from 'googleapis'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchGoogleCalendarEvents } from '@/lib/agenda/google-calendar-fetch'
 
-// Função auxiliar para formatar a chave privada
-function formatPrivateKey(key: string): string {
-  let formattedKey = key.replace(/\\\\n/g, '\n')
-  formattedKey = formattedKey.replace(/\\n/g, '\n')
-  return formattedKey
-}
+export const dynamic = 'force-dynamic'
 
-// Função auxiliar para obter credenciais
-function getCredentials(bodyCredentials?: string) {
-  // Prioridade 1: Credenciais do body
-  if (bodyCredentials) {
-    try {
-      const parsed = typeof bodyCredentials === 'string' 
-        ? JSON.parse(bodyCredentials) 
-        : bodyCredentials
-      return {
-        type: 'service_account' as const,
-        private_key: formatPrivateKey(parsed.private_key || parsed.privateKey),
-        client_email: parsed.client_email || parsed.clientEmail || parsed.email,
-        token_uri: parsed.token_uri || 'https://oauth2.googleapis.com/token',
-      }
-    } catch (e) {
-      console.error('Erro ao parsear credenciais do body:', e)
-    }
-  }
-
-  // Prioridade 2: Variáveis de ambiente específicas para Calendar
-  let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_PRIVATE_KEY
-  let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL
-
-  // Prioridade 3: Variáveis genéricas (fallback)
-  if (!envPrivateKey || !envEmail) {
-    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
-  }
-
-  if (envPrivateKey && envEmail) {
-    return {
-      type: 'service_account' as const,
-      private_key: formatPrivateKey(envPrivateKey),
-      client_email: envEmail,
-      token_uri: 'https://oauth2.googleapis.com/token',
-    }
-  }
-
-  return null
-}
-
+/**
+ * Busca eventos do Google Calendar.
+ * Credenciais vêm só do ambiente ou da tabela no servidor — nunca do body do browser.
+ */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { calendarId, serviceAccountEmail, credentials, subjectUser } = body
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const body = (await request.json().catch(() => ({}))) as {
+      calendarId?: string
+      subjectUser?: string
+    }
+
+    const adminSupabase = createAdminClient()
+    const { data: stored } = await adminSupabase
+      .from('google_calendar_config')
+      .select('calendar_id, service_account_email, credentials, subject_user')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const calendarId = body.calendarId?.trim() || stored?.calendar_id
+    const subjectUser = body.subjectUser?.trim() || stored?.subject_user || undefined
 
     if (!calendarId) {
       return NextResponse.json(
-        { error: 'calendarId é obrigatório' },
-        { status: 400 }
+        { error: 'Calendário não configurado. Informe calendarId ou salve a config na Agenda.' },
+        { status: 400 },
       )
     }
 
-    const credentialsObj = credentials 
-      ? (typeof credentials === 'string' ? JSON.parse(credentials) : credentials)
-      : getCredentials()
-
-    if (!credentialsObj) {
-      return NextResponse.json(
-        { error: 'Credenciais não encontradas. Configure as credenciais ou envie no corpo da requisição.' },
-        { status: 400 }
-      )
-    }
-
-    // Autenticar usando Service Account
-    const auth = new google.auth.GoogleAuth({
-      credentials: credentialsObj,
-      scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+    const events = await fetchGoogleCalendarEvents({
+      calendarId,
+      serviceAccountEmail: stored?.service_account_email,
+      credentials: stored?.credentials,
+      subjectUser,
     })
-
-    // Obter cliente e configurar Domain-Wide Delegation se subjectUser for fornecido
-    const client = await auth.getClient()
-    
-    // ✅ ESSENCIAL: impersonar o usuário (Domain-Wide Delegation)
-    // Se subjectUser for fornecido, usar Domain-Wide Delegation
-    if (subjectUser) {
-      // @ts-ignore - subject é uma propriedade válida para Domain-Wide Delegation
-      client.subject = subjectUser
-    }
-
-    const calendar = google.calendar({ version: 'v3', auth: client as any })
-
-    // Buscar janela dinâmica: últimos 7 dias + todos os futuros (limitado a 500)
-    const startDate = new Date()
-    startDate.setHours(0, 0, 0, 0)
-    startDate.setDate(startDate.getDate() - 7)
-    const response = await calendar.events.list({
-      calendarId: calendarId,
-      timeMin: startDate.toISOString(),
-      maxResults: 500,
-      singleEvents: true,
-      orderBy: 'startTime',
-    })
-
-    const events = response.data.items || []
 
     return NextResponse.json({
-      events: events.map((event: any) => ({
-        id: event.id,
-        summary: event.summary,
-        description: event.description,
-        start: event.start,
-        end: event.end,
-        location: event.location,
-        attendees: event.attendees,
-        status: event.status,
-      })),
+      events,
       total: events.length,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao buscar eventos do Google Calendar:', error)
-    
-    if (error.code === 403) {
+
+    const err = error as { code?: number; message?: string }
+    if (err.code === 403) {
       return NextResponse.json(
-        { error: 'Acesso negado. Verifique se o Domain-Wide Delegation foi configurado corretamente no Admin Console do Workspace e se o email do usuário real está correto.' },
-        { status: 403 }
+        {
+          error:
+            'Acesso negado. Verifique Domain-Wide Delegation no Admin Console e o e-mail do usuário Workspace.',
+        },
+        { status: 403 },
       )
     }
-    
-    if (error.code === 404) {
+
+    if (err.code === 404) {
       return NextResponse.json(
         { error: 'Calendário não encontrado. Verifique o ID do calendário.' },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
     return NextResponse.json(
-      { error: error.message || 'Erro ao conectar com Google Calendar' },
-      { status: 500 }
+      { error: err.message || 'Erro ao conectar com Google Calendar' },
+      { status: 500 },
     )
   }
 }

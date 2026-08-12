@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertCronAuthorized } from '@/lib/cron-auth'
 import { DATA_RETENTION_DAYS, retentionCutoffIso } from '@/lib/data-retention'
 
 export const dynamic = 'force-dynamic'
@@ -77,11 +78,8 @@ async function deleteGoogleNewsOlderThan(supabase: ReturnType<typeof createAdmin
 
 export async function POST(request: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET
-    const authHeader = request.headers.get('authorization')
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-    }
+    const denied = assertCronAuthorized(request)
+    if (denied) return denied
 
     const body = (await request.json().catch(() => ({}))) as { days?: number; dryRun?: boolean }
     const days = Math.min(365, Math.max(1, Number(body.days ?? DATA_RETENTION_DAYS) || DATA_RETENTION_DAYS))

@@ -36,8 +36,25 @@ const agendaAmberButtonClass = cn(
 interface CalendarConfig {
   calendarId: string
   serviceAccountEmail: string
-  credentials: string
   subjectUser?: string
+  hasServerCredentials?: boolean
+}
+
+const GOOGLE_CALENDAR_LOCAL_KEY = 'google_calendar_config'
+
+function stripLocalCalendarSecrets() {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(GOOGLE_CALENDAR_LOCAL_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if ('credentials' in parsed) {
+      delete parsed.credentials
+      localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(parsed))
+    }
+  } catch {
+    localStorage.removeItem(GOOGLE_CALENDAR_LOCAL_KEY)
+  }
 }
 
 interface CalendarEvent {
@@ -123,21 +140,13 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   }
 
   useEffect(() => {
+    if (authLoading) return
+
     const loadConfig = async () => {
-      // Aguardar autenticação terminar antes de decidir o estado da config
-      if (authLoading) return
+      stripLocalCalendarSecrets()
 
       if (!user?.id) {
-        // Usuário não autenticado - tentar localStorage como fallback
-        const savedConfig = localStorage.getItem('google_calendar_config')
-        if (savedConfig) {
-          try {
-            const parsed = JSON.parse(savedConfig)
-            setConfig(parsed)
-          } catch (e) {
-            console.error('Erro ao carregar configuração do localStorage:', e)
-          }
-        }
+        setConfig(null)
         setConfigLoaded(true)
         setLoading(false)
         return
@@ -148,56 +157,37 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
         const response = await fetch('/api/agenda/google-calendar-config')
         if (response.ok) {
           const data = await response.json()
-          if (data.config) {
-            setConfig(data.config)
-            localStorage.setItem('google_calendar_config', JSON.stringify(data.config))
+          if (data.config?.calendarId) {
+            const publicConfig: CalendarConfig = {
+              calendarId: data.config.calendarId,
+              serviceAccountEmail: data.config.serviceAccountEmail || '',
+              subjectUser: data.config.subjectUser || undefined,
+              hasServerCredentials: Boolean(data.config.hasServerCredentials),
+            }
+            setConfig(publicConfig)
+            localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(publicConfig))
             setConfigLoaded(true)
             setLoading(false)
             return
           }
         }
 
-        // API falhou ou não encontrou config - tentar localStorage
-        const savedConfig = localStorage.getItem('google_calendar_config')
-        if (savedConfig) {
-          try {
-            const parsed = JSON.parse(savedConfig)
-            setConfig(parsed)
-            // Tentar sincronizar de volta ao banco se o usuário está autenticado
-            if (user?.id) {
-              fetch('/api/agenda/google-calendar-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(parsed),
-              }).catch(() => {})
-            }
-          } catch (e) {
-            console.error('Erro ao carregar configuração do localStorage:', e)
-          }
-        }
+        setConfig(null)
+        localStorage.removeItem(GOOGLE_CALENDAR_LOCAL_KEY)
       } catch (error) {
         console.error('Erro ao carregar configuração:', error)
-        // Fallback para localStorage em caso de erro de rede
-        const savedConfig = localStorage.getItem('google_calendar_config')
-        if (savedConfig) {
-          try {
-            const parsed = JSON.parse(savedConfig)
-            setConfig(parsed)
-          } catch (e) {
-            console.error('Erro ao carregar configuração do localStorage:', e)
-          }
-        }
+        setConfig(null)
       } finally {
         setConfigLoaded(true)
         setLoading(false)
       }
     }
 
-    loadConfig()
+    void loadConfig()
   }, [user?.id, authLoading])
 
   const fetchEvents = useCallback(async (isManual = false) => {
-    if (!config) return
+    if (!config?.calendarId) return
 
     if (isManual) {
       setIsRefreshing(true)
@@ -207,27 +197,16 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
     setError(null)
 
     try {
-      const response = await fetch('/api/agenda/google-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calendarId: config.calendarId,
-          serviceAccountEmail: config.serviceAccountEmail,
-          credentials: config.credentials,
-          subjectUser: config.subjectUser,
-        }),
-      })
-
+      const response = await fetch('/api/agenda/events', { cache: 'no-store' })
       const data = await response.json()
 
       if (response.ok) {
-        // Não precisa processar origem separadamente, vamos destacar diretamente no texto
         setEvents(data.events || [])
       } else {
         setError(data.error || 'Erro ao buscar eventos')
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Google Calendar')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao conectar com Google Calendar')
     } finally {
       if (isManual) {
         setIsRefreshing(false)
@@ -341,11 +320,10 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   const handleSaveConfig = async (newConfig: {
     calendarId: string
     serviceAccountEmail: string
-    credentials: string
+    credentials?: string
     subjectUser?: string
   }) => {
     try {
-      // Salvar no banco de dados
       const response = await fetch('/api/agenda/google-calendar-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -354,14 +332,19 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
 
       if (response.ok) {
         const data = await response.json()
-        setConfig(data.config || newConfig)
-        // Também salva no localStorage como cache
-        localStorage.setItem('google_calendar_config', JSON.stringify(data.config || newConfig))
-        fetchEvents(true) // Atualização manual após salvar configuração
+        const publicConfig: CalendarConfig = {
+          calendarId: data.config?.calendarId || newConfig.calendarId,
+          serviceAccountEmail: data.config?.serviceAccountEmail || newConfig.serviceAccountEmail || '',
+          subjectUser: data.config?.subjectUser || newConfig.subjectUser,
+          hasServerCredentials: Boolean(data.config?.hasServerCredentials),
+        }
+        setConfig(publicConfig)
+        localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(publicConfig))
+        void fetchEvents(true)
       } else {
         const errorData = await response.json()
         console.error('Erro ao salvar configuração:', errorData.error)
-        alert('Erro ao salvar configuração. Tente novamente.')
+        alert(errorData.error || 'Erro ao salvar configuração. Apenas admin pode alterar.')
       }
     } catch (error) {
       console.error('Erro ao salvar configuração:', error)

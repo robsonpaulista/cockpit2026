@@ -38,38 +38,9 @@ interface ResultadoEleicao {
 
 const CACHE_TTL_MS = 10 * 60 * 1000
 
-// Credenciais copiadas da origem, com prioridade para variáveis de ambiente.
+/** IDs públicos da planilha no domínio da equipe (não são a chave de autenticação). */
 const FALLBACK_SHEET_ID = '1BNy6milP3bS_C2rOULMLHwLez9imCy_WUFkOhKvKW34'
 const FALLBACK_SHEET_NAME = 'votacao_candidato-municipio_202'
-const FALLBACK_CLIENT_EMAIL = 'eleicoes20222024@eleicoes20222024.iam.gserviceaccount.com'
-const FALLBACK_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCNdLKXRSs+6CvZ
-VghNKg5KGg2n68KBZiVtCW548Oh57QO/WN0d/UA49LNiAuEzvE2OQC+EfusVlYfV
-YB/wK103RVUwheml5X8nmjyKv4ktr3+atcAGITpB11owjIUSstwggfyg0T7zX07D
-YHnfebN2xgvRHqahwR3J2uq6C4ml0vyhTXU0rHwYRXYEPtj9d9H9To4YhNdIh8hN
-PAFLqCFS/id31D816brZ5D2SaGLWbQ2X4lWlXGGW28SJggZx9+4J/mvbHEcGVoqF
-USyRWPhJGPG60RJm2omfxm6sWXVvH0opGE/CnRqbRbn1ELyMwAcSX36/8r7EIDeY
-PEG3Br7JAgMBAAECggEACDxEj4ED6QgsUV1sY02xAkhtBhs4Oj9fq27yoxDnf/24
-C6JZUT8mx4objXe8c74hR8hd29llx15qx5XulhV4OlkLgiUxuqpXUk9s+ej3zBSd
-Gb0+Hj09/opSomPz9Wg7X5shwZ0dDJ8+XyqVPdkAhUg3dOfTbLRpDxDzPHyieWhu
-iRQlnOwWT6tWfXLJpUA7Af6FfvQe/G181g0SlcxQ2jFBVDnuYsWR3TK5+mOVGaHo
-ssELTlMqCPL06sROmPW8BWl9yaobW6GECDVZZJRinYjvHU5j94p2iIgcF80wIR1o
-6ukxQ6FCKZ3FroufUWOPH78Nq2cwea/HfxMfnHNX+QKBgQDDyhvHDTmSwH7s5ESu
-wrciozCws+bPgkP5r8yVysw1Pd8NSbMeO9IpqBbPbNl0EztjoXGQzbas0HAtOXmF
-S81gUgpgpUlEM0EPNBuveDLes2TamkEg6D6fhADFRgBMOKiCNiWYCLlZp6xndHkn
-3F6Qfdp9PaK5NawzrQ+J8IUb3QKBgQC49RKRqvDu7ZaNXcC5vhlVVE+dwV4xmtKi
-VHE47C8K4OGKmUMjaYoWuokVGq9XFJRN9v6aaep0QYGS1fkMWk9jzt2FJP2UxfEa
-/NhjThn56+IkD3Ppt1ej/q1MRzskBrCdUoRm9Lrww9TzEoC17wWcEMz4fNqUnFu2
-+IS71GXl3QKBgGCR3pOWlVAp/DDSAoKEbhn6jfiKM40kfmy4Zlt31LNqGguOz3dZ
-IDcFvoJ++N7E4aUpqz82CCVDBiF4WNUDZ4Bb1tyGihXGhg9+ry0kR0sLBvK/5OHb
-S5AYZtzmwxzVUWAwXuiXXPy4tFOu4ldj3Yy9VrgxX4Kk05QFh0WNScpNAoGBAJr0
-Z1w29KeX0XwaQa7bvumoOxOVv06bwUBSspDX/wmEIjE1+fOfJhuop9RQiPnRufYf
-qmq/tbc0clQMhBx/ROf/lcNInFKaC0dq8fcwpb6mis1fTONPwVMZuSKgwsGKAUms
-qlR/UGcKCkyjAcZqvC5mPPMp1w6OeKAwUTPz3HLZAoGAGn1+kBwPrDOKQ9aCB3gw
-/VSHntkoJTUXFOG2ZjzbSQQ8qwzXXiuN3MlPhEeHku6SRh3Kkgqlh4awE6huNuGR
-IjgHAL9s5EAHh+KRc+fk9tnM8SStHUqWe4DrEsOtCGoPf2mE7/DXfqHWdFFlPmMQ
-z5Zub5I9f2f2pFtVx+FZ+6c=
------END PRIVATE KEY-----`
 
 let cacheUpdatedAt = 0
 let cachedCityIndex: Map<string, ResultadoEleicao[]> | null = null
@@ -112,13 +83,21 @@ function formatPrivateKey(key: string): string {
   let formatted = sanitizeEnvValue(key)
   // Suporta "\\n" e "\n" vindos do .env
   formatted = formatted.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n')
-  // Garante cabeçalho/rodapé em linhas próprias
-  formatted = formatted
-    .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
-    .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-  return formatted
+  // Só injeta newline se o PEM ainda estiver em linha única — linha em branco
+  // antes do END quebra OpenSSL (DECODER routines::unsupported).
+  if (!formatted.includes('-----BEGIN PRIVATE KEY-----\n')) {
+    formatted = formatted.replace(
+      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN PRIVATE KEY-----\n'
+    )
+  }
+  if (!formatted.includes('\n-----END PRIVATE KEY-----')) {
+    formatted = formatted.replace(
+      '-----END PRIVATE KEY-----',
+      '\n-----END PRIVATE KEY-----'
+    )
+  }
+  return formatted.trim()
 }
 
 function toResultado(row: string[]): ResultadoEleicao {
@@ -153,7 +132,7 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
     return
   }
 
-  const credentialCandidates: Array<{ email?: string; privateKey?: string; isFallback?: boolean }> = [
+  const credentialCandidates: Array<{ email?: string; privateKey?: string }> = [
     {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_ELEICOES_EMAIL,
       privateKey: process.env.GOOGLE_SERVICE_ACCOUNT_ELEICOES_PRIVATE_KEY,
@@ -165,11 +144,6 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
     {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
-    },
-    {
-      email: FALLBACK_CLIENT_EMAIL,
-      privateKey: FALLBACK_PRIVATE_KEY,
-      isFallback: true,
     },
   ]
 
@@ -194,11 +168,13 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
 
   let response: Awaited<ReturnType<typeof readSheet>> | null = null
   let lastError: unknown = null
+  let triedAny = false
 
   for (const candidate of credentialCandidates) {
     if (!candidate.email || !candidate.privateKey) continue
+    triedAny = true
     const email = sanitizeEnvValue(candidate.email)
-    const privateKey = candidate.isFallback ? candidate.privateKey.trim() : formatPrivateKey(candidate.privateKey)
+    const privateKey = formatPrivateKey(candidate.privateKey)
 
     try {
       response = await readSheet(email, privateKey)
@@ -206,6 +182,12 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
     } catch (error) {
       lastError = error
     }
+  }
+
+  if (!triedAny) {
+    throw new Error(
+      'Credenciais Google ausentes. Defina GOOGLE_SERVICE_ACCOUNT_ELEICOES_EMAIL e GOOGLE_SERVICE_ACCOUNT_ELEICOES_PRIVATE_KEY (ou GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) no ambiente.',
+    )
   }
 
   if (!response) {

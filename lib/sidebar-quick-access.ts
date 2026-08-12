@@ -2,19 +2,12 @@ export type SidebarQuickAccessItem = {
   id: string
   label: string
   href: string
-  icon: 'FolderOpen' | 'FileSpreadsheet' | 'ScrollText'
+  icon: 'FileSpreadsheet' | 'ScrollText'
   pageKey: string
 }
 
 /** Ordem alfabética por rótulo (pt-BR). */
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
-  {
-    id: 'quick-arquivos',
-    label: 'Arquivos',
-    href: '/dashboard/arquivos',
-    icon: 'FolderOpen',
-    pageKey: 'arquivos',
-  },
   {
     id: 'quick-emendas',
     label: 'Emendas',
@@ -39,8 +32,6 @@ export function isSidebarQuickAccessActive(
   void search
 
   switch (item.id) {
-    case 'quick-arquivos':
-      return pathname.startsWith('/dashboard/arquivos')
     case 'quick-emendas':
       return pathname.startsWith('/dashboard/emendas')
     case 'quick-proposicoes':

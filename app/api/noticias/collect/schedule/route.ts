@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { assertCronAuthorized } from '@/lib/cron-auth'
 import {
   fetchGoogleAlerts,
   analyzeSentiment,
@@ -23,15 +24,10 @@ const scheduleSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const denied = assertCronAuthorized(request)
+    if (denied) return denied
+
     const supabase = createClient()
-
-    // Verificar se é uma chamada autorizada (pode usar um secret token)
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-    }
 
     const body = await request.json().catch(() => ({}))
     const { auto_classify } = scheduleSchema.parse(body)

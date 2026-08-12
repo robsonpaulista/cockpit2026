@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
+import { assertCronAuthorized } from '@/lib/cron-auth'
 import { fetchGDELTRecent } from '@/lib/services/gdelt'
 
 // Endpoint para coleta agendada do GDELT
@@ -10,13 +11,8 @@ import { fetchGDELTRecent } from '@/lib/services/gdelt'
 
 export async function POST(request: Request) {
   try {
-    // Verificar se é uma chamada autorizada (pode usar um secret token)
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-    }
+    const denied = assertCronAuthorized(request)
+    if (denied) return denied
 
     const supabase = createClient()
     

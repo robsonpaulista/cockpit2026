@@ -50,7 +50,6 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/usuarios': 'Gestão de Usuários',
   '/dashboard/backup': 'Backup Supabase',
   '/dashboard/log-system': 'Log System',
-  '/dashboard/arquivos': 'Arquivos',
 }
 
 function getPageTitle(pathname: string, tab: string | null, _view: string | null): string {

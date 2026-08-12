@@ -53,15 +53,7 @@ next-env.d.ts
 /photofinder/
 photofinder-main.zip
 
-# FaceAgenda (recface) — venv, modelos ONNX e dados locais de visitantes
-/python/recface/venv/
 .venv-scripts/
-/python/recface/data/.insightface/
-/python/recface/data/encodings/
-/python/recface/data/visitors/
-/python/recface/data/captures/
-/python/recface/data/logs/
-/python/recface/data/agenda/
 __pycache__/
 *.pyc
 

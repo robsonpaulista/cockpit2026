@@ -51,7 +51,6 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/usuarios': 'Usuários',
     '/dashboard/backup': 'Backup',
     '/dashboard/log-system': 'Log System',
-    '/dashboard/arquivos': 'Arquivos',
   }
 
   if (exact[p]) return exact[p]

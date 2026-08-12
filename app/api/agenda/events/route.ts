@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { fetchGoogleCalendarEvents } from '@/lib/agenda/google-calendar-fetch'
+import {
+  fetchGoogleCalendarEvents,
+  resolveGoogleCalendarCredentials,
+} from '@/lib/agenda/google-calendar-fetch'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,16 +25,26 @@ export async function GET() {
       .select('calendar_id, service_account_email, credentials, subject_user')
       .order('updated_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
       return NextResponse.json({ error: 'Erro ao buscar configuração do calendário' }, { status: 500 })
     }
 
-    if (!data?.calendar_id || !data.credentials) {
+    if (!data?.calendar_id) {
       return NextResponse.json(
         { error: 'Google Calendar não configurado. Acesse a página Agenda para configurar.' },
-        { status: 404 }
+        { status: 404 },
+      )
+    }
+
+    if (!resolveGoogleCalendarCredentials(data.credentials)) {
+      return NextResponse.json(
+        {
+          error:
+            'Credenciais do Google Calendar ausentes no servidor. Configure GOOGLE_SERVICE_ACCOUNT_EMAIL e PRIVATE_KEY.',
+        },
+        { status: 503 },
       )
     }
 

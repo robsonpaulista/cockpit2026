@@ -1,12 +1,27 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureAdmin } from '@/lib/auth-admin'
+import {
+  hasGoogleCalendarEnvCredentials,
+  toPublicGoogleCalendarConfig,
+} from '@/lib/agenda/google-calendar-fetch'
 
 export const dynamic = 'force-dynamic'
 
+function publicConfigResponse(row: {
+  calendar_id: string
+  service_account_email: string | null
+  credentials: unknown
+  subject_user: string | null
+}) {
+  return {
+    config: toPublicGoogleCalendarConfig(row),
+  }
+}
+
 export async function GET() {
   try {
-    // Verificar autenticação com o client do usuário
     const supabase = createClient()
     const {
       data: { user },
@@ -16,149 +31,148 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Usar admin client para buscar config global (bypassa RLS)
-    // A config é global (única linha), não depende do usuário
     const adminSupabase = createAdminClient()
     const { data, error } = await adminSupabase
       .from('google_calendar_config')
       .select('calendar_id, service_account_email, credentials, subject_user')
       .order('updated_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
-      // PGRST116 = not found
       console.error('Erro ao buscar configuração:', error)
-      return NextResponse.json(
-        { error: 'Erro ao buscar configuração' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Erro ao buscar configuração' }, { status: 500 })
     }
 
-    if (!data) {
-      return NextResponse.json({ config: null })
+    if (!data?.calendar_id) {
+      return NextResponse.json({
+        config: null,
+        hasEnvCredentials: hasGoogleCalendarEnvCredentials(),
+      })
     }
 
     return NextResponse.json({
-      config: {
-        calendarId: data.calendar_id,
-        serviceAccountEmail: data.service_account_email,
-        credentials: data.credentials,
-        subjectUser: data.subject_user,
-      },
+      ...publicConfigResponse(data),
+      hasEnvCredentials: hasGoogleCalendarEnvCredentials(),
     })
   } catch (error: unknown) {
     console.error('Erro ao buscar configuração:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
 
 export async function POST(request: Request) {
   try {
-    // Verificar autenticação com o client do usuário
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const adminCheck = await ensureAdmin(supabase)
+    if (adminCheck instanceof NextResponse) return adminCheck
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    const user = adminCheck.profile
+    const body = await request.json()
+    const { calendarId, serviceAccountEmail, credentials, subjectUser } = body as {
+      calendarId?: string
+      serviceAccountEmail?: string
+      credentials?: string
+      subjectUser?: string
     }
 
-    const body = await request.json()
-    const { calendarId, serviceAccountEmail, credentials, subjectUser } = body
+    if (!calendarId?.trim()) {
+      return NextResponse.json({ error: 'calendarId é obrigatório' }, { status: 400 })
+    }
 
-    if (!calendarId || !serviceAccountEmail || !credentials) {
+    if (!subjectUser?.trim()) {
       return NextResponse.json(
-        { error: 'calendarId, serviceAccountEmail e credentials são obrigatórios' },
-        { status: 400 }
+        { error: 'subjectUser (e-mail Workspace) é obrigatório' },
+        { status: 400 },
       )
     }
 
-    // Usar admin client para operações no banco (bypassa RLS)
     const adminSupabase = createAdminClient()
-
-    // Verificar se já existe configuração
     const { data: existing } = await adminSupabase
       .from('google_calendar_config')
-      .select('id')
+      .select('id, credentials, service_account_email')
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (existing) {
-      // Atualizar configuração existente
+    const hasEnv = hasGoogleCalendarEnvCredentials()
+    const nextCredentials =
+      typeof credentials === 'string' && credentials.trim()
+        ? credentials.trim()
+        : existing?.credentials ?? null
+
+    if (!nextCredentials && !hasEnv) {
+      return NextResponse.json(
+        {
+          error:
+            'Informe as credenciais JSON ou configure GOOGLE_SERVICE_ACCOUNT_EMAIL / PRIVATE_KEY no ambiente.',
+        },
+        { status: 400 },
+      )
+    }
+
+    const nextEmail =
+      (typeof serviceAccountEmail === 'string' && serviceAccountEmail.trim()) ||
+      existing?.service_account_email ||
+      process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL ||
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
+      null
+
+    const payload = {
+      calendar_id: calendarId.trim(),
+      service_account_email: nextEmail,
+      subject_user: subjectUser.trim(),
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+      ...(typeof credentials === 'string' && credentials.trim()
+        ? { credentials: credentials.trim() }
+        : nextCredentials
+          ? {}
+          : { credentials: null }),
+    }
+
+    if (existing?.id) {
       const { data, error } = await adminSupabase
         .from('google_calendar_config')
-        .update({
-          calendar_id: calendarId,
-          service_account_email: serviceAccountEmail,
-          credentials: credentials,
-          subject_user: subjectUser || null,
-          updated_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', existing.id)
-        .select()
+        .select('calendar_id, service_account_email, credentials, subject_user')
         .single()
 
       if (error) {
         console.error('Erro ao atualizar configuração:', error)
-        return NextResponse.json(
-          { error: 'Erro ao atualizar configuração' },
-          { status: 500 }
-        )
+        return NextResponse.json({ error: 'Erro ao atualizar configuração' }, { status: 500 })
       }
 
-      return NextResponse.json({
-        success: true,
-        config: {
-          calendarId: data.calendar_id,
-          serviceAccountEmail: data.service_account_email,
-          credentials: data.credentials,
-          subjectUser: data.subject_user,
-        },
-      })
-    } else {
-      // Criar nova configuração
-      const { data, error } = await adminSupabase
-        .from('google_calendar_config')
-        .insert({
-          calendar_id: calendarId,
-          service_account_email: serviceAccountEmail,
-          credentials: credentials,
-          subject_user: subjectUser || null,
-          created_by: user.id,
-          updated_by: user.id,
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Erro ao criar configuração:', error)
-        return NextResponse.json(
-          { error: 'Erro ao salvar configuração' },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        config: {
-          calendarId: data.calendar_id,
-          serviceAccountEmail: data.service_account_email,
-          credentials: data.credentials,
-          subjectUser: data.subject_user,
-        },
-      })
+      return NextResponse.json({ success: true, ...publicConfigResponse(data) })
     }
+
+    const { data, error } = await adminSupabase
+      .from('google_calendar_config')
+      .insert({
+        calendar_id: calendarId.trim(),
+        service_account_email: nextEmail,
+        credentials: typeof credentials === 'string' && credentials.trim() ? credentials.trim() : null,
+        subject_user: subjectUser.trim(),
+        created_by: user.id,
+        updated_by: user.id,
+      })
+      .select('calendar_id, service_account_email, credentials, subject_user')
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar configuração:', error)
+      return NextResponse.json({ error: 'Erro ao salvar configuração' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, ...publicConfigResponse(data) })
   } catch (error: unknown) {
     console.error('Erro ao salvar configuração:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

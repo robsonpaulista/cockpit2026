@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -250,7 +257,13 @@ export function MapaObrasListaStatus({
   const [busca, setBusca] = useState('')
   const [filtroMunicipio, setFiltroMunicipio] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('')
+  /** Vazio = todos os status; senão, só os marcados. */
+  const [filtroStatus, setFiltroStatus] = useState<Set<string>>(() => new Set())
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+  const statusMenuRef = useRef<HTMLDivElement | null>(null)
+  /** Seleção explícita de registros (export). Vazio = exporta todas as filtradas. */
+  const [selectedObraIds, setSelectedObraIds] = useState<Set<string>>(() => new Set())
+  const selectAllRef = useRef<HTMLInputElement | null>(null)
   const [sortCol, setSortCol] = useState<SortObraCol>('municipio')
   const [sortAsc, setSortAsc] = useState(true)
   const [linksByObra, setLinksByObra] = useState<Record<string, ObraPlanoDriveLink>>({})
@@ -311,6 +324,25 @@ export function MapaObrasListaStatus({
     void carregarLinks()
   }, [carregarLinks])
 
+  useEffect(() => {
+    if (!statusMenuOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      const el = statusMenuRef.current
+      if (el && !el.contains(event.target as Node)) {
+        setStatusMenuOpen(false)
+      }
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setStatusMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [statusMenuOpen])
+
   const opcoesMunicipio = useMemo(
     () => listarMunicipiosComObras(obras, 'todos'),
     [obras],
@@ -349,9 +381,9 @@ export function MapaObrasListaStatus({
       if (filtroTipo) {
         if (tipoKeyOf(obra) !== filtroTipo) return false
       }
-      if (filtroStatus) {
+      if (filtroStatus.size > 0) {
         const status = (obra.status ?? '').trim()
-        if (status !== filtroStatus) return false
+        if (!filtroStatus.has(status)) return false
       }
       if (!q) return true
       const link = linksByObra[obra.id]
@@ -391,6 +423,42 @@ export function MapaObrasListaStatus({
     })
   }, [busca, filtroMunicipio, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
 
+  const filtradasIds = useMemo(
+    () => new Set(filtradas.map((obra) => obra.id)),
+    [filtradas],
+  )
+
+  /** Mantém seleção só entre obras ainda visíveis nos filtros. */
+  useEffect(() => {
+    setSelectedObraIds((prev) => {
+      if (prev.size === 0) return prev
+      let changed = false
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (filtradasIds.has(id)) next.add(id)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [filtradasIds])
+
+  const obrasParaExportar = useMemo(() => {
+    if (selectedObraIds.size === 0) return filtradas
+    return filtradas.filter((obra) => selectedObraIds.has(obra.id))
+  }, [filtradas, selectedObraIds])
+
+  const selecionadasCount = selectedObraIds.size
+  const todasFiltradasSelecionadas =
+    filtradas.length > 0 && filtradas.every((obra) => selectedObraIds.has(obra.id))
+  const algumasFiltradasSelecionadas =
+    selecionadasCount > 0 && !todasFiltradasSelecionadas
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    el.indeterminate = algumasFiltradasSelecionadas
+  }, [algumasFiltradasSelecionadas])
+
   const blocosPorTipo = useMemo(() => {
     const byTipo = new Map<string, ObraMapaRow[]>()
     for (const obra of filtradas) {
@@ -416,7 +484,7 @@ export function MapaObrasListaStatus({
   }, [filtradas, sortAsc, sortCol])
 
   useEffect(() => {
-    if (!filtroTipo && !filtroStatus) return
+    if (!filtroTipo && filtroStatus.size === 0) return
     if (filtroTipo) {
       setTiposExpandidos(new Set([filtroTipo]))
       return
@@ -452,19 +520,40 @@ export function MapaObrasListaStatus({
     }
   }, [filtradas, linksByObra])
 
-  const filtrosExportResumo = useMemo(
-    () =>
-      [
-        busca.trim() ? `Busca: ${busca.trim()}` : null,
-        filtroMunicipio ? `Município: ${filtroMunicipio}` : null,
-        filtroTipo
-          ? `Tipo: ${tipoLabelOf(filtroTipo)}`
-          : null,
-        filtroStatus ? `Status: ${filtroStatus}` : null,
-        `Ordenação: status, depois ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
-      ].filter((v): v is string => Boolean(v)),
-    [busca, filtroMunicipio, filtroStatus, filtroTipo, sortAsc, sortCol],
-  )
+  const statusFiltroLabel = useMemo(() => {
+    if (filtroStatus.size === 0) return 'Todos os status'
+    if (filtroStatus.size === 1) return [...filtroStatus][0] ?? '1 status'
+    return `${filtroStatus.size} status`
+  }, [filtroStatus])
+
+  const filtrosExportResumo = useMemo(() => {
+    const statusLabel =
+      filtroStatus.size === 0
+        ? null
+        : filtroStatus.size === 1
+          ? `Status: ${[...filtroStatus][0]}`
+          : `Status: ${[...filtroStatus].sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ')}`
+    const selecaoLabel =
+      selecionadasCount > 0
+        ? `Registros selecionados: ${selecionadasCount.toLocaleString('pt-BR')}`
+        : null
+    return [
+      busca.trim() ? `Busca: ${busca.trim()}` : null,
+      filtroMunicipio ? `Município: ${filtroMunicipio}` : null,
+      filtroTipo ? `Tipo: ${tipoLabelOf(filtroTipo)}` : null,
+      statusLabel,
+      selecaoLabel,
+      `Ordenação: status, depois ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
+    ].filter((v): v is string => Boolean(v))
+  }, [
+    busca,
+    filtroMunicipio,
+    filtroStatus,
+    filtroTipo,
+    selecionadasCount,
+    sortAsc,
+    sortCol,
+  ])
 
   const alternarSort = (column: SortObraCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, ['municipio'] as const)
@@ -481,6 +570,59 @@ export function MapaObrasListaStatus({
     })
   }, [])
 
+  const toggleStatusFiltro = useCallback((status: string) => {
+    setFiltroStatus((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }, [])
+
+  const limparStatusFiltro = useCallback(() => {
+    setFiltroStatus(new Set())
+  }, [])
+
+  const marcarTodosStatus = useCallback(() => {
+    setFiltroStatus(new Set(opcoesStatus))
+  }, [opcoesStatus])
+
+  const toggleObraSelecionada = useCallback((obraId: string) => {
+    setSelectedObraIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(obraId)) next.delete(obraId)
+      else next.add(obraId)
+      return next
+    })
+  }, [])
+
+  const toggleTodasFiltradas = useCallback(() => {
+    setSelectedObraIds((prev) => {
+      const todasSelecionadas =
+        filtradas.length > 0 && filtradas.every((obra) => prev.has(obra.id))
+      if (todasSelecionadas) return new Set()
+      return new Set(filtradas.map((obra) => obra.id))
+    })
+  }, [filtradas])
+
+  const toggleObrasDoTipo = useCallback((obrasDoTipo: ObraMapaRow[]) => {
+    setSelectedObraIds((prev) => {
+      const todasDoTipo =
+        obrasDoTipo.length > 0 && obrasDoTipo.every((obra) => prev.has(obra.id))
+      const next = new Set(prev)
+      if (todasDoTipo) {
+        for (const obra of obrasDoTipo) next.delete(obra.id)
+      } else {
+        for (const obra of obrasDoTipo) next.add(obra.id)
+      }
+      return next
+    })
+  }, [])
+
+  const limparSelecaoObras = useCallback(() => {
+    setSelectedObraIds(new Set())
+  }, [])
+
   const expandirTodosTipos = useCallback(() => {
     setTiposExpandidos(new Set(blocosPorTipo.map((b) => b.key)))
   }, [blocosPorTipo])
@@ -492,6 +634,8 @@ export function MapaObrasListaStatus({
   const vinculados = Object.keys(linksByObra).length
   const todosExpandidos =
     blocosPorTipo.length > 0 && blocosPorTipo.every((b) => tiposExpandidos.has(b.key))
+  const temFiltrosAtivos =
+    Boolean(filtroMunicipio || filtroTipo) || filtroStatus.size > 0
 
   const actionBtnClass = embedded ? 'wr-copiloto-redes__ghost-btn' : chromeButtonClass
   const exportBtnClass = embedded
@@ -503,6 +647,13 @@ export function MapaObrasListaStatus({
   const searchClass = embedded
     ? 'wr-copiloto-filter-select min-w-[12rem] flex-1 sm:max-w-xs'
     : 'min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs'
+  const statusTriggerClass = cn(
+    selectClass,
+    'inline-flex max-w-[16rem] items-center justify-between gap-2 text-left',
+    filtroStatus.size > 0 && 'font-medium',
+  )
+  const rowCheckboxClass =
+    'h-3.5 w-3.5 shrink-0 rounded border-card text-[var(--palette-blue,#005B8F)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--palette-blue,#005B8F)_35%,transparent)]'
 
   return (
     <div className="flex flex-col gap-4">
@@ -526,7 +677,12 @@ export function MapaObrasListaStatus({
         </div>
       ) : null}
 
-      <div className={cn(embedded ? 'wr-copiloto-filtros' : 'flex flex-wrap items-center gap-2')}>
+      <div
+        className={cn(
+          embedded ? 'wr-copiloto-filtros' : 'flex flex-wrap items-center gap-2',
+          'relative z-40',
+        )}
+      >
         <input
           type="search"
           value={busca}
@@ -560,26 +716,79 @@ export function MapaObrasListaStatus({
             </option>
           ))}
         </select>
-        <select
-          value={filtroStatus}
-          onChange={(e) => setFiltroStatus(e.target.value)}
-          title="Filtrar por status"
-          className={selectClass}
-        >
-          <option value="">Todos os status</option>
-          {opcoesStatus.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-        {(filtroMunicipio || filtroTipo || filtroStatus) && (
+        <div className="relative" ref={statusMenuRef}>
+          <button
+            type="button"
+            onClick={() => setStatusMenuOpen((open) => !open)}
+            title="Filtrar por um ou mais status"
+            aria-haspopup="listbox"
+            aria-expanded={statusMenuOpen}
+            className={statusTriggerClass}
+          >
+            <span className="min-w-0 truncate">{statusFiltroLabel}</span>
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 text-text-secondary transition-transform',
+                statusMenuOpen && 'rotate-180',
+              )}
+              aria-hidden
+            />
+          </button>
+          {statusMenuOpen ? (
+            <div
+              className="wr-obras-status-menu absolute left-0 z-50 mt-1 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-card p-2 shadow-lg"
+              role="listbox"
+              aria-multiselectable="true"
+              aria-label="Status das obras"
+            >
+              <div className="mb-2 flex flex-wrap gap-1.5 border-b border-card pb-2">
+                <button
+                  type="button"
+                  onClick={limparStatusFiltro}
+                  className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={marcarTodosStatus}
+                  className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
+                >
+                  Marcar todos
+                </button>
+              </div>
+              <ul className="max-h-56 space-y-0.5 overflow-y-auto">
+                {opcoesStatus.length === 0 ? (
+                  <li className="px-2 py-1.5 text-xs text-text-muted">Nenhum status na lista</li>
+                ) : (
+                  opcoesStatus.map((status) => {
+                    const checked = filtroStatus.has(status)
+                    return (
+                      <li key={status}>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-text-primary hover:bg-bg-app/80">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleStatusFiltro(status)}
+                            className={rowCheckboxClass}
+                          />
+                          <span className="min-w-0 truncate">{status}</span>
+                        </label>
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+        {temFiltrosAtivos && (
           <button
             type="button"
             onClick={() => {
               setFiltroMunicipio('')
               setFiltroTipo('')
-              setFiltroStatus('')
+              setFiltroStatus(new Set())
             }}
             className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
           >
@@ -603,13 +812,27 @@ export function MapaObrasListaStatus({
         <button
           type="button"
           onClick={() => setExportModalOpen(true)}
-          disabled={filtradas.length === 0}
-          title="Exportar seleção filtrada (CSV, Excel ou PDF)"
+          disabled={obrasParaExportar.length === 0}
+          title={
+            selecionadasCount > 0
+              ? `Exportar ${selecionadasCount} obra(s) selecionada(s)`
+              : 'Exportar lista filtrada (CSV, Excel ou PDF)'
+          }
           className={cn(exportBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
         >
           <Download className="h-3.5 w-3.5" aria-hidden />
           Exportar
+          {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
         </button>
+        {selecionadasCount > 0 ? (
+          <button
+            type="button"
+            onClick={limparSelecaoObras}
+            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
+          >
+            Limpar seleção
+          </button>
+        ) : null}
         {blocosPorTipo.length > 0 ? (
           <button
             type="button"
@@ -623,6 +846,9 @@ export function MapaObrasListaStatus({
         <span className="text-xs text-text-secondary">
           {filtradas.length.toLocaleString('pt-BR')} obra
           {filtradas.length === 1 ? '' : 's'}
+          {selecionadasCount > 0
+            ? ` · ${selecionadasCount.toLocaleString('pt-BR')} selecionada${selecionadasCount === 1 ? '' : 's'}`
+            : ''}
           {blocosPorTipo.length > 0
             ? ` · ${blocosPorTipo.length} tipo${blocosPorTipo.length === 1 ? '' : 's'}`
             : ''}
@@ -645,6 +871,22 @@ export function MapaObrasListaStatus({
           >
             <thead className="border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary">
               <tr>
+                <th className="w-10 px-3 py-2.5">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    checked={todasFiltradasSelecionadas}
+                    onChange={toggleTodasFiltradas}
+                    disabled={filtradas.length === 0}
+                    className={rowCheckboxClass}
+                    title={
+                      todasFiltradasSelecionadas
+                        ? 'Desmarcar todas as obras filtradas'
+                        : 'Selecionar todas as obras filtradas'
+                    }
+                    aria-label="Selecionar todas as obras filtradas"
+                  />
+                </th>
                 <th className="px-3 py-2.5 whitespace-nowrap">Data demanda</th>
                 <th className="px-3 py-2.5">
                   <TerritorioSortableHeaderButton
@@ -674,47 +916,87 @@ export function MapaObrasListaStatus({
             <tbody className="divide-y divide-card">
               {blocosPorTipo.map((tipoBloco) => {
                 const tipoAberto = tiposExpandidos.has(tipoBloco.key)
+                const tipoTodasSelecionadas =
+                  tipoBloco.obras.length > 0 &&
+                  tipoBloco.obras.every((obra) => selectedObraIds.has(obra.id))
+                const tipoAlgumasSelecionadas =
+                  !tipoTodasSelecionadas &&
+                  tipoBloco.obras.some((obra) => selectedObraIds.has(obra.id))
                 return (
                   <GroupBlockRows key={tipoBloco.key}>
                     <tr className="bg-bg-app/70">
-                      <td colSpan={7} className="p-0">
-                        <button
-                          type="button"
-                          onClick={() => toggleTipo(tipoBloco.key)}
-                          aria-expanded={tipoAberto}
-                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-bg-app/90"
-                        >
-                          {tipoAberto ? (
-                            <ChevronDown
-                              className="h-4 w-4 shrink-0 text-text-secondary"
-                              strokeWidth={1.75}
-                              aria-hidden
-                            />
-                          ) : (
-                            <ChevronRight
-                              className="h-4 w-4 shrink-0 text-text-secondary"
-                              strokeWidth={1.75}
-                              aria-hidden
-                            />
-                          )}
-                          <span className="min-w-0 flex-1 text-sm font-semibold text-text-primary">
-                            {tipoBloco.label}
-                          </span>
-                          <span className="shrink-0 text-xs tabular-nums text-text-secondary">
-                            {tipoBloco.obras.length.toLocaleString('pt-BR')} obra
-                            {tipoBloco.obras.length === 1 ? '' : 's'}
-                            {tipoBloco.valor != null
-                              ? ` · ${formatCurrency(tipoBloco.valor)}`
-                              : ''}
-                          </span>
-                        </button>
+                      <td colSpan={8} className="p-0">
+                        <div className="flex w-full items-center gap-2 px-3 py-2.5">
+                          <input
+                            type="checkbox"
+                            checked={tipoTodasSelecionadas}
+                            ref={(el) => {
+                              if (el) el.indeterminate = tipoAlgumasSelecionadas
+                            }}
+                            onChange={() => toggleObrasDoTipo(tipoBloco.obras)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={rowCheckboxClass}
+                            title={
+                              tipoTodasSelecionadas
+                                ? `Desmarcar obras de ${tipoBloco.label}`
+                                : `Selecionar obras de ${tipoBloco.label}`
+                            }
+                            aria-label={`Selecionar obras do tipo ${tipoBloco.label}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => toggleTipo(tipoBloco.key)}
+                            aria-expanded={tipoAberto}
+                            className="flex min-w-0 flex-1 items-center gap-2 text-left transition-colors hover:opacity-90"
+                          >
+                            {tipoAberto ? (
+                              <ChevronDown
+                                className="h-4 w-4 shrink-0 text-text-secondary"
+                                strokeWidth={1.75}
+                                aria-hidden
+                              />
+                            ) : (
+                              <ChevronRight
+                                className="h-4 w-4 shrink-0 text-text-secondary"
+                                strokeWidth={1.75}
+                                aria-hidden
+                              />
+                            )}
+                            <span className="min-w-0 flex-1 text-sm font-semibold text-text-primary">
+                              {tipoBloco.label}
+                            </span>
+                            <span className="shrink-0 text-xs tabular-nums text-text-secondary">
+                              {tipoBloco.obras.length.toLocaleString('pt-BR')} obra
+                              {tipoBloco.obras.length === 1 ? '' : 's'}
+                              {tipoBloco.valor != null
+                                ? ` · ${formatCurrency(tipoBloco.valor)}`
+                                : ''}
+                            </span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {tipoAberto
                       ? tipoBloco.obras.map((obra) => {
                           const link = linksByObra[obra.id]
+                          const selecionada = selectedObraIds.has(obra.id)
                           return (
-                            <tr key={obra.id} className="align-top hover:bg-bg-app/30">
+                            <tr
+                              key={obra.id}
+                              className={cn(
+                                'align-top hover:bg-bg-app/30',
+                                selecionada && 'bg-[color-mix(in_srgb,var(--palette-blue,#005B8F)_6%,transparent)]',
+                              )}
+                            >
+                              <td className="px-3 py-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selecionada}
+                                  onChange={() => toggleObraSelecionada(obra.id)}
+                                  className={rowCheckboxClass}
+                                  aria-label={`Selecionar obra ${obra.obra || obra.id}`}
+                                />
+                              </td>
                               <td className="whitespace-nowrap px-3 py-3 tabular-nums text-text-secondary">
                                 {formatDataDemanda(obra.data_demanda)}
                               </td>
@@ -810,13 +1092,16 @@ export function MapaObrasListaStatus({
             {filtradas.length > 0 ? (
               <tfoot className="border-t-2 border-card bg-bg-app/80 text-sm font-semibold text-text-primary">
                 <tr>
-                  <td className="px-3 py-3" colSpan={4}>
+                  <td className="px-3 py-3" colSpan={5}>
                     Total
                     <span className="ml-2 font-normal text-text-secondary">
                       {totais.obras.toLocaleString('pt-BR')} obra
                       {totais.obras === 1 ? '' : 's'} ·{' '}
                       {totais.municipios.toLocaleString('pt-BR')} município
                       {totais.municipios === 1 ? '' : 's'}
+                      {selecionadasCount > 0
+                        ? ` · ${selecionadasCount.toLocaleString('pt-BR')} selecionada${selecionadasCount === 1 ? '' : 's'}`
+                        : ''}
                     </span>
                   </td>
                   <td className="px-3 py-3 tabular-nums">
@@ -859,9 +1144,14 @@ export function MapaObrasListaStatus({
       <MapaObrasListaExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        obras={filtradas}
+        obras={obrasParaExportar}
         linksByObra={linksByObra}
         filtrosResumo={filtrosExportResumo}
+        selecaoResumo={
+          selecionadasCount > 0
+            ? `${selecionadasCount.toLocaleString('pt-BR')} selecionada${selecionadasCount === 1 ? '' : 's'} de ${filtradas.length.toLocaleString('pt-BR')} filtrada${filtradas.length === 1 ? '' : 's'}`
+            : undefined
+        }
       />
     </div>
   )

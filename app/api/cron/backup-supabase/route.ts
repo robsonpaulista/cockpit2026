@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { assertCronAuthorized } from '@/lib/cron-auth'
 import { runSupabaseBackupToStorage } from '@/lib/supabase-backup'
 
 export const dynamic = 'force-dynamic'
@@ -15,12 +16,8 @@ export const maxDuration = 300
  */
 export async function POST(request: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET
-    const authHeader = request.headers.get('authorization')
-    // Mesmo padrão do purge-retention: exige Bearer quando CRON_SECRET existe.
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-    }
+    const denied = assertCronAuthorized(request)
+    if (denied) return denied
 
     const { searchParams } = new URL(request.url)
     const full = searchParams.get('full') === '1' || searchParams.get('full') === 'true'
