@@ -31,6 +31,7 @@ import {
   exportEmendasListToXlsx,
   type EmendaListColumnKey,
 } from '@/lib/emendas-list-export'
+import { MultiCheckFilterSelect } from '@/components/territorio-campo/multi-check-filter-select'
 
 interface City {
   id: string
@@ -266,7 +267,12 @@ function renderEmendaListCell(r: Emenda, col: EmendaListColumnKey): ReactNode {
   }
 }
 
-type FiltroStatusEmenda = 'all' | 'pagas' | 'nao_pagas'
+type FiltroStatusEmendaId = 'pagas' | 'nao_pagas'
+
+const EMENDAS_STATUS_OPTIONS: Array<{ id: FiltroStatusEmendaId; label: string }> = [
+  { id: 'pagas', label: 'Pagas' },
+  { id: 'nao_pagas', label: 'Não pagas' },
+]
 
 function isEmendaPaga(r: Emenda): boolean {
   const vp = Number(r.valor_pago)
@@ -347,7 +353,10 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
   const [filterExercicio, setFilterExercicio] = useState<string>('')
   const [filterEmenda, setFilterEmenda] = useState<string>('')
   const [filterMunicipio, setFilterMunicipio] = useState<string>('')
-  const [filterStatus, setFilterStatus] = useState<FiltroStatusEmenda>('all')
+  const [filterStatus, setFilterStatus] = useState<Set<FiltroStatusEmendaId>>(() => new Set())
+  /** Seleção explícita de registros (export). Vazio = exporta todas as filtradas. */
+  const [selectedEmendaIds, setSelectedEmendaIds] = useState<Set<string>>(() => new Set())
+  const selectAllRef = useRef<HTMLInputElement | null>(null)
   const [visibleColumns, setVisibleColumns] = useState<Record<EmendaListColumnKey, boolean>>(() =>
     emendasDefaultVisibleColumnsRecord(),
   )
@@ -389,11 +398,67 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
       if (filterMunicipio !== '' && (r.municipio_beneficiario ?? '').trim() !== filterMunicipio) {
         return false
       }
-      if (filterStatus === 'pagas' && !isEmendaPaga(r)) return false
-      if (filterStatus === 'nao_pagas' && isEmendaPaga(r)) return false
+      if (filterStatus.size > 0) {
+        const paga = isEmendaPaga(r)
+        const matchPaga = filterStatus.has('pagas') && paga
+        const matchNaoPaga = filterStatus.has('nao_pagas') && !paga
+        if (!matchPaga && !matchNaoPaga) return false
+      }
       return true
     })
   }, [rows, filterExercicio, filterEmenda, filterMunicipio, filterStatus])
+
+  const filteredIds = useMemo(
+    () => new Set(filteredRows.map((r) => r.id)),
+    [filteredRows],
+  )
+
+  useEffect(() => {
+    setSelectedEmendaIds((prev) => {
+      if (prev.size === 0) return prev
+      let changed = false
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (filteredIds.has(id)) next.add(id)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [filteredIds])
+
+  const selecionadasCount = selectedEmendaIds.size
+  const todasFiltradasSelecionadas =
+    filteredRows.length > 0 && filteredRows.every((r) => selectedEmendaIds.has(r.id))
+  const algumasFiltradasSelecionadas =
+    selecionadasCount > 0 && !todasFiltradasSelecionadas
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    el.indeterminate = algumasFiltradasSelecionadas
+  }, [algumasFiltradasSelecionadas])
+
+  const toggleEmendaSelecionada = useCallback((id: string) => {
+    setSelectedEmendaIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleTodasFiltradas = useCallback(() => {
+    setSelectedEmendaIds((prev) => {
+      const todas =
+        filteredRows.length > 0 && filteredRows.every((r) => prev.has(r.id))
+      if (todas) return new Set()
+      return new Set(filteredRows.map((r) => r.id))
+    })
+  }, [filteredRows])
+
+  const limparSelecaoEmendas = useCallback(() => {
+    setSelectedEmendaIds(new Set())
+  }, [])
 
   const toggleSort = useCallback((col: EmendaListColumnKey) => {
     if (sortColumn === col) {
@@ -421,7 +486,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
     filterExercicio.trim() !== '' ||
     filterEmenda.trim() !== '' ||
     filterMunicipio !== '' ||
-    filterStatus !== 'all'
+    filterStatus.size > 0
 
   const descricaoFiltrosExport = useMemo(() => {
     const partes: string[] = []
@@ -430,46 +495,55 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
     const em = filterEmenda.trim()
     if (em) partes.push(`Emenda contém: ${em}`)
     if (filterMunicipio) partes.push(`Município/beneficiário: ${filterMunicipio}`)
-    if (filterStatus === 'pagas') partes.push('Status: pagas (valor pago > 0)')
-    if (filterStatus === 'nao_pagas') partes.push('Status: não pagas')
+    if (filterStatus.size > 0) {
+      const labels = EMENDAS_STATUS_OPTIONS.filter((o) => filterStatus.has(o.id)).map(
+        (o) => o.label,
+      )
+      partes.push(`Status: ${labels.join(', ')}`)
+    }
+    if (selecionadasCount > 0) {
+      partes.push(`Registros selecionados: ${selecionadasCount}`)
+    }
     return partes.length > 0
       ? `Filtros ativos — ${partes.join(' · ')}`
       : 'Sem filtros (lista completa carregada)'
-  }, [filterExercicio, filterEmenda, filterMunicipio, filterStatus])
+  }, [filterExercicio, filterEmenda, filterMunicipio, filterStatus, selecionadasCount])
 
   const activeColumnList = useMemo(
     () => EMENDAS_LIST_COLUMN_KEYS.filter((k) => visibleColumns[k]),
     [visibleColumns],
   )
 
-  const rowsParaExportar = useMemo(
-    () =>
-      filteredRows.map((r) => ({
-        id: r.id,
-        bloco: r.bloco,
-        exercicio: r.exercicio,
-        emenda: r.emenda,
-        municipio_beneficiario: r.municipio_beneficiario,
-        funcional: r.funcional,
-        gnd: r.gnd,
-        valor_indicado: r.valor_indicado,
-        valor_empenhado: r.valor_empenhado,
-        valor_a_empenhar: r.valor_a_empenhar,
-        valor_pago: r.valor_pago,
-        valor_a_ser_pago: r.valor_a_ser_pago,
-        empenho: r.empenho,
-        data_empenho: r.data_empenho,
-        portaria_convenio: r.portaria_convenio,
-        numero_proposta: r.numero_proposta,
-        data_pagamento: r.data_pagamento,
-        liderancas: r.liderancas,
-        alteracao: r.alteracao,
-        objeto: r.objeto,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-      })),
-    [filteredRows],
-  )
+  const rowsParaExportar = useMemo(() => {
+    const base =
+      selectedEmendaIds.size > 0
+        ? filteredRows.filter((r) => selectedEmendaIds.has(r.id))
+        : filteredRows
+    return base.map((r) => ({
+      id: r.id,
+      bloco: r.bloco,
+      exercicio: r.exercicio,
+      emenda: r.emenda,
+      municipio_beneficiario: r.municipio_beneficiario,
+      funcional: r.funcional,
+      gnd: r.gnd,
+      valor_indicado: r.valor_indicado,
+      valor_empenhado: r.valor_empenhado,
+      valor_a_empenhar: r.valor_a_empenhar,
+      valor_pago: r.valor_pago,
+      valor_a_ser_pago: r.valor_a_ser_pago,
+      empenho: r.empenho,
+      data_empenho: r.data_empenho,
+      portaria_convenio: r.portaria_convenio,
+      numero_proposta: r.numero_proposta,
+      data_pagamento: r.data_pagamento,
+      liderancas: r.liderancas,
+      alteracao: r.alteracao,
+      objeto: r.objeto,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }))
+  }, [filteredRows, selectedEmendaIds])
 
   const totaisFiltrados = useMemo(() => {
     return filteredRows.reduce(
@@ -735,6 +809,8 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
   const filterLabelClass = isCopiloto
     ? 'wr-copiloto-filter-field-label'
     : 'text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap'
+  const rowCheckboxClass =
+    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', pageShellClass)}>
@@ -778,22 +854,32 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
               <button
                 type="button"
                 onClick={handleExportXlsx}
-                disabled={loading}
-                title="Exportar para Excel: registros filtrados e colunas visíveis"
+                disabled={loading || rowsParaExportar.length === 0}
+                title={
+                  selecionadasCount > 0
+                    ? `Exportar ${selecionadasCount} emenda(s) selecionada(s) para Excel`
+                    : 'Exportar para Excel: registros filtrados e colunas visíveis'
+                }
                 className={exportBtnClass}
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Excel
+                {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
               </button>
               <button
                 type="button"
                 onClick={handleExportPdf}
-                disabled={loading}
-                title="Exportar para PDF: registros filtrados e colunas visíveis"
+                disabled={loading || rowsParaExportar.length === 0}
+                title={
+                  selecionadasCount > 0
+                    ? `Exportar ${selecionadasCount} emenda(s) selecionada(s) para PDF`
+                    : 'Exportar para PDF: registros filtrados e colunas visíveis'
+                }
                 className={exportBtnClass}
               >
                 <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 PDF
+                {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
               </button>
               <button
                 type="button"
@@ -908,19 +994,36 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                 <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
               ) : null}
 
-              <label className={cn(filterFieldClass, !isCopiloto && 'flex items-center gap-1.5 shrink-0')}>
+              <div className={cn(filterFieldClass, !isCopiloto && 'flex items-center gap-1.5 shrink-0')}>
                 <span className={filterLabelClass}>Status</span>
-                <select
-                  value={filterStatus}
-                  onChange={(ev) => setFilterStatus(ev.target.value as FiltroStatusEmenda)}
-                  className={isCopiloto ? undefined : filterSelectClass}
-                  title="Pagas: valor pago maior que zero"
-                >
-                  <option value="all">Todos</option>
-                  <option value="pagas">Pagas</option>
-                  <option value="nao_pagas">Não pagas</option>
-                </select>
-              </label>
+                <MultiCheckFilterSelect
+                  options={EMENDAS_STATUS_OPTIONS}
+                  selected={filterStatus}
+                  onChange={(next) =>
+                    setFilterStatus(
+                      new Set(
+                        [...next].filter(
+                          (id): id is FiltroStatusEmendaId =>
+                            id === 'pagas' || id === 'nao_pagas',
+                        ),
+                      ),
+                    )
+                  }
+                  allLabel="Todos os status"
+                  title="Filtrar por um ou mais status (pagas / não pagas)"
+                  ariaLabel="Status das emendas"
+                  triggerClassName={
+                    isCopiloto
+                      ? 'wr-copiloto-filter-select max-w-[14rem]'
+                      : filterSelectClass
+                  }
+                  actionClassName={
+                    isCopiloto
+                      ? 'wr-copiloto-redes__ghost-btn h-7 px-2 text-[10px]'
+                      : 'rounded-md border border-card px-2 py-0.5 text-[10px] font-medium text-text-secondary hover:bg-background'
+                  }
+                />
+              </div>
 
               {filtrosAtivos ? (
                 <>
@@ -933,7 +1036,7 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                       setFilterExercicio('')
                       setFilterEmenda('')
                       setFilterMunicipio('')
-                      setFilterStatus('all')
+                      setFilterStatus(new Set())
                     }}
                     className={
                       isCopiloto
@@ -944,6 +1047,20 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     Limpar
                   </button>
                 </>
+              ) : null}
+
+              {selecionadasCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={limparSelecaoEmendas}
+                  className={
+                    isCopiloto
+                      ? 'wr-copiloto-redes__ghost-btn shrink-0'
+                      : 'shrink-0 rounded-lg border border-card bg-transparent px-2.5 py-1.5 text-xs font-medium text-secondary hover:border-accent-gold/40 hover:text-text-primary'
+                  }
+                >
+                  Limpar seleção ({selecionadasCount})
+                </button>
               ) : null}
             </div>
           </div>
@@ -956,6 +1073,9 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                   : filtrosAtivos
                     ? `${filteredRows.length} de ${rows.length} emenda(s)`
                     : `${rows.length} emenda(s)`}
+                {selecionadasCount > 0
+                  ? ` · ${selecionadasCount} selecionada${selecionadasCount === 1 ? '' : 's'}`
+                  : ''}
               </span>
               {!loading && (
                 <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
@@ -1078,6 +1198,22 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                             : 'border-card bg-white',
                       )}
                     >
+                      <th className="w-10 px-3 py-2" scope="col">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          checked={todasFiltradasSelecionadas}
+                          onChange={toggleTodasFiltradas}
+                          disabled={filteredRows.length === 0}
+                          className={rowCheckboxClass}
+                          title={
+                            todasFiltradasSelecionadas
+                              ? 'Desmarcar todas as emendas filtradas'
+                              : 'Selecionar todas as emendas filtradas'
+                          }
+                          aria-label="Selecionar todas as emendas filtradas"
+                        />
+                      </th>
                       {activeColumnList.map((col) => {
                         const isActive = sortColumn === col
                         return (
@@ -1127,7 +1263,9 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedFilteredRows.map((r) => (
+                    {sortedFilteredRows.map((r) => {
+                      const selecionada = selectedEmendaIds.has(r.id)
+                      return (
                       <tr
                         key={r.id}
                         className={cn(
@@ -1136,8 +1274,18 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                             ? 'border-[var(--wr-divider,#ebebe8)]'
                             : 'hover:bg-accent-gold-soft/25',
                           isCockpit ? 'border-white/10' : !isCopiloto && 'border-card/80',
+                          selecionada && 'bg-[color-mix(in_srgb,#f2d06b_10%,transparent)]',
                         )}
                       >
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selecionada}
+                          onChange={() => toggleEmendaSelecionada(r.id)}
+                          className={rowCheckboxClass}
+                          aria-label={`Selecionar emenda ${r.emenda}`}
+                        />
+                      </td>
                       {activeColumnList.map((col) => (
                         <td key={col} className={emendaListTdClass(col)} title={emendaCellTitle(r, col)}>
                           {renderEmendaListCell(r, col)}
@@ -1178,8 +1326,9 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                      )
+                    })}
+                  </tbody>
               </table>
             </div>
             )}

@@ -22,7 +22,16 @@ function formatPrivateKey(key: string): string {
   return formattedKey
 }
 
-function getCredentialsFromStored(bodyCredentials?: string | Record<string, unknown> | null) {
+type ServiceAccountCredentials = {
+  type: 'service_account'
+  private_key: string
+  client_email: string
+  token_uri: string
+}
+
+function getCredentialsFromStored(
+  bodyCredentials?: string | Record<string, unknown> | null,
+): ServiceAccountCredentials | null {
   if (!bodyCredentials) return null
   try {
     const parsed =
@@ -41,34 +50,58 @@ function getCredentialsFromStored(bodyCredentials?: string | Record<string, unkn
   }
 }
 
-export function getGoogleCalendarCredentialsFromEnv() {
-  let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_PRIVATE_KEY
-  let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL
-
-  if (!envPrivateKey || !envEmail) {
-    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
-  }
-
+/** SA dedicada ao Calendar (env). Não cai na SA genérica de Sheets. */
+export function getGoogleCalendarDedicatedEnvCredentials(): ServiceAccountCredentials | null {
+  const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_PRIVATE_KEY
+  const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL
   if (!envPrivateKey || !envEmail) return null
-
   return {
     type: 'service_account' as const,
     private_key: formatPrivateKey(envPrivateKey),
-    client_email: envEmail,
+    client_email: envEmail.trim(),
     token_uri: 'https://oauth2.googleapis.com/token',
   }
 }
 
-export function hasGoogleCalendarEnvCredentials(): boolean {
-  return Boolean(getGoogleCalendarCredentialsFromEnv())
+function getGoogleServiceAccountGenericEnvCredentials(): ServiceAccountCredentials | null {
+  const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+  const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+  if (!envPrivateKey || !envEmail) return null
+  return {
+    type: 'service_account' as const,
+    private_key: formatPrivateKey(envPrivateKey),
+    client_email: envEmail.trim(),
+    token_uri: 'https://oauth2.googleapis.com/token',
+  }
 }
 
-/** Env primeiro; fallback só para credenciais já persistidas no servidor (nunca do browser). */
+/** @deprecated Prefer resolveGoogleCalendarCredentials — inclui fallback genérico. */
+export function getGoogleCalendarCredentialsFromEnv() {
+  return (
+    getGoogleCalendarDedicatedEnvCredentials() ?? getGoogleServiceAccountGenericEnvCredentials()
+  )
+}
+
+export function hasGoogleCalendarEnvCredentials(): boolean {
+  return Boolean(
+    getGoogleCalendarDedicatedEnvCredentials() || getGoogleServiceAccountGenericEnvCredentials(),
+  )
+}
+
+/**
+ * Prioridade (igual ao comportamento pré-auditoria, sem aceitar body do browser):
+ * 1) SA Calendar dedicada no env
+ * 2) Credenciais persistidas em google_calendar_config (servidor)
+ * 3) SA genérica do env (último recurso — pode falhar se for só Sheets)
+ */
 export function resolveGoogleCalendarCredentials(
   storedCredentials?: string | Record<string, unknown> | null,
 ) {
-  return getGoogleCalendarCredentialsFromEnv() ?? getCredentialsFromStored(storedCredentials)
+  return (
+    getGoogleCalendarDedicatedEnvCredentials() ??
+    getCredentialsFromStored(storedCredentials) ??
+    getGoogleServiceAccountGenericEnvCredentials()
+  )
 }
 
 export async function fetchGoogleCalendarEvents(
@@ -78,22 +111,20 @@ export async function fetchGoogleCalendarEvents(
 
   if (!credentialsObj?.client_email || !credentialsObj.private_key) {
     throw new Error(
-      'Credenciais do Google Calendar não configuradas. Defina GOOGLE_SERVICE_ACCOUNT_EMAIL e GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY no ambiente.',
+      'Credenciais do Google Calendar não configuradas. Salve a SA na Agenda ou defina GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL / PRIVATE_KEY.',
     )
   }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: credentialsObj,
+  const subject = config.subjectUser?.trim() || undefined
+  // JWT com subject na construção — setar depois de getClient() quebra Domain-Wide Delegation.
+  const auth = new google.auth.JWT({
+    email: credentialsObj.client_email,
+    key: credentialsObj.private_key,
     scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+    subject,
   })
 
-  const client = await auth.getClient()
-  if (config.subjectUser) {
-    // @ts-expect-error Domain-Wide Delegation
-    client.subject = config.subjectUser
-  }
-
-  const calendar = google.calendar({ version: 'v3', auth: client as never })
+  const calendar = google.calendar({ version: 'v3', auth })
 
   const startDate = new Date()
   startDate.setHours(0, 0, 0, 0)
@@ -143,12 +174,13 @@ export function toPublicGoogleCalendarConfig(row: {
   credentials: unknown
   subject_user: string | null
 }): GoogleCalendarPublicConfig {
-  const envCreds = getGoogleCalendarCredentialsFromEnv()
-  const hasStored = Boolean(row.credentials)
+  const resolved = resolveGoogleCalendarCredentials(
+    row.credentials as string | Record<string, unknown> | null,
+  )
   return {
     calendarId: row.calendar_id,
-    serviceAccountEmail: envCreds?.client_email ?? row.service_account_email,
+    serviceAccountEmail: resolved?.client_email ?? row.service_account_email,
     subjectUser: row.subject_user,
-    hasServerCredentials: Boolean(envCreds) || hasStored,
+    hasServerCredentials: Boolean(resolved),
   }
 }

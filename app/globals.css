@@ -12,11 +12,40 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Destaque de formulários / dropdowns = amarelo Cockpit (não azul do SO) */
+  accent-color: #f2d06b;
 }
 
 body {
   line-height: 1.5;
   letter-spacing: 0.01em;
+}
+
+/* ——— Selects nativos: item selecionado em amarelo ——— */
+select {
+  accent-color: #f2d06b;
+  color-scheme: light;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background-color: #f2d06b !important;
+  /* Hack Chromium: força cor de destaque da option (o SO ignora background simples) */
+  background: #f2d06b linear-gradient(0deg, #f2d06b 0%, #f2d06b 100%) !important;
+  color: #2b2d31 !important;
+}
+
+/* Listboxes custom (role=option): mesmo amarelo no item ativo */
+[role='listbox'] [role='option'][aria-selected='true'],
+[role='option'][aria-selected='true'] {
+  background-color: color-mix(in srgb, #f2d06b 32%, #ffffff) !important;
+  color: #2b2d31 !important;
+}
+
+[role='listbox'] [role='option'][aria-selected='true']:hover,
+[role='option'][aria-selected='true']:hover {
+  background-color: color-mix(in srgb, #f2d06b 42%, #ffffff) !important;
 }
 
 /* ============================================
@@ -36,10 +65,10 @@ body {
   --text-secondary: var(--palette-aux-rgb);
   --text-muted: var(--palette-aux-rgb);
 
-  /* Primário de UI = azul institucional; accent de marca = coral */
-  --accent-gold: var(--palette-inst-rgb);
-  --accent-gold-soft: var(--palette-inst-soft-rgb);
-  --accent-gold-dark: 0 72 112;
+  /* Primário de UI = azul institucional; ênfase interativa (dropdowns/focus legado) = amarelo Cockpit */
+  --accent-gold: 242 208 107;
+  --accent-gold-soft: 247 240 212;
+  --accent-gold-dark: 90 70 16;
   --strategic-yellow: var(--palette-yellow-strong-rgb);
 
   --success: 22 163 74;
@@ -82,9 +111,9 @@ body {
   --text-secondary: var(--palette-aux-rgb);
   --text-muted: var(--palette-aux-rgb);
 
-  --accent-gold: var(--palette-inst-rgb);
-  --accent-gold-soft: var(--palette-inst-soft-rgb);
-  --accent-gold-dark: 0 72 112;
+  --accent-gold: 242 208 107;
+  --accent-gold-soft: 247 240 212;
+  --accent-gold-dark: 90 70 16;
   --strategic-yellow: var(--palette-yellow-strong-rgb);
 
   --success: 22 163 74;
@@ -105,9 +134,9 @@ body {
   --text-secondary: var(--palette-aux-rgb);
   --text-muted: var(--palette-aux-rgb);
   
-  --accent-gold: var(--palette-inst-rgb);
-  --accent-gold-soft: var(--palette-inst-soft-rgb);
-  --accent-gold-dark: 0 72 112;
+  --accent-gold: 242 208 107;
+  --accent-gold-soft: 247 240 212;
+  --accent-gold-dark: 90 70 16;
   --strategic-yellow: var(--palette-yellow-strong-rgb);
   
   --success: 46 125 50;
@@ -128,9 +157,9 @@ body {
   --text-secondary: var(--palette-aux-rgb);
   --text-muted: var(--palette-aux-rgb);
 
-  --accent-gold: var(--palette-inst-rgb);
-  --accent-gold-soft: var(--palette-inst-soft-rgb);
-  --accent-gold-dark: 0 72 112;
+  --accent-gold: 242 208 107;
+  --accent-gold-soft: 247 240 212;
+  --accent-gold-dark: 90 70 16;
   --strategic-yellow: var(--palette-yellow-strong-rgb);
 
   --success: 22 163 74;
@@ -170,9 +199,9 @@ body {
   --text-secondary: var(--palette-aux-rgb);
   --text-muted: var(--palette-aux-rgb);
 
-  --accent-gold: var(--palette-inst-rgb);
-  --accent-gold-soft: var(--palette-inst-soft-rgb);
-  --accent-gold-dark: 0 72 112;
+  --accent-gold: 242 208 107;
+  --accent-gold-soft: 247 240 212;
+  --accent-gold-dark: 90 70 16;
   --strategic-yellow: var(--palette-yellow-strong-rgb);
 
   --success: 16 163 74;

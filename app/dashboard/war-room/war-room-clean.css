@@ -8992,6 +8992,23 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   box-shadow: 0 0 0 2px color-mix(in srgb, #333 8%, transparent);
 }
 
+body[data-war-room-clean] {
+  accent-color: #f2d06b;
+}
+
+body[data-war-room-clean] select {
+  accent-color: #f2d06b;
+  color-scheme: light;
+}
+
+body[data-war-room-clean] select option:checked,
+body[data-war-room-clean] select option:hover,
+body[data-war-room-clean] select option:focus {
+  background-color: #f2d06b !important;
+  background: #f2d06b linear-gradient(0deg, #f2d06b 0%, #f2d06b 100%) !important;
+  color: #2b2d31 !important;
+}
+
 body[data-war-room-clean] :is(.wr-copiloto-obras, .wr-copiloto-emendas, .wr-emendas-modal) {
   font-family: var(--wr-font);
   color: var(--wr-text-primary, #20201e);
@@ -14443,6 +14460,7 @@ body[data-war-room-clean] .wr-mapa-obras-embedded .wr-obras-status-menu {
     0 2px 6px color-mix(in srgb, #022b3a 6%, transparent) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  z-index: 120 !important;
 }
 
 /* Modal exportar obras: fundo sólido + acima da UI embutida. */

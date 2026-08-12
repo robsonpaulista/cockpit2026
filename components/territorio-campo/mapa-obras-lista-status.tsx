@@ -39,6 +39,7 @@ import {
 } from '@/components/territorio-campo/territorio-sortable-header'
 import { MapaObrasPlanoDriveModal } from '@/components/territorio-campo/mapa-obras-plano-drive-modal'
 import { MapaObrasListaExportModal } from '@/components/territorio-campo/mapa-obras-lista-export-modal'
+import { MultiCheckFilterSelect } from '@/components/territorio-campo/multi-check-filter-select'
 import { rankStatusMapaObraLista } from '@/lib/mapa-obras-lista-export'
 
 type SortObraCol = 'municipio' | 'cota'
@@ -259,8 +260,6 @@ export function MapaObrasListaStatus({
   const [filtroTipo, setFiltroTipo] = useState('')
   /** Vazio = todos os status; senão, só os marcados. */
   const [filtroStatus, setFiltroStatus] = useState<Set<string>>(() => new Set())
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
-  const statusMenuRef = useRef<HTMLDivElement | null>(null)
   /** Seleção explícita de registros (export). Vazio = exporta todas as filtradas. */
   const [selectedObraIds, setSelectedObraIds] = useState<Set<string>>(() => new Set())
   const selectAllRef = useRef<HTMLInputElement | null>(null)
@@ -323,25 +322,6 @@ export function MapaObrasListaStatus({
   useEffect(() => {
     void carregarLinks()
   }, [carregarLinks])
-
-  useEffect(() => {
-    if (!statusMenuOpen) return
-    const onPointerDown = (event: MouseEvent) => {
-      const el = statusMenuRef.current
-      if (el && !el.contains(event.target as Node)) {
-        setStatusMenuOpen(false)
-      }
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setStatusMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [statusMenuOpen])
 
   const opcoesMunicipio = useMemo(
     () => listarMunicipiosComObras(obras, 'todos'),
@@ -520,12 +500,6 @@ export function MapaObrasListaStatus({
     }
   }, [filtradas, linksByObra])
 
-  const statusFiltroLabel = useMemo(() => {
-    if (filtroStatus.size === 0) return 'Todos os status'
-    if (filtroStatus.size === 1) return [...filtroStatus][0] ?? '1 status'
-    return `${filtroStatus.size} status`
-  }, [filtroStatus])
-
   const filtrosExportResumo = useMemo(() => {
     const statusLabel =
       filtroStatus.size === 0
@@ -569,23 +543,6 @@ export function MapaObrasListaStatus({
       return next
     })
   }, [])
-
-  const toggleStatusFiltro = useCallback((status: string) => {
-    setFiltroStatus((prev) => {
-      const next = new Set(prev)
-      if (next.has(status)) next.delete(status)
-      else next.add(status)
-      return next
-    })
-  }, [])
-
-  const limparStatusFiltro = useCallback(() => {
-    setFiltroStatus(new Set())
-  }, [])
-
-  const marcarTodosStatus = useCallback(() => {
-    setFiltroStatus(new Set(opcoesStatus))
-  }, [opcoesStatus])
 
   const toggleObraSelecionada = useCallback((obraId: string) => {
     setSelectedObraIds((prev) => {
@@ -650,10 +607,10 @@ export function MapaObrasListaStatus({
   const statusTriggerClass = cn(
     selectClass,
     'inline-flex max-w-[16rem] items-center justify-between gap-2 text-left',
-    filtroStatus.size > 0 && 'font-medium',
   )
+  const statusActionClass = cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')
   const rowCheckboxClass =
-    'h-3.5 w-3.5 shrink-0 rounded border-card text-[var(--palette-blue,#005B8F)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--palette-blue,#005B8F)_35%,transparent)]'
+    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
 
   return (
     <div className="flex flex-col gap-4">
@@ -716,72 +673,17 @@ export function MapaObrasListaStatus({
             </option>
           ))}
         </select>
-        <div className="relative" ref={statusMenuRef}>
-          <button
-            type="button"
-            onClick={() => setStatusMenuOpen((open) => !open)}
-            title="Filtrar por um ou mais status"
-            aria-haspopup="listbox"
-            aria-expanded={statusMenuOpen}
-            className={statusTriggerClass}
-          >
-            <span className="min-w-0 truncate">{statusFiltroLabel}</span>
-            <ChevronDown
-              className={cn(
-                'h-3.5 w-3.5 shrink-0 text-text-secondary transition-transform',
-                statusMenuOpen && 'rotate-180',
-              )}
-              aria-hidden
-            />
-          </button>
-          {statusMenuOpen ? (
-            <div
-              className="wr-obras-status-menu absolute left-0 z-50 mt-1 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-card p-2 shadow-lg"
-              role="listbox"
-              aria-multiselectable="true"
-              aria-label="Status das obras"
-            >
-              <div className="mb-2 flex flex-wrap gap-1.5 border-b border-card pb-2">
-                <button
-                  type="button"
-                  onClick={limparStatusFiltro}
-                  className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={marcarTodosStatus}
-                  className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
-                >
-                  Marcar todos
-                </button>
-              </div>
-              <ul className="max-h-56 space-y-0.5 overflow-y-auto">
-                {opcoesStatus.length === 0 ? (
-                  <li className="px-2 py-1.5 text-xs text-text-muted">Nenhum status na lista</li>
-                ) : (
-                  opcoesStatus.map((status) => {
-                    const checked = filtroStatus.has(status)
-                    return (
-                      <li key={status}>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-text-primary hover:bg-bg-app/80">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleStatusFiltro(status)}
-                            className={rowCheckboxClass}
-                          />
-                          <span className="min-w-0 truncate">{status}</span>
-                        </label>
-                      </li>
-                    )
-                  })
-                )}
-              </ul>
-            </div>
-          ) : null}
-        </div>
+        <MultiCheckFilterSelect
+          options={opcoesStatus.map((status) => ({ id: status, label: status }))}
+          selected={filtroStatus}
+          onChange={setFiltroStatus}
+          allLabel="Todos os status"
+          title="Filtrar por um ou mais status"
+          ariaLabel="Status das obras"
+          triggerClassName={statusTriggerClass}
+          actionClassName={statusActionClass}
+          emptyOptionsLabel="Nenhum status na lista"
+        />
         {temFiltrosAtivos && (
           <button
             type="button"
@@ -985,7 +887,7 @@ export function MapaObrasListaStatus({
                               key={obra.id}
                               className={cn(
                                 'align-top hover:bg-bg-app/30',
-                                selecionada && 'bg-[color-mix(in_srgb,var(--palette-blue,#005B8F)_6%,transparent)]',
+                                selecionada && 'bg-[color-mix(in_srgb,#f2d06b_10%,transparent)]',
                               )}
                             >
                               <td className="px-3 py-3">

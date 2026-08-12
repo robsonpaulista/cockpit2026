@@ -203,8 +203,8 @@ export function MapaObrasListaExportModal({
                     className={cn(
                       'rounded-xl border px-3 py-2 text-left transition-colors',
                       active
-                        ? 'border-[var(--palette-blue,#005B8F)] bg-[color-mix(in_srgb,var(--palette-blue,#005B8F)_10%,#fff)] text-text-primary'
-                        : 'border-card bg-[#f5f6f8] text-text-secondary hover:border-[color-mix(in_srgb,var(--palette-blue,#005B8F)_40%,transparent)]',
+                        ? 'border-[#f2d06b] bg-[#f2d06b]/15 text-text-primary'
+                        : 'border-card bg-[#f5f6f8] text-text-secondary hover:border-[#f2d06b]/50',
                     )}
                   >
                     <span className="block text-xs font-semibold">{item.label}</span>
@@ -247,7 +247,7 @@ export function MapaObrasListaExportModal({
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(field.id)}
-                        className="h-3.5 w-3.5 rounded border-card accent-[var(--palette-blue,#005B8F)]"
+                        className="h-3.5 w-3.5 rounded border-card accent-[#f2d06b]"
                       />
                       <span>{field.label}</span>
                     </label>
@@ -276,7 +276,7 @@ export function MapaObrasListaExportModal({
             type="button"
             onClick={handleExport}
             disabled={exporting || selectedCount === 0 || obras.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--palette-blue,#005B8F)] bg-[var(--palette-blue,#005B8F)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#f2d06b] bg-[#f2d06b] px-3 py-2 text-xs font-semibold text-[#2b2d31] disabled:opacity-50"
           >
             {exporting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
