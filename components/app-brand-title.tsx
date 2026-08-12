@@ -48,12 +48,13 @@ function wordmarkTone({
 function wordmarkColors(tone: WordmarkTone) {
   // Padrão oficial Copiloto: COCKPIT branco · 2026 accent coral
   if (tone === 'onGradient') {
-    return { cockpit: 'text-white', year: 'text-[var(--palette-accent,#f04b23)]' }
+    /* Home glass gelo: COCKPIT petróleo · 2026 amarelo */
+    return { cockpit: 'text-[#2b2d31]', year: 'text-[#f2d06b]' }
   }
   if (tone === 'onAmber') {
     // Topbar clara (desktop): petróleo + accent. Mobile âmbar/escura: branco + accent.
     return {
-      cockpit: 'text-[var(--palette-petrol,#022b3a)] max-lg:text-white',
+      cockpit: 'text-[var(--palette-petrol,#2b2d31)] max-lg:text-white',
       year: 'text-[var(--palette-accent,#f04b23)] max-lg:text-[var(--palette-accent,#f04b23)]',
     }
   }
@@ -117,7 +118,7 @@ export function AppBrandWordmark({
         aria-label="Cockpit 2026"
       >
         <span className={colors.cockpit}>COCKPIT</span>
-        <span className={cn(colors.year, 'font-medium')}> 2026</span>
+        <span className={cn(colors.year, 'font-bold')}> 2026</span>
       </span>
       {showTagline ? (
         <span
@@ -125,7 +126,7 @@ export function AppBrandWordmark({
             brandWordmarkTaglineClass,
             sizes.tag,
             fullWidth && 'block w-full text-center',
-            tone === 'onGradient' && 'text-white/55',
+            tone === 'onGradient' && 'text-[rgba(43, 45, 49,0.5)]',
             tone === 'onAmber' && 'max-lg:text-white/70',
           )}
         >

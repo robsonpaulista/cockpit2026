@@ -102,11 +102,14 @@ function groupTrendsByPoliticoId(rows: GoogleTrendsInterestRow[]): Map<string, G
 
 export function buildGoogleTrendsSeries(
   actors: PoliticalActorWithTerms[],
-  rows: GoogleTrendsInterestRow[]
+  rows: GoogleTrendsInterestRow[],
+  options?: { includeOrphanTerms?: boolean }
 ): GoogleTrendsSeries[] {
   const byTerm = groupTrendsByTerm(rows)
   const byPoliticoId = groupTrendsByPoliticoId(rows)
   const meta = actorMetaByName(actors)
+  /** Com atores (Buscas): só candidatos. Sem atores (Viral/campanha): termos soltos. */
+  const includeOrphans = options?.includeOrphanTerms ?? actors.length === 0
 
   const series: GoogleTrendsSeries[] = []
 
@@ -122,16 +125,18 @@ export function buildGoogleTrendsSeries(
     })
   }
 
-  for (const [term, termRows] of byTerm.entries()) {
-    if (meta.has(term)) continue
-    series.push({
-      searchTerm: term,
-      politicoId: termRows[0]?.politico_id ?? null,
-      slug: null,
-      name: term,
-      actorType: null,
-      points: buildPoints(termRows),
-    })
+  if (includeOrphans) {
+    for (const [term, termRows] of byTerm.entries()) {
+      if (meta.has(term)) continue
+      series.push({
+        searchTerm: term,
+        politicoId: termRows[0]?.politico_id ?? null,
+        slug: null,
+        name: term,
+        actorType: null,
+        points: buildPoints(termRows),
+      })
+    }
   }
 
   return series.sort((a, b) => {
@@ -204,10 +209,12 @@ export function buildGoogleTrendsSearchContext(
 
 export function buildGoogleTrendsSearchContexts(
   actors: PoliticalActorWithTerms[],
-  relatedRows: GoogleTrendsRelatedRow[]
+  relatedRows: GoogleTrendsRelatedRow[],
+  options?: { includeOrphanTerms?: boolean }
 ): GoogleTrendsSearchContext[] {
   const byTerm = groupTrendsRelatedByTerm(relatedRows)
   const contexts: GoogleTrendsSearchContext[] = []
+  const includeOrphans = options?.includeOrphanTerms ?? actors.length === 0
 
   for (const actor of actors.filter((a) => a.active)) {
     contexts.push(
@@ -221,17 +228,19 @@ export function buildGoogleTrendsSearchContexts(
     )
   }
 
-  for (const [term, termRows] of byTerm.entries()) {
-    if (contexts.some((c) => c.searchTerm === term)) continue
-    contexts.push(
-      buildGoogleTrendsSearchContext(
-        term,
-        termRows[0]?.politico_id ?? null,
-        null,
-        term,
-        termRows
+  if (includeOrphans) {
+    for (const [term, termRows] of byTerm.entries()) {
+      if (contexts.some((c) => c.searchTerm === term)) continue
+      contexts.push(
+        buildGoogleTrendsSearchContext(
+          term,
+          termRows[0]?.politico_id ?? null,
+          null,
+          term,
+          termRows
+        )
       )
-    )
+    }
   }
 
   return contexts
@@ -251,10 +260,11 @@ export function attachSearchContextsToCompareRows(
 export function buildGoogleTrendsCompareRows(
   actors: PoliticalActorWithTerms[],
   rows: GoogleTrendsInterestRow[],
-  relatedRows: GoogleTrendsRelatedRow[] = []
+  relatedRows: GoogleTrendsRelatedRow[] = [],
+  options?: { includeOrphanTerms?: boolean }
 ): GoogleTrendsCompareRow[] {
-  const contexts = buildGoogleTrendsSearchContexts(actors, relatedRows)
-  const compare = buildGoogleTrendsSeries(actors, rows).map((s) => {
+  const contexts = buildGoogleTrendsSearchContexts(actors, relatedRows, options)
+  const compare = buildGoogleTrendsSeries(actors, rows, options).map((s) => {
     const { recent, previous } = splitRecentPrevious(s.points)
     const avgRecent = avg(recent)
     const avgPrevious = avg(previous)

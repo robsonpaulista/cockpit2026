@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Bell, Bot, RefreshCw } from 'lucide-react'
+import { Activity, Bot, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DashboardPageChrome,
@@ -23,7 +23,6 @@ import { resolveCrmCardStatus } from '@/lib/war-room/card-status'
 import { useSetDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { WarRoomExpectativaCard } from '@/components/war-room/war-room-bloco1'
 import { WarRoomOpsBar } from '@/components/war-room/war-room-ops-bar'
-import { WarRoomTopbarCountdown } from '@/components/war-room/war-room-topbar-countdown'
 import { WarRoomCidadeProvider } from '@/components/war-room/war-room-cidade-context'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import { WarRoomNoticiasCard } from '@/components/war-room/war-room-noticias-card'
@@ -247,8 +246,7 @@ function WarRoomPanelInner() {
     ready: !agendaLoading,
   })
 
-  const [decisoesTotal, setDecisoesTotal] = useState(0)
-  const notificationCount = decisoesTotal
+  const [, setDecisoesTotal] = useState(0)
 
   const refreshButton = useMemo(
     () => (
@@ -256,7 +254,7 @@ function WarRoomPanelInner() {
         type="button"
         onClick={() => void refreshAll({ silent: false })}
         disabled={refreshing}
-        className="inline-flex items-center gap-1.5 rounded-[10px] border border-[var(--wr-border)] bg-[var(--wr-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--wr-muted)] transition-colors hover:bg-[var(--wr-page-bg)] disabled:opacity-50"
+        className="wr-topbar-clean__refresh inline-flex items-center gap-1.5 rounded-[10px] border border-[#2b2d31] bg-white px-3 py-1.5 text-[13px] font-medium text-[#2b2d31] transition-colors hover:border-[#f2d06b] hover:bg-[#f2d06b] disabled:opacity-50"
       >
         <RefreshCw
           className={cn('wr-icon', refreshing && 'animate-spin')}
@@ -270,7 +268,6 @@ function WarRoomPanelInner() {
 
   const topbarExtras = useMemo(() => {
     return {
-      description: <WarRoomTopbarCountdown />,
       actions: (
         <>
           <button
@@ -285,44 +282,11 @@ function WarRoomPanelInner() {
             <Bot className="wr-icon shrink-0" strokeWidth={1.5} aria-hidden />
             {isCopiloto ? 'Sair do Copiloto' : 'Acionar Copiloto'}
           </button>
-          <button
-            type="button"
-            className="wr-topbar-clean__bell"
-            aria-label={`${notificationCount} notificações`}
-            onClick={() => {
-              if (isCopiloto) {
-                toggleCopiloto()
-                window.setTimeout(() => {
-                  document.getElementById('wr-decisoes')?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                  })
-                }, 50)
-                return
-              }
-              document.getElementById('wr-decisoes')?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
-              })
-            }}
-          >
-            <Bell className="wr-icon" strokeWidth={1.5} aria-hidden />
-            {notificationCount > 0 ? (
-              <span className="wr-topbar-clean__bell-badge">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </span>
-            ) : null}
-          </button>
           {refreshButton}
         </>
       ),
     }
-  }, [
-    notificationCount,
-    refreshButton,
-    isCopiloto,
-    toggleCopiloto,
-  ])
+  }, [refreshButton, isCopiloto, toggleCopiloto])
 
   useSetDashboardTopbarExtras(topbarExtras)
 

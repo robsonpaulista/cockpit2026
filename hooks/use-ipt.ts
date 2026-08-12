@@ -49,7 +49,7 @@ type PrioridadeRow = {
 
 type ObrasAgg = { count: number; valorTotal: number }
 
-/** Obras = Cadastro de Demandas (Google Sheets) — mesma fonte de ?tab=demandas e ?tab=mapa-obras. */
+/** Obras = Cadastro de Demandas (Google Sheets) — mesma fonte de ?tab=demandas e War Room · Obras. */
 const IPT_DEMANDAS_OBRAS_API = '/api/campo/demands'
 
 function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {

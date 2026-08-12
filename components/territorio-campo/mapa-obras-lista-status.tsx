@@ -32,9 +32,11 @@ import {
 } from '@/components/territorio-campo/territorio-sortable-header'
 import { MapaObrasPlanoDriveModal } from '@/components/territorio-campo/mapa-obras-plano-drive-modal'
 import { MapaObrasListaExportModal } from '@/components/territorio-campo/mapa-obras-lista-export-modal'
+import { rankStatusMapaObraLista } from '@/lib/mapa-obras-lista-export'
 
 type SortObraCol = 'municipio' | 'cota'
 
+const STATUS_SEM = '__sem_status__'
 const TIPO_SEM = '__sem_tipo__'
 const TIPO_INFRA = 'infraestrutura'
 const TIPO_MAQUINARIO = 'maquinario-agricola'
@@ -68,7 +70,15 @@ function textoTemConstrucaoOuReforma(raw: string): boolean {
   return /\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b/.test(n)
 }
 
-/** Classifica bloco/tipo na lista: construção/reforma/revitalização → Infraestrutura;
+function textoTemVicinal(raw: string): boolean {
+  const n = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  return /\bvicinal(is|ais)?\b/.test(n)
+}
+
+/** Classifica bloco/tipo na lista: construção/reforma/revitalização/vicinal → Infraestrutura;
  * carreta/máquinas agrícolas → Maquinário agrícola; UBS → Saúde. */
 function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
   const nome = obra.obra ?? ''
@@ -80,7 +90,7 @@ function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
   if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
     return TIPO_SAUDE
   }
-  if (textoTemConstrucaoOuReforma(nome)) {
+  if (textoTemConstrucaoOuReforma(nome) || textoTemVicinal(nome)) {
     return TIPO_INFRA
   }
   if (isObraMaquinarioAgricola(obra)) {
@@ -96,6 +106,10 @@ function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
     slug === 'construcao' ||
     slug === 'reforma' ||
     slug === 'revitalizacao' ||
+    slug === 'vicinal' ||
+    slug === 'vicinais' ||
+    slug === 'estrada-vicinal' ||
+    slug === 'estradas-vicinais' ||
     slug === TIPO_INFRA
   ) {
     return TIPO_INFRA
@@ -103,12 +117,78 @@ function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
   if (slug === 'carreta' || slug === 'carreta-agricola' || slug === TIPO_MAQUINARIO) {
     return TIPO_MAQUINARIO
   }
+  if (textoTemVicinal(t)) return TIPO_INFRA
   return t
 }
 
 function tipoLabelOf(key: string): string {
   if (key === TIPO_SEM) return 'Sem tipo'
   return TIPO_LABEL[key] ?? key
+}
+
+function statusKeyOf(obra: Pick<ObraMapaRow, 'status'>): string {
+  const s = (obra.status ?? '').trim()
+  return s || STATUS_SEM
+}
+
+function compareTipoKeys(a: string, b: string): number {
+  const ordem = Object.keys(TIPO_LABEL)
+  const ia = ordem.indexOf(a)
+  const ib = ordem.indexOf(b)
+  if (ia >= 0 && ib >= 0) return ia - ib
+  if (ia >= 0) return -1
+  if (ib >= 0) return 1
+  if (a === TIPO_SEM) return 1
+  if (b === TIPO_SEM) return -1
+  return tipoLabelOf(a).localeCompare(tipoLabelOf(b), 'pt-BR')
+}
+
+function compareStatusKeys(a: string, b: string): number {
+  const ra = rankStatusMapaObraLista(a === STATUS_SEM ? '' : a)
+  const rb = rankStatusMapaObraLista(b === STATUS_SEM ? '' : b)
+  if (ra !== rb) return ra - rb
+  if (a === STATUS_SEM) return 1
+  if (b === STATUS_SEM) return -1
+  return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+}
+
+function compareObrasPorStatusDepoisSort(
+  a: ObraMapaRow,
+  b: ObraMapaRow,
+  sortCol: SortObraCol,
+  sortAsc: boolean,
+): number {
+  const byStatus = compareStatusKeys(statusKeyOf(a), statusKeyOf(b))
+  if (byStatus !== 0) return byStatus
+  if (sortCol === 'municipio') {
+    const byMun = compareTerritorioText(a.municipio || '', b.municipio || '', sortAsc)
+    if (byMun !== 0) return byMun
+    return compareTerritorioNumber(
+      valorExibidoMapaObra(a) ?? 0,
+      valorExibidoMapaObra(b) ?? 0,
+      false,
+    )
+  }
+  const byCota = compareTerritorioNumber(
+    valorExibidoMapaObra(a) ?? 0,
+    valorExibidoMapaObra(b) ?? 0,
+    sortAsc,
+  )
+  if (byCota !== 0) return byCota
+  return compareTerritorioText(a.municipio || '', b.municipio || '', true)
+}
+
+function sumValorObras(rows: ObraMapaRow[]): number | null {
+  let valor = 0
+  let comValor = 0
+  for (const obra of rows) {
+    const v = valorExibidoMapaObra(obra)
+    if (v != null && Number.isFinite(v)) {
+      valor += v
+      comValor += 1
+    }
+  }
+  return comValor > 0 ? valor : null
 }
 
 function formatCurrency(value?: number | null): string {
@@ -179,7 +259,7 @@ export function MapaObrasListaStatus({
   const [obraParaVincular, setObraParaVincular] = useState<ObraMapaRow | null>(null)
   const [atualizandoLocal, setAtualizandoLocal] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
-  /** Blocos por TIPO — começam recolhidos. */
+  /** Blocos por tipo — começam recolhidos. Linhas ordenadas por status. */
   const [tiposExpandidos, setTiposExpandidos] = useState<Set<string>>(() => new Set())
 
   const carregarLinks = useCallback(async () => {
@@ -312,50 +392,38 @@ export function MapaObrasListaStatus({
   }, [busca, filtroMunicipio, filtroStatus, filtroTipo, linksByObra, obras, sortAsc, sortCol])
 
   const blocosPorTipo = useMemo(() => {
-    const map = new Map<string, ObraMapaRow[]>()
+    const byTipo = new Map<string, ObraMapaRow[]>()
     for (const obra of filtradas) {
       const key = tipoKeyOf(obra)
-      const list = map.get(key)
+      const list = byTipo.get(key)
       if (list) list.push(obra)
-      else map.set(key, [obra])
+      else byTipo.set(key, [obra])
     }
 
-    const ordem = Object.keys(TIPO_LABEL)
-    const keys = [...map.keys()].sort((a, b) => {
-      const ia = ordem.indexOf(a)
-      const ib = ordem.indexOf(b)
-      if (ia >= 0 && ib >= 0) return ia - ib
-      if (ia >= 0) return -1
-      if (ib >= 0) return 1
-      if (a === TIPO_SEM) return 1
-      if (b === TIPO_SEM) return -1
-      return tipoLabelOf(a).localeCompare(tipoLabelOf(b), 'pt-BR')
-    })
+    const tipoKeys = [...byTipo.keys()].sort(compareTipoKeys)
 
-    return keys.map((key) => {
-      const rows = map.get(key) ?? []
-      let valor = 0
-      let comValor = 0
-      for (const obra of rows) {
-        const v = valorExibidoMapaObra(obra)
-        if (v != null && Number.isFinite(v)) {
-          valor += v
-          comValor += 1
-        }
-      }
+    return tipoKeys.map((tipoKey) => {
+      const obrasDoTipo = [...(byTipo.get(tipoKey) ?? [])].sort((a, b) =>
+        compareObrasPorStatusDepoisSort(a, b, sortCol, sortAsc),
+      )
       return {
-        key,
-        label: tipoLabelOf(key),
-        obras: rows,
-        valor: comValor > 0 ? valor : null,
+        key: tipoKey,
+        label: tipoLabelOf(tipoKey),
+        obras: obrasDoTipo,
+        valor: sumValorObras(obrasDoTipo),
       }
     })
-  }, [filtradas])
+  }, [filtradas, sortAsc, sortCol])
 
   useEffect(() => {
-    if (!filtroTipo) return
-    setTiposExpandidos(new Set([filtroTipo]))
-  }, [filtroTipo])
+    if (!filtroTipo && !filtroStatus) return
+    if (filtroTipo) {
+      setTiposExpandidos(new Set([filtroTipo]))
+      return
+    }
+    const tipoKeys = blocosPorTipo.map((b) => b.key)
+    if (tipoKeys.length > 0) setTiposExpandidos(new Set(tipoKeys))
+  }, [blocosPorTipo, filtroStatus, filtroTipo])
 
   const totais = useMemo(() => {
     let valor = 0
@@ -393,7 +461,7 @@ export function MapaObrasListaStatus({
           ? `Tipo: ${tipoLabelOf(filtroTipo)}`
           : null,
         filtroStatus ? `Status: ${filtroStatus}` : null,
-        `Ordenação: ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
+        `Ordenação: status, depois ${sortCol === 'cota' ? 'valor' : 'município'} (${sortAsc ? 'A→Z' : 'Z→A'})`,
       ].filter((v): v is string => Boolean(v)),
     [busca, filtroMunicipio, filtroStatus, filtroTipo, sortAsc, sortCol],
   )
@@ -604,19 +672,19 @@ export function MapaObrasListaStatus({
               </tr>
             </thead>
             <tbody className="divide-y divide-card">
-              {blocosPorTipo.map((bloco) => {
-                const aberto = tiposExpandidos.has(bloco.key)
+              {blocosPorTipo.map((tipoBloco) => {
+                const tipoAberto = tiposExpandidos.has(tipoBloco.key)
                 return (
-                  <TipoBlockRows key={bloco.key}>
-                    <tr className="bg-bg-app/50">
+                  <GroupBlockRows key={tipoBloco.key}>
+                    <tr className="bg-bg-app/70">
                       <td colSpan={7} className="p-0">
                         <button
                           type="button"
-                          onClick={() => toggleTipo(bloco.key)}
-                          aria-expanded={aberto}
-                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-bg-app/80"
+                          onClick={() => toggleTipo(tipoBloco.key)}
+                          aria-expanded={tipoAberto}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-bg-app/90"
                         >
-                          {aberto ? (
+                          {tipoAberto ? (
                             <ChevronDown
                               className="h-4 w-4 shrink-0 text-text-secondary"
                               strokeWidth={1.75}
@@ -629,19 +697,21 @@ export function MapaObrasListaStatus({
                               aria-hidden
                             />
                           )}
-                          <span className="min-w-0 flex-1 text-sm font-medium text-text-primary">
-                            {bloco.label}
+                          <span className="min-w-0 flex-1 text-sm font-semibold text-text-primary">
+                            {tipoBloco.label}
                           </span>
                           <span className="shrink-0 text-xs tabular-nums text-text-secondary">
-                            {bloco.obras.length.toLocaleString('pt-BR')} obra
-                            {bloco.obras.length === 1 ? '' : 's'}
-                            {bloco.valor != null ? ` · ${formatCurrency(bloco.valor)}` : ''}
+                            {tipoBloco.obras.length.toLocaleString('pt-BR')} obra
+                            {tipoBloco.obras.length === 1 ? '' : 's'}
+                            {tipoBloco.valor != null
+                              ? ` · ${formatCurrency(tipoBloco.valor)}`
+                              : ''}
                           </span>
                         </button>
                       </td>
                     </tr>
-                    {aberto
-                      ? bloco.obras.map((obra) => {
+                    {tipoAberto
+                      ? tipoBloco.obras.map((obra) => {
                           const link = linksByObra[obra.id]
                           return (
                             <tr key={obra.id} className="align-top hover:bg-bg-app/30">
@@ -651,17 +721,22 @@ export function MapaObrasListaStatus({
                               <td className="px-3 py-3 font-medium text-text-primary">
                                 {obra.municipio}
                               </td>
-                              <td className="max-w-md px-3 py-3 text-text-primary">{obra.obra}</td>
+                              <td className="max-w-md px-3 py-3 text-text-primary">
+                                {obra.obra}
+                              </td>
                               <td className="px-3 py-3 text-text-secondary">
                                 {tipoLabelOf(tipoKeyOf(obra))}
                               </td>
                               <td className="px-3 py-3 tabular-nums text-text-secondary">
                                 {formatCurrency(valorExibidoMapaObra(obra))}
                               </td>
-                              <td className="px-3 py-3 text-text-secondary">{obra.status ?? '—'}</td>
+                              <td className="px-3 py-3 text-text-secondary">
+                                {obra.status ?? '—'}
+                              </td>
                               <td className="px-3 py-3">
                                 <div className="flex min-w-[9rem] flex-col gap-1.5">
-                                  {link && (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
+                                  {link &&
+                                  (planoDriveTemArquivo(link) || planoDriveTemNota(link)) ? (
                                     <>
                                       <span
                                         className="line-clamp-2 text-xs text-text-primary"
@@ -681,7 +756,10 @@ export function MapaObrasListaStatus({
                                             href={link.drive_web_view_link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
+                                            className={cn(
+                                              actionBtnClass,
+                                              !embedded && 'h-7 px-2 text-[10px]',
+                                            )}
                                           >
                                             <ExternalLink className="h-3 w-3" aria-hidden />
                                             Abrir
@@ -690,7 +768,10 @@ export function MapaObrasListaStatus({
                                         <button
                                           type="button"
                                           onClick={() => setObraParaVincular(obra)}
-                                          className={cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')}
+                                          className={cn(
+                                            actionBtnClass,
+                                            !embedded && 'h-7 px-2 text-[10px]',
+                                          )}
                                         >
                                           <Link2 className="h-3 w-3" aria-hidden />
                                           {planoDriveTemArquivo(link) ? 'Trocar' : 'Editar'}
@@ -704,7 +785,8 @@ export function MapaObrasListaStatus({
                                       disabled={linksLoading}
                                       className={cn(
                                         actionBtnClass,
-                                        !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50',
+                                        !embedded &&
+                                          'h-8 px-2 text-[11px] disabled:opacity-50',
                                       )}
                                     >
                                       {linksLoading ? (
@@ -721,7 +803,7 @@ export function MapaObrasListaStatus({
                           )
                         })
                       : null}
-                  </TipoBlockRows>
+                  </GroupBlockRows>
                 )
               })}
             </tbody>
@@ -786,6 +868,6 @@ export function MapaObrasListaStatus({
 }
 
 /** Agrupa vários `<tr>` sem wrapper inválido dentro de `<tbody>`. */
-function TipoBlockRows({ children }: { children: ReactNode }) {
+function GroupBlockRows({ children }: { children: ReactNode }) {
   return <>{children}</>
 }

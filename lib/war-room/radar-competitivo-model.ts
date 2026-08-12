@@ -14,17 +14,17 @@ export type RadarCommenterStatsInput = {
   postsWithComments: number
 }
 
-/** Paleta de séries — família Cockpit (petróleo / azul / coral). */
+/** Paleta de séries — gelo / amarelo / preto (War Room 2026). */
 export const RADAR_COMPETITIVO_COLORS = [
-  '#F04B23', // coral accent
-  '#005B8F', // azul institucional
-  '#022B3A', // petróleo
-  '#1A6F97', // azul-petróleo
-  '#C95A3C', // coral atenuado
-  '#0A4A63', // petróleo profundo
-  '#3D8BB0', // azul médio
-  '#6B7C86', // aço auxiliar
-  '#8E4A38', // terracotta institucional
+  '#2B2D31', // preto
+  '#F2D06B', // amarelo logo
+  '#70737A', // cinza
+  '#B3B6BB', // cinza gelo
+  '#52555A', // cinza médio-escuro
+  '#E0BC4F', // amarelo profundo
+  '#3A3C40', // carvão
+  '#8A8D93', // cinza médio
+  '#1F2124', // preto profundo
 ] as const
 
 const DEFAULT_HIDDEN = new Set(['instagram-causa-animal'])
@@ -298,7 +298,7 @@ export function buildRadarCompetitivoModel(opts: {
   const candidates: RadarCompetitivoCandidate[] = compareRows.map((entry, index) => {
     const { row, engagementTotal } = entry
     const color =
-      RADAR_COMPETITIVO_COLORS[index % RADAR_COMPETITIVO_COLORS.length] ?? '#005B8F'
+      RADAR_COMPETITIVO_COLORS[index % RADAR_COMPETITIVO_COLORS.length] ?? '#2B2D31'
     const mix = instagramRadarContentMix(row.posts)
     const formatPerf = buildFormatPerf(row.posts)
     const formatEngShare = buildFormatEngShare(formatPerf)

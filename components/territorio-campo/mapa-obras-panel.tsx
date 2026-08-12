@@ -74,7 +74,7 @@ type MapaObrasPanelProps = {
 
 export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const [visaoPainel, setVisaoPainel] = useState<MapaObrasVisao>('mapa')
+  const [visaoPainel, setVisaoPainel] = useState<MapaObrasVisao>(embedded ? 'lista' : 'mapa')
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
   const [obras, setObras] = useState<ObraMapaRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -328,16 +328,6 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
           <nav className="wr-copiloto-redes__period-tabs" aria-label="Visão de obras">
             <button
               type="button"
-              onClick={() => setVisaoPainel('mapa')}
-              className={cn(
-                'wr-copiloto-redes__period-tab',
-                visaoPainel === 'mapa' && 'wr-copiloto-redes__period-tab--active',
-              )}
-            >
-              Mapa
-            </button>
-            <button
-              type="button"
               onClick={() => setVisaoPainel('lista')}
               className={cn(
                 'wr-copiloto-redes__period-tab',
@@ -345,6 +335,16 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
               )}
             >
               Lista e status
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisaoPainel('mapa')}
+              className={cn(
+                'wr-copiloto-redes__period-tab',
+                visaoPainel === 'mapa' && 'wr-copiloto-redes__period-tab--active',
+              )}
+            >
+              Mapa
             </button>
           </nav>
         ) : (

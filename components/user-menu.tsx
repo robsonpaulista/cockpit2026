@@ -146,6 +146,11 @@ export function UserMenu({
     return null
   }
 
+  const iceSidebar = isSidebar && isGradientHome
+  const avatarPulseClass = iceSidebar
+    ? 'bg-[#f2d06b]/45'
+    : 'bg-[#f04b23]/25'
+
   if (loading) {
     if (isSidebar) {
       return (
@@ -157,7 +162,7 @@ export function UserMenu({
           )}
           aria-hidden
         >
-          <div className="h-7 w-7 animate-pulse rounded-full bg-[#f04b23]/25" />
+          <div className={cn('h-7 w-7 animate-pulse rounded-full', avatarPulseClass)} />
           {!collapsed ? (
             <div className="h-[10px] flex-1 animate-pulse rounded bg-bg-app" />
           ) : null}
@@ -166,7 +171,10 @@ export function UserMenu({
     }
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="h-8 w-8 animate-pulse rounded-full bg-[#f04b23]/25" aria-hidden />
+        <div
+          className={cn('h-8 w-8 animate-pulse rounded-full', avatarPulseClass)}
+          aria-hidden
+        />
         <div className="hidden md:block">
           <div className="h-4 w-24 animate-pulse rounded bg-background" />
         </div>
@@ -220,8 +228,10 @@ export function UserMenu({
             ? cn(
                 'w-full text-left',
                 collapsed ? 'justify-center px-1 py-1' : 'px-0.5 py-1',
-                sidebarActiveFocusRingClass,
-                'hover:opacity-80',
+                iceSidebar
+                  ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
+                  : sidebarActiveFocusRingClass,
+                !iceSidebar && 'hover:opacity-80',
               )
             : cn(
                 'gap-2 rounded-lg px-3 py-2',
@@ -237,15 +247,29 @@ export function UserMenu({
           email={user.email ?? undefined}
           avatarUrl={user.profile?.avatar_url}
           size={isSidebar ? 'sm' : 'md'}
+          tone={iceSidebar || isGradientHome ? 'ice' : 'amber'}
         />
 
         {isSidebar ? (
           collapsed ? (
             <span className="sr-only">{welcomeName}</span>
           ) : (
-            <span className={cn('min-w-0 flex-1 truncate', sidebarBrandWelcomeClass)}>
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate text-[13px] font-medium leading-[17px]',
+                iceSidebar
+                  ? 'text-[#2b2d31]'
+                  : sidebarBrandWelcomeClass,
+              )}
+            >
               Bem-vindo,{' '}
-              <span className={sidebarBrandWelcomeNameClass}>{welcomeName}</span>
+              <span
+                className={cn(
+                  iceSidebar ? 'font-semibold text-[#2b2d31]' : sidebarBrandWelcomeNameClass,
+                )}
+              >
+                {welcomeName}
+              </span>
             </span>
           )
         ) : (
@@ -253,7 +277,7 @@ export function UserMenu({
             <p
               className={cn(
                 'text-sm font-medium',
-                isGradientHome ? 'text-[#E8F4FD] group-hover:text-[#00D4FF]' : 'text-text-primary'
+                isGradientHome ? 'text-[#2b2d31] group-hover:text-[#2b2d31]' : 'text-text-primary'
               )}
             >
               {user.profile?.name || user.email}
@@ -272,11 +296,13 @@ export function UserMenu({
             isSidebar
               ? collapsed
                 ? 'hidden'
-                : 'text-white/45'
+                : iceSidebar
+                  ? 'text-[#2b2d31] opacity-100'
+                  : 'text-white/45'
               : amberMobileChrome
                 ? 'text-secondary max-lg:text-white/85'
                 : isGradientHome
-                  ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
+                  ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#2b2d31]')
                   : 'text-secondary',
             open && 'rotate-180'
           )}

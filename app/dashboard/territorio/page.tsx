@@ -11,7 +11,7 @@ import {
   TERRITORIO_CAMPO_TAB_BASE,
   TERRITORIO_CAMPO_TAB_DEMANDAS,
   TERRITORIO_CAMPO_TAB_LIDERANCAS,
-  TERRITORIO_CAMPO_TAB_MAPA_OBRAS,
+  TERRITORIO_CAMPO_TAB_MAPA_OBRAS_LEGACY,
   TERRITORIO_CAMPO_TAB_PANORAMA,
   TERRITORIO_CAMPO_TAB_VISITAS,
   type TerritorioCampoTab,
@@ -27,19 +27,6 @@ const TerritorioBasePanel = dynamic(
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
         Carregando base territorial…
-      </div>
-    ),
-  }
-)
-
-const MapaObrasPanel = dynamic(
-  () => import('@/components/territorio-campo/mapa-obras-panel').then((mod) => mod.MapaObrasPanel),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        Carregando mapa de obras…
       </div>
     ),
   }
@@ -92,6 +79,11 @@ export default function TerritorioCampoPage() {
 
   useEffect(() => {
     const rawTab = searchParams.get('tab')
+    // Mapa de Obras ficou só no War Room · Copiloto
+    if (rawTab === TERRITORIO_CAMPO_TAB_MAPA_OBRAS_LEGACY) {
+      router.replace('/dashboard/war-room')
+      return
+    }
     if (rawTab === TERRITORIO_CAMPO_TAB_PANORAMA) {
       router.replace(territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA))
     }
@@ -113,8 +105,6 @@ export default function TerritorioCampoPage() {
         <TerritorioBasePanel />
       ) : activeTab === TERRITORIO_CAMPO_TAB_LIDERANCAS ? (
         <LiderancasPanel />
-      ) : activeTab === TERRITORIO_CAMPO_TAB_MAPA_OBRAS ? (
-        <MapaObrasPanel />
       ) : activeTab === TERRITORIO_CAMPO_TAB_DEMANDAS ? (
         <DemandasObrasPanel />
       ) : (

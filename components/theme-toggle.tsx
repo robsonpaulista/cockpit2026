@@ -80,7 +80,7 @@ export function ThemeToggle({
           className={cn(
             'h-4 w-4 flex-shrink-0 transition-colors',
             triggerOnVibrantNav
-              ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
+              ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#2b2d31]')
               : 'text-text-primary group-hover:text-text-primary'
           )}
           strokeWidth={1.5}
@@ -90,7 +90,7 @@ export function ThemeToggle({
             className={cn(
               'text-[13px] font-medium transition-colors',
               triggerOnVibrantNav
-                ? cn(JARVIS_SIDEBAR_TEXT, 'group-hover:!text-[#00D4FF]')
+                ? cn(JARVIS_SIDEBAR_TEXT, 'group-hover:!text-[#2b2d31]')
                 : 'text-text-primary group-hover:text-text-primary'
             )}
           >

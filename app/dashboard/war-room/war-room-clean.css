@@ -12,23 +12,23 @@
    ========================================================================== */
 
 body[data-war-room-clean] {
-  /* --- Neutros Intelligence Center ----------------------------------- */
-  --wr-bg: #f7f7f6;
+  /* --- Neutros Intelligence Center — paleta gelo / amarelo / preto --- */
+  --wr-bg: #e5e6e8;
   --wr-surface: #ffffff;
-  --wr-surface-subtle: #f3f3f1;
-  --wr-surface-hover: #ececea;
-  --wr-border: #e1e1de;
-  --wr-divider: #ebebe8;
-  --wr-text-primary: #20201e;
-  --wr-text-secondary: #52524f;
-  --wr-text-muted: #777773;
-  --wr-black: #111110;
-  --wr-primary: #20201e;
-  --wr-brand: #f04b23; /* coral — wordmark 2026 / alerta pontual */
+  --wr-surface-subtle: #e5e6e8;
+  --wr-surface-hover: #d8d9dc;
+  --wr-border: #b3b6bb;
+  --wr-divider: #d0d2d6;
+  --wr-text-primary: #2b2d31;
+  --wr-text-secondary: #70737a;
+  --wr-text-muted: #b3b6bb;
+  --wr-black: #2b2d31;
+  --wr-primary: #2b2d31;
+  --wr-brand: #f2d06b; /* amarelo logo — ênfase pontual */
   --wr-accent: var(--wr-primary);
-  --wr-accent-soft: #fff1ef;
-  --wr-attention: #f04b23;
-  --wr-attention-soft: #fff1ef;
+  --wr-accent-soft: #f7f0d4;
+  --wr-attention: #f2d06b;
+  --wr-attention-soft: #f7f0d4;
   --wr-success: #299a55;
   --wr-success-soft: #edf7f0;
   --wr-danger: #e95b50;
@@ -333,24 +333,27 @@ body[data-war-room-clean] .wr-copiloto-view {
 /* Copiloto: não override sólido — glass vem do bloco Sidebar + canvas */
 
 body[data-war-room-clean][data-wr-copiloto] header.wr-topbar-clean .wr-topbar-clean__copiloto {
-  border-color: var(--wr-border, color-mix(in srgb, var(--wr-slate) 22%, transparent));
-  background: var(--wr-surface, var(--wr-card, #fff));
-  color: var(--wr-muted, var(--wr-slate));
+  border-color: #f2d06b;
+  background: #f2d06b;
+  color: #2b2d31;
 }
 
 body[data-war-room-clean][data-wr-copiloto] header.wr-topbar-clean .wr-topbar-clean__copiloto:hover {
-  background: var(--wr-page-bg, var(--wr-bg, #f5f6f8)) !important;
-  border-color: color-mix(in srgb, var(--wr-slate) 35%, transparent);
+  background: color-mix(in srgb, #f2d06b 88%, #000) !important;
+  border-color: color-mix(in srgb, #f2d06b 88%, #000);
+  color: #2b2d31;
 }
 
 body[data-war-room-clean][data-wr-copiloto] header.wr-topbar-clean .wr-topbar-clean__copiloto--active {
-  background: var(--wr-surface, var(--wr-card, #fff));
-  border-color: var(--wr-border, color-mix(in srgb, var(--wr-slate) 22%, transparent));
-  color: var(--wr-muted, var(--wr-slate));
+  background: #f2d06b;
+  border-color: #f2d06b;
+  color: #2b2d31;
 }
 
 body[data-war-room-clean][data-wr-copiloto] header.wr-topbar-clean .wr-topbar-clean__copiloto--active:hover {
-  background: var(--wr-page-bg, var(--wr-bg, #f5f6f8)) !important;
+  background: color-mix(in srgb, #f2d06b 88%, #000) !important;
+  border-color: color-mix(in srgb, #f2d06b 88%, #000);
+  color: #2b2d31;
 }
 
 body[data-war-room-clean] .wr-page-canvas button,
@@ -677,6 +680,7 @@ body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__title {
   font-weight: 500 !important;
   line-height: 1.25 !important;
   letter-spacing: -0.01em;
+  text-transform: uppercase !important;
 }
 
 body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__countdown {
@@ -785,12 +789,12 @@ body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto {
   gap: 7px;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--wr-border, color-mix(in srgb, var(--wr-slate) 22%, transparent));
+  border: 1px solid #2b2d31;
   border-radius: 10px;
-  background: var(--wr-surface, var(--wr-card, #fff));
-  color: var(--wr-muted, var(--wr-slate));
+  background: #2b2d31;
+  color: #ffffff;
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;
   cursor: pointer;
@@ -798,18 +802,21 @@ body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto {
 }
 
 body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto:hover {
-  background: var(--wr-page-bg, var(--wr-bg, #f5f6f8)) !important;
-  border-color: color-mix(in srgb, var(--wr-slate) 35%, transparent);
+  background: color-mix(in srgb, #2b2d31 88%, #000) !important;
+  border-color: color-mix(in srgb, #2b2d31 88%, #000);
+  color: #ffffff;
 }
 
 body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto--active {
-  background: var(--wr-surface, var(--wr-card, #fff));
-  border-color: var(--wr-border, color-mix(in srgb, var(--wr-slate) 22%, transparent));
-  color: var(--wr-muted, var(--wr-slate));
+  background: #f2d06b;
+  border-color: #f2d06b;
+  color: #2b2d31;
 }
 
 body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__copiloto--active:hover {
-  background: var(--wr-page-bg, var(--wr-bg, #f5f6f8)) !important;
+  background: color-mix(in srgb, #f2d06b 88%, #000) !important;
+  border-color: color-mix(in srgb, #f2d06b 88%, #000);
+  color: #2b2d31;
 }
 
 @media (max-width: 639px) {
@@ -865,12 +872,12 @@ body[data-war-room-clean] header.wr-topbar-clean .user-avatar-patch {
 
 /* --- Shell + sidebar premium (#F7F7F6 / #FFF) --------------------------- */
 body[data-war-room-clean] {
-  background: #f7f7f6 !important;
+  background: #e5e6e8 !important;
 }
 
 body[data-war-room-clean] .relative.flex.h-screen.overflow-hidden,
 body[data-war-room-clean] .relative.flex.flex-1.flex-col.overflow-hidden {
-  background: #f7f7f6 !important;
+  background: #e5e6e8 !important;
 }
 
 body[data-war-room-clean] .wr-page-canvas,
@@ -1361,21 +1368,41 @@ body[data-war-room-clean] :is(
   color: #686865 !important;
 }
 
-/* Primário silencioso — carvão #191918 quando um CTA forte existir */
+/* Primário — preto #2B2D31; detalhe amarelo #F2D06B */
 body[data-war-room-clean] .wr-page-canvas :is(
   .wr-copiloto-view__retry,
   button.bg-\[\#191918\],
   .wr-btn--primary
 ) {
-  background: #191918 !important;
+  background: #2b2d31 !important;
   color: #ffffff !important;
-  border-color: #191918 !important;
+  border-color: #2b2d31 !important;
   border-radius: 10px !important;
   font-weight: 500 !important;
   box-shadow: none !important;
 }
 
-/* Abas ghost — tipografia quieta */
+body[data-war-room-clean] .wr-page-canvas :is(
+  .wr-copiloto-view__retry,
+  button.bg-\[\#191918\],
+  .wr-btn--primary
+):hover {
+  background: color-mix(in srgb, #2b2d31 88%, #000) !important;
+  border-color: color-mix(in srgb, #2b2d31 88%, #000) !important;
+}
+
+body[data-war-room-clean] .wr-page-canvas :is(
+  .wr-btn--accent,
+  .wr-btn--yellow
+) {
+  background: #f2d06b !important;
+  color: #2b2d31 !important;
+  border-color: #f2d06b !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+}
+
+/* Abas ghost — tipografia quieta + ativo com detalhe amarelo */
 body[data-war-room-clean] .wr-copiloto-tabs {
   background: transparent !important;
   padding: 0 !important;
@@ -1384,22 +1411,19 @@ body[data-war-room-clean] .wr-copiloto-tabs {
 
 body[data-war-room-clean] .wr-copiloto-tabs__btn {
   background: transparent !important;
-  color: #969692 !important;
+  color: #70737a !important;
   font-weight: 400 !important;
   box-shadow: none !important;
   border-radius: 0 !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-tabs__btn--active {
-  background: transparent !important;
-  color: #20201f !important;
-  font-weight: 500 !important;
-  box-shadow: none !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-tabs__btn--active::after {
-  background: #20201f !important;
-  opacity: 0.35;
+  background: #f2d06b !important;
+  opacity: 1;
 }
 
 /* Reduz peso tipográfico geral (body/tabelas = 400/500) */
@@ -1407,12 +1431,12 @@ body[data-war-room-clean] .wr-page-canvas,
 body[data-war-room-clean] .wr-copiloto-view {
   font-family: var(--wr-font) !important;
   font-weight: 400;
-  color: #20201f;
+  color: #2b2d31;
 }
 
 body[data-war-room-clean] .wr-page-canvas :is(h1, h2, h3, h4, .wr-card__title, .wr-topbar-clean__title) {
   font-weight: 500 !important;
-  color: #20201f !important;
+  color: #2b2d31 !important;
   letter-spacing: -0.01em;
 }
 
@@ -4752,6 +4776,41 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   cursor: pointer;
 }
 
+.wr-visita-modal__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wr-visita-modal__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  border: 1px solid #2b2d31;
+  border-radius: 8px;
+  color: #2b2d31;
+  background: var(--wr-white);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wr-visita-modal__refresh:hover:not(:disabled) {
+  background: #f2d06b;
+  border-color: #2b2d31;
+  color: #2b2d31;
+}
+
+.wr-visita-modal__refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .wr-visita-modal__close:hover {
   color: var(--wr-black);
   background: color-mix(in srgb, var(--wr-mist) 50%, var(--wr-white));
@@ -7841,7 +7900,7 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   bottom: 2px;
   height: 2px;
   border-radius: 1px;
-  background: color-mix(in srgb, #333333 55%, transparent);
+  background: #f2d06b;
 }
 
 .wr-copiloto-view__state {
@@ -8425,11 +8484,11 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   gap: 7px;
   height: 34px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--wr-slate, #424e5c) 14%, transparent);
+  border: 1px solid color-mix(in srgb, #2b2d31 14%, transparent);
   border-radius: 8px;
-  background: var(--wr-card, #fff);
+  background: #ffffff;
   box-shadow: none;
-  color: color-mix(in srgb, var(--wr-petrol, #022b3a) 82%, var(--wr-aux, #6b7280));
+  color: #2b2d31;
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 500;
@@ -8747,9 +8806,9 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 20px;
+  gap: 8px 12px;
   flex: 0 0 auto;
-  padding: 10px 18px 14px;
+  padding: 6px 12px 8px;
 }
 
 .wr-copiloto-comparativo__toolbar-actions {
@@ -11850,6 +11909,31 @@ body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__meta-pr
   color: var(--wr-text) !important;
 }
 
+.wr-municipio-detalhe-modal__tipo-row:hover td,
+.wr-municipio-detalhe-modal__tipo-row:hover th {
+  background: transparent !important;
+}
+
+.wr-municipio-detalhe-modal__tipo-head {
+  padding: 0.65rem 0.75rem 0.4rem !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--wr-slate) 18%, transparent) !important;
+  background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white)) !important;
+  color: var(--wr-text) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left !important;
+}
+
+.wr-municipio-detalhe-modal__tipo-count {
+  margin-left: 0.5rem;
+  color: var(--wr-text-muted) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .wr-municipio-detalhe-modal__col-sei {
   max-width: 170px;
 }
@@ -12357,19 +12441,47 @@ body[data-war-room-clean] main .p-4.md\:p-6 {
 }
 
 body[data-war-room-clean] .wr-topbar-clean__copiloto {
-  background: #ffffff !important;
-  border: 1px solid #e5e5e3 !important;
-  color: #686865 !important;
+  background: #2b2d31 !important;
+  border: 1px solid #2b2d31 !important;
+  color: #ffffff !important;
   border-radius: 10px !important;
-  font-weight: 400 !important;
+  font-weight: 500 !important;
   box-shadow: none !important;
 }
 
-body[data-war-room-clean] .wr-topbar-clean__copiloto:hover,
+body[data-war-room-clean] .wr-topbar-clean__copiloto:hover {
+  background: color-mix(in srgb, #2b2d31 88%, #000) !important;
+  border-color: color-mix(in srgb, #2b2d31 88%, #000) !important;
+  color: #ffffff !important;
+}
+
 body[data-war-room-clean] .wr-topbar-clean__copiloto--active {
-  background: #f4f4f2 !important;
-  color: #20201f !important;
-  border-color: #e8e8e6 !important;
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
+}
+
+body[data-war-room-clean] .wr-topbar-clean__copiloto--active:hover {
+  background: color-mix(in srgb, #f2d06b 88%, #000) !important;
+  border-color: color-mix(in srgb, #f2d06b 88%, #000) !important;
+  color: #2b2d31 !important;
+}
+
+/* Botão Atualizar (topbar War Room) */
+body[data-war-room-clean] header.wr-topbar-clean button.wr-topbar-clean__refresh,
+body[data-war-room-clean] .wr-topbar-clean__refresh {
+  background: #ffffff !important;
+  border: 1px solid #2b2d31 !important;
+  color: #2b2d31 !important;
+  border-radius: 10px !important;
+  font-weight: 500 !important;
+}
+
+body[data-war-room-clean] header.wr-topbar-clean button.wr-topbar-clean__refresh:hover,
+body[data-war-room-clean] .wr-topbar-clean__refresh:hover {
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
 }
 
 /* Ranking pesquisa / métricas — tipografia neutra */
@@ -12953,7 +13065,7 @@ body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__title {
   color: var(--wr-text-primary) !important;
   font-weight: 600 !important;
   letter-spacing: -0.01em;
-  text-transform: none !important;
+  text-transform: uppercase !important;
 }
 
 body[data-war-room-clean] header.wr-topbar-clean .wr-topbar-clean__countdown,
@@ -13419,8 +13531,8 @@ body[data-war-room-clean] .wr-copiloto-redes__view-tabs {
   display: inline-flex !important;
   align-items: center !important;
   gap: 2px !important;
-  padding: 3px !important;
-  border-radius: 12px !important;
+  padding: 2px !important;
+  border-radius: 10px !important;
   background: #efefed !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
@@ -13428,15 +13540,16 @@ body[data-war-room-clean] .wr-copiloto-redes__view-tabs {
 body[data-war-room-clean] .wr-copiloto-redes__period-tab,
 body[data-war-room-clean] .wr-copiloto-redes__view-tab {
   position: relative;
-  height: 32px !important;
-  padding: 0 12px !important;
+  height: 26px !important;
+  padding: 0 10px !important;
   border: 0 !important;
-  border-radius: 9px !important;
+  border-radius: 8px !important;
   background: transparent !important;
   color: var(--wr-text-muted) !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em;
+  line-height: 1 !important;
   box-shadow: none !important;
   transition:
     color var(--wr-ease),
@@ -13467,12 +13580,13 @@ body[data-war-room-clean] .wr-copiloto-redes__view-tab--active {
 
 /* --- Shared ghost / capsule controls ------------------------------------ */
 body[data-war-room-clean] .wr-copiloto-redes__ghost-btn {
-  height: 34px !important;
-  padding: 0 12px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
   border: 1px solid #e7e7e4 !important;
   border-radius: var(--wr-radius-md) !important;
   background: #ffffff !important;
   color: var(--wr-text-secondary) !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   box-shadow: none !important;
   transition:
@@ -13514,14 +13628,16 @@ body[data-war-room-clean] .wr-copiloto-redes--page {
 }
 
 body[data-war-room-clean] .wr-copiloto-redes__toolbar {
-  margin: 10px 12px 0 !important;
-  padding: 10px 12px !important;
+  margin: 8px 12px 0 !important;
+  padding: 6px 10px !important;
   border: 1px solid var(--wr-glass-border) !important;
   border-radius: var(--wr-radius-lg) !important;
   background: var(--wr-glass) !important;
   backdrop-filter: var(--wr-glass-blur) !important;
   -webkit-backdrop-filter: var(--wr-glass-blur) !important;
   box-shadow: var(--wr-shadow-glass) !important;
+  min-height: 0 !important;
+  gap: 8px 12px !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-redes__cols {
@@ -13828,14 +13944,16 @@ body[data-war-room-clean] .wr-copiloto-comparativo {
 }
 
 body[data-war-room-clean] .wr-copiloto-comparativo__toolbar {
-  margin: 10px 12px 0 !important;
-  padding: 10px 12px !important;
+  margin: 8px 12px 0 !important;
+  padding: 6px 10px !important;
   border: 1px solid var(--wr-glass-border) !important;
   border-radius: var(--wr-radius-lg) !important;
   background: var(--wr-glass) !important;
   backdrop-filter: var(--wr-glass-blur) !important;
   -webkit-backdrop-filter: var(--wr-glass-blur) !important;
   box-shadow: var(--wr-shadow-glass) !important;
+  min-height: 0 !important;
+  gap: 8px 12px !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-comparativo__body {

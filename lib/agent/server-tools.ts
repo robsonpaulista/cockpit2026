@@ -663,7 +663,7 @@ export function buildNavigateAction(
   if (classified.intent === 'consultar_noticias_destaque') {
     return {
       type: 'navigate',
-      url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+      url: '/dashboard/noticias/monitoramento?tab=google-news',
       label: 'Ver Notícias & Crises',
     }
   }
@@ -671,7 +671,7 @@ export function buildNavigateAction(
   if (classified.intent === 'consultar_noticias_criticas') {
     return {
       type: 'navigate',
-      url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+      url: '/dashboard/noticias/monitoramento?tab=google-news',
       label: 'Ver Notícias com Risco Alto',
     }
   }
@@ -682,7 +682,7 @@ export function buildNavigateAction(
   ) {
     return {
       type: 'navigate',
-      url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+      url: '/dashboard/noticias/monitoramento?tab=google-news',
       label: 'Ver Notícias & Crises',
     }
   }

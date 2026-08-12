@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
 import { ProtectedRoute } from '@/components/protected-route'
@@ -33,30 +34,56 @@ import {
   DASHBOARD_HOME_SHELL_CLASS,
   dashboardHomeShellStyle,
   isDashboardHomePath,
+  isIceGlassSidebarPath,
 } from '@/lib/dashboard-home-chrome'
 import '@/components/jarvis/jarvis-neural.css'
+import '@/components/dashboard/home-glass.css'
 import { DashboardCleanThemeBootstrap } from '@/components/dashboard/dashboard-clean-theme'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { collapsed } = useSidebar()
+  const { collapsed, setCollapsed } = useSidebar()
   const pathname = usePathname() ?? ''
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
-  const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
-  const columnBgClass = isHomeAccentChrome ? 'bg-transparent' : 'bg-bg-surface'
+  const isHomeScene = isDashboardHomePath(pathname) && !isMapaTdsShell
+  const isIceSidebar = isIceGlassSidebarPath(pathname) && !isMapaTdsShell
+  const columnBgClass = isHomeScene ? 'bg-white' : 'bg-bg-surface'
   const mainOffsetClass = collapsed
     ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS
     : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS
 
+  useEffect(() => {
+    if (isIceSidebar) {
+      document.body.setAttribute('data-home-glass', '')
+    } else {
+      document.body.removeAttribute('data-home-glass')
+    }
+    if (isHomeScene) {
+      document.body.setAttribute('data-home-scene', '')
+    } else {
+      document.body.removeAttribute('data-home-scene')
+    }
+    return () => {
+      document.body.removeAttribute('data-home-glass')
+      document.body.removeAttribute('data-home-scene')
+    }
+  }, [isIceSidebar, isHomeScene])
+
+  /* War Room / home: sidebar expandida para mostrar logo + slogan (igual dashboard). */
+  useEffect(() => {
+    if (isIceSidebar) setCollapsed(false)
+  }, [isIceSidebar, setCollapsed])
+
   return (
     <CockpitStatusProvider>
       <DashboardCleanThemeBootstrap />
-      <DashboardHomeChromeProvider value={isHomeAccentChrome}>
+      <DashboardHomeChromeProvider value={isIceSidebar}>
         <DashboardPageChromeProvider>
         <DashboardTopbarExtrasProvider>
         <div
           className={cn(
-            'relative flex h-screen overflow-hidden bg-bg-surface',
-            !isHomeAccentChrome && isMapaTdsShell && columnBgClass,
+            'relative flex h-screen overflow-hidden',
+            isHomeScene ? 'bg-white' : 'bg-bg-surface',
+            !isHomeScene && isMapaTdsShell && columnBgClass,
           )}
         >
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
@@ -66,10 +93,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             <div
               className={cn(
                 'relative flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-                isHomeAccentChrome ? DASHBOARD_HOME_SHELL_CLASS : columnBgClass,
+                isHomeScene ? DASHBOARD_HOME_SHELL_CLASS : columnBgClass,
                 mainOffsetClass,
               )}
-              style={isHomeAccentChrome ? dashboardHomeShellStyle : undefined}
+              data-home-glass-shell={isHomeScene ? '' : undefined}
+              style={isHomeScene ? dashboardHomeShellStyle : undefined}
             >
               <DashboardHeader />
               <main

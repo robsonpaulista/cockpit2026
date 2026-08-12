@@ -44,12 +44,14 @@ export function WarRoomTopbarCountdown() {
   }, [])
 
   const countdown = getElectionCountdown(nowMs)
+  const clock = `${pad2(countdown.hours)}:${pad2(countdown.minutes)}:${pad2(countdown.seconds)}`
+  const diasLabel = countdown.days === 1 ? '1 DIA' : `${countdown.days} DIAS`
   const label = countdown.done
-    ? 'Dia da eleição · 04/10'
-    : `${countdown.days}d ${pad2(countdown.hours)}:${pad2(countdown.minutes)}:${pad2(countdown.seconds)}`
+    ? 'DIA DA ELEIÇÃO · 04/10'
+    : `FALTAM ${diasLabel}, ${clock} PARA AS ELEIÇÕES`
   const aria = countdown.done
     ? 'Eleições em andamento em 4 de outubro de 2026'
-    : `${countdown.days} dias, ${countdown.hours} horas, ${countdown.minutes} minutos e ${countdown.seconds} segundos para as eleições de 4 de outubro de 2026`
+    : `Faltam ${countdown.days} dias, ${countdown.hours} horas, ${countdown.minutes} minutos e ${countdown.seconds} segundos para as eleições de 4 de outubro de 2026`
 
   return (
     <time
@@ -59,7 +61,6 @@ export function WarRoomTopbarCountdown() {
       aria-label={aria}
       aria-live="off"
     >
-      <span className="wr-topbar-clean__countdown-label">Eleições</span>
       <span className="wr-topbar-clean__countdown-value tabular-nums">{label}</span>
     </time>
   )

@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { SIDEBAR_BRAND_AMBER } from '@/lib/sidebar-brand-styles'
+import { HOME_SCENE_CAR, HOME_SCENE_PETROL } from '@/lib/rest-screen-chrome'
 
 export function resolveUserInitials(name?: string, email?: string): string {
   if (name?.trim()) {
@@ -20,6 +21,8 @@ type UserAvatarPatchProps = {
   avatarUrl?: string | null
   size?: 'sm' | 'md'
   className?: string
+  /** ice = sidebar glass (preto + amarelo); amber = coral legado */
+  tone?: 'amber' | 'ice'
 }
 
 const SIZE_CLASS = {
@@ -33,18 +36,24 @@ export function UserAvatarPatch({
   avatarUrl,
   size = 'md',
   className,
+  tone = 'amber',
 }: UserAvatarPatchProps) {
   const initials = resolveUserInitials(name, email)
   const label = name?.trim() || email || 'Usuário'
+  const isIce = tone === 'ice'
 
   return (
     <div
       className={cn(
-        'user-avatar-patch flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white',
+        'user-avatar-patch flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold',
         SIZE_CLASS[size],
+        isIce ? 'text-[#2b2d31]' : 'text-white',
         className
       )}
-      style={{ backgroundColor: SIDEBAR_BRAND_AMBER }}
+      style={{
+        backgroundColor: isIce ? HOME_SCENE_CAR : SIDEBAR_BRAND_AMBER,
+        color: isIce ? HOME_SCENE_PETROL : undefined,
+      }}
     >
       {avatarUrl ? (
         <img src={avatarUrl} alt={label} className="h-full w-full object-cover" />

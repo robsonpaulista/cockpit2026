@@ -1,7 +1,7 @@
 'use client'
 
-import { Building2, ExternalLink, Loader2, X } from 'lucide-react'
-import { useEffect, useId, useMemo, useState } from 'react'
+import { Building2, Loader2, RefreshCw, X } from 'lucide-react'
+import { Fragment, useEffect, useId, useMemo } from 'react'
 
 import { normalizeIptMunicipio } from '@/lib/ipt'
 import {
@@ -10,19 +10,16 @@ import {
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
 import {
-  indexRecapMatchesByObraId,
-  type ObraRecapMatchSource,
-} from '@/lib/obras-recap-match'
-import { hrefSeiProcesso, isSeiExibirUrl } from '@/lib/sei-protocolo-url'
-
-type ObraMapaComSei = ObraMapaRow & { sei?: string | null }
+  anoFromDataDemanda,
+  groupObrasByTipoSortedByStatus,
+} from '@/lib/mapa-obras-lista-tipo'
 
 type Props = {
   municipio: string
-  obras: ObraMapaComSei[] | null
-  /** Itens do Recap (/dashboard/obras) para cruzar por SEI ou descrição. */
-  recapObras?: ObraRecapMatchSource[] | null
+  obras: ObraMapaRow[] | null
   loading?: boolean
+  refreshing?: boolean
+  onRefresh?: () => void
   onClose: () => void
 }
 
@@ -43,41 +40,16 @@ function tituloObra(obra: ObraMapaRow): string {
   return 'Obra sem título'
 }
 
-function formatDataSei(iso: string | null | undefined): string | null {
-  if (!iso) return null
-  try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-  } catch {
-    return iso
-  }
-}
-
-function limparTextoSei(value: string | null | undefined): string {
-  if (!value) return ''
-  return value
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-/** Modal de obras do município — aberto a partir do ranking da Expectativa. */
+/** Modal de obras do município — mesma lógica da guia Obras (tipo + status). */
 export function WarRoomMunicipioObrasModal({
   municipio,
   obras,
-  recapObras = null,
   loading = false,
+  refreshing = false,
+  onRefresh,
   onClose,
 }: Props) {
   const tituloId = useId()
-  const [resolvedSeiUrls, setResolvedSeiUrls] = useState<Record<string, string>>(
-    {},
-  )
 
   const obrasMunicipio = useMemo(() => {
     if (!obras) return []
@@ -85,78 +57,17 @@ export function WarRoomMunicipioObrasModal({
     return obras
       .filter((o) => normalizeIptMunicipio(o.municipio ?? '') === key)
       .filter((o) => !isObraLinhaTotalPlanilha(o))
-      .slice()
-      .sort((a, b) => {
-        const va = valorExibidoMapaObra(a) ?? 0
-        const vb = valorExibidoMapaObra(b) ?? 0
-        if (vb !== va) return vb - va
-        return tituloObra(a).localeCompare(tituloObra(b), 'pt-BR')
-      })
   }, [municipio, obras])
 
-  const matchesById = useMemo(
-    () => indexRecapMatchesByObraId(obrasMunicipio, recapObras ?? []),
-    [obrasMunicipio, recapObras],
+  const blocosPorTipo = useMemo(
+    () => groupObrasByTipoSortedByStatus(obrasMunicipio),
+    [obrasMunicipio],
   )
-
-  const matchedCount = matchesById.size
 
   const totalValor = useMemo(
     () => obrasMunicipio.reduce((s, o) => s + (valorExibidoMapaObra(o) ?? 0), 0),
     [obrasMunicipio],
   )
-
-  /** Protocolos matched sem link exibir ainda — resolve na Pesquisa Pública. */
-  const seisSemUrl = useMemo(() => {
-    const out: string[] = []
-    for (const obra of obrasMunicipio) {
-      const match = matchesById.get(obra.id)
-      if (!match) continue
-      const sei = (obra.sei?.trim() || match.recap.sei?.trim() || '')
-      if (!sei) continue
-      const existing = (match.recap.sei_url ?? '').trim()
-      if (existing && isSeiExibirUrl(existing)) continue
-      if (resolvedSeiUrls[sei] && isSeiExibirUrl(resolvedSeiUrls[sei])) continue
-      out.push(sei)
-    }
-    return [...new Set(out)]
-  }, [obrasMunicipio, matchesById, resolvedSeiUrls])
-
-  useEffect(() => {
-    if (seisSemUrl.length === 0) return
-    let cancelled = false
-    const load = async () => {
-      try {
-        const res = await fetch('/api/sei/resolve-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ seis: seisSemUrl }),
-        })
-        const json = (await res.json().catch(() => null)) as {
-          urls?: Record<string, string | null>
-          url?: string | null
-          sei?: string
-        } | null
-        if (cancelled || !res.ok) return
-        const next: Record<string, string> = {}
-        if (json?.urls) {
-          for (const [sei, url] of Object.entries(json.urls)) {
-            if (url && isSeiExibirUrl(url)) next[sei] = url
-          }
-        } else if (json?.sei && json.url && isSeiExibirUrl(json.url)) {
-          next[json.sei] = json.url
-        }
-        if (Object.keys(next).length === 0) return
-        setResolvedSeiUrls((prev) => ({ ...prev, ...next }))
-      } catch {
-        /* ignore — fallback usa Pesquisa Pública */
-      }
-    }
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [seisSemUrl])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -195,14 +106,32 @@ export function WarRoomMunicipioObrasModal({
               </h2>
             </div>
           </div>
-          <button
-            type="button"
-            className="wr-visita-modal__close"
-            aria-label="Fechar"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </button>
+          <div className="wr-visita-modal__head-actions">
+            {onRefresh ? (
+              <button
+                type="button"
+                className="wr-visita-modal__refresh"
+                aria-label="Atualizar obras"
+                title="Atualizar obras"
+                disabled={loading || refreshing}
+                onClick={onRefresh}
+              >
+                <RefreshCw
+                  className={refreshing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}
+                  strokeWidth={1.5}
+                />
+                <span>Atualizar</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="wr-visita-modal__close"
+              aria-label="Fechar"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
         </header>
 
         {loading ? (
@@ -217,11 +146,10 @@ export function WarRoomMunicipioObrasModal({
                 ? 'Nenhuma obra cadastrada para este município na base do mapa.'
                 : `${obrasMunicipio.length.toLocaleString('pt-BR')} obra${
                     obrasMunicipio.length === 1 ? '' : 's'
-                  } · total ${formatBrl(totalValor)}${
-                    matchedCount > 0
-                      ? ` · ${matchedCount.toLocaleString('pt-BR')} com Recap/SEI`
-                      : ''
-                  }.`}
+                  } · ${blocosPorTipo.length.toLocaleString('pt-BR')} tipo${
+                    blocosPorTipo.length === 1 ? '' : 's'
+                  } · total ${formatBrl(totalValor)}.`}
+              {refreshing ? ' Atualizando…' : ''}
             </p>
             {obrasMunicipio.length === 0 ? (
               <p className="wr-visita-modal__state">Sem obras para listar.</p>
@@ -231,127 +159,48 @@ export function WarRoomMunicipioObrasModal({
                   <thead>
                     <tr>
                       <th scope="col">Obra</th>
-                      <th scope="col">Tipo</th>
-                      <th scope="col">Órgão</th>
+                      <th scope="col">Ano</th>
                       <th scope="col" className="wr-municipio-detalhe-modal__col-valor">
                         Valor
                       </th>
-                      <th scope="col">Match</th>
-                      <th scope="col">SEI</th>
-                      <th scope="col">Andamento</th>
-                      <th scope="col">Status SEI</th>
-                      <th scope="col">Plano</th>
+                      <th scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {obrasMunicipio.map((obra) => {
-                      const match = matchesById.get(obra.id)
-                      const recap = match?.recap
-                      const seiNumero = (obra.sei?.trim() || recap?.sei?.trim() || '')
-                      const seiUrl =
-                        resolvedSeiUrls[seiNumero] ||
-                        recap?.sei_url?.trim() ||
-                        null
-                      const seiHref = match
-                        ? hrefSeiProcesso(seiNumero, seiUrl)
-                        : null
-                      const andamentoData = formatDataSei(
-                        recap?.sei_ultimo_andamento_data,
-                      )
-                      const andamentoTxt = limparTextoSei(recap?.sei_ultimo_andamento)
-                      const andamentoFull = [andamentoData, andamentoTxt]
-                        .filter(Boolean)
-                        .join(' · ')
-                      const statusTxt = limparTextoSei(recap?.sei_ultimo_status)
-                      const planoLabel =
-                        limparTextoSei(recap?.sei_plano_trabalho_tipo) ||
-                        (recap?.sei_plano_trabalho_numero
-                          ? `Doc. ${recap.sei_plano_trabalho_numero}`
-                          : 'Abrir')
-                      const matchLabel = match
-                        ? match.kind === 'sei'
-                          ? 'SEI'
-                          : match.kind === 'descricao'
-                            ? 'Descrição'
-                            : 'Parcial'
-                        : null
-
-                      return (
-                        <tr key={obra.id}>
-                          <td className="wr-municipio-detalhe-modal__col-obra">
-                            <span title={tituloObra(obra)}>{tituloObra(obra)}</span>
-                          </td>
-                          <td>
-                            <span title={obra.tipo?.trim() || undefined}>
-                              {obra.tipo?.trim() || '—'}
+                    {blocosPorTipo.map((bloco) => (
+                      <Fragment key={bloco.tipoKey}>
+                        <tr className="wr-municipio-detalhe-modal__tipo-row">
+                          <th
+                            scope="colgroup"
+                            colSpan={4}
+                            className="wr-municipio-detalhe-modal__tipo-head"
+                          >
+                            {bloco.tipoLabel}
+                            <span className="wr-municipio-detalhe-modal__tipo-count">
+                              {bloco.obras.length.toLocaleString('pt-BR')}
                             </span>
-                          </td>
-                          <td>
-                            <span title={obra.orgao?.trim() || undefined}>
-                              {obra.orgao?.trim() || '—'}
-                            </span>
-                          </td>
-                          <td className="wr-municipio-detalhe-modal__col-valor tabular-nums">
-                            {formatBrl(valorExibidoMapaObra(obra))}
-                          </td>
-                          <td>
-                            {matchLabel ? (
-                              <em className="wr-municipio-detalhe-modal__status--ok">
-                                {matchLabel}
-                              </em>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="wr-municipio-detalhe-modal__col-sei">
-                            {seiNumero && seiHref ? (
-                              <a
-                                href={seiHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={
-                                  seiUrl && isSeiExibirUrl(seiUrl)
-                                    ? 'Abrir processo no SEI'
-                                    : 'Abrir Pesquisa Pública do SEI'
-                                }
-                              >
-                                <span>{seiNumero}</span>
-                                <ExternalLink className="h-3 w-3 shrink-0" strokeWidth={1.5} />
-                              </a>
-                            ) : seiNumero ? (
-                              <code title={seiNumero}>{seiNumero}</code>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="wr-municipio-detalhe-modal__col-clip">
-                            {andamentoFull ? (
-                              <span title={andamentoFull}>{andamentoFull}</span>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="wr-municipio-detalhe-modal__col-clip">
-                            {statusTxt ? <span title={statusTxt}>{statusTxt}</span> : '—'}
-                          </td>
-                          <td>
-                            {recap?.sei_plano_trabalho_url?.trim() ? (
-                              <a
-                                href={recap.sei_plano_trabalho_url.trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={planoLabel}
-                              >
-                                <span>{planoLabel}</span>
-                                <ExternalLink className="h-3 w-3 shrink-0" strokeWidth={1.5} />
-                              </a>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
+                          </th>
                         </tr>
-                      )
-                    })}
+                        {bloco.obras.map((obra) => (
+                          <tr key={obra.id}>
+                            <td className="wr-municipio-detalhe-modal__col-obra">
+                              <span title={tituloObra(obra)}>{tituloObra(obra)}</span>
+                            </td>
+                            <td className="tabular-nums">
+                              {anoFromDataDemanda(obra.data_demanda)}
+                            </td>
+                            <td className="wr-municipio-detalhe-modal__col-valor tabular-nums">
+                              {formatBrl(valorExibidoMapaObra(obra))}
+                            </td>
+                            <td>
+                              <span title={obra.status?.trim() || undefined}>
+                                {obra.status?.trim() || '—'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>

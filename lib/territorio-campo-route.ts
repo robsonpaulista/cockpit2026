@@ -1,15 +1,16 @@
 export const TERRITORIO_CAMPO_TAB_PANORAMA = 'panorama' as const
 export const TERRITORIO_CAMPO_TAB_BASE = 'base' as const
 export const TERRITORIO_CAMPO_TAB_LIDERANCAS = 'liderancas' as const
-export const TERRITORIO_CAMPO_TAB_MAPA_OBRAS = 'mapa-obras' as const
 export const TERRITORIO_CAMPO_TAB_DEMANDAS = 'demandas' as const
 export const TERRITORIO_CAMPO_TAB_VISITAS = 'visitas' as const
+
+/** Legado: Mapa de Obras saiu da Base Eleitoral (fica só no War Room · Copiloto). */
+export const TERRITORIO_CAMPO_TAB_MAPA_OBRAS_LEGACY = 'mapa-obras' as const
 
 export type TerritorioCampoTab =
   | typeof TERRITORIO_CAMPO_TAB_PANORAMA
   | typeof TERRITORIO_CAMPO_TAB_BASE
   | typeof TERRITORIO_CAMPO_TAB_LIDERANCAS
-  | typeof TERRITORIO_CAMPO_TAB_MAPA_OBRAS
   | typeof TERRITORIO_CAMPO_TAB_DEMANDAS
   | typeof TERRITORIO_CAMPO_TAB_VISITAS
 
@@ -21,7 +22,6 @@ export const TERRITORIO_CAMPO_PAGE_TITLE = 'Base Eleitoral'
 export function territorioCampoPageTitle(tab: string | null): string {
   if (tab === TERRITORIO_CAMPO_TAB_LIDERANCAS) return `${TERRITORIO_CAMPO_PAGE_TITLE} · Lideranças`
   if (tab === TERRITORIO_CAMPO_TAB_VISITAS) return `${TERRITORIO_CAMPO_PAGE_TITLE} · Visitas`
-  if (tab === TERRITORIO_CAMPO_TAB_MAPA_OBRAS) return `${TERRITORIO_CAMPO_PAGE_TITLE} · Mapa de Obras`
   if (tab === TERRITORIO_CAMPO_TAB_DEMANDAS) return `${TERRITORIO_CAMPO_PAGE_TITLE} · Demandas`
   return TERRITORIO_CAMPO_PAGE_TITLE
 }
@@ -29,7 +29,6 @@ export function territorioCampoPageTitle(tab: string | null): string {
 export function parseTerritorioCampoTab(value: string | null | undefined): TerritorioCampoTab {
   if (value === TERRITORIO_CAMPO_TAB_BASE) return TERRITORIO_CAMPO_TAB_BASE
   if (value === TERRITORIO_CAMPO_TAB_LIDERANCAS) return TERRITORIO_CAMPO_TAB_LIDERANCAS
-  if (value === TERRITORIO_CAMPO_TAB_MAPA_OBRAS) return TERRITORIO_CAMPO_TAB_MAPA_OBRAS
   if (value === TERRITORIO_CAMPO_TAB_DEMANDAS) return TERRITORIO_CAMPO_TAB_DEMANDAS
   if (value === TERRITORIO_CAMPO_TAB_VISITAS) return TERRITORIO_CAMPO_TAB_VISITAS
   return TERRITORIO_CAMPO_TAB_PANORAMA

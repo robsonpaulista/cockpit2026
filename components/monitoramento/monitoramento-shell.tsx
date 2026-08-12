@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import {
-  Bell,
   Instagram,
   LayoutGrid,
   LineChart,
@@ -31,7 +30,6 @@ import '@/app/dashboard/war-room/war-room-clean.css'
 
 export type MonitoramentoTab =
   | 'geral'
-  | 'google-alerts'
   | 'youtube'
   | 'trends'
   | 'viral'
@@ -43,7 +41,6 @@ export type MonitoramentoTab =
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'geral', label: 'Panorama', icon: LayoutGrid },
-  { id: 'google-alerts', label: 'Alertas', icon: Bell },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
   { id: 'google-news', label: 'Notícias', icon: Newspaper },
   { id: 'google-videos', label: 'Google Vídeos', icon: Video },

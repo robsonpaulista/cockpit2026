@@ -2,9 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { SplashScreen } from '@/components/splash-screen/splash-screen'
+import { Outfit } from 'next/font/google'
+import { PreviewHomeScreen } from '@/components/preview-home/preview-home-screen'
 import { useIdleSplash } from '@/contexts/idle-splash-context'
 import { SPLASH_PREVIEW_EVENT } from '@/lib/splash-screen-config'
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-preview-home',
+})
 
 function isRestScreenDisabled(pathname: string | null): boolean {
   if (!pathname) return false
@@ -15,11 +23,11 @@ function isRestScreenDisabled(pathname: string | null): boolean {
 }
 
 /**
- * Única host da splash cinematográfica no dashboard:
+ * Host da tela de descanso no dashboard (nova home preview):
  * - botão "Tela de descanso" (evento)
  * - inatividade / lock de sessão (idle ativo)
  *
- * Em ambos os casos o "Entrar no Cockpit" só fecha o overlay.
+ * Em ambos os casos "Entrar no Cockpit" só fecha o overlay.
  * Em /dashboard/resumo-eleicoes a splash nunca abre.
  */
 export function SplashScreenRestHost() {
@@ -38,7 +46,6 @@ export function SplashScreenRestHost() {
     return () => window.removeEventListener(SPLASH_PREVIEW_EVENT, abrir)
   }, [restDisabled])
 
-  // Idle / restore de sessão → mesma splash do botão de descanso.
   useEffect(() => {
     if (restDisabled) {
       setVisible(false)
@@ -66,5 +73,9 @@ export function SplashScreenRestHost() {
 
   if (restDisabled || !visible) return null
 
-  return <SplashScreen onComplete={fechar} autoEnter={false} idleLoopMs={120000} />
+  return (
+    <div className={outfit.variable}>
+      <PreviewHomeScreen mode="rest" onEnter={fechar} />
+    </div>
+  )
 }

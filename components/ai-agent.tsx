@@ -1100,7 +1100,7 @@ export function AIAgent({
         speakAnswer: true,
         action: {
           type: 'navigate',
-          url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+          url: '/dashboard/noticias/monitoramento?tab=google-news',
           label: 'Ver Notícias & Crises',
         },
       }
@@ -1136,7 +1136,7 @@ export function AIAgent({
         speakAnswer: true,
         action: {
           type: 'navigate',
-          url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+          url: '/dashboard/noticias/monitoramento?tab=google-news',
           label: 'Ver Notícias com Risco Alto',
         },
       }
@@ -1172,7 +1172,7 @@ export function AIAgent({
         speakAnswer: true,
         action: {
           type: 'navigate',
-          url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+          url: '/dashboard/noticias/monitoramento?tab=google-news',
           label: 'Ver Notícias & Crises',
         },
       }
@@ -1214,7 +1214,7 @@ export function AIAgent({
           speechSegments: formatted.speechSegments,
           action: {
             type: 'navigate',
-            url: '/dashboard/noticias/monitoramento?tab=google-alerts',
+            url: '/dashboard/noticias/monitoramento?tab=google-news',
             label: 'Ver Notícias & Crises',
           },
         }
@@ -3466,7 +3466,7 @@ export function AIAgent({
           content: `Encontrei ${criticalAlerts.length} alerta${criticalAlerts.length > 1 ? 's' : ''} crítico${criticalAlerts.length > 1 ? 's' : ''}:\n\n"${alert.title}"`,
           action: {
             type: alert.actionUrl?.startsWith('http') ? 'link' : 'navigate',
-            url: alert.actionUrl || '/dashboard/noticias/monitoramento?tab=google-alerts',
+            url: alert.actionUrl || '/dashboard/noticias/monitoramento?tab=google-news',
             label: alert.actionUrl?.startsWith('http') ? 'Abrir notícia' : 'Ver notícias',
           },
         }

@@ -9,7 +9,7 @@ export const SIDEBAR_BRAND_INST = '#005b8f'
 export const SIDEBAR_BRAND_PETROL = '#022b3a'
 
 /** Slogan institucional — igual splash / login. */
-export const APP_BRAND_TAGLINE = 'Comando Central de Eleições Dep Fed Jadyel Alencar'
+export const APP_BRAND_TAGLINE = 'Comando Dep Fed Jadyel Alencar'
 
 /** Wordmark tipográfico COCKPIT 2026 — sans bold, alinhado à splash. */
 export const brandWordmarkClass =

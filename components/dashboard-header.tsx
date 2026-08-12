@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { AppBrandTitle } from '@/components/app-brand-title'
+import { WarRoomTopbarCountdown } from '@/components/war-room/war-room-topbar-countdown'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
@@ -38,7 +39,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
   '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',
   '/dashboard/whatsapp': 'WhatsApp',
-  '/dashboard/war-room': 'War Room',
+  '/dashboard/war-room': 'WAR ROOM',
   '/dashboard/material-campanha': 'Gestão de Material',
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',
@@ -179,18 +180,16 @@ export function DashboardHeader() {
                     {pageTitle}
                   </h1>
                 )}
-                {topbarExtras?.description ? (
-                  <div className="wr-topbar-clean__countdown-slot shrink-0 leading-none">
-                    {topbarExtras.description}
-                  </div>
-                ) : null}
+                <div className="wr-topbar-clean__countdown-slot min-w-0 shrink truncate leading-none">
+                  <WarRoomTopbarCountdown />
+                </div>
               </div>
             ) : (
-              <>
+              <div className="flex min-w-0 flex-nowrap items-center gap-x-3 overflow-hidden sm:gap-x-4">
                 {topbarExtras?.hidePageTitle ? null : (
                   <h1
                     className={cn(
-                      'truncate font-bold tracking-tight text-sm sm:text-base',
+                      'shrink-0 truncate font-bold uppercase tracking-tight text-sm sm:text-base',
                       lightBrand ? 'text-white max-lg:hidden' : 'text-text-primary',
                       mobileAmberHeader && 'max-lg:text-white/95',
                     )}
@@ -199,21 +198,16 @@ export function DashboardHeader() {
                     {pageTitle}
                   </h1>
                 )}
-                {topbarExtras?.description ? (
-                  <div
-                    className={cn(
-                      'truncate',
-                      topbarExtras.hidePageTitle
-                        ? 'block text-[13px] sm:text-sm'
-                        : 'mt-0.5 hidden text-[12px] lg:block',
-                      lightBrand ? 'text-white/65' : 'text-text-muted',
-                      mobileAmberHeader && 'max-lg:text-white/75',
-                    )}
-                  >
-                    {topbarExtras.description}
-                  </div>
-                ) : null}
-              </>
+                <div
+                  className={cn(
+                    'min-w-0 shrink truncate leading-none',
+                    lightBrand ? 'text-white/65' : 'text-text-muted',
+                    mobileAmberHeader && 'max-lg:text-white/75',
+                  )}
+                >
+                  <WarRoomTopbarCountdown />
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -221,7 +215,7 @@ export function DashboardHeader() {
           {topbarExtras?.actions ? (
             <div className="flex items-center gap-1.5 sm:gap-2">{topbarExtras.actions}</div>
           ) : null}
-          <UserMenu amberMobileChrome={mobileAmberHeader} />
+          {isWarRoom ? null : <UserMenu amberMobileChrome={mobileAmberHeader} />}
         </div>
       </div>
     </header>

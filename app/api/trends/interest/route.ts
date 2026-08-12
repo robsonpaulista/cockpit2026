@@ -131,8 +131,10 @@ export async function GET(request: Request) {
     const typedActors = baseCampanha ? [] : ((actors ?? []) as PoliticalActorWithTerms[])
     const rowsRaw = (interestRows ?? []) as GoogleTrendsInterestRow[]
     const rows = normalizeGoogleTrendsInterestRows(rowsRaw)
-    const series = buildGoogleTrendsSeries(typedActors, rows)
-    const compare = buildGoogleTrendsCompareRows(typedActors, rows, relatedRows)
+    // Buscas (atores): só candidatos. Viral (campanha): termos da campanha.
+    const seriesOpts = { includeOrphanTerms: baseCampanha }
+    const series = buildGoogleTrendsSeries(typedActors, rows, seriesOpts)
+    const compare = buildGoogleTrendsCompareRows(typedActors, rows, relatedRows, seriesOpts)
     const chartData = buildTrendsChartData(series)
     const { dateFrom, dateTo } = googleTrendsInterestDateRange(rows)
     const seriesStale = isGoogleTrendsSeriesStale(dateTo)

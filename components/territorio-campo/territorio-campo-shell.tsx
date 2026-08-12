@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { HardHat, LayoutGrid, ClipboardList, MapPin, Route, Users } from 'lucide-react'
+import { LayoutGrid, ClipboardList, MapPin, Route, Users } from 'lucide-react'
 import {
   DashboardHubTabBar,
   DashboardPageChrome,
@@ -27,7 +27,6 @@ import '@/app/dashboard/war-room/war-room-clean.css'
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
   { id: 'base', label: 'Base', icon: MapPin },
-  { id: 'mapa-obras', label: 'Mapa de Obras', icon: HardHat },
   { id: 'visitas', label: 'Visitas', icon: Route },
   { id: TERRITORIO_CAMPO_TAB_LIDERANCAS, label: 'Lideranças', icon: Users },
   { id: TERRITORIO_CAMPO_TAB_DEMANDAS, label: 'Demandas', icon: ClipboardList },

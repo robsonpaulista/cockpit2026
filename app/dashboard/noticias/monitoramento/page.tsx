@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { GoogleAlertsPanel } from '@/components/monitoramento/google-alerts-panel'
-import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
+import { NoticiasUnificadasPanel } from '@/components/monitoramento/noticias-unificadas-panel'
 import { GoogleVideosRadarPanel } from '@/components/monitoramento/google-videos-radar-panel'
 import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
@@ -36,8 +35,11 @@ const LideresEngajamentoPanel = dynamic(
   }
 )
 
+/** Legado: aba Alertas unificada em Notícias. */
+const TAB_ALERTAS_LEGACY = 'google-alerts'
+
 function parseTab(value: string | null): MonitoramentoTab {
-  if (value === 'google-alerts') return 'google-alerts'
+  if (value === TAB_ALERTAS_LEGACY) return 'google-news'
   if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
   if (value === 'viral') return 'viral'
@@ -58,6 +60,13 @@ export default function MonitoramentoPage() {
   useEffect(() => {
     setActiveTab(urlTab)
   }, [urlTab])
+
+  useEffect(() => {
+    if (searchParams.get('tab') !== TAB_ALERTAS_LEGACY) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', 'google-news')
+    router.replace(`/dashboard/noticias/monitoramento?${params.toString()}`)
+  }, [router, searchParams])
 
   const [panoramaMeta, setPanoramaMeta] = useState<MonitoramentoPanoramaMeta | null>(null)
 
@@ -89,8 +98,6 @@ export default function MonitoramentoPage() {
     switch (activeTab) {
       case 'geral':
         return <PanoramaPanel state={panorama} />
-      case 'google-alerts':
-        return <GoogleAlertsPanel />
       case 'youtube':
         return <YoutubeRadarPanel />
       case 'trends':
@@ -98,7 +105,7 @@ export default function MonitoramentoPage() {
       case 'viral':
         return <ViralTrendsPanel />
       case 'google-news':
-        return <GoogleNewsRadarPanel />
+        return <NoticiasUnificadasPanel />
       case 'google-videos':
         return <GoogleVideosRadarPanel />
       case 'meta-ads':

@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, ArrowDown, ArrowUp, BarChart3, Calendar, ChevronsUpDown, Download, FileSpreadsheet, FileText, Loader2, Minus, Search, Send, Sheet, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
-import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnimatedCounter } from '@/hooks/use-animated-counter'
 import type { IptMunicipio } from '@/lib/ipt'
@@ -45,7 +45,6 @@ import {
   type ComunicarLideresVisita,
 } from '@/components/war-room/war-room-comunicar-lideres-modal'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
-import type { ObraRecapMatchSource } from '@/lib/obras-recap-match'
 import {
   demandasToObrasMapa,
   type CampoDemandaObraRow,
@@ -488,8 +487,8 @@ export function WarRoomExpectativaRankingModal({
     municipio: string
   }>(null)
   const [obrasAll, setObrasAll] = useState<ObraMapaRow[] | null>(null)
-  const [recapObras, setRecapObras] = useState<ObraRecapMatchSource[] | null>(null)
   const [loadingObras, setLoadingObras] = useState(false)
+  const [refreshingObras, setRefreshingObras] = useState(false)
   const [pesquisaByMun, setPesquisaByMun] = useState<
     Map<string, WarRoomPesquisaParMunicipio>
   >(() => new Map())
@@ -632,71 +631,48 @@ export function WarRoomExpectativaRankingModal({
     }
   }, [])
 
-  useEffect(() => {
-    if (detalhe?.tipo !== 'obras') return
-    if (obrasAll != null && recapObras != null) return
+  const carregarObras = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const force = opts?.force === true
+      if (!force && obrasAll != null) return
 
-    let cancelled = false
-    const load = async () => {
-      setLoadingObras(true)
+      if (force) setRefreshingObras(true)
+      else setLoadingObras(true)
+
       try {
-        const needsObras = obrasAll == null
-        const needsRecap = recapObras == null
-
-        // Preferir obras já carregadas pelo IPT (Sheets / Cadastro de Demandas).
-        if (needsObras && Array.isArray(obrasProp)) {
-          if (!cancelled) setObrasAll(obrasProp)
+        if (!force && Array.isArray(obrasProp)) {
+          setObrasAll(obrasProp)
+          return
         }
 
-        const [demandasRes, recapRes] = await Promise.all([
-          needsObras && !Array.isArray(obrasProp)
-            ? fetch('/api/campo/demands', { cache: 'no-store' })
-            : Promise.resolve(null),
-          needsRecap
-            ? fetch('/api/obras/recap', { cache: 'no-store' })
-            : Promise.resolve(null),
-        ])
-
-        if (cancelled) return
-
-        if (demandasRes) {
-          const json = await demandasRes.json().catch(() => null)
-          if (!demandasRes.ok) {
-            setObrasAll([])
-          } else {
-            setObrasAll(
-              demandasToObrasMapa(
-                Array.isArray(json) ? (json as CampoDemandaObraRow[]) : [],
-              ),
-            )
-          }
-        }
-
-        if (recapRes) {
-          const json = (await recapRes.json().catch(() => null)) as {
-            obras?: ObraRecapMatchSource[]
-            error?: string
-          } | null
-          if (!recapRes.ok) {
-            setRecapObras([])
-          } else {
-            setRecapObras(Array.isArray(json?.obras) ? json.obras : [])
-          }
+        const demandasRes = await fetch('/api/campo/demands', { cache: 'no-store' })
+        const json = await demandasRes.json().catch(() => null)
+        if (!demandasRes.ok) {
+          setObrasAll([])
+        } else {
+          setObrasAll(
+            demandasToObrasMapa(
+              Array.isArray(json) ? (json as CampoDemandaObraRow[]) : [],
+            ),
+          )
         }
       } catch {
-        if (!cancelled) {
-          if (obrasAll == null) setObrasAll(Array.isArray(obrasProp) ? obrasProp : [])
-          if (recapObras == null) setRecapObras([])
+        if (!force) {
+          setObrasAll(Array.isArray(obrasProp) ? obrasProp : [])
         }
       } finally {
-        if (!cancelled) setLoadingObras(false)
+        setLoadingObras(false)
+        setRefreshingObras(false)
       }
-    }
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [detalhe, obrasAll, obrasProp, recapObras])
+    },
+    [obrasAll, obrasProp],
+  )
+
+  useEffect(() => {
+    if (detalhe?.tipo !== 'obras') return
+    if (obrasAll != null) return
+    void carregarObras()
+  }, [detalhe, obrasAll, carregarObras])
 
   const rows = useMemo<RankingRow[]>(() => {
     return municipios.map((m) => {
@@ -1770,8 +1746,9 @@ export function WarRoomExpectativaRankingModal({
         <WarRoomMunicipioObrasModal
           municipio={detalhe.municipio}
           obras={obrasAll}
-          recapObras={recapObras}
           loading={loadingObras && obrasAll == null}
+          refreshing={refreshingObras}
+          onRefresh={() => void carregarObras({ force: true })}
           onClose={() => setDetalhe(null)}
         />
       ) : null}

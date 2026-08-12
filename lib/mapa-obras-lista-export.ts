@@ -79,7 +79,11 @@ function labelTipo(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
   if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
     return 'Saúde'
   }
-  if (/\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b/.test(nomeNorm)) {
+  if (
+    /\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b|\bvicinal(is|ais)?\b/.test(
+      nomeNorm,
+    )
+  ) {
     return 'Infraestrutura'
   }
   if (isObraMaquinarioAgricola(obra)) {
@@ -99,7 +103,17 @@ function labelTipo(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
     slug === 'construcao' ||
     slug === 'reforma' ||
     slug === 'revitalizacao' ||
-    slug === 'infraestrutura'
+    slug === 'vicinal' ||
+    slug === 'vicinais' ||
+    slug === 'estrada-vicinal' ||
+    slug === 'estradas-vicinais' ||
+    slug === 'infraestrutura' ||
+    /\bvicinal(is|ais)?\b/.test(
+      t
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase(),
+    )
   ) {
     return 'Infraestrutura'
   }
@@ -351,7 +365,7 @@ export function exportarMapaObrasListaPdf(opts: MapaObraListaExportOptions): voi
 
   pdf.setFontSize(12)
   pdf.setFont('helvetica', 'bold')
-  pdf.text('Base Eleitoral · Mapa de Obras · Lista', 14, 14)
+  pdf.text('War Room · Obras · Lista', 14, 14)
   pdf.setFontSize(8)
   pdf.setFont('helvetica', 'normal')
   pdf.text(

@@ -1,7 +1,7 @@
 'use client'
 
 import { Loader2, Star } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, Fragment, type ReactNode } from 'react'
 import '@/app/dashboard/war-room/radar-competitivo-ios.css'
 import {
   buildRadarCompetitivoModel,
@@ -73,7 +73,7 @@ function MetricBar({
   win: boolean
 }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const barColor = win ? '#F04B23' : color
+  const barColor = win ? '#F2D06B' : color
   return (
     <div className="rc-ios-map__cell">
       <div className="rc-ios-bar" aria-hidden>
@@ -278,9 +278,6 @@ export function RadarCompetitivoBoard({
                         fallbackClassName="rc-ios-profile__avatar--fb"
                       />
                       <p className="rc-ios-profile__name">{c.name}</p>
-                      <p className="rc-ios-profile__user">
-                        {c.username ? `@${c.username}` : '—'}
-                      </p>
                     </button>
                   )
                 })}
@@ -532,9 +529,6 @@ export function RadarCompetitivoBoard({
                               <span>{formatCompact(p.viewsProxy)}</span>
                             </div>
                           </div>
-                          <span className="rc-ios-top__eng" title={p.name}>
-                            {formatCompact(p.engagement)} eng. · {p.name.split(' ')[0]}
-                          </span>
                         </a>
                       )
                     })}
@@ -549,29 +543,21 @@ export function RadarCompetitivoBoard({
                     <h3 className="rc-ios-panel__title">Performance por formato</h3>
                     <p className="rc-ios-panel__hint">engaj. médio/post · % do engajamento total</p>
                   </div>
-                  <div className="rc-ios-fperf__cols-head" aria-hidden>
-                    <span />
-                    <span className="rc-ios-fperf__col-label rc-ios-fperf__col-label--image">
-                      Imagem
-                    </span>
-                    <span className="rc-ios-fperf__col-label rc-ios-fperf__col-label--reels">
-                      Reels
-                    </span>
-                    <span className="rc-ios-fperf__col-label rc-ios-fperf__col-label--carousel">
-                      Carrossel
-                    </span>
-                    <span className="rc-ios-fperf__col-label rc-ios-fperf__col-label--share">
-                      Mix eng.
-                    </span>
-                  </div>
-                  <ul className="rc-ios-fperf__rows">
+                  <div className="rc-ios-fperf__table">
+                    <div className="rc-ios-fperf__th rc-ios-fperf__th--name">#</div>
+                    <div className="rc-ios-fperf__th rc-ios-fperf__th--image">Imagem</div>
+                    <div className="rc-ios-fperf__th rc-ios-fperf__th--reels">Reels</div>
+                    <div className="rc-ios-fperf__th rc-ios-fperf__th--carousel">Carrossel</div>
+                    <div className="rc-ios-fperf__th rc-ios-fperf__th--share">Mix eng.</div>
                     {model.candidates.map((c) => {
                       const share = c.formatEngShare
                       return (
-                        <li key={c.slug} className="rc-ios-fperf__row">
-                          <span className="rc-ios-fperf__rank">
-                            {String(c.rank).padStart(2, '0')}
-                          </span>
+                        <Fragment key={c.slug}>
+                          <div className="rc-ios-fperf__name">
+                            <span className="rc-ios-fperf__rank">
+                              {String(c.rank).padStart(2, '0')}
+                            </span>
+                          </div>
                           <FormatPerfCell
                             format="image"
                             avgEngagement={c.formatPerf.image.avgEngagement}
@@ -604,10 +590,10 @@ export function RadarCompetitivoBoard({
                               {share.carousel}%
                             </span>
                           </div>
-                        </li>
+                        </Fragment>
                       )
                     })}
-                  </ul>
+                  </div>
                 </section>
               </div>
 
