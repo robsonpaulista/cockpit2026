@@ -1,4 +1,5 @@
 import {
+  isObraMamografia,
   isObraMaquinarioAgricola,
   valorExibidoMapaObra,
   type ObraMapaRow,
@@ -9,6 +10,7 @@ const TIPO_SEM = '__sem_tipo__'
 const TIPO_INFRA = 'infraestrutura'
 const TIPO_MAQUINARIO = 'maquinario-agricola'
 const TIPO_SAUDE = 'saude'
+const TIPO_OUTROS = 'outros'
 
 const TIPO_LABEL: Record<string, string> = {
   asfalto: 'Asfalto',
@@ -18,7 +20,7 @@ const TIPO_LABEL: Record<string, string> = {
   'passagens-cisternas': 'Passagens e cisternas',
   [TIPO_INFRA]: 'Infraestrutura',
   [TIPO_SAUDE]: 'Saúde',
-  outros: 'Outros',
+  [TIPO_OUTROS]: 'Outros',
 }
 
 function normalizeTipoSlug(raw: string): string {
@@ -56,6 +58,9 @@ export function tipoKeyOf(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
 
   if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
     return TIPO_SAUDE
+  }
+  if (isObraMamografia(obra)) {
+    return TIPO_OUTROS
   }
   if (textoTemConstrucaoOuReforma(nome) || textoTemVicinal(nome)) {
     return TIPO_INFRA

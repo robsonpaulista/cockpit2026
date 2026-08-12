@@ -17,7 +17,7 @@ export default function SplashRedirectPage() {
       router.replace('/dashboard')
       return
     }
-    router.replace('/login')
+    router.replace('/')
   }, [router])
 
   return null

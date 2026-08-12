@@ -3,6 +3,7 @@ import municipiosPiaui from '@/lib/municipios-piaui.json'
 import {
   isObraAsfalto,
   isObraLinhaTotalPlanilha,
+  isObraMamografia,
   isObraMaquinarioAgricola,
   isObraParalelepipedo,
   isObraPassagensCisternas,
@@ -126,6 +127,7 @@ export function parsePlanilhaText(value: unknown): string | null {
 }
 
 export function inferTipoObra(obra: Pick<ObraMapaRow, 'obra' | 'tipo'>): ObraMapaTema {
+  if (isObraMamografia(obra)) return 'outros'
   if (isObraParalelepipedo(obra)) return 'paralelepipedo'
   if (isObraAsfalto(obra)) return 'asfalto'
   if (isObraQuadrasEsportivas(obra)) return 'quadras-esportivas'

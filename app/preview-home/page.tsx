@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-/** Landing pública com login (a home autenticada é `/dashboard`). */
+/** Alias da home pública — preferir `/`. */
 export default function PreviewHomePage() {
   return (
     <div className={outfit.variable} style={{ fontFamily: 'var(--font-preview-home), Outfit, sans-serif' }}>

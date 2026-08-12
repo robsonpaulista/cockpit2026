@@ -1,12 +1,25 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Outfit } from 'next/font/google'
 import { createClient } from '@/lib/supabase/client'
-import { SplashScreen } from '@/components/splash-screen'
+import { PreviewHomeScreen } from '@/components/preview-home/preview-home-screen'
+import '@/app/dashboard/war-room/war-room-fonts.css'
 
-type HomePhase = 'checking' | 'splash'
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-preview-home',
+})
 
+type HomePhase = 'checking' | 'guest'
+
+/**
+ * Entrada pública: home cinematográfica (Entrar abre o login flutuante).
+ * Se já autenticado → `/dashboard`.
+ */
 export default function HomePage() {
   const router = useRouter()
   const supabase = createClient()
@@ -15,9 +28,8 @@ export default function HomePage() {
   useEffect(() => {
     let active = true
 
-    // Timeout de segurança: se a verificação travar, mostra a splash mesmo assim
     const timeout = setTimeout(() => {
-      if (active) setPhase('splash')
+      if (active) setPhase('guest')
     }, 5000)
 
     supabase.auth
@@ -25,25 +37,22 @@ export default function HomePage() {
       .then(({ data: { session }, error }) => {
         if (!active) return
         clearTimeout(timeout)
-        const user = session?.user || null
         if (error) {
           console.error('Erro ao verificar autenticação:', error)
-          setPhase('splash')
+          setPhase('guest')
           return
         }
-        if (user) {
-          // Já autenticado → direto para o dashboard (sem splash)
+        if (session?.user) {
           router.replace('/dashboard')
-        } else {
-          // Não autenticado → splash como tela pré-login
-          setPhase('splash')
+          return
         }
+        setPhase('guest')
       })
       .catch((error) => {
         if (!active) return
         clearTimeout(timeout)
         console.error('Erro ao verificar autenticação:', error)
-        setPhase('splash')
+        setPhase('guest')
       })
 
     return () => {
@@ -52,22 +61,23 @@ export default function HomePage() {
     }
   }, [router, supabase])
 
-  const handleEnter = useCallback(() => {
-    router.replace('/login')
-  }, [router])
-
   if (phase === 'checking') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0d]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-gold mx-auto mb-4"></div>
-          <p className="text-sm text-secondary">Carregando...</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-[#f2d06b]" />
+          <p className="text-sm text-white/60">Carregando...</p>
         </div>
       </div>
     )
   }
 
-  // Splash pré-login: o botão "Entrar no Cockpit" chama a tela de login.
-  // Sem interação por 2 min na cena final, a animação reinicia (fica mais viva).
-  return <SplashScreen onComplete={handleEnter} autoEnter={false} idleLoopMs={120000} />
+  return (
+    <div
+      className={outfit.variable}
+      style={{ fontFamily: 'var(--font-preview-home), Outfit, sans-serif' }}
+    >
+      <PreviewHomeScreen />
+    </div>
+  )
 }

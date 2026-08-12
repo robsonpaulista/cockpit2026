@@ -135,10 +135,10 @@ export function UserMenu({
       localStorage.removeItem('candidatoPadraoPesquisa')
       await signOut()
       await new Promise((resolve) => setTimeout(resolve, 200))
-      window.location.href = '/login'
+      window.location.href = '/'
     } catch (error) {
       console.error('Erro ao fazer logout:', error)
-      window.location.href = '/login'
+      window.location.href = '/'
     }
   }
 
@@ -188,7 +188,7 @@ export function UserMenu({
         <button
           onClick={async () => {
             localStorage.clear()
-            window.location.href = '/login'
+            window.location.href = '/'
           }}
           className={cn(
             'flex items-center gap-2 rounded-lg px-3 py-2 transition-colors text-secondary',

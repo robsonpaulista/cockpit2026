@@ -37,7 +37,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
       const timeout = setTimeout(() => {
         // Verificar novamente antes de redirecionar
         if (!user) {
-          router.replace('/login')
+          router.replace('/')
         }
       }, 2000)
       return () => clearTimeout(timeout)

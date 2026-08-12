@@ -268,8 +268,19 @@ export function isObraPassagensCisternas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'
 const MAQUINARIO_AGRICOLA_RE =
   /trator|escavadeira|retroescavadeira|arado|grade aradora|colheitadeira|plantadeira|pulverizador|subsolador|implemento agricola|maquinario agricola|maquina agricola|maquinario|entrega de trator|aquisicao de trator|trator agricola|carreta agricola|carreta\b/
 
+/** Carreta de mamografia (saúde) — não confundir com carreta agrícola. */
+const MAMOGRAFIA_RE = /\bmamografia\b/
+
+export function isObraMamografia(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+  return (
+    MAMOGRAFIA_RE.test(normalizeObraText(obra.tipo ?? '')) ||
+    MAMOGRAFIA_RE.test(normalizeObraText(obra.obra ?? ''))
+  )
+}
+
 export function isObraMaquinarioAgricola(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
   if (isObraPavimentacao(obra) || isObraQuadrasEsportivas(obra)) return false
+  if (isObraMamografia(obra)) return false
 
   const tipo = normalizeObraText(obra.tipo ?? '')
   if (MAQUINARIO_AGRICOLA_RE.test(tipo)) return true

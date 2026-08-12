@@ -5,6 +5,7 @@ import {
   classificarObraFase,
   OBRA_FASE_LABEL,
   valorExibidoMapaObra,
+  isObraMamografia,
   isObraMaquinarioAgricola,
   type ObraMapaRow,
 } from '@/lib/obras-mapa'
@@ -78,6 +79,9 @@ function labelTipo(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): string {
     .toLowerCase()
   if (/\bubs\b|\bunidade basica de saude\b/.test(nomeNorm)) {
     return 'Saúde'
+  }
+  if (isObraMamografia(obra)) {
+    return 'Outros'
   }
   if (
     /\bconstruc(ao|oes)\b|\breforma(s)?\b|\brevitalizac(ao|oes)\b|\bvicinal(is|ais)?\b/.test(

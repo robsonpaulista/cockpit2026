@@ -14,17 +14,20 @@ export type PreviewHomeScreenProps = {
   mode?: 'preview' | 'rest' | 'dashboard'
   /** Só em `rest` — fecha o overlay / dispensa idle. */
   onEnter?: () => void
+  /** Abre o login flutuante ao montar (ex.: rota legada `/login`). */
+  initialLoginOpen?: boolean
   /** Classe extra no root (ex.: overlay fixo). */
   className?: string
 }
 
 /**
  * Home cinematográfica — vídeo full-bleed + marca Cockpit 2026.
- * Usada em /dashboard, /preview-home e na tela de descanso.
+ * Usada na entrada `/`, `/login`, `/preview-home`, `/dashboard` e descanso.
  */
 export function PreviewHomeScreen({
   mode = 'preview',
   onEnter,
+  initialLoginOpen = false,
   className,
 }: PreviewHomeScreenProps) {
   const router = useRouter()
@@ -34,7 +37,7 @@ export function PreviewHomeScreen({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [ready, setReady] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(showLogin && initialLoginOpen)
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
