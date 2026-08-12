@@ -138,10 +138,10 @@ const INDICADOR_META: Record<
   IndicadorId,
   { label: string; cor: string; icon: typeof MapPin }
 > = {
-  pesquisa: { label: 'Pesquisa', cor: '#005b8f', icon: BarChart3 },
-  campo: { label: 'Campo', cor: '#005b8f', icon: MapPin },
-  digital: { label: 'Digital', cor: '#8c8c8c', icon: Smartphone },
-  obras: { label: 'Obras', cor: '#666666', icon: Building2 },
+  pesquisa: { label: 'Pesquisa', cor: '#f2d06b', icon: BarChart3 },
+  campo: { label: 'Campo', cor: '#f2d06b', icon: MapPin },
+  digital: { label: 'Digital', cor: '#f2d06b', icon: Smartphone },
+  obras: { label: 'Obras', cor: '#f2d06b', icon: Building2 },
 }
 
 function sinalDoIndicador(m: IptMunicipio, id: IndicadorId): IptSinal {

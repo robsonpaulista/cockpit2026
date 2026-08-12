@@ -1020,14 +1020,14 @@ body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon.text-\[\#f04a2
   color: #969692 !important;
 }
 
-/* Ativo — branco + borda sutil, sem cor de destaque */
+/* Ativo — branco + detalhe amarelo */
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\] {
   background-color: #ffffff !important;
   color: #20201f !important;
   border: 1px solid #e8e8e6 !important;
-  border-left-color: #e8e8e6 !important;
+  border-left: 3px solid #f2d06b !important;
   box-shadow: none !important;
   font-weight: 500 !important;
 }
@@ -1036,8 +1036,8 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockp
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a[class*='bg-[linear-gradient'] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button[class*='bg-[linear-gradient'] .cockpit-icon {
-  color: #20201f !important;
-  opacity: 0.72;
+  color: #f2d06b !important;
+  opacity: 1;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a:focus-visible,
@@ -1444,16 +1444,29 @@ body[data-war-room-clean] .wr-page-canvas :is(.font-bold, .font-semibold, .font-
   font-weight: 500 !important;
 }
 
-/* Sem laranja em UI comum (exceto wordmark já tratado) */
+/* Sem coral legado — acentos em amarelo #f2d06b (Base Eleitoral / canvas scroll) */
 body[data-war-room-clean] .wr-page-canvas :is(
   .text-\[\#f04b23\],
   .text-\[\#f04a2c\],
   .border-\[\#f04b23\],
   .bg-\[\#f04b23\]
+),
+body[data-war-room-clean] .wr-page-canvas--scroll :is(
+  .text-\[\#f04b23\],
+  .text-\[\#f04a2c\],
+  .border-\[\#f04b23\],
+  .bg-\[\#f04b23\]
 ) {
-  color: #686865 !important;
-  border-color: #e8e8e6 !important;
-  background: #f4f4f2 !important;
+  color: #f2d06b !important;
+  border-color: #f2d06b !important;
+  background: #fbf3d6 !important;
+}
+
+body[data-war-room-clean] .wr-page-canvas--scroll :is(
+  .text-\[\#f2d06b\],
+  [class*='text-[#f2d06b]']
+) {
+  color: #f2d06b !important;
 }
 
 body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__num,
@@ -12535,8 +12548,13 @@ body[data-war-room-clean] nav[aria-label='Seções'] > button[aria-current='page
   bottom: 0;
   height: 2px;
   border-radius: 1px;
-  background: #20201f;
-  opacity: 0.35;
+  background: #f2d06b;
+  opacity: 1;
+}
+
+body[data-war-room-clean] nav[aria-label='Seções'] > button[aria-current='page'] svg {
+  color: #f2d06b !important;
+  opacity: 1;
 }
 
 body[data-war-room-clean] nav[aria-label='Seções'] > button svg {

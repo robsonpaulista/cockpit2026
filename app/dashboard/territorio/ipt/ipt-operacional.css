@@ -1,31 +1,31 @@
 /* Diagnóstico operacional — visual próximo ao mockup de missões */
 
 body[data-ipt-operacional] {
-  --ipt-orange-deep: #004870;
-  --ipt-orange: #005b8f;
-  --ipt-orange-light: #5a9fc4;
+  --ipt-orange-deep: #2b2d31;
+  --ipt-orange: #f2d06b;
+  --ipt-orange-light: #e8c85a;
   --ipt-gray: #666666;
   --ipt-gray-mid: #8c8c8c;
   --ipt-gray-soft: #ededed;
   --ipt-gray-border: #d9d9d9;
-  --page-bg: #f5f6f8;
+  --page-bg: #f7f7f6;
   --surface: #ffffff;
-  --surface-muted: #e6eaf0;
+  --surface-muted: #f3f3f1;
   --border: #e5e7eb;
   --border-strong: #cdd5df;
   --text: #022b3a;
   --text-muted: #6b7280;
   --text-soft: #374151;
-  --cockpit-gold: #005b8f;
-  --mission-field: #f04b23;
-  --mission-field-bg: #fde8e2;
-  --mission-research: #005b8f;
-  --mission-research-bg: #ddeaf3;
-  --mission-digital: #6b7280;
-  --mission-digital-bg: #f5f6f8;
-  --mission-works: #022b3a;
-  --mission-works-bg: #e6eaf0;
-  --bg-app: 245 246 248;
+  --cockpit-gold: #f2d06b;
+  --mission-field: #f2d06b;
+  --mission-field-bg: #fbf3d6;
+  --mission-research: #f2d06b;
+  --mission-research-bg: #fbf3d6;
+  --mission-digital: #f2d06b;
+  --mission-digital-bg: #fbf3d6;
+  --mission-works: #f2d06b;
+  --mission-works-bg: #fbf3d6;
+  --bg-app: 247 247 246;
   --acao-bg: #022b3a;
   --alerta-texto: #f04b23;
   font-family: var(--wr-font, var(--font-sans), var(--font-sans-fallback), 'Inter', system-ui, sans-serif);
@@ -140,7 +140,7 @@ body[data-ipt-operacional] .ipt-page-body.ipt-operacional {
   color: #57534e;
 }
 
-/* Garante fundo do tema clean mesmo se o atributo do body atrasar no hydrate */
+/* Garante fundo claro do War Room (não o gelo escuro #e5e6e8 em tela cheia) */
 .ipt-page-shell--operacional {
   background: #f7f7f6 !important;
 }
@@ -395,9 +395,9 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__chips li {
-  border-color: var(--missao-cor, #005b8f);
+  border-color: var(--missao-cor, #f2d06b);
   background: var(--missao-suave, #fff1ed);
-  color: var(--missao-texto, #004870);
+  color: var(--missao-texto, #2b2d31);
 }
 
 .ipt-missoes {
@@ -669,7 +669,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--missao-texto, var(--missao-cor));
-  background: var(--missao-tint, color-mix(in srgb, #005b8f 28%, transparent), 0.14));
+  background: var(--missao-tint, color-mix(in srgb, #f2d06b 28%, transparent), 0.14));
   border-radius: 4px;
   padding: 0.12rem 0.35rem;
   line-height: 1.2;
@@ -723,7 +723,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 400;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--missao-cor);
+  color: #2b2d31;
   opacity: 1;
   line-height: 1.15;
 }
@@ -848,7 +848,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-mudancas-modal__sentido--entrou {
-  background: color-mix(in srgb, #005b8f 28%, transparent), 0.18);
+  background: color-mix(in srgb, #f2d06b 28%, transparent), 0.18);
   color: #9a5b00;
 }
 
@@ -986,14 +986,14 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-territorio-visao__btn--active {
-  background: #005b8f;
-  color: #fff;
-  box-shadow: 0 1px 2px color-mix(in srgb, #005b8f 28%, transparent);
+  background: #f2d06b;
+  color: #2b2d31;
+  box-shadow: 0 1px 2px color-mix(in srgb, #f2d06b 28%, transparent);
 }
 
 .ipt-territorio-visao__btn--active:hover {
-  background: #004870;
-  color: #fff;
+  background: #e8c85a;
+  color: #2b2d31;
 }
 
 .ipt-territorio-visao--in-mapa {
@@ -1245,7 +1245,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-painel-cidade__empty-ico {
   width: 22px;
   height: 22px;
-  color: #004870;
+  color: #2b2d31;
   margin: 0 auto 10px;
 }
 
@@ -1491,7 +1491,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-mapa-legenda__item--muni:not(.ipt-mapa-legenda__item--active) {
-  box-shadow: inset 0 0 0 1px var(--missao-cor, #005b8f);
+  box-shadow: inset 0 0 0 1px var(--missao-cor, #f2d06b);
 }
 
 .ipt-mapa-legenda__dot {
@@ -1687,20 +1687,20 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-lista__ver-todos:hover {
-  border-color: #005b8f;
-  color: #004870;
+  border-color: #f2d06b;
+  color: #2b2d31;
 }
 
 .ipt-bloco-lista__ver-todos--active {
-  background: #005b8f;
-  border-color: #005b8f;
-  color: #fff;
+  background: #f2d06b;
+  border-color: #f2d06b;
+  color: #2b2d31;
 }
 
 .ipt-bloco-lista__ver-todos--active:hover {
-  background: #004870;
-  border-color: #004870;
-  color: #fff;
+  background: #e8c85a;
+  border-color: #e8c85a;
+  color: #2b2d31;
 }
 
 .ipt-bloco-lista__badge {
@@ -1751,7 +1751,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-lista__status--missao {
-  color: #004870;
+  color: #2b2d31;
   background: #fff1ed;
 }
 
@@ -1837,7 +1837,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   margin: 0;
   font-size: 11px;
   font-weight: 500;
-  color: #004870;
+  color: #2b2d31;
 }
 
 .ipt-bloco-detalhe__complemento {
@@ -1902,9 +1902,9 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-detalhe__ind--destaque {
-  border-color: var(--missao-cor, #004870);
-  background: color-mix(in srgb, var(--missao-cor, #004870) 8%, #fff);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--missao-cor, #004870) 25%, transparent);
+  border-color: var(--missao-cor, #2b2d31);
+  background: color-mix(in srgb, var(--missao-cor, #2b2d31) 8%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--missao-cor, #2b2d31) 25%, transparent);
 }
 
 .ipt-bloco-detalhe__ind--complementar {
@@ -1919,8 +1919,8 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--missao-texto, #004870);
-  background: color-mix(in srgb, var(--missao-cor, #004870) 16%, #fff);
+  color: var(--missao-texto, #2b2d31);
+  background: color-mix(in srgb, var(--missao-cor, #2b2d31) 16%, #fff);
 }
 
 @media (max-width: 1100px) {
@@ -1945,9 +1945,9 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  color: #fff;
+  color: #2b2d31;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 600;
   flex-shrink: 0;
   justify-self: center;
 }
@@ -2006,12 +2006,12 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-bloco-lista__prio--alta {
   background: #fff1ed;
-  color: #004870;
+  color: #2b2d31;
 }
 
 .ipt-bloco-lista__prio--media {
   background: #fff8e8;
-  color: #005b8f;
+  color: #f2d06b;
 }
 
 .ipt-bloco-lista__prio--baixa {
@@ -2023,7 +2023,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   margin-top: 8px;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: #f2d06b;
   font-size: 13px;
   font-weight: 400;
   padding: 8px 4px;
@@ -2069,7 +2069,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-bloco-detalhe__section-ico {
   width: 14px;
   height: 14px;
-  color: #004870;
+  color: #2b2d31;
   flex-shrink: 0;
 }
 
@@ -2175,12 +2175,12 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-bloco-detalhe__badge--alta {
   background: #fff1ed;
-  color: #004870;
+  color: #2b2d31;
 }
 
 .ipt-bloco-detalhe__badge--media {
   background: #fff8e8;
-  color: #005b8f;
+  color: #f2d06b;
 }
 
 .ipt-bloco-detalhe__badge--neutro {
@@ -2494,7 +2494,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-bloco-noticias__ico {
   width: 14px;
   height: 14px;
-  color: #004870;
+  color: #2b2d31;
   flex-shrink: 0;
 }
 
@@ -2521,8 +2521,8 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-noticias__refresh:hover:not(:disabled) {
-  border-color: #004870;
-  color: #004870;
+  border-color: #2b2d31;
+  color: #2b2d31;
 }
 
 .ipt-bloco-noticias__refresh:disabled {
@@ -2666,7 +2666,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-noticias__title a:hover {
-  color: #004870;
+  color: #2b2d31;
 }
 
 .ipt-bloco-noticias__ext {
@@ -3053,7 +3053,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-style: normal;
   font-size: 12px;
   font-weight: 400;
-  color: #2563eb;
+  color: #f2d06b;
 }
 
 
@@ -3106,7 +3106,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 400;
-  color: #2563eb;
+  color: #f2d06b;
 }
 
 .ipt-pesquisa-modal__panel {
@@ -3191,7 +3191,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   height: 28px;
   border-radius: 999px;
   background: #fff1ed;
-  color: #004870;
+  color: #2b2d31;
   font-size: 12px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -3242,7 +3242,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: #005b8f;
+  background: #f2d06b;
 }
 
 .ipt-pesquisa-modal__nota {
@@ -3424,7 +3424,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-bloco-detalhe__pesquisa-btn {
   margin-top: 12px;
   width: 100%;
-  border: 1px solid #005b8f;
+  border: 1px solid #f2d06b;
   border-radius: 10px;
   background: #fff1ed;
   color: #000000;
@@ -3446,7 +3446,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-bloco-detalhe__pesquisa-btn em {
   font-style: normal;
-  color: #004870;
+  color: #2b2d31;
   flex-shrink: 0;
 }
 
@@ -3456,7 +3456,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-detalhe__ind--clickable:hover {
-  border-color: #005b8f;
+  border-color: #f2d06b;
   background: #fffaf3;
 }
 

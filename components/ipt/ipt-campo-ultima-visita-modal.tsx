@@ -139,7 +139,7 @@ export function IptCampoUltimaVisitaModal({ municipio, onClose }: Props) {
 
         {loading ? (
           <div className="ipt-campo-modal__empty">
-            <Loader2 className="h-5 w-5 animate-spin text-[#005b8f]" aria-hidden />
+            <Loader2 className="h-5 w-5 animate-spin text-[#f2d06b]" aria-hidden />
             Carregando última visita…
           </div>
         ) : error ? (

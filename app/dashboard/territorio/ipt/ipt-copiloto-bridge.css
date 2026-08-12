@@ -4,15 +4,15 @@
  */
 
 body[data-ipt-operacional] {
-  --ipt-orange-deep: #004870;
-  --ipt-orange: var(--palette-inst);
-  --ipt-orange-light: color-mix(in srgb, var(--palette-inst) 55%, #fff);
+  --ipt-orange-deep: #2b2d31;
+  --ipt-orange: #f2d06b;
+  --ipt-orange-light: #e8c85a;
   --ipt-gray: color-mix(in srgb, var(--palette-petrol) 70%, var(--palette-aux));
   --ipt-gray-mid: var(--palette-aux);
   --ipt-gray-soft: var(--palette-chart-bg);
   --ipt-gray-border: var(--palette-neutral-bar);
 
-  --page-bg: var(--palette-bg);
+  --page-bg: #f7f7f6;
   --surface: var(--palette-card);
   --surface-muted: var(--palette-chart-bg);
   --border: var(--palette-divider);
@@ -21,15 +21,15 @@ body[data-ipt-operacional] {
   --text-muted: var(--palette-aux);
   --text-soft: color-mix(in srgb, var(--palette-petrol) 78%, var(--palette-aux));
 
-  --cockpit-gold: var(--palette-inst);
-  --mission-field: var(--palette-accent);
-  --mission-field-bg: color-mix(in srgb, var(--palette-accent) 10%, var(--palette-card));
-  --mission-research: var(--palette-inst);
-  --mission-research-bg: var(--palette-inst-soft);
-  --mission-digital: var(--palette-aux);
-  --mission-digital-bg: var(--palette-chart-bg);
-  --mission-works: var(--palette-petrol);
-  --mission-works-bg: color-mix(in srgb, var(--palette-petrol) 8%, var(--palette-card));
+  --cockpit-gold: #f2d06b;
+  --mission-field: #f2d06b;
+  --mission-field-bg: #fbf3d6;
+  --mission-research: #f2d06b;
+  --mission-research-bg: #fbf3d6;
+  --mission-digital: #f2d06b;
+  --mission-digital-bg: #fbf3d6;
+  --mission-works: #f2d06b;
+  --mission-works-bg: #fbf3d6;
 
   --bg-app: var(--palette-bg-rgb);
   --bg-surface: var(--palette-card-rgb);
@@ -39,7 +39,7 @@ body[data-ipt-operacional] {
 
 body[data-ipt-operacional] .ipt-page-shell--operacional,
 body[data-ipt-operacional] .ipt-page-body {
-  background: var(--palette-bg) !important;
+  background: #f7f7f6 !important;
   color: var(--palette-petrol);
 }
 
@@ -80,44 +80,45 @@ body[data-ipt-operacional] .ipt-exec-banner {
 }
 
 body[data-ipt-operacional] .ipt-btn-atualizar {
-  background: var(--palette-inst) !important;
-  border-color: var(--palette-inst) !important;
-  color: #fff !important;
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
 }
 
 body[data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
-  background: #004870 !important;
-  border-color: #004870 !important;
+  background: #e8c85a !important;
+  border-color: #e8c85a !important;
 }
 
-/* Clean dashboard: botões sem azul institucional legado */
+/* Clean dashboard: botão atualizar em amarelo */
 body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar {
-  background: #20201e !important;
-  border-color: #20201e !important;
-  color: #fff !important;
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
-  background: #111110 !important;
-  border-color: #111110 !important;
+  background: #e8c85a !important;
+  border-color: #e8c85a !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active,
 body[data-war-room-clean][data-ipt-operacional] .ipt-territorio-visao__btn--active:hover {
-  background: #20201e !important;
-  border-color: #20201e !important;
-  color: #fff !important;
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta,
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__ver-mais {
-  color: #52524f !important;
+  color: #f2d06b !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active,
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active {
-  border-color: #20201e !important;
+  border-color: #f2d06b !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-bloco-lista__row:hover,
@@ -134,34 +135,34 @@ body[data-ipt-operacional] .ipt-btn-evolucao {
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-territorio-visao__btn--active,
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-territorio-visao__btn--active:hover {
-  background: var(--palette-inst) !important;
-  border-color: var(--palette-inst) !important;
-  color: #fff !important;
+  background: #f2d06b !important;
+  border-color: #f2d06b !important;
+  color: #2b2d31 !important;
 }
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__cta,
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active .ipt-missao-card__cta,
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active .ipt-missao-card__ver-mais {
-  color: var(--palette-inst) !important;
+  color: #f2d06b !important;
 }
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--active,
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-missao-card--base.ipt-missao-card--active {
-  border-color: var(--palette-inst) !important;
+  border-color: #f2d06b !important;
 }
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-bloco-lista__row:hover,
 body[data-ipt-operacional]:not([data-war-room-clean]) .ipt-bloco-lista__row--active {
-  background: var(--palette-inst-soft) !important;
+  background: #fbf3d6 !important;
 }
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .text-\[\#f04b23\],
 body[data-ipt-operacional]:not([data-war-room-clean]) .cockpit-icon.text-\[\#f04b23\] {
-  color: var(--palette-inst) !important;
+  color: #f2d06b !important;
 }
 
 body[data-ipt-operacional]:not([data-war-room-clean]) .bg-\[\#f04b23\] {
-  background-color: var(--palette-inst) !important;
+  background-color: #f2d06b !important;
 }
 
 /* ==========================================================================
@@ -171,36 +172,36 @@ body[data-ipt-operacional]:not([data-war-room-clean]) .bg-\[\#f04b23\] {
    ========================================================================== */
 
 body[data-war-room-clean][data-ipt-operacional] {
-  /* Tokens IPT → wr-* (Cidades) */
-  --page-bg: var(--wr-bg, #f7f7f6);
+  /* Tokens IPT → wr-* (War Room / gelo) */
+  --page-bg: #f7f7f6;
   --surface: var(--wr-surface, #ffffff);
-  --surface-muted: var(--wr-surface-subtle, #f3f3f1);
-  --border: var(--wr-border, #e1e1de);
-  --border-strong: var(--wr-border-strong, #d8d8d4);
-  --text: var(--wr-text-primary, #20201e);
-  --text-muted: var(--wr-text-muted, #777773);
-  --text-soft: var(--wr-text-secondary, #52524f);
+  --surface-muted: #f3f3f1;
+  --border: var(--wr-border, #b3b6bb);
+  --border-strong: var(--wr-border-strong, #b3b6bb);
+  --text: var(--wr-text-primary, #2b2d31);
+  --text-muted: var(--wr-text-muted, #b3b6bb);
+  --text-soft: var(--wr-text-secondary, #70737a);
 
-  --ipt-orange-deep: var(--wr-text-primary, #20201e);
-  --ipt-orange: var(--wr-text-primary, #20201e);
-  --ipt-orange-light: var(--wr-text-secondary, #52524f);
+  --ipt-orange-deep: #2b2d31;
+  --ipt-orange: #f2d06b;
+  --ipt-orange-light: #e8c85a;
   --ipt-gray: var(--wr-text-secondary, #52524f);
   --ipt-gray-mid: var(--wr-text-muted, #777773);
   --ipt-gray-soft: var(--wr-surface-subtle, #f3f3f1);
   --ipt-gray-border: var(--wr-border, #e1e1de);
 
-  --cockpit-gold: var(--wr-text-primary, #20201e);
-  --mission-research: var(--wr-text-primary, #20201e);
-  --mission-research-bg: var(--wr-surface-subtle, #f3f3f1);
-  --mission-digital: var(--wr-text-muted, #777773);
-  --mission-digital-bg: var(--wr-surface-subtle, #f3f3f1);
-  --mission-works: var(--wr-text-primary, #20201e);
-  --mission-works-bg: var(--wr-surface-subtle, #f3f3f1);
-  --mission-field: var(--wr-brand, #f04b23);
-  --mission-field-bg: var(--wr-accent-soft, #fff1ef);
+  --cockpit-gold: #f2d06b;
+  --mission-research: #f2d06b;
+  --mission-research-bg: #fbf3d6;
+  --mission-digital: #f2d06b;
+  --mission-digital-bg: #fbf3d6;
+  --mission-works: #f2d06b;
+  --mission-works-bg: #fbf3d6;
+  --mission-field: #f2d06b;
+  --mission-field-bg: #fbf3d6;
 
   --acao-bg: var(--wr-text-primary, #20201e);
-  --alerta-texto: var(--wr-brand, #f04b23);
+  --alerta-texto: var(--wr-brand, #f2d06b);
   --bg-app: 247 247 246;
   --bg-surface: 255 255 255;
 
@@ -219,15 +220,15 @@ body[data-war-room-clean][data-ipt-operacional] b {
   font-weight: 600;
 }
 
-/* Shell / main — mesmo cinza da página Cidades */
+/* Shell / main — mesmo cinza claro do War Room (#f7f7f6), cards ficam brancos */
 body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional,
 body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional.ipt-page-shell,
 body[data-war-room-clean][data-ipt-operacional] .ipt-page-body,
 body[data-war-room-clean][data-ipt-operacional] .ipt-page-body.ipt-operacional,
 body[data-war-room-clean][data-ipt-operacional] main {
-  background: var(--wr-bg, #f7f7f6) !important;
-  background-color: var(--wr-bg, #f7f7f6) !important;
-  color: var(--wr-text-primary, #20201e) !important;
+  background: #f7f7f6 !important;
+  background-color: #f7f7f6 !important;
+  color: var(--wr-text-primary, #2b2d31) !important;
   font-family: var(--wr-font) !important;
 }
 
@@ -328,7 +329,12 @@ body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__titulo {
   font-size: 12px !important;
   font-weight: 600 !important;
   letter-spacing: 0.02em !important;
-  color: var(--wr-text-primary, #20201e) !important;
+  color: var(--wr-text-primary, #2b2d31) !important;
+}
+
+body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__badge {
+  color: var(--wr-text-primary, #2b2d31) !important;
+  opacity: 1 !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__desc,
@@ -391,13 +397,13 @@ body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__icon {
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon {
-  background: var(--wr-surface-subtle, #f3f3f1) !important;
-  color: var(--wr-text-primary, #20201e) !important;
+  background: #fbf3d6 !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__cta,
 body[data-war-room-clean][data-ipt-operacional] .ipt-missao-card__ver-mais {
-  color: var(--wr-text-secondary, #52524f) !important;
+  color: #f2d06b !important;
   font-size: 12px !important;
 }
 
@@ -510,7 +516,7 @@ body[data-war-room-clean][data-ipt-operacional] .ipt-municipio-select {
 
 /* Neutraliza azul institucional / cream residual no miolo */
 body[data-war-room-clean][data-ipt-operacional] .ipt-page-shell--operacional :is(
-  .text-\[\#005b8f\],
+  .text-\[\#f2d06b\],
   .text-\[\#022B3A\],
   .text-\[\#022b3a\],
   .text-\[\#f04b23\]

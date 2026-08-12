@@ -12,6 +12,12 @@ export type IptMissaoId = 'expectativa' | 'campo' | 'pesquisa' | 'digital' | 'ob
 
 export type IptMissaoFiltro = IptMissaoId | 'todas'
 
+/** Amarelo do padrão clean (logo / carro) — acentos de missão. */
+export const IPT_ACCENT = '#f2d06b'
+export const IPT_ACCENT_SOFT = '#fbf3d6'
+export const IPT_ACCENT_TEXT = '#2b2d31'
+export const IPT_ACCENT_TINT = '#f7efc8'
+
 /**
  * Universo listado dentro de uma seção de missão:
  * - `prioridade`: só os que estão na missão (incompatibilidade)
@@ -44,10 +50,10 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     titulo: 'Onde temos meta',
     tagline: 'Expectativa',
     descricao: 'Cobertura da expectativa de votos 2026 no território do Piauí.',
-    cor: '#005b8f',
-    corSuave: '#ddeaf3',
-    corTexto: '#022b3a',
-    corTint: '#ddeaf3',
+    cor: IPT_ACCENT,
+    corSuave: IPT_ACCENT_SOFT,
+    corTexto: IPT_ACCENT_TEXT,
+    corTint: IPT_ACCENT_TINT,
   },
   {
     id: 'campo',
@@ -55,10 +61,10 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     titulo: 'Onde ir',
     tagline: 'Campo',
     descricao: 'Municípios pedem presença de campo agora. Potencial alto com cobertura insuficiente.',
-    cor: '#005b8f',
-    corSuave: '#ddeaf3',
-    corTexto: '#022b3a',
-    corTint: '#ddeaf3',
+    cor: IPT_ACCENT,
+    corSuave: IPT_ACCENT_SOFT,
+    corTexto: IPT_ACCENT_TEXT,
+    corTint: IPT_ACCENT_TINT,
   },
   {
     id: 'pesquisa',
@@ -67,10 +73,10 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     tagline: 'Pesquisa',
     descricao:
       'Intenção sobre votos válidos (sem nenhum/branco e não sei) ainda abaixo da expectativa 2026.',
-    cor: '#022b3a',
-    corSuave: '#e6eaf0',
-    corTexto: '#022b3a',
-    corTint: '#e6eaf0',
+    cor: IPT_ACCENT,
+    corSuave: IPT_ACCENT_SOFT,
+    corTexto: IPT_ACCENT_TEXT,
+    corTint: IPT_ACCENT_TINT,
   },
   {
     id: 'digital',
@@ -78,10 +84,10 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     titulo: 'Para onde apontar',
     tagline: 'Digital',
     descricao: 'Oportunidade desproporcional à presença digital. É onde a campanha deixa cobertura na mesa.',
-    cor: '#6b7280',
-    corSuave: '#f5f6f8',
-    corTexto: '#4b5563',
-    corTint: '#eef0f3',
+    cor: IPT_ACCENT,
+    corSuave: IPT_ACCENT_SOFT,
+    corTexto: IPT_ACCENT_TEXT,
+    corTint: IPT_ACCENT_TINT,
   },
   {
     id: 'obras',
@@ -89,10 +95,10 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     titulo: 'Onde acelerar',
     tagline: 'Obras',
     descricao: 'Obras e entregas relevantes com baixa repercussão.',
-    cor: '#005b8f',
-    corSuave: '#ddeaf3',
-    corTexto: '#022b3a',
-    corTint: '#ddeaf3',
+    cor: IPT_ACCENT,
+    corSuave: IPT_ACCENT_SOFT,
+    corTexto: IPT_ACCENT_TEXT,
+    corTint: IPT_ACCENT_TINT,
   },
 ]
 

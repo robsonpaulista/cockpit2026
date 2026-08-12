@@ -201,7 +201,7 @@ export function DemandasObrasPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
-            <ClipboardList className="h-4 w-4 text-[#f04b23]" aria-hidden />
+            <ClipboardList className="h-4 w-4 text-[#f2d06b]" aria-hidden />
             Obras por cidade
           </h2>
           <p className="mt-1 text-xs text-text-secondary">
@@ -222,7 +222,7 @@ export function DemandasObrasPanel() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar cidade, obra, status…"
-              className="h-9 w-[220px] rounded-lg border border-card bg-background pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f04b23]"
+              className="h-9 w-[220px] rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f2d06b]"
             />
           </label>
           <button
@@ -230,7 +230,7 @@ export function DemandasObrasPanel() {
             onClick={() => setExportModalOpen(true)}
             disabled={rowsFiltradas.length === 0}
             title="Exportar seleção filtrada (CSV, Excel ou PDF)"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-card bg-background px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
             Exportar
@@ -239,7 +239,7 @@ export function DemandasObrasPanel() {
             type="button"
             onClick={alternarTodas}
             disabled={grupos.length === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-card bg-background px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
           >
             {todasRecolhidas ? 'Expandir todas' : 'Recolher todas'}
           </button>
@@ -247,7 +247,7 @@ export function DemandasObrasPanel() {
             type="button"
             onClick={() => void carregar()}
             disabled={loading}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-card bg-background px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} aria-hidden />
             Atualizar
@@ -292,9 +292,9 @@ export function DemandasObrasPanel() {
             return (
               <article
                 key={grupo.cidadeKey}
-                className="overflow-hidden rounded-xl border border-card bg-surface shadow-sm"
+                className="overflow-hidden rounded-xl border border-[#e8e8e6] bg-[#f7f7f6] shadow-sm"
               >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-card bg-background/50 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e6] bg-[#f7f7f6] px-4 py-3">
                   <button
                     type="button"
                     onClick={() => alternarCidade(grupo.cidadeKey)}
@@ -312,18 +312,18 @@ export function DemandasObrasPanel() {
                         aria-hidden
                       />
                     )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#f04b23]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#f2d06b]" aria-hidden />
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {grupo.cidade}
                     </span>
-                    <span className="rounded-full bg-background px-2 py-0.5 text-[10px] text-text-secondary">
+                    <span className="rounded-full border border-[#e8e8e6] bg-white px-2 py-0.5 text-[10px] text-text-secondary">
                       {grupo.rows.length}
                     </span>
                   </button>
                 </div>
 
                 {!recolhida ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto bg-white">
                     <table className="w-full min-w-[720px] text-xs">
                       <thead>
                         <tr className="text-text-secondary">

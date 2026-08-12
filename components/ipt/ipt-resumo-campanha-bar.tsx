@@ -52,7 +52,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'cobertura',
         icon: Target,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosTotal),
         valueSuffix: 'municípios',
         descricao: 'já têm expectativa de votos 2026',
@@ -61,7 +61,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'relevantes',
         icon: Crosshair,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosExpectativaRelevante),
         valueSuffix: 'relevantes',
         descricao: 'concentram o maior peso da expectativa',
@@ -69,7 +69,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'expectativa',
         icon: BarChart3,
-        cor: '#004870',
+        cor: '#2b2d31',
         value: formatInt(resumo.expectativaTotal),
         descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
@@ -89,7 +89,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'relevantes',
         icon: Crosshair,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosExpectativaRelevante),
         valueSuffix: 'municípios',
         descricao: 'concentram o maior potencial ainda pouco visitado',
@@ -97,7 +97,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'cobertura',
         icon: Users,
-        cor: '#004870',
+        cor: '#2b2d31',
         value: `${resumo.municipiosCampoSuficientePct}%`,
         valueSuffix: 'do grupo',
         descricao: 'tem cobertura de campo considerada suficiente',
@@ -105,7 +105,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'visitas',
         icon: LineChart,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.visitasRealizadas),
         valueSuffix: 'visitas realizadas',
         descricao: 'nos últimos 30 dias',
@@ -133,7 +133,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'relevantes',
         icon: Crosshair,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosExpectativaRelevante),
         valueSuffix: 'municípios',
         descricao: 'concentram potencial com pesquisa abaixo do esperado',
@@ -141,7 +141,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'pesquisa',
         icon: LineChart,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosComPesquisa),
         valueSuffix: 'com pesquisa',
         descricao: `${resumo.municipiosComPesquisaPct}% do grupo já tem leitura disponível`,
@@ -149,7 +149,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'visitas',
         icon: Users,
-        cor: '#004870',
+        cor: '#2b2d31',
         value: formatInt(resumo.visitasRealizadas),
         valueSuffix: 'visitas',
         descricao: 'realizadas nos últimos 30 dias no grupo',
@@ -178,7 +178,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'relevantes',
         icon: Crosshair,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosExpectativaRelevante),
         valueSuffix: 'municípios',
         descricao: 'concentram oportunidade digital mal aproveitada',
@@ -194,7 +194,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'seguidores',
         icon: Users,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.seguidoresDigitais),
         valueSuffix: 'seguidores',
         descricao: 'concentrados nos municípios do recorte',
@@ -202,7 +202,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'grupo',
         icon: RefreshCw,
-        cor: '#004870',
+        cor: '#2b2d31',
         value: formatInt(resumo.municipiosTotal),
         valueSuffix: 'municípios',
         descricao: 'pedem apontamento digital agora',
@@ -223,7 +223,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'relevantes',
         icon: Crosshair,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.municipiosExpectativaRelevante),
         valueSuffix: 'municípios',
         descricao: 'concentram entregas ainda pouco aproveitadas',
@@ -238,7 +238,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'cobertura',
         icon: Users,
-        cor: '#004870',
+        cor: '#2b2d31',
         value: `${resumo.obrasCoberturaPct}%`,
         valueSuffix: 'do grupo',
         descricao: 'já tem obra cadastrada no território',
@@ -254,7 +254,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
       {
         key: 'expectativa',
         icon: BarChart3,
-        cor: '#005b8f',
+        cor: '#f2d06b',
         value: formatInt(resumo.expectativaTotal),
         descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
@@ -275,7 +275,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     {
       key: 'cobertos',
       icon: Users,
-      cor: '#004870',
+      cor: '#2b2d31',
       value: formatInt(resumo.municipiosCobertos),
       valueSuffix: 'municípios',
       descricao: `${resumo.municipiosCobertosPct}% do grupo com alguma cobertura`,
@@ -283,7 +283,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     {
       key: 'visitas',
       icon: LineChart,
-      cor: '#005b8f',
+      cor: '#f2d06b',
       value: formatInt(resumo.visitasRealizadas),
       valueSuffix: 'visitas realizadas',
       descricao: 'nos últimos 30 dias',
@@ -298,7 +298,7 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     {
       key: 'digital',
       icon: Smartphone,
-      cor: '#005b8f',
+      cor: '#f2d06b',
       value: formatInt(resumo.seguidoresDigitais),
       valueSuffix: 'seguidores',
       descricao: 'na presença digital do grupo',

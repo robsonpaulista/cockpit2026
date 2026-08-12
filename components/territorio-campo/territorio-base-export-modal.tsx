@@ -161,7 +161,7 @@ export function TerritorioBaseExportModal({
                     className={cn(
                       'flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition-colors',
                       checked
-                        ? 'border-[#f04b23]/45 bg-[#f04b23]/8'
+                        ? 'border-[#f2d06b]/45 bg-[#f2d06b]/8'
                         : 'border-card bg-background/40 hover:bg-black/[0.03]'
                     )}
                   >
@@ -169,7 +169,7 @@ export function TerritorioBaseExportModal({
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggle(field.id)}
-                      className="h-3.5 w-3.5 accent-[#f04b23]"
+                      className="h-3.5 w-3.5 accent-[#f2d06b]"
                     />
                     <span className="min-w-0 flex-1">{field.label}</span>
                   </label>
@@ -194,7 +194,7 @@ export function TerritorioBaseExportModal({
             onClick={handleExport}
             disabled={exporting || selectedCount === 0 || records.length === 0}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-[99px] border border-[#f04b23] bg-[#f04b23] px-3.5 py-1.5 text-[13px] font-medium text-white',
+              'inline-flex items-center gap-1.5 rounded-[99px] border border-[#f2d06b] bg-[#f2d06b] px-3.5 py-1.5 text-[13px] font-medium text-[#2b2d31]',
               'disabled:cursor-not-allowed disabled:opacity-45'
             )}
             title={
