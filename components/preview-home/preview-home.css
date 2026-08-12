@@ -279,6 +279,20 @@ body[data-war-room-clean] .preview-home .preview-home__btn,
   min-height: 100vh;
 }
 
+/* Home autenticada — preenche a área de conteúdo (sidebar + topbar) */
+.preview-home--dashboard {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.preview-home--dashboard .preview-home__content {
+  min-height: 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .preview-home__video,
   .preview-home__brand,

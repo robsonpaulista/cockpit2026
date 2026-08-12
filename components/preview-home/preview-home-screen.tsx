@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { LoginForm } from '@/components/auth/login-form'
 import './preview-home.css'
 
@@ -8,8 +9,9 @@ export type PreviewHomeScreenProps = {
   /**
    * `preview` — rota /preview-home (Entrar abre login).
    * `rest` — tela de descanso (Entrar volta ao Cockpit).
+   * `dashboard` — home autenticada `/dashboard` (Entrar abre o War Room).
    */
-  mode?: 'preview' | 'rest'
+  mode?: 'preview' | 'rest' | 'dashboard'
   /** Só em `rest` — fecha o overlay / dispensa idle. */
   onEnter?: () => void
   /** Classe extra no root (ex.: overlay fixo). */
@@ -18,14 +20,17 @@ export type PreviewHomeScreenProps = {
 
 /**
  * Home cinematográfica — vídeo full-bleed + marca Cockpit 2026.
- * Usada em /preview-home e na tela de descanso do dashboard.
+ * Usada em /dashboard, /preview-home e na tela de descanso.
  */
 export function PreviewHomeScreen({
   mode = 'preview',
   onEnter,
   className,
 }: PreviewHomeScreenProps) {
+  const router = useRouter()
   const isRest = mode === 'rest'
+  const isDashboard = mode === 'dashboard'
+  const showLogin = mode === 'preview'
   const videoRef = useRef<HTMLVideoElement>(null)
   const [ready, setReady] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
@@ -61,7 +66,7 @@ export function PreviewHomeScreen({
     const video = videoRef.current
     if (!video || reducedMotion) return
 
-    if (!isRest && loginOpen) {
+    if (showLogin && loginOpen) {
       video.pause()
       return
     }
@@ -70,11 +75,15 @@ export function PreviewHomeScreen({
     void video.play().catch(() => {
       /* ignore */
     })
-  }, [isRest, loginOpen, reducedMotion])
+  }, [showLogin, loginOpen, reducedMotion])
 
   const handleEnter = () => {
     if (isRest) {
       onEnter?.()
+      return
+    }
+    if (isDashboard) {
+      router.push('/dashboard/war-room')
       return
     }
     const video = videoRef.current
@@ -85,8 +94,9 @@ export function PreviewHomeScreen({
   const rootClass = [
     'preview-home',
     isRest ? 'preview-home--rest' : '',
+    isDashboard ? 'preview-home--dashboard' : '',
     ready ? 'preview-home--ready' : '',
-    !isRest && loginOpen ? 'preview-home--login' : '',
+    showLogin && loginOpen ? 'preview-home--login' : '',
     className ?? '',
   ]
     .filter(Boolean)
@@ -114,8 +124,8 @@ export function PreviewHomeScreen({
 
       <div
         className="preview-home__content"
-        aria-hidden={!isRest && loginOpen}
-        inert={!isRest && loginOpen ? true : undefined}
+        aria-hidden={showLogin && loginOpen}
+        inert={showLogin && loginOpen ? true : undefined}
       >
         <p className="preview-home__brand" aria-label="Cockpit 2026">
           <span className="preview-home__brand-name">COCKPIT</span>
@@ -127,12 +137,12 @@ export function PreviewHomeScreen({
         </p>
         <div className="preview-home__cta">
           <button type="button" className="preview-home__btn" onClick={handleEnter}>
-            {isRest ? 'Entrar no Cockpit' : 'Entrar'}
+            {isRest || isDashboard ? 'Entrar no Cockpit' : 'Entrar'}
           </button>
         </div>
       </div>
 
-      {!isRest ? (
+      {showLogin ? (
         <LoginForm
           variant="floating"
           open={loginOpen}

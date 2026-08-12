@@ -11,12 +11,12 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: 'Cockpit 2026 — Prévia da home',
-  description: 'Prévia da futura home do Cockpit 2026',
+  title: 'Cockpit 2026 — Entrar',
+  description: 'Home cinematográfica do Cockpit 2026 (login)',
   robots: { index: false, follow: false },
 }
 
-/** Prévia da futura home (não substitui `/`). */
+/** Landing pública com login (a home autenticada é `/dashboard`). */
 export default function PreviewHomePage() {
   return (
     <div className={outfit.variable} style={{ fontFamily: 'var(--font-preview-home), Outfit, sans-serif' }}>
