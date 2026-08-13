@@ -98,9 +98,7 @@ export type PanoramaPlatformChart = {
   empty: boolean
 }
 
-const CHART_WINDOW = PANORAMA_WINDOW_DAYS
 const RECENT_IG_WINDOW_DAYS = 7
-const windowSuffix = panoramaWindowSubtitleSuffix()
 
 function dayKey(iso: string): string {
   return iso.slice(0, 10)
@@ -156,9 +154,10 @@ function linesFromColumns(columns: PanoramaCandidateColumn[]): PanoramaChartLine
 
 function buildYoutubeChart(
   columns: PanoramaCandidateColumn[],
-  mentions: YoutubeMentionWithActor[]
+  mentions: YoutubeMentionWithActor[],
+  windowDays: number,
 ): PanoramaPlatformChart {
-  const dates = lastNDays(CHART_WINDOW)
+  const dates = lastNDays(windowDays)
   const items: Array<{ slug: string; date: string; value: number }> = []
 
   for (const m of mentions) {
@@ -174,7 +173,7 @@ function buildYoutubeChart(
     id: 'youtube',
     layoutTier: 'simple',
     title: 'YouTube',
-    subtitle: `Visualizações por dia de publicação${windowSuffix}`,
+    subtitle: `Visualizações por dia de publicação${panoramaWindowSubtitleSuffix(windowDays)}`,
     metricLabel: 'Views',
     chartType: 'line',
     lines: linesFromColumns(columns),
@@ -228,19 +227,20 @@ export function buildGoogleNewsRelatedHeatmap(
 
 function buildGoogleNewsChart(
   columns: PanoramaCandidateColumn[],
-  mentions: GoogleNewsMentionWithActor[]
+  mentions: GoogleNewsMentionWithActor[],
+  windowDays: number,
 ): PanoramaPlatformChart {
   const { dates, rows: heatmapRows, chartData, empty } = buildGoogleNewsRelatedHeatmap(
     columns,
     mentions,
-    CHART_WINDOW
+    windowDays,
   )
 
   return {
     id: 'google-news',
     layoutTier: 'detail',
     title: 'Notícias relacionadas',
-    subtitle: `Menções por dia · ${PANORAMA_WINDOW_DAYS} dias`,
+    subtitle: `Menções por dia · ${windowDays} dias`,
     metricLabel: 'Matérias',
     chartType: 'heatmap',
     lines: linesFromColumns(columns),
@@ -291,12 +291,13 @@ function avgEngagementInDateRange(
 function buildInstagramTable(
   columns: PanoramaCandidateColumn[],
   actors: PoliticalActorWithTerms[],
-  posts: InstagramRadarPostWithActor[]
+  posts: InstagramRadarPostWithActor[],
+  windowDays: number,
 ): PanoramaPlatformChart {
-  const compareRows = buildInstagramRadarCompareRows(actors, posts, CHART_WINDOW)
+  const compareRows = buildInstagramRadarCompareRows(actors, posts, windowDays)
   const colorBySlug = new Map(columns.map((c) => [c.slug, c.accentColor]))
 
-  const dates = lastNDays(CHART_WINDOW)
+  const dates = lastNDays(windowDays)
   const recentFrom = dates[Math.max(0, dates.length - RECENT_IG_WINDOW_DAYS)] ?? dates[0]
   const recentTo = dates.at(-1) ?? dates[0]
   const priorFrom = dates[Math.max(0, dates.length - RECENT_IG_WINDOW_DAYS * 2)] ?? dates[0]
@@ -366,7 +367,7 @@ function buildInstagramTable(
     id: 'instagram',
     layoutTier: 'detail',
     title: 'Instagram',
-    subtitle: `Comparativo de posts e engajamento${windowSuffix}`,
+    subtitle: `Comparativo de posts e engajamento${panoramaWindowSubtitleSuffix(windowDays)}`,
     metricLabel: 'Engajamento',
     chartType: 'table',
     lines: [],
@@ -379,7 +380,8 @@ function buildInstagramTable(
 function buildGoogleTrendsChart(
   columns: PanoramaCandidateColumn[],
   actors: PoliticalActorWithTerms[],
-  interestRows: GoogleTrendsInterestRow[]
+  interestRows: GoogleTrendsInterestRow[],
+  windowDays: number,
 ): PanoramaPlatformChart {
   type PointSeries = {
     slug: string
@@ -414,9 +416,9 @@ function buildGoogleTrendsChart(
 
   let dates = [...dateSet].sort()
   if (dates.length === 0) {
-    dates = lastNDays(CHART_WINDOW)
-  } else if (dates.length > CHART_WINDOW) {
-    dates = dates.slice(-CHART_WINDOW)
+    dates = lastNDays(windowDays)
+  } else if (dates.length > windowDays) {
+    dates = dates.slice(-windowDays)
   }
 
   const chartData = dates.map((date) => {
@@ -450,7 +452,7 @@ function buildGoogleTrendsChart(
     id: 'google-trends',
     layoutTier: 'simple',
     title: 'Buscas pelo nome dos candidatos',
-    subtitle: `Interesse de busca · índice 0–100${windowSuffix}`,
+    subtitle: `Interesse de busca · índice 0–100${panoramaWindowSubtitleSuffix(windowDays)}`,
     metricLabel: 'Interesse',
     chartType: 'line',
     lines,
@@ -462,9 +464,10 @@ function buildGoogleTrendsChart(
 
 function buildMetaAdsChart(
   columns: PanoramaCandidateColumn[],
-  ads: MetaAdsMentionWithActor[]
+  ads: MetaAdsMentionWithActor[],
+  windowDays: number,
 ): PanoramaPlatformChart {
-  const dates = lastNDays(CHART_WINDOW)
+  const dates = lastNDays(windowDays)
   const items: Array<{ slug: string; date: string; value: number }> = []
 
   for (const ad of ads) {
@@ -511,7 +514,7 @@ function buildMetaAdsChart(
     id: 'meta-ads',
     layoutTier: 'simple',
     title: 'Anúncios',
-    subtitle: `Anúncios ativos por dia de início${windowSuffix}`,
+    subtitle: `Anúncios ativos por dia de início${panoramaWindowSubtitleSuffix(windowDays)}`,
     metricLabel: 'Anúncios ativos',
     chartType: 'line',
     lines: linesFromColumns(columns),
@@ -529,14 +532,16 @@ export function buildPanoramaPlatformCharts(input: {
   instagramPosts: InstagramRadarPostWithActor[]
   trendsInterestRows: GoogleTrendsInterestRow[]
   metaAdsMentions: MetaAdsMentionWithActor[]
+  windowDays?: number
 }): PanoramaPlatformChart[] {
   if (input.columns.length === 0) return []
+  const windowDays = input.windowDays ?? PANORAMA_WINDOW_DAYS
 
   return [
-    buildGoogleNewsChart(input.columns, input.googleNewsMentions),
-    buildInstagramTable(input.columns, input.actors, input.instagramPosts),
-    buildYoutubeChart(input.columns, input.youtubeMentions),
-    buildGoogleTrendsChart(input.columns, input.actors, input.trendsInterestRows),
-    buildMetaAdsChart(input.columns, input.metaAdsMentions),
+    buildGoogleNewsChart(input.columns, input.googleNewsMentions, windowDays),
+    buildInstagramTable(input.columns, input.actors, input.instagramPosts, windowDays),
+    buildYoutubeChart(input.columns, input.youtubeMentions, windowDays),
+    buildGoogleTrendsChart(input.columns, input.actors, input.trendsInterestRows, windowDays),
+    buildMetaAdsChart(input.columns, input.metaAdsMentions, windowDays),
   ]
 }

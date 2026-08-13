@@ -21,11 +21,14 @@ import {
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { buildInstagramRankingMovimentacao } from '@/lib/war-room/instagram-radar-desempenho'
+import {
+  COPILOTO_REDES_PERIOD_OPTIONS,
+  copilotoRedesDays,
+  type CopilotoRedesPeriod,
+} from '@/lib/war-room/redes-copiloto'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
 
-const IG_LOOKBACK_DAYS = 7
-const ADS_LOOKBACK_DAYS = 30
 const IG_FETCH_LIMIT = 400
 const ADS_FETCH_LIMIT = 500
 const LIST_VISIBLE = 9
@@ -120,12 +123,14 @@ function buildActiveAdsRows(compare: MetaAdsCompareActorRow[]): AnuncioRow[] {
 }
 
 /**
- * Comparativo Candidatos — filtros Engajamento (IG 7d) | Anúncios (Meta ativos).
+ * Comparativo Candidatos — Engajamento | Anúncios, mesma janela do Comparativo.
  */
 export function WarRoomInstagramRadarCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('instagram-radar')
   const { isDesempenho } = useWarRoomViewMode()
+  const [period, setPeriod] = useState<CopilotoRedesPeriod>('7d')
+  const days = copilotoRedesDays(period)
   const [filtro, setFiltro] = useState<FiltroId>('engajamento')
 
   const [igActors, setIgActors] = useState<PoliticalActorWithTerms[]>([])
@@ -146,7 +151,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     }
     try {
       const res = await fetch(
-        `/api/instagram-radar/bootstrap?days=${IG_LOOKBACK_DAYS}&limit=${IG_FETCH_LIMIT}`,
+        `/api/instagram-radar/bootstrap?days=${days}&limit=${IG_FETCH_LIMIT}`,
         { cache: 'no-store' },
       )
       const json = (await res.json()) as BootstrapPayload
@@ -164,7 +169,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     } finally {
       setIgLoading(false)
     }
-  }, [])
+  }, [days])
 
   const carregarAnuncios = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -176,7 +181,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
       const [actorsRes, adsRes] = await Promise.all([
         fetch('/api/monitoramento/actors', { cache: 'no-store' }),
         fetch(
-          `/api/meta-ads/mentions?politico=all&days=${ADS_LOOKBACK_DAYS}&limit=${ADS_FETCH_LIMIT}`,
+          `/api/meta-ads/mentions?politico=all&days=${days}&limit=${ADS_FETCH_LIMIT}`,
           { cache: 'no-store' },
         ),
       ])
@@ -199,7 +204,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     } finally {
       setAdsLoading(false)
     }
-  }, [])
+  }, [days])
 
   const carregarTudo = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -231,7 +236,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     const compare = buildInstagramRadarCompareRows(
       visibleActors,
       igPosts,
-      IG_LOOKBACK_DAYS,
+      days,
     )
     const withActivity = compare
       .filter((row) => row.postCount > 0)
@@ -251,16 +256,16 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
       ...row,
       avgHighlight: highlights[i] ?? 'none',
     }))
-  }, [igActors, igPosts])
+  }, [igActors, igPosts, days])
 
   const movimentacaoRows = useMemo(() => {
     const visibleActors = igActors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug))
     return buildInstagramRankingMovimentacao(
       visibleActors,
       igPosts,
-      IG_LOOKBACK_DAYS,
+      days,
     )
-  }, [igActors, igPosts])
+  }, [igActors, igPosts, days])
 
   const anuncioRows = useMemo(() => {
     const visibleActors = adsActors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug))
@@ -325,16 +330,32 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
             <h2 className="wr-ig-radar__heading">Comparativo Candidatos</h2>
             <p className="wr-ig-radar__sub">
               {isDesempenho
-                ? `Início da semana → ranking acumulado · ${IG_LOOKBACK_DAYS}d`
+                ? `Início da semana → ranking acumulado · ${days}d`
                 : showEngajamento
-                  ? `Instagram · últimos ${IG_LOOKBACK_DAYS} dias`
-                  : `Meta Ads · anúncios ativos · ${ADS_LOOKBACK_DAYS} dias`}
+                  ? `Instagram · últimos ${days} dias`
+                  : `Meta Ads · anúncios ativos · ${days} dias`}
             </p>
           </div>
           {change ? (
             <WarRoomChangeBadge change={change} className="wr-ig-radar__badge" />
           ) : null}
         </div>
+        <nav className="wr-copiloto-redes__period-tabs wr-ig-radar__period-tabs" aria-label="Período">
+          {COPILOTO_REDES_PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={cn(
+                'wr-copiloto-redes__period-tab',
+                period === opt.value && 'wr-copiloto-redes__period-tab--active',
+              )}
+              aria-pressed={period === opt.value}
+              onClick={() => setPeriod(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </nav>
         {!isDesempenho ? (
           <div
             className="wr-ig-radar__filtros"
@@ -398,7 +419,7 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
           </p>
         ) : engajamentoRows.length === 0 ? (
           <p className="wr-ig-radar__state">
-            Sem publicações monitoradas nos últimos {IG_LOOKBACK_DAYS} dias.
+            Sem publicações monitoradas nos últimos {days} dias.
           </p>
         ) : (
           <div className="wr-ig-radar__body">

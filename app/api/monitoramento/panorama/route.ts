@@ -7,7 +7,9 @@ import { getMonitoramentoCollectorsStatus } from '@/lib/monitoramento-collectors
 import { googleTrendsTimeframeQueryKeys, PANORAMA_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
 import { normalizeGoogleTrendsInterestRows, googleTrendsInterestQueryCutoffDay, GOOGLE_TRENDS_INTEREST_QUERY_LIMIT } from '@/lib/google-trends-normalize-rows'
 import {
+  parsePanoramaWindowDays,
   panoramaWindowCutoffIso,
+  panoramaWindowLabel,
 } from '@/lib/monitoramento-panorama-window'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
@@ -23,11 +25,12 @@ export const dynamic = 'force-dynamic'
 const GEO = 'BR-PI'
 const TIMEFRAME = PANORAMA_GOOGLE_TRENDS_TIMEFRAME
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const auth = await requireRouteUser()
     if (!auth.ok) return auth.response
 
+    const windowDays = parsePanoramaWindowDays(new URL(request.url).searchParams.get('days'))
     const supabase = createClient()
     const { data: actors, error: actorsError } = await supabase
       .from('political_actors')
@@ -68,6 +71,8 @@ export async function GET() {
             instagramPosts: [],
             metaAdsMentions30d: [],
             lastUpdated: null,
+            windowDays,
+            windowLabel: panoramaWindowLabel(windowDays),
             setupRequired: true,
           }),
           collectorsStatus: getMonitoramentoCollectorsStatus(),
@@ -78,9 +83,9 @@ export async function GET() {
 
     const typedActors = (actors ?? []) as PoliticalActorWithTerms[]
     const timeframeKeys = googleTrendsTimeframeQueryKeys(TIMEFRAME)
-    const trendsInterestCutoffDay = googleTrendsInterestQueryCutoffDay()
+    const trendsInterestCutoffDay = googleTrendsInterestQueryCutoffDay(windowDays)
 
-    const cutoffIso = panoramaWindowCutoffIso()
+    const cutoffIso = panoramaWindowCutoffIso(windowDays)
 
     const [trendsRes, trendsRelatedRes, youtubeRes, newsRes, instagramRes, metaRes, collectLogRes, instagramLogRes] =
       await Promise.all([
@@ -144,7 +149,10 @@ export async function GET() {
     const trendsRowsAll =
       isSupabaseMissingTableError(trendsRes.error)
         ? []
-        : normalizeGoogleTrendsInterestRows((trendsRes.data ?? []) as GoogleTrendsInterestRow[])
+        : normalizeGoogleTrendsInterestRows(
+            (trendsRes.data ?? []) as GoogleTrendsInterestRow[],
+            windowDays,
+          )
     const trendsRows = trendsRowsAll
     if (isSupabaseMissingTableError(trendsRes.error)) {
       setupRequired = true
@@ -211,6 +219,8 @@ export async function GET() {
       instagramPosts,
       metaAdsMentions30d: metaAdsMentions,
       lastUpdated,
+      windowDays,
+      windowLabel: panoramaWindowLabel(windowDays),
       setupRequired,
     })
 

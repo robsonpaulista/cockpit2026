@@ -1,11 +1,16 @@
-import { panoramaWindowCutoffDay } from '@/lib/monitoramento-panorama-window'
+import {
+  PANORAMA_WINDOW_DAYS,
+  panoramaWindowCutoffDay,
+} from '@/lib/monitoramento-panorama-window'
 import type { GoogleTrendsInterestRow } from '@/lib/google-trends-types'
 
 /** PostgREST limita ~1000 linhas por padrão — sem filtro na query, dias recentes somem. */
 export const GOOGLE_TRENDS_INTEREST_QUERY_LIMIT = 10_000
 
-export function googleTrendsInterestQueryCutoffDay(): string {
-  return panoramaWindowCutoffDay()
+export function googleTrendsInterestQueryCutoffDay(
+  days: number = PANORAMA_WINDOW_DAYS,
+): string {
+  return panoramaWindowCutoffDay(days)
 }
 
 /** Prioridade na deduplicação — coleta canônica de 30 dias vence legado. */
@@ -40,9 +45,10 @@ function pickPreferredRow(
  * deduplica por nome+data e descarta pontos fora dos últimos 30 dias.
  */
 export function normalizeGoogleTrendsInterestRows(
-  rows: GoogleTrendsInterestRow[]
+  rows: GoogleTrendsInterestRow[],
+  windowDays: number = PANORAMA_WINDOW_DAYS,
 ): GoogleTrendsInterestRow[] {
-  const cutoffDay = googleTrendsInterestQueryCutoffDay()
+  const cutoffDay = googleTrendsInterestQueryCutoffDay(windowDays)
   const map = new Map<string, GoogleTrendsInterestRow>()
 
   for (const row of rows) {

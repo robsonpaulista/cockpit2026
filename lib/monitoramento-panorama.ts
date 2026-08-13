@@ -14,6 +14,7 @@ import { formatSpendBrl } from '@/lib/meta-ads-format'
 import { buildPanoramaPlatformCharts, type PanoramaPlatformChart } from '@/lib/monitoramento-panorama-charts'
 import { buildPanoramaPlatformKpis, type PanoramaPlatformKpiCard } from '@/lib/monitoramento-panorama-kpis'
 import {
+  PANORAMA_WINDOW_DAYS,
   panoramaWindowCutoffDay,
   panoramaWindowCutoffIso,
   panoramaWindowLabel,
@@ -365,13 +366,15 @@ export function buildMonitoramentoPanorama(input: {
   instagramPosts: InstagramRadarPostWithActor[]
   metaAdsMentions30d: MetaAdsMentionWithActor[]
   lastUpdated: string | null
+  windowDays?: number
   windowLabel?: string
   title?: string
   setupRequired?: boolean
 }): PanoramaModel {
   const activeActors = input.actors.filter((a) => a.active)
+  const windowDays = input.windowDays ?? PANORAMA_WINDOW_DAYS
 
-  const cutoffIso = panoramaWindowCutoffIso()
+  const cutoffIso = panoramaWindowCutoffIso(windowDays)
   const youtubeMentionsWindow = input.youtubeMentions.filter(
     (m) => m.published_at && m.published_at >= cutoffIso
   )
@@ -569,7 +572,7 @@ export function buildMonitoramentoPanorama(input: {
   const lastMs = input.lastUpdated ? new Date(input.lastUpdated).getTime() : 0
   const isLive = lastMs > 0 && Date.now() - lastMs < 24 * 60 * 60 * 1000
 
-  const trendsCutoffDay = panoramaWindowCutoffDay()
+  const trendsCutoffDay = panoramaWindowCutoffDay(windowDays)
   const trendsInterestWindow = input.trendsInterestRows.filter(
     (r) => r.interest_date >= trendsCutoffDay
   )
@@ -587,9 +590,10 @@ export function buildMonitoramentoPanorama(input: {
     ),
     trendsInterestRows: trendsInterestWindow,
     metaAdsMentions: input.metaAdsMentions30d,
+    windowDays,
   })
 
-  const windowLabel = input.windowLabel ?? panoramaWindowLabel()
+  const windowLabel = input.windowLabel ?? panoramaWindowLabel(windowDays)
   const platformKpis = buildPanoramaPlatformKpis({ columns, charts, windowLabel })
 
   return {

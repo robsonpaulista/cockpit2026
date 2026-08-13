@@ -3054,6 +3054,15 @@ body[data-war-room-clean] main {
   color: color-mix(in srgb, var(--wr-slate) 68%, var(--wr-mist));
 }
 
+.wr-ig-radar__period-tabs {
+  gap: 4px 14px;
+}
+
+.wr-ig-radar__period-tabs .wr-copiloto-redes__period-tab {
+  padding: 4px 0 8px;
+  font-size: 12px;
+}
+
 .wr-ig-radar__filtros {
   display: inline-flex;
   align-items: center;

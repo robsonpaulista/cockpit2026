@@ -6,7 +6,10 @@ import type { MonitoramentoCollectAllProgress } from '@/lib/monitoramento-collec
 import { runMonitoramentoCollectAll } from '@/lib/monitoramento-collect-all'
 import type { MonitoramentoCollectorsStatus } from '@/lib/monitoramento-collectors-status'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
-import { panoramaWindowLabel } from '@/lib/monitoramento-panorama-window'
+import {
+  PANORAMA_WINDOW_DAYS,
+  panoramaWindowLabel,
+} from '@/lib/monitoramento-panorama-window'
 
 const EMPTY_PANORAMA: PanoramaModel = {
   title: 'PAINEL DE MONITORAMENTO — PIAUÍ 2026',
@@ -27,9 +30,10 @@ type PanoramaMeta = {
 
 export function usePanoramaPanel(options: {
   enabled: boolean
+  days?: number
   onMetaChange?: (meta: PanoramaMeta) => void
 }) {
-  const { enabled, onMetaChange } = options
+  const { enabled, days = PANORAMA_WINDOW_DAYS, onMetaChange } = options
   const [panorama, setPanorama] = useState<PanoramaModel>(EMPTY_PANORAMA)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -40,13 +44,15 @@ export function usePanoramaPanel(options: {
   const [animationEpoch, setAnimationEpoch] = useState(0)
   const [collectorsStatus, setCollectorsStatus] = useState<MonitoramentoCollectorsStatus | null>(null)
   const loadInFlightRef = useRef<Promise<void> | null>(null)
+  const loadInFlightDaysRef = useRef<number | null>(null)
 
   const carregar = useCallback(async (silent = false) => {
     if (!enabled) return
 
     if (loadInFlightRef.current) {
+      const inflightDays = loadInFlightDaysRef.current
       await loadInFlightRef.current
-      return
+      if (inflightDays === days) return
     }
 
     const run = (async () => {
@@ -54,10 +60,11 @@ export function usePanoramaPanel(options: {
       else setRefreshing(true)
       setError('')
       try {
-        let res = await fetch('/api/monitoramento/panorama', { cache: 'no-store' })
+        const panoramaUrl = `/api/monitoramento/panorama?days=${days}`
+        let res = await fetch(panoramaUrl, { cache: 'no-store' })
         if (res.status === 503) {
           await new Promise((r) => setTimeout(r, 800))
-          res = await fetch('/api/monitoramento/panorama', { cache: 'no-store' })
+          res = await fetch(panoramaUrl, { cache: 'no-store' })
         }
         const j = (await res.json()) as {
           error?: string
@@ -77,12 +84,14 @@ export function usePanoramaPanel(options: {
     })()
 
     loadInFlightRef.current = run
+    loadInFlightDaysRef.current = days
     try {
       await run
     } finally {
       loadInFlightRef.current = null
+      loadInFlightDaysRef.current = null
     }
-  }, [enabled])
+  }, [enabled, days])
 
   useEffect(() => {
     if (!enabled) return
