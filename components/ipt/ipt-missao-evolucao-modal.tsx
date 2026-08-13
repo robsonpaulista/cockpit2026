@@ -324,8 +324,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
           ) : grupos.length === 0 ? (
             <div className="ipt-evolucao-modal__empty">
               Nenhum movimento registrado ainda. Os eventos passam a ser gravados a cada atualização
-              (manual ou automática a cada 10 min). Novos eventos passam a registrar valor anterior e
-              atual.
+              manual. Novos eventos passam a registrar valor anterior e atual.
             </div>
           ) : (
             <div className="ipt-evolucao-modal__groups">

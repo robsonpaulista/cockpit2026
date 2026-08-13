@@ -218,14 +218,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
 
   useEffect(() => {
     if (config) {
-      fetchEvents(false) // Carregamento inicial (sem loading duplicado)
-      
-      // Atualização automática silenciosa a cada 30 minutos
-      const interval = setInterval(() => {
-        fetchEvents(false) // false = atualização automática (sem loading)
-      }, 1800000) // 30 minutos (30 * 60 * 1000)
-
-      return () => clearInterval(interval)
+      fetchEvents(false) // Carregamento inicial
     }
   }, [config, fetchEvents])
 

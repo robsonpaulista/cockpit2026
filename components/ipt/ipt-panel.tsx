@@ -403,18 +403,6 @@ export function IptPanel() {
     })
   }, [contagem, membrosAtuais, recarregar])
 
-  // Atualização silenciosa a cada 10 min (sem spinner / sem resetar “Mudança recente”).
-  useEffect(() => {
-    const DEZ_MINUTOS_MS = 10 * 60 * 1000
-    const id = window.setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      void Promise.resolve(recarregar({ silent: true })).then(() => {
-        setAtualizadoEm(new Date())
-      })
-    }, DEZ_MINUTOS_MS)
-    return () => window.clearInterval(id)
-  }, [recarregar])
-
   const atualizadoLabel = atualizadoEm
     ? atualizadoEm.toLocaleString('pt-BR', {
         day: '2-digit',

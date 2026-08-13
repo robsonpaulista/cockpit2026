@@ -24,9 +24,6 @@ export type WarRoomCardChange = {
 /** TTL do destaque visual após uma mudança detectada. */
 export const WAR_ROOM_CHANGE_TTL_MS = 2 * 60 * 1000
 
-/** Intervalo de atualização silenciosa. */
-export const WAR_ROOM_AUTO_REFRESH_MS = 20 * 60 * 1000
-
 export function fingerprintLines(lines: string[]): string {
   return lines.slice().sort((a, b) => a.localeCompare(b, 'pt-BR')).join('\n')
 }

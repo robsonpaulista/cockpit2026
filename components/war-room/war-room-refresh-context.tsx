@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  WAR_ROOM_AUTO_REFRESH_MS,
   WAR_ROOM_CHANGE_TTL_MS,
   type WarRoomCardChange,
   type WarRoomCardId,
@@ -80,15 +79,6 @@ export function WarRoomRefreshProvider({ children }: { children: ReactNode }) {
       setRefreshing(false)
     }
   }, [])
-
-  useEffect(() => {
-    const run = () => {
-      if (document.visibilityState === 'hidden') return
-      void refreshAll({ silent: true })
-    }
-    const id = window.setInterval(run, WAR_ROOM_AUTO_REFRESH_MS)
-    return () => window.clearInterval(id)
-  }, [refreshAll])
 
   /** Limpa badges expirados. */
   useEffect(() => {
