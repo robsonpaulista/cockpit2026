@@ -655,11 +655,10 @@ function MapRow({
   mapIndex: number
   maxes: {
     eng: number
-    views: number
     comments: number
     reels: number
     eff: number
-    aud: number
+    unique: number
   }
   winners: RadarCompetitivoModel['winners']
 }) {
