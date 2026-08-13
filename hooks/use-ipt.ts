@@ -154,7 +154,11 @@ export function useIpt() {
           ),
           fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
           fetch('/api/instagram/classifications', { cache: 'no-store' }),
-          loadInstagramConfigAsync().catch(() => ({ token: '', businessAccountId: '' })),
+          loadInstagramConfigAsync().catch(() => ({
+            configured: false,
+            token: '',
+            businessAccountId: '',
+          })),
         ])
 
       const territorioJson = (await territorioRes.json()) as { retryable?: boolean }
