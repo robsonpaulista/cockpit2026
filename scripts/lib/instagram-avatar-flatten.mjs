@@ -1,11 +1,11 @@
 /**
  * Remove fundo do avatar (IMG.LY ONNX) e compõe sobre Light #F3F4F4 da paleta WR.
  * Skip: INSTAGRAM_AVATAR_SKIP_BG=1
+ * Sharp é import dinâmico — no Vercel o bundle às vezes não traz semver e o require estático derruba a coleta.
  */
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
-import sharp from 'sharp'
 
 export const AVATAR_PALETTE_BG = '#F3F4F4'
 export const AVATAR_OUTPUT_SIZE = 320
@@ -25,12 +25,30 @@ function resolveImglyPublicPath() {
   return `${pathToFileURL(distDir).href}/`
 }
 
+async function loadSharp() {
+  try {
+    const mod = await import('sharp')
+    return mod.default
+  } catch (err) {
+    console.warn(
+      '[avatar] sharp indisponível, mantém original:',
+      err instanceof Error ? err.message : String(err),
+    )
+    return null
+  }
+}
+
 /**
  * @param {Buffer} inputBuf
  * @param {string} [contentType]
- * @returns {Promise<{ buf: Buffer, contentType: 'image/png', flattened: boolean }>}
+ * @returns {Promise<{ buf: Buffer, contentType: string, flattened: boolean }>}
  */
 export async function flattenInstagramAvatar(inputBuf, contentType = 'image/jpeg') {
+  const sharp = await loadSharp()
+  if (!sharp) {
+    return { buf: inputBuf, contentType, flattened: false }
+  }
+
   if (skipBgRemoval()) {
     const buf = await sharp(inputBuf)
       .resize(AVATAR_OUTPUT_SIZE, AVATAR_OUTPUT_SIZE, { fit: 'cover' })

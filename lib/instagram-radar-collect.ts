@@ -1,6 +1,8 @@
 import { execFile } from 'child_process'
 import path from 'path'
 import { promisify } from 'util'
+/** Força o NFT da Vercel a copiar semver — sharp exige `semver/functions/coerce`. */
+import 'semver/functions/coerce'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getInstagramRadarBudgetSummary } from '@/lib/instagram-radar-aggregate'
 import {

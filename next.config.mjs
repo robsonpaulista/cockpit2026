@@ -1,3 +1,20 @@
+const instagramRadarCollectIncludes = [
+  './scripts/collect-instagram-radar.mjs',
+  './scripts/lib/supabase-client.mjs',
+  './scripts/lib/instagram-avatar-storage.mjs',
+  './scripts/lib/instagram-avatar-flatten.mjs',
+  './node_modules/@supabase/supabase-js/**/*',
+  './node_modules/sharp/**/*',
+  './node_modules/semver/**/*',
+  './node_modules/detect-libc/**/*',
+  './node_modules/color/**/*',
+  './node_modules/color-convert/**/*',
+  './node_modules/color-name/**/*',
+  './node_modules/color-string/**/*',
+  './node_modules/simple-swizzle/**/*',
+  './node_modules/is-arrayish/**/*',
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -32,22 +49,8 @@ const nextConfig = {
         './node_modules/@supabase/supabase-js/**/*',
       ],
       /** Script Apify + sharp (resize). Sem imgly/onnx — estouram o limite 250MB da function. */
-      '/api/instagram-radar/collect': [
-        './scripts/collect-instagram-radar.mjs',
-        './scripts/lib/supabase-client.mjs',
-        './scripts/lib/instagram-avatar-storage.mjs',
-        './scripts/lib/instagram-avatar-flatten.mjs',
-        './node_modules/@supabase/supabase-js/**/*',
-        './node_modules/sharp/**/*',
-        './node_modules/semver/**/*',
-        './node_modules/detect-libc/**/*',
-        './node_modules/color/**/*',
-        './node_modules/color-convert/**/*',
-        './node_modules/color-name/**/*',
-        './node_modules/color-string/**/*',
-        './node_modules/simple-swizzle/**/*',
-        './node_modules/is-arrayish/**/*',
-      ],
+      '/api/instagram-radar/collect': instagramRadarCollectIncludes,
+      'app/api/instagram-radar/collect/route': instagramRadarCollectIncludes,
     },
     outputFileTracingExcludes: {
       '/api/instagram-radar/collect': [
