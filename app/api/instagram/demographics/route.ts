@@ -98,16 +98,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = (await request.json()) as {
-      token?: string
-      businessAccountId?: string
-    }
-    const token = body.token?.trim()
-    const businessAccountId = body.businessAccountId?.trim()
+    await request.json().catch(() => ({}))
+    const token = process.env.INSTAGRAM_TOKEN?.trim() || ''
+    const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || ''
     if (!token || !businessAccountId) {
       return NextResponse.json(
-        { error: 'Token e Business Account ID são obrigatórios' },
-        { status: 400 }
+        { error: 'Instagram não configurado no servidor (INSTAGRAM_TOKEN / INSTAGRAM_BUSINESS_ID).' },
+        { status: 503 }
       )
     }
 

@@ -1526,21 +1526,12 @@ export function AIAgent({
   // Buscar métricas do Instagram
   const fetchInstagramMetrics = async (): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('instagramToken')
-      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-      
-      if (!savedConfig || !savedBusinessId) {
-        return `Configure o Instagram na página Conteúdo & Redes Sociais para ver as métricas.`
-      }
-
       const response = await fetch('/api/instagram', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: savedConfig,
-          businessAccountId: savedBusinessId,
           timeRange: '30d',
         }),
       })
@@ -1684,19 +1675,10 @@ export function AIAgent({
     highlightSingle = false
   ): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('instagramToken')
-      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-
-      if (!savedConfig || !savedBusinessId) {
-        return `Configure o Instagram na página **Redes & Instagram** para ver o ranking de publicações.`
-      }
-
       const response = await fetch('/api/instagram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token: savedConfig,
-          businessAccountId: savedBusinessId,
           timeRange: '30d',
         }),
       })
@@ -1766,21 +1748,12 @@ export function AIAgent({
   // Buscar posts por tipo de conteúdo
   const fetchPostsByType = async (): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('instagramToken')
-      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-      
-      if (!savedConfig || !savedBusinessId) {
-        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
-      }
-
       const response = await fetch('/api/instagram', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: savedConfig,
-          businessAccountId: savedBusinessId,
           timeRange: '30d',
         }),
       })
@@ -1865,13 +1838,6 @@ export function AIAgent({
   // Buscar performance por tema de postagens
   const fetchThemePerformance = async (): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('instagramToken')
-      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-      
-      if (!savedConfig || !savedBusinessId) {
-        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
-      }
-
       // Buscar classificações de temas do Supabase
       const classificationsResponse = await fetch('/api/instagram/classifications')
       if (!classificationsResponse.ok) {
@@ -1896,8 +1862,6 @@ export function AIAgent({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: savedConfig,
-          businessAccountId: savedBusinessId,
           timeRange: '30d',
         }),
       })
@@ -3616,13 +3580,6 @@ export function AIAgent({
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
     const pc = pageContextRef.current
-    const instagramToken =
-      typeof window !== 'undefined' ? localStorage.getItem('instagramToken') ?? undefined : undefined
-    const instagramBusinessAccountId =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('instagramBusinessAccountId') ?? undefined
-        : undefined
-
     return {
       pageKind:
         pc?.kind === 'resumo-eleicoes'
@@ -3655,8 +3612,6 @@ export function AIAgent({
       pollsCount,
       expectativa2026: expectativa2026 != null ? String(expectativa2026) : undefined,
       presencaTerritorial,
-      instagramToken,
-      instagramBusinessAccountId,
     }
   }, [
     alertsCriticosCount,

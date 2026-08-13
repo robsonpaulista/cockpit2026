@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { buildCitySummariesFromDb } from '@/lib/territorio-liderancas-db'
 
 export const dynamic = 'force-dynamic'
@@ -6,6 +7,9 @@ export const dynamic = 'force-dynamic'
 /** Total de Expectativa 2026 (cenário Legado) a partir de territorio_liderancas. */
 export async function POST() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const { summaries } = await buildCitySummariesFromDb()
     let totalExpectativaVotos = 0
     for (const summary of summaries.values()) {

@@ -375,8 +375,6 @@ export async function collectInstagramRadar(options?: {
     if (shouldSyncOwnCandidate(options)) {
       ownResults = await syncOwnCandidateInstagramRadar(admin, {
         politicoSlug: options?.politicoSlug,
-        instagramToken: options?.instagramToken,
-        instagramBusinessAccountId: options?.instagramBusinessAccountId,
       })
     }
 

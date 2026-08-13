@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { consultarSeiNoDoe } from '@/lib/diario-oficial-pi'
 import { findRecapItemById, updateRecapItem } from '@/lib/obras-recap-store'
 
@@ -16,6 +17,9 @@ type Body = {
 /** Consulta DOE e grava no storage local (sem Supabase). */
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const body = (await request.json()) as Body
     let sei = typeof body.sei === 'string' ? body.sei.trim() : ''
     const obraId = typeof body.obraId === 'string' ? body.obraId.trim() : ''

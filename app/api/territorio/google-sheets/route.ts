@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
+import { createClient } from '@/lib/supabase/server'
 
 // Função auxiliar para formatar a chave privada
 function formatPrivateKey(key: string): string {
@@ -80,6 +81,14 @@ function getSheetConfig(body: any) {
 // Função para buscar dados do Google Sheets usando Service Account
 export async function POST(request: Request) {
   try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { spreadsheetId, sheetName, range } = getSheetConfig(body)
     // Usar contexto 'territorio' para buscar credenciais específicas
@@ -175,6 +184,14 @@ export async function POST(request: Request) {
 // Manter GET para compatibilidade (mas não funcionará com planilhas privadas)
 export async function GET(request: Request) {
   try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const spreadsheetId = searchParams.get('spreadsheet_id')
     const sheetName = searchParams.get('sheet_name') || 'Sheet1'

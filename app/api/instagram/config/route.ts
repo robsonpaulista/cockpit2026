@@ -68,18 +68,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Retornar credenciais das variáveis de ambiente do servidor (seguro)
-    // Usa variáveis SEM NEXT_PUBLIC_ para não expor no browser
-    const token = process.env.INSTAGRAM_TOKEN || ''
-    const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID || ''
+    const token = process.env.INSTAGRAM_TOKEN?.trim() || ''
+    const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || ''
+    const configured = Boolean(token && businessAccountId)
 
-    // Só retornar se ambos estiverem configurados
-    if (token && businessAccountId) {
-      return NextResponse.json({ token, businessAccountId })
-    }
-
-    // Se não houver variáveis de ambiente, retornar vazio
-    return NextResponse.json({ token: null, businessAccountId: null })
+    return NextResponse.json({
+      configured,
+      businessAccountId: configured ? businessAccountId : null,
+    })
   } catch (error: unknown) {
     console.error('Erro ao buscar configuração:', error)
     return NextResponse.json(

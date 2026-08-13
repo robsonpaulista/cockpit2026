@@ -9,22 +9,33 @@ type RawMediaPost = {  id: string
   media_type?: string
 }
 
+function sanitizeEnvValue(value: string): string {
+  let v = value.trim()
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim()
+  }
+  return v.replace(/\s+/g, '')
+}
+
+export function looksLikeMetaGraphToken(token: string): boolean {
+  return /^EAA[A-Za-z0-9]+/.test(token) && token.length >= 50
+}
+
 export function getInstagramEnvCredentials(): { token: string; businessAccountId: string } | null {
-  const token = process.env.INSTAGRAM_TOKEN?.trim() ?? ''
-  const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID?.trim() ?? ''
+  const token = sanitizeEnvValue(process.env.INSTAGRAM_TOKEN ?? '')
+  const businessAccountId = sanitizeEnvValue(process.env.INSTAGRAM_BUSINESS_ID ?? '')
   if (!token || !businessAccountId) return null
   return { token, businessAccountId }
 }
 
-function resolveCredentials(opts?: {
+function resolveCredentials(_opts?: {
   token?: string
   businessAccountId?: string
 }): { token: string; businessAccountId: string } | null {
-  const token = opts?.token?.trim() || process.env.INSTAGRAM_TOKEN?.trim() || ''
-  const businessAccountId =
-    opts?.businessAccountId?.trim() || process.env.INSTAGRAM_BUSINESS_ID?.trim() || ''
-  if (!token || !businessAccountId) return null
-  return { token, businessAccountId }
+  return getInstagramEnvCredentials()
 }
 async function fetchMediaList(
   igAccountId: string,

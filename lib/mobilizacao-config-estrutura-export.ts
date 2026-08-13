@@ -33,7 +33,6 @@ const COL_COORD = 'Coordenador'
 const COL_CIDADE = 'Cidade (município da liderança)'
 const COL_LIDERANCA = 'Liderança'
 const COL_TEL_LIDERANCA = 'Telefone da liderança'
-const COL_LINK = 'Link de captação (cadastro de liderados)'
 const COL_LID_NOME = 'Liderado — nome'
 const COL_LID_WA = 'Liderado — WhatsApp'
 const COL_LID_IG = 'Liderado — Instagram'
@@ -46,7 +45,6 @@ export const MOBILIZACAO_ESTRUTURA_EXPORT_HEADERS = [
   COL_CIDADE,
   COL_LIDERANCA,
   COL_TEL_LIDERANCA,
-  COL_LINK,
   COL_LID_NOME,
   COL_LID_WA,
   COL_LID_IG,
@@ -94,15 +92,13 @@ function resolveCoordenadorNome(leader: LeaderExportRow, coordWrap: { nome: stri
 }
 
 /**
- * Uma linha por vínculo com liderado; lideranças sem liderados geram uma linha com colunas de liderado vazias
- * (útil para disparar o link de captação). Ordenação: TD, coordenador, cidade, liderança, liderado.
+ * Uma linha por vínculo com liderado; lideranças sem liderados geram uma linha com colunas de liderado vazias.
+ * Ordenação: TD, coordenador, cidade, liderança, liderado.
  */
 export function buildMobilizacaoEstruturaExportRows(
   leaders: LeaderExportRow[],
   liderados: LideradoExportRow[],
-  baseCaptacaoUrl: string
 ): MobilizacaoEstruturaSheetRow[] {
-  const base = baseCaptacaoUrl.replace(/\/$/, '')
   const lidByLeader = new Map<string, LideradoExportRow[]>()
   for (const L of leaders) {
     lidByLeader.set(L.id, [])
@@ -124,7 +120,6 @@ export function buildMobilizacaoEstruturaExportRows(
     const td = resolveTdForLeader(leader, coordWrap)
     const coordNome = resolveCoordenadorNome(leader, coordWrap)
     const cidade = labelCidadeLeader(leader)
-    const link = base ? `${base}?leader_id=${leader.id}` : ''
     const tel = leader.telefone?.trim() || ''
 
     const lista = [...(lidByLeader.get(leader.id) ?? [])].sort(sortLiderado)
@@ -135,7 +130,6 @@ export function buildMobilizacaoEstruturaExportRows(
         [COL_CIDADE]: cidade,
         [COL_LIDERANCA]: leader.nome,
         [COL_TEL_LIDERANCA]: tel,
-        [COL_LINK]: link,
         [COL_LID_NOME]: '',
         [COL_LID_WA]: '',
         [COL_LID_IG]: '',
@@ -151,7 +145,6 @@ export function buildMobilizacaoEstruturaExportRows(
         [COL_CIDADE]: cidade,
         [COL_LIDERANCA]: leader.nome,
         [COL_TEL_LIDERANCA]: tel,
-        [COL_LINK]: link,
         [COL_LID_NOME]: lid.nome,
         [COL_LID_WA]: lid.whatsapp,
         [COL_LID_IG]: lid.instagram?.trim() || '',
@@ -169,7 +162,6 @@ export function buildMobilizacaoEstruturaExportRows(
       [COL_CIDADE]: '—',
       [COL_LIDERANCA]: '(liderança não encontrada — verificar leader_id)',
       [COL_TEL_LIDERANCA]: '',
-      [COL_LINK]: '',
       [COL_LID_NOME]: lid.nome,
       [COL_LID_WA]: lid.whatsapp,
       [COL_LID_IG]: lid.instagram?.trim() || '',
@@ -201,7 +193,6 @@ export function mobilizacaoEstruturaRowsToXlsxBuffer(rows: MobilizacaoEstruturaS
     [COL_CIDADE]: '—',
     [COL_LIDERANCA]: 'Sem lideranças cadastradas',
     [COL_TEL_LIDERANCA]: '',
-    [COL_LINK]: '',
     [COL_LID_NOME]: '',
     [COL_LID_WA]: '',
     [COL_LID_IG]: '',
@@ -213,7 +204,7 @@ export function mobilizacaoEstruturaRowsToXlsxBuffer(rows: MobilizacaoEstruturaS
     header: [...MOBILIZACAO_ESTRUTURA_EXPORT_HEADERS],
   })
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Estrutura captação')
+  XLSX.utils.book_append_sheet(wb, ws, 'Estrutura')
   const raw = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer', compression: true })
   return Buffer.isBuffer(raw) ? raw : Buffer.from(raw)
 }

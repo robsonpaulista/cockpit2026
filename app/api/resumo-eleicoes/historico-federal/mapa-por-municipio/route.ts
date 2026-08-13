@@ -74,7 +74,10 @@ async function fetch2022PorMunicipio(
   u.searchParams.set('totals', 'federal2022PorMunicipio')
   if (nome) u.searchParams.set('candidato', nome)
   if (nomeCivil) u.searchParams.set('nomeCivil', nomeCivil)
-  const fr = await fetch(u.toString(), { cache: 'no-store' })
+  const fr = await fetch(u.toString(), {
+    cache: 'no-store',
+    headers: { cookie: request.headers.get('cookie') ?? '' },
+  })
   const json = (await fr.json().catch(() => ({}))) as {
     error?: string
     pontos?: { municipio: string; votos: number }[]
@@ -92,7 +95,10 @@ async function fetch2022Todos(
   const u = new URL('/api/resumo-eleicoes', request.nextUrl.origin)
   u.searchParams.set('totals', 'federal2022VotosTotaisPorMunicipio')
   if (perfilMilitar) u.searchParams.set('perfilMilitar', 'true')
-  const fr = await fetch(u.toString(), { cache: 'no-store' })
+  const fr = await fetch(u.toString(), {
+    cache: 'no-store',
+    headers: { cookie: request.headers.get('cookie') ?? '' },
+  })
   const json = (await fr.json().catch(() => ({}))) as {
     error?: string
     pontos?: { municipio: string; votos: number }[]

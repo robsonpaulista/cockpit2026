@@ -21,21 +21,19 @@ export function InstagramConfigModal({
   onSave,
   currentConfig,
 }: InstagramConfigModalProps) {
-  // Carregar credenciais do localStorage se não vierem via props
   const loadSavedConfig = () => {
     if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('instagramToken')
       const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-      if (savedToken && savedBusinessId) {
-        return { token: savedToken, businessAccountId: savedBusinessId }
+      if (savedBusinessId) {
+        return { token: '', businessAccountId: savedBusinessId }
       }
     }
     return null
   }
 
   const effectiveConfig =
-    currentConfig?.token?.trim() && currentConfig?.businessAccountId?.trim()
-      ? currentConfig
+    currentConfig?.businessAccountId?.trim()
+      ? { token: '', businessAccountId: currentConfig.businessAccountId }
       : loadSavedConfig()
 
   const [formData, setFormData] = useState({
@@ -49,13 +47,12 @@ export function InstagramConfigModal({
   const isCockpit = false
 
   useEffect(() => {
-    const updated =
-      currentConfig?.token?.trim() && currentConfig?.businessAccountId?.trim()
-        ? currentConfig
-        : loadSavedConfig()
-    if (updated?.token || updated?.businessAccountId) {
+    const updated = currentConfig?.businessAccountId?.trim()
+      ? { token: '', businessAccountId: currentConfig.businessAccountId }
+      : loadSavedConfig()
+    if (updated?.businessAccountId) {
       setFormData({
-        token: updated.token || '',
+        token: '',
         businessAccountId: updated.businessAccountId || '',
       })
     }
@@ -99,12 +96,14 @@ export function InstagramConfigModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.token || !formData.businessAccountId) {
-      alert('Token e Business Account ID são obrigatórios')
+    if (!formData.businessAccountId && !formData.token) {
+      alert('Instagram já usa INSTAGRAM_TOKEN / INSTAGRAM_BUSINESS_ID no servidor.')
+      onSave({ token: '', businessAccountId: formData.businessAccountId || '' })
+      onClose()
       return
     }
     onSave({
-      token: formData.token,
+      token: '',
       businessAccountId: formData.businessAccountId,
     })
     onClose()

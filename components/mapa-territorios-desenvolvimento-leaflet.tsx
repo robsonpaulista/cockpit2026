@@ -1874,7 +1874,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     ;(async () => {
       const c = await loadInstagramConfigAsync()
       if (!cancelled) {
-        if (c.token && c.businessAccountId) {
+        if (c.configured) {
           setIgConfig(c)
         } else {
           setIgConfig(null)

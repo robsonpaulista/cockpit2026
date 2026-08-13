@@ -23,7 +23,6 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'radar-224': 'Radar 224',
   noticias: 'Monitoramento',
   'mobilizacao-menu': 'Mobilização',
-  'mobilizacao-captacao': 'Captação',
   'mobilizacao-config': 'Config',
   whatsapp: 'WhatsApp',
   pesquisa: 'Pesquisas',

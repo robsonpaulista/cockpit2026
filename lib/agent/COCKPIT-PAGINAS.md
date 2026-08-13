@@ -286,9 +286,8 @@ Legenda de handlers:
 
 | Rota | Função |
 |------|--------|
-| `/mobilizacao/detalhe` | Captação de leads |
 | `/dashboard/mobilizacao/mapa-digital-ig` | Exército Digital (IG por TD) |
-| `/dashboard/mobilizacao/config` | Coordenadores, import planilha |
+| `/dashboard/mobilizacao/config` | Coordenadores, liderados, import planilha |
 
 **Jarvis:** navegação. **APIs:** `/api/mobilizacao/*` — sem consulta por voz.
 
@@ -302,7 +301,7 @@ Legenda de handlers:
 
 | Handler | Exemplos |
 |---------|----------|
-| Regex/Groq | «envia resumo operacional para o CEO», «briefing de Teresina para executivos» |
+| Regex/Groq | «envia resumo operacional para o João», «briefing de Teresina para executivos» |
 
 **APIs:** `/api/whatsapp/contacts`, fila via `tool-enviar-whatsapp`
 

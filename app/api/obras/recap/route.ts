@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import {
   getRecapTabItems,
   listRecapTabNames,
@@ -36,6 +37,9 @@ function stripLocalSeiFields(
 /** Lista abas Recap (JSON local) mesclando andamentos SEI do banco. DOE vem do local. */
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const tab = (searchParams.get('tab') ?? '').trim()
     const store = await readObrasRecapStore()

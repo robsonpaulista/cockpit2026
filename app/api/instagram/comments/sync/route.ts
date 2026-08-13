@@ -68,9 +68,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
-    const token = body.token as string | undefined
-    const businessAccountId = body.businessAccountId as string | undefined
+    const body = await request.json().catch(() => ({})) as {
+      lookbackDays?: unknown
+      maxMedia?: unknown
+    }
+    const token = process.env.INSTAGRAM_TOKEN?.trim() || ''
+    const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || ''
     const lookbackDays = parseLookbackDays(body.lookbackDays)
     const rawMax = Number(body.maxMedia)
     const maxMedia = Math.min(
@@ -80,8 +83,8 @@ export async function POST(request: Request) {
 
     if (!token || !businessAccountId) {
       return NextResponse.json(
-        { error: 'Token e Business Account ID são obrigatórios' },
-        { status: 400 }
+        { error: 'Instagram não configurado no servidor (INSTAGRAM_TOKEN / INSTAGRAM_BUSINESS_ID).' },
+        { status: 503 }
       )
     }
 

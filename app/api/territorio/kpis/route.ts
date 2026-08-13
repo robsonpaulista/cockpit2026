@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,6 +115,14 @@ function normalizeNumber(value: any): number {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { spreadsheetId: bodySpreadsheetId, sheetName: bodySheetName, range, serviceAccountEmail, credentials } = body
     const cenarioVotos =

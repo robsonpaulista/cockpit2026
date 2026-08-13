@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 const CAMARA_API_BASE = 'https://dadosabertos.camara.leg.br/api/v2'
 
@@ -7,6 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const { id } = await params
     const { searchParams } = new URL(request.url)
     const dataInicio = searchParams.get('dataInicio') || ''

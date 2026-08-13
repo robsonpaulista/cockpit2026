@@ -63,11 +63,17 @@ export type RadarCompetitivoCandidate = {
   avatarUrl: string | null
   color: string
   rank: number
-  audience: number
+  /** Média (curtidas + comentários) / post no período. */
   avgEngagement: number
   avgReelViews: number
+  /**
+   * Views relativas ao líder do grupo (100 = maior média de views).
+   * Absoluto é enganoso: anúncio infla visualização.
+   */
+  viewsIndex: number
   avgComments: number
   reelsShare: number
+  /** (engajamento médio / views médias) × 100 — relativiza patrocínio. */
   efficiency: number
   contentMix: RadarContentMix
   /** Engajamento médio/post por tipo (mesmos buckets do DNA). */
@@ -120,7 +126,6 @@ export type RadarCompetitivoModel = {
   formatPerfMax: RadarFormatPerfMap
   formatLeaders: RadarFormatLeader[]
   winners: {
-    audienceSlug: string | null
     engagementSlug: string | null
     reelsSlug: string | null
     commentsSlug: string | null
@@ -254,14 +259,7 @@ export function buildRadarCompetitivoModel(opts: {
 
   const active = actors.filter((a) => a.active && !hiddenSlugs.has(a.slug))
   const compareRows = buildInstagramRadarCompareRows(active, posts, days)
-    .map((row) => {
-      const engagementTotal = row.posts.reduce(
-        (s, p) => s + p.likes_count + p.comments_count,
-        0,
-      )
-      return { row, engagementTotal }
-    })
-    .sort((a, b) => b.engagementTotal - a.engagementTotal)
+    .sort((a, b) => b.avgEngagement - a.avgEngagement)
     .slice(0, maxCandidates)
 
   if (compareRows.length === 0) {
@@ -274,7 +272,6 @@ export function buildRadarCompetitivoModel(opts: {
       formatPerfMax: emptyFormatPerf(),
       formatLeaders: [],
       winners: {
-        audienceSlug: null,
         engagementSlug: null,
         reelsSlug: null,
         commentsSlug: null,
@@ -293,10 +290,9 @@ export function buildRadarCompetitivoModel(opts: {
 
   const dates = engajoDiario.chartData.map((d) => d.date)
   const labels = engajoDiario.chartData.map((d) => d.label)
-  const maxAudience = Math.max(...compareRows.map((c) => c.engagementTotal), 1)
+  const maxReelViews = Math.max(...compareRows.map((c) => c.avgReelViews), 1)
 
-  const candidates: RadarCompetitivoCandidate[] = compareRows.map((entry, index) => {
-    const { row, engagementTotal } = entry
+  const candidates: RadarCompetitivoCandidate[] = compareRows.map((row, index) => {
     const color =
       RADAR_COMPETITIVO_COLORS[index % RADAR_COMPETITIVO_COLORS.length] ?? '#2B2D31'
     const mix = instagramRadarContentMix(row.posts)
@@ -307,8 +303,12 @@ export function buildRadarCompetitivoModel(opts: {
     const commentsSampled = stats?.commentsSampled ?? 0
     const reelsShare =
       row.postCount > 0 ? Math.round((row.reelCount / row.postCount) * 100) : 0
+    const viewsIndex =
+      maxReelViews > 0 ? Math.round((row.avgReelViews / maxReelViews) * 100) : 0
     const efficiency =
-      maxAudience > 0 ? (row.avgEngagement / maxAudience) * 100 * 10 : 0
+      row.avgReelViews > 0
+        ? Math.round((row.avgEngagement / row.avgReelViews) * 10000) / 100
+        : 0
 
     const series = dates.map((date) => {
       const point = engajoDiario.chartData.find((d) => d.date === date)
@@ -324,12 +324,12 @@ export function buildRadarCompetitivoModel(opts: {
       avatarUrl: row.actor.instagram_avatar_url ?? null,
       color,
       rank: index + 1,
-      audience: engagementTotal,
       avgEngagement: row.avgEngagement,
       avgReelViews: row.avgReelViews,
+      viewsIndex,
       avgComments: row.avgComments,
       reelsShare: mix.reels > 0 ? mix.reels : reelsShare,
-      efficiency: Math.round(efficiency * 100) / 100,
+      efficiency,
       contentMix: mix,
       formatPerf,
       formatEngShare,
@@ -442,7 +442,6 @@ export function buildRadarCompetitivoModel(opts: {
     caption: entry.post.caption,
   }))
 
-  const winAudience = argMax(candidates, (c) => c.audience)
   const winEngagement = argMax(candidates, (c) => c.avgEngagement)
   const winReels = argMax(candidates, (c) => c.reelsShare)
   const winComments = argMax(candidates, (c) => c.avgComments)
@@ -457,7 +456,6 @@ export function buildRadarCompetitivoModel(opts: {
     formatPerfMax,
     formatLeaders,
     winners: {
-      audienceSlug: winAudience?.slug ?? null,
       engagementSlug: winEngagement?.slug ?? null,
       reelsSlug: winReels?.slug ?? null,
       commentsSlug: winComments?.slug ?? null,

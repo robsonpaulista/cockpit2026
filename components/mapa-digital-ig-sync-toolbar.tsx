@@ -7,7 +7,7 @@ import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
 
-type IgCfg = { token: string; businessAccountId: string }
+type IgCfg = { configured?: boolean; token: string; businessAccountId: string }
 const LOOKBACK_OPTIONS = [7, 15, 30] as const
 
 export function MapaDigitalIgSyncToolbar({
@@ -32,7 +32,7 @@ export function MapaDigitalIgSyncToolbar({
       setLoadingCfg(true)
       const c = await loadInstagramConfigAsync()
       if (cancelled) return
-      setCfg(c.token && c.businessAccountId ? { token: c.token, businessAccountId: c.businessAccountId } : null)
+      setCfg(c.configured ? { token: c.token, businessAccountId: c.businessAccountId } : null)
       setLoadingCfg(false)
     })()
     return () => {
@@ -42,7 +42,7 @@ export function MapaDigitalIgSyncToolbar({
 
   const handleSync = useCallback(async () => {
     const c = cfg ?? (await loadInstagramConfigAsync())
-    if (!c.token || !c.businessAccountId) {
+    if (!c.configured) {
       setShowConfig(true)
       return
     }
@@ -73,7 +73,7 @@ export function MapaDigitalIgSyncToolbar({
     dispatchInstagramCommentsSynced()
   }, [cfg, lookbackDays])
 
-  const configured = Boolean(cfg?.token && cfg?.businessAccountId)
+  const configured = Boolean(cfg?.configured || cfg?.businessAccountId)
 
   return (
     <>

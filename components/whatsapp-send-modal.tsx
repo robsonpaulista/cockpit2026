@@ -12,7 +12,6 @@ import {
   rememberLastUsedPhone,
   sendWhatsAppMessage,
 } from '@/lib/whatsapp/send'
-import { getWhatsAppCeoPhone } from '@/lib/whatsapp/ceo-phone'
 import { WhatsAppContactSelect } from '@/components/whatsapp-contact-select'
 import { WhatsAppRecipientQueuePanel } from '@/components/whatsapp-recipient-queue-panel'
 import { fetchWhatsAppContacts } from '@/lib/services/whatsapp-contacts'
@@ -34,7 +33,6 @@ interface WhatsAppSendModalProps {
   title?: string
   description?: string
   defaultPhone?: string
-  preferCeoPhone?: boolean
   contactCategory?: WhatsAppContactCategory
   /** Permite selecionar vários destinatários e enviar em fila sequencial. */
   allowMultipleRecipients?: boolean
@@ -55,7 +53,6 @@ export function WhatsAppSendModal({
   title = 'Enviar pelo WhatsApp',
   description,
   defaultPhone,
-  preferCeoPhone = false,
   contactCategory,
   allowMultipleRecipients = false,
 }: WhatsAppSendModalProps) {
@@ -75,7 +72,6 @@ export function WhatsAppSendModal({
     let cancelled = false
 
     const boot = async () => {
-      const ceo = getWhatsAppCeoPhone()
       const last = getLastUsedPhone()
       let suggested = defaultPhone?.trim() || ''
       let contactId = ''
@@ -98,11 +94,7 @@ export function WhatsAppSendModal({
         if (!cancelled) setContactsLoading(false)
       }
 
-      if (!suggested) {
-        if (preferCeoPhone && ceo) suggested = ceo
-        else if (last) suggested = last
-        else suggested = ceo
-      }
+      if (!suggested && last) suggested = last
 
       if (!cancelled) {
         setPhoneInput(suggested)
@@ -141,7 +133,7 @@ export function WhatsAppSendModal({
     return () => {
       cancelled = true
     }
-  }, [isOpen, defaultPhone, preferCeoPhone, contactCategory, allowMultipleRecipients])
+  }, [isOpen, defaultPhone, contactCategory, allowMultipleRecipients])
 
   useEffect(() => {
     if (!isOpen) return

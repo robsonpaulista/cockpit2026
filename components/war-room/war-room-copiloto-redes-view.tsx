@@ -147,16 +147,8 @@ export function WarRoomCopilotoRedesView() {
     setError(null)
     try {
       let cfg = loadInstagramConfig()
-      if (!cfg.token || !cfg.businessAccountId) {
+      if (!cfg.configured) {
         cfg = await loadInstagramConfigAsync()
-      }
-      if (!cfg.token || !cfg.businessAccountId) {
-        setConfigured(false)
-        setMetrics(null)
-        setHistory(null)
-        setManualVisitsByDate({})
-        setError('Instagram Pessoal não configurado')
-        return
       }
       setConfigured(true)
       const apiRange = copilotoRedesApiTimeRange(period)

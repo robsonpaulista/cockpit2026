@@ -17,12 +17,15 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-async function fetchVotos2022Jadyel(origin: string): Promise<Map<string, number>> {
+async function fetchVotos2022Jadyel(origin: string, cookie: string): Promise<Map<string, number>> {
   const url = new URL('/api/resumo-eleicoes', origin)
   url.searchParams.set('totals', 'federal2022PorMunicipio')
   url.searchParams.set('candidato', JADYEL_URNA_DEP_FEDERAL_2022)
 
-  const res = await fetch(url.toString(), { cache: 'no-store' })
+  const res = await fetch(url.toString(), {
+    cache: 'no-store',
+    headers: { cookie },
+  })
   if (!res.ok) return new Map()
 
   const data = (await res.json()) as { pontos?: Array<{ municipio: string; votos: number }> }
@@ -63,7 +66,10 @@ export async function GET(request: NextRequest) {
       expectativaMap.set(key, pickExpectativaComparativo(summary, cenario))
     })
 
-    const votos2022 = await fetchVotos2022Jadyel(request.nextUrl.origin)
+    const votos2022 = await fetchVotos2022Jadyel(
+      request.nextUrl.origin,
+      request.headers.get('cookie') ?? '',
+    )
     const listaCompleta = buildComparativoExpectativa2022Lista(expectativaMap, votos2022)
 
     if (modo === 'resumo') {

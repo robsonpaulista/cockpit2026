@@ -140,7 +140,7 @@ export function JuridicoMovimentacoesPanel({
           </p>
           {ultimaRegistradaAgora ? (
             <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-              Movimentação salva. Você pode avisar o CEO pelo WhatsApp abaixo.
+              Movimentação salva. Você pode enviar pelo WhatsApp abaixo.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -167,10 +167,10 @@ export function JuridicoMovimentacoesPanel({
               onClick={() => setWhatsappSendOpen(true)}
               disabled={!textoWhatsApp}
               className={cn(sidebarPrimaryCTAButtonClass(false), 'text-xs')}
-              title="Enviar atualização ao CEO pelo WhatsApp"
+              title="Enviar atualização pelo WhatsApp"
             >
               <Send className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden />
-              Enviar ao CEO
+              Enviar pelo WhatsApp
             </button>
           </div>
         </div>
@@ -292,9 +292,8 @@ export function JuridicoMovimentacoesPanel({
         text={textoWhatsApp}
         source="juridico-movimentacao"
         cidade={processo.processo}
-        preferCeoPhone
-        title="Enviar atualização ao CEO"
-        description="Escolha um contato salvo ou confirme o telefone do CEO antes de enviar."
+        title="Enviar atualização pelo WhatsApp"
+        description="Escolha um contato salvo na agenda antes de enviar."
         contactCategory="executivo"
       />
     </section>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
+import { createClient } from '@/lib/supabase/server'
 import { candidatoEleicaoIndicaPerfilMilitar } from '@/lib/perfil-militar-nome'
 import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
@@ -224,6 +225,14 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const cidade = request.nextUrl.searchParams.get('cidade')
     const totals = request.nextUrl.searchParams.get('totals')
     const aggregado = request.nextUrl.searchParams.get('aggregado') === 'true'

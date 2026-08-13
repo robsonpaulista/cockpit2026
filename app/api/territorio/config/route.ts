@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 // Endpoint para verificar se a configuração do Google Sheets está disponível no servidor
 export async function GET() {
+  const auth = await requireRouteUser()
+  if (!auth.ok) return auth.response
+
   // Verificar variáveis específicas para Território primeiro
   let hasEnvConfig = !!(
     process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_PRIVATE_KEY &&

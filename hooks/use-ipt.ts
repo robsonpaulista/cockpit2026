@@ -325,15 +325,12 @@ export function useIpt() {
       let comDigital = comVisitasEvo
       let cobertura: IptPresencaDigitalCobertura | null = null
 
-      if (igCfg.token && igCfg.businessAccountId) {
+      if (igCfg.configured) {
         try {
           const demoRes = await fetch('/api/instagram/demographics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: igCfg.token,
-              businessAccountId: igCfg.businessAccountId,
-            }),
+            body: JSON.stringify({}),
             cache: 'no-store',
           })
           if (demoRes.ok) {

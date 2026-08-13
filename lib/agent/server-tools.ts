@@ -545,7 +545,7 @@ function toolAjuda(context?: AgentContextPayload): string {
     '**Pesquisas:** intenção por município, tendência temporal, ranking estimulada dep. federal',
     '**Redes:** métricas e posts do Instagram',
     '**Geral:** chapa federal, notícias em destaque, alertas, territórios frios',
-    '**WhatsApp:** «envia o resumo operacional para o CEO», «manda briefing de Teresina para os executivos»',
+    '**WhatsApp:** «envia o resumo operacional para o João», «manda briefing de Teresina para os executivos»',
     '',
     'Fale em linguagem natural — a IA interpreta e executa.',
   ].join('\n')
@@ -627,10 +627,7 @@ export async function executeServerTool(
         auth.user.id,
         classified.args,
         queryHint ?? classified.args.termo,
-        {
-          token: context?.instagramToken,
-          businessAccountId: context?.instagramBusinessAccountId,
-        }
+        undefined
       )
       return content
     }

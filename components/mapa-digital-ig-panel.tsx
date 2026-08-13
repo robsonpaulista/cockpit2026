@@ -273,7 +273,11 @@ function PostCard({ post, defaultOpen }: { post: InstagramPostWithComments; defa
 }
 
 export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean }) {
-  const [config, setConfig] = useState<{ token: string; businessAccountId: string } | null>(null)
+  const [config, setConfig] = useState<{
+    configured?: boolean
+    token: string
+    businessAccountId: string
+  } | null>(null)
   const [showConfig, setShowConfig] = useState(false)
   const [loadingConfig, setLoadingConfig] = useState(true)
   const [leaders, setLeaders] = useState<InstagramCommentLeader[]>([])
@@ -315,7 +319,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
       setLoadingConfig(true)
       const c = await loadInstagramConfigAsync()
       if (!cancelled) {
-        if (c.token && c.businessAccountId) {
+        if (c.configured) {
           setConfig(c)
         } else {
           setConfig(null)
@@ -343,7 +347,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
 
   const handleSync = async () => {
     const c = config ?? (await loadInstagramConfigAsync())
-    if (!c.token || !c.businessAccountId) {
+    if (!c.configured) {
       setShowConfig(true)
       return
     }
@@ -384,7 +388,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
     setShowConfig(false)
   }
 
-  const configured = Boolean(config?.token && config?.businessAccountId)
+  const configured = Boolean(config?.configured || config?.businessAccountId)
   const posts = grouped?.posts ?? []
 
   return (

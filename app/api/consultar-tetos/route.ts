@@ -11,6 +11,7 @@ import type { PropostaFnsCompleta } from '@/lib/fns-proposta-normalize'
 import { getExercicioAtivo, getMunicipiosLista } from '@/lib/limites-tetos-db'
 import { getPropostasFnsArquivo } from '@/lib/propostas-fns-db'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 25
@@ -103,6 +104,9 @@ export async function GET(req: NextRequest) {
   const startTime = Date.now()
 
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(req.url)
     const municipioParam = searchParams.get('municipio')
     const limit = parseInt(searchParams.get('limit') || '50', 10)

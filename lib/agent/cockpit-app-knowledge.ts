@@ -120,15 +120,15 @@ Hub com abas **Panorama**, **Base** (lideranças/planilha) e **Visitas** (Campo 
   - consultar_noticias_filtradas → negativas/positivas, risco médio/baixo, busca por tema, últimas
 - Claude gather: destaques do painel (/api/noticias?dashboard_highlight=true) em perguntas sobre notícias/crises/imprensa.
 
-### Mobilização · /mobilizacao/detalhe, /dashboard/mobilizacao/*
-- Captação de leads, mapa Exército Digital (Instagram por TD), config coordenadores.
+### Mobilização · /dashboard/mobilizacao/*
+- Mapa Exército Digital (Instagram por TD), config coordenadores e liderados.
 - API: /api/mobilizacao/config, /api/mobilizacao/relatorio-check-mapa-digital-ig
 - IA Cockpit: navegação. Claude: sem dados — oriente a página.
 
 ### WhatsApp · /dashboard/whatsapp
 - Fila de envios, contatos, campanhas.
 - API: /api/whatsapp/contacts, envio via tool IA Cockpit.
-- Regex: «envia resumo/briefing para [nome/CEO/executivos]».
+- Regex: «envia resumo/briefing para [nome/executivos]».
 
 ### Operação & Equipe · /dashboard/operacao
 - Kanban de tarefas, líderes por território.

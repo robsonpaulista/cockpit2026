@@ -21,6 +21,7 @@ import {
   SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS,
 } from '@/lib/sidebar-layout'
 import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador-redirect'
+import { useSessionPresence } from '@/hooks/use-session-presence'
 import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
@@ -41,6 +42,7 @@ import '@/components/dashboard/home-glass.css'
 import { DashboardCleanThemeBootstrap } from '@/components/dashboard/dashboard-clean-theme'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
+  useSessionPresence()
   const { collapsed, setCollapsed } = useSidebar()
   const pathname = usePathname() ?? ''
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)

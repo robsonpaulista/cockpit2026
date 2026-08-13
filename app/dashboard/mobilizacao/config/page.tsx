@@ -137,16 +137,6 @@ export default function MobilizacaoConfigPage() {
     status: 'ativo' | 'inativo'
   } | null>(null)
 
-  /** Origin público do formulário de captação (ex.: domínio curto). Sem trailing slash. */
-  const baseCaptacaoUrl = useMemo(() => {
-    const fromEnv = process.env.NEXT_PUBLIC_MOBILIZACAO_CAPTACAO_ORIGIN?.trim()
-    if (fromEnv) {
-      return `${fromEnv.replace(/\/$/, '')}/mobilizacao/detalhe`
-    }
-    if (typeof window === 'undefined') return ''
-    return `${window.location.origin}/mobilizacao/detalhe`
-  }, [])
-
   const municipiosPILista = useMemo(() => [...getTodosMunicipiosPIOficiaisOrdenados()], [])
 
   const carregarDados = async (opts?: { modo?: 'full' | 'refresh' | 'quiet' }) => {
@@ -392,19 +382,6 @@ export default function MobilizacaoConfigPage() {
     }
   }
 
-  const copyLink = async (leaderId: string) => {
-    if (!baseCaptacaoUrl) return
-    const link = `${baseCaptacaoUrl}?leader_id=${leaderId}`
-    try {
-      await navigator.clipboard.writeText(link)
-      setMensagem('Link de captação copiado para a área de transferência.')
-      setErro(null)
-    } catch {
-      setErro('Não foi possível copiar automaticamente. Copie o link manualmente.')
-      setMensagem(link)
-    }
-  }
-
   const handleExportarEstruturaXlsx = useCallback(async () => {
     setExportandoEstrutura(true)
     setErro(null)
@@ -420,7 +397,7 @@ export default function MobilizacaoConfigPage() {
       const dispo = res.headers.get('Content-Disposition')
       const m = dispo?.match(/filename="([^"]+)"/)
       const nomeArquivo =
-        m?.[1] ?? `mobilizacao-estrutura-captacao-${new Date().toISOString().slice(0, 10)}.xlsx`
+        m?.[1] ?? `mobilizacao-estrutura-${new Date().toISOString().slice(0, 10)}.xlsx`
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -431,7 +408,7 @@ export default function MobilizacaoConfigPage() {
       a.remove()
       URL.revokeObjectURL(url)
       setMensagem(
-        'Planilha Excel baixada: TD → coordenador → cidade → liderança → liderados, com link de captação por liderança (inclui linhas só com link quando ainda não há liderados).'
+        'Planilha Excel baixada: TD → coordenador → cidade → liderança → liderados.'
       )
     } catch {
       setErro('Falha de conexão ao exportar a estrutura.')
@@ -678,7 +655,7 @@ export default function MobilizacaoConfigPage() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-text-primary">Mobilização · Config</h1>
           <p className="text-sm text-text-secondary">
-            Cadastre coordenadores, lideranças, liderados (manual ou base) e gere links da página pública de captação.
+            Cadastre coordenadores, lideranças e liderados (manual ou importação da base).
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -686,7 +663,7 @@ export default function MobilizacaoConfigPage() {
             type="button"
             onClick={() => void handleExportarEstruturaXlsx()}
             disabled={exportandoEstrutura || carregando}
-            title="Exporta todas as lideranças e liderados (sem limite da tela). Coluna de link para cada liderança encaminhar cadastros."
+            title="Exporta todas as lideranças e liderados (sem limite da tela)."
             className="rounded-lg border border-card bg-surface px-3 py-2 text-sm font-medium text-text-primary hover:bg-card/50 disabled:opacity-60"
           >
             {exportandoEstrutura ? 'Gerando Excel…' : 'Exportar estrutura (Excel)'}
@@ -829,9 +806,8 @@ export default function MobilizacaoConfigPage() {
           Novo liderado (cadastro manual)
         </h2>
         <p className="mb-3 text-xs text-text-muted">
-          Use quando alguém da base cadastrar presencialmente ou quando precisar lançar o dado fora do link público.
-          O <span className="font-medium text-text-secondary">coordenador</span> continua sendo resolvido automaticamente
-          pela liderança selecionada.
+          Cadastro interno. O <span className="font-medium text-text-secondary">coordenador</span> é
+          resolvido automaticamente pela liderança selecionada.
         </p>
         <form onSubmit={handleCreateLiderado} className="grid gap-3 sm:grid-cols-2">
           <input
@@ -1025,7 +1001,6 @@ export default function MobilizacaoConfigPage() {
                         </div>
                         <div className="divide-y divide-card/40">
                           {leadersDaCidade.map(({ leader, liderados: lideradosDo }) => {
-                      const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       const igLid = contagemInstagramLideradosAtivos(lideradosDo)
                       return (
                         <details
@@ -1062,19 +1037,6 @@ export default function MobilizacaoConfigPage() {
                             </div>
                           </summary>
                           <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">
-                            {link ? (
-                              <p className="break-all text-[11px] text-text-muted">{link}</p>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                void copyLink(leader.id)
-                              }}
-                              className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
-                            >
-                              Copiar link
-                            </button>
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
@@ -1400,7 +1362,6 @@ export default function MobilizacaoConfigPage() {
                       <div className="divide-y divide-card/40">
                         {leadersDaCidade.map(({ leader, liderados: lid }) => {
                       const igLid = contagemInstagramLideradosAtivos(lid)
-                      const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       return (
                         <details
                           key={leader.id}
@@ -1435,19 +1396,6 @@ export default function MobilizacaoConfigPage() {
                             </div>
                           </summary>
                           <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">
-                            {link ? (
-                              <p className="break-all text-[11px] text-text-muted">{link}</p>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                void copyLink(leader.id)
-                              }}
-                              className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
-                            >
-                              Copiar link
-                            </button>
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"

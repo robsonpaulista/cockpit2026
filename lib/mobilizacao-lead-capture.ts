@@ -2,36 +2,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export type MobilizacaoAdminClient = ReturnType<typeof createAdminClient>
 
-export type CoordinatorJoinRow = { id: string; nome: string; regiao: string | null }
-
-export type LeaderContextPublicRow = {
-  id: string
-  nome: string
-  cidade: string | null
-  municipio: string | null
-  coordinator_id: string | null
-  coordinators: CoordinatorJoinRow | CoordinatorJoinRow[] | null
-}
-
-export function extractCoordinatorFromLeaderJoin(
-  input: LeaderContextPublicRow['coordinators']
-): CoordinatorJoinRow | null {
-  if (!input) return null
-  if (Array.isArray(input)) return input[0] ?? null
-  return input
-}
-
-export async function fetchLeaderWithCoordinatorForPublicContext(
-  admin: MobilizacaoAdminClient,
-  leaderId: string
-) {
-  return admin
-    .from('leaders')
-    .select('id, nome, cidade, municipio, coordinator_id, coordinators(id, nome, regiao)')
-    .eq('id', leaderId)
-    .maybeSingle()
-}
-
 export function normalizeWhatsappDigits(raw: string): string {
   return raw.replace(/\D/g, '')
 }
@@ -98,7 +68,7 @@ export type InsertMilitanciaLeadResult =
   | { ok: false; status: number; message: string }
 
 /**
- * Insere em `leads_militancia` com `coordinator_id` resolvido pelo líder (mesma regra do formulário público).
+ * Insere em `leads_militancia` com `coordinator_id` resolvido pelo líder (cadastro interno).
  */
 export async function insertMilitanciaLead(
   admin: MobilizacaoAdminClient,
@@ -166,7 +136,7 @@ export async function insertMilitanciaLead(
       cidade,
       leader_id: leaderRes.leader.id,
       coordinator_id: leaderRes.leader.coordinator_id,
-      origem: input.origem.trim() || 'qr',
+      origem: input.origem.trim() || 'manual',
       status: 'ativo',
     })
     .select('id, created_at')

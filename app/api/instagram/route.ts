@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logger, logError } from '@/lib/logger'
 import { fetchInstagramAudienceSplit, fetchInstagramDailyViewsReach, fetchInstagramDailyStoryViews } from '@/lib/instagram-audience-split'
+import {
+  getInstagramEnvCredentials,
+  looksLikeMetaGraphToken,
+} from '@/lib/instagram-graph-server'
 
 // Interface para os dados do Instagram
 interface InstagramMetrics {
@@ -125,12 +129,25 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { token, businessAccountId, timeRange = '30d', forceRefresh = false } = body
-
-    if (!token || !businessAccountId) {
+    const { timeRange = '30d', forceRefresh = false } = body as {
+      timeRange?: string
+      forceRefresh?: boolean
+    }
+    const creds = getInstagramEnvCredentials()
+    if (!creds) {
       return NextResponse.json(
-        { error: 'Token e Business Account ID são obrigatórios' },
-        { status: 400 }
+        { error: 'Instagram não configurado no servidor (INSTAGRAM_TOKEN / INSTAGRAM_BUSINESS_ID).' },
+        { status: 503 }
+      )
+    }
+    const { token, businessAccountId } = creds
+    if (!looksLikeMetaGraphToken(token)) {
+      return NextResponse.json(
+        {
+          error:
+            'INSTAGRAM_TOKEN no servidor não é um token Graph da Meta (deve começar com EAA). Use o valor da Vercel, o mesmo que já funcionava.',
+        },
+        { status: 503 },
       )
     }
 
@@ -141,23 +158,22 @@ export async function POST(request: Request) {
       forceRefresh,
     })
 
-    // Validar token primeiro
     const validationResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${businessAccountId}?fields=id&access_token=${token}`
+      `https://graph.facebook.com/v18.0/${encodeURIComponent(businessAccountId)}?fields=id&access_token=${encodeURIComponent(token)}`,
     )
 
     if (!validationResponse.ok) {
-      const errorData = await validationResponse.json()
-      if (errorData.error?.code === 190 || errorData.error?.code === 100) {
+      const errorData = (await validationResponse.json().catch(() => ({}))) as {
+        error?: { code?: number; message?: string }
+      }
+      const graphMessage = errorData.error?.message || 'Erro ao validar token'
+      if (errorData.error?.code === 190) {
         return NextResponse.json(
-          { error: 'Token expirado ou inválido' },
-          { status: 401 }
+          { error: `Token Graph recusado pela Meta: ${graphMessage}` },
+          { status: 401 },
         )
       }
-      return NextResponse.json(
-        { error: errorData.error?.message || 'Erro ao validar token' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: graphMessage }, { status: 400 })
     }
 
     // Cache buster para forçar dados frescos quando refresh manual

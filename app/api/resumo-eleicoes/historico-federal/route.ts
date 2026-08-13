@@ -230,6 +230,7 @@ export async function GET(request: NextRequest) {
       const baseUrl = request.nextUrl.origin
       const federal2022Res = await fetch(`${baseUrl}/api/resumo-eleicoes?totals=federal2022`, {
         cache: 'no-store',
+        headers: { cookie: request.headers.get('cookie') ?? '' },
       })
       const federal2022Json = (await federal2022Res.json().catch(() => ({}))) as {
         rows?: Array<{ nome: string; votos: number; partido?: string | null }>

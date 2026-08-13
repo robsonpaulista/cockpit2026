@@ -1,28 +1,14 @@
-import type { InstagramCredentials, ResumoOperacionalResponse } from '@/lib/resumo-operacional'
-import { loadInstagramConfigAsync } from '@/lib/instagramApi'
+import type { ResumoOperacionalResponse } from '@/lib/resumo-operacional'
 
 export async function fetchResumoOperacional(
   days = 7,
-  instagram?: InstagramCredentials | null
+  _instagram?: unknown
 ): Promise<ResumoOperacionalResponse> {
-  let creds = instagram
-  if (!creds?.token || !creds?.businessAccountId) {
-    const loaded = await loadInstagramConfigAsync()
-    if (loaded.token && loaded.businessAccountId) {
-      creds = { token: loaded.token, businessAccountId: loaded.businessAccountId }
-    }
-  }
-
   const res = await fetch(`/api/resumo-operacional?days=${days}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
-    body: JSON.stringify({
-      days,
-      ...(creds?.token && creds.businessAccountId
-        ? { token: creds.token, businessAccountId: creds.businessAccountId }
-        : {}),
-    }),
+    body: JSON.stringify({ days }),
   })
 
   if (!res.ok) {

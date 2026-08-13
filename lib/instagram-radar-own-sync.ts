@@ -338,23 +338,6 @@ export async function syncOwnCandidateInstagramRadar(
     let syncError: string | undefined
     let profilePictureUrl: string | null = null
 
-    const clientToken = options?.instagramToken?.trim()
-    const clientBusinessId = options?.instagramBusinessAccountId?.trim()
-
-    if (clientToken && clientBusinessId) {
-      source = 'graph_api'
-      const graph = await fetchMediaFromGraphWithCredentials(clientToken, clientBusinessId, limit)
-      if (graph?.posts.length) {
-        username = graph.username || username
-        rows = graph.posts.filter((p) => withinWindow(p.posted_at, cutoff))
-        profilePictureUrl = graph.profilePictureUrl ?? null
-      } else if (graph?.error) {
-        syncError = graph.error
-      } else if (graph?.profilePictureUrl) {
-        profilePictureUrl = graph.profilePictureUrl
-      }
-    }
-
     if (rows.length === 0) {
       const hist = await fetchMediaFromHistory(supabase, actor.id, username, limit, cutoff)
       rows = hist.posts
@@ -365,7 +348,7 @@ export async function syncOwnCandidateInstagramRadar(
       }
     }
 
-    if (rows.length === 0 && !clientToken) {
+    if (rows.length === 0) {
       source = 'graph_api'
       const graph = await fetchMediaFromGraph(limit)
       if (graph?.posts.length) {

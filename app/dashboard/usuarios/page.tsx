@@ -14,6 +14,8 @@ import {
   AlertCircle,
   X,
 } from 'lucide-react'
+import { UsuariosSessoesPanel } from '@/components/usuarios-sessoes-panel'
+import './usuarios-modals.css'
 
 interface Page {
   id: string
@@ -253,6 +255,8 @@ export default function UsuariosPage() {
             </div>
           )}
         </div>
+
+        <UsuariosSessoesPanel />
       </div>
 
       {showFormModal && (
@@ -371,8 +375,8 @@ function UserFormModal({ user, onClose, onSuccess }: UserFormModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border-card bg-bg-surface">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-4">
+      <div className="usuarios-modal-panel w-full max-w-md rounded-2xl border border-border-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border-card p-6">
           <h3 className="text-lg font-semibold text-text-primary">
             {isEdit ? 'Editar usuário' : 'Novo usuário'}
@@ -530,8 +534,8 @@ function UserPermissionsModal({ user, pages, onClose, onSuccess }: UserPermissio
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-border-card bg-bg-surface">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-4">
+      <div className="usuarios-modal-panel w-full max-w-lg rounded-2xl border border-border-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border-card p-6">
           <h3 className="text-lg font-semibold text-text-primary">Permissões — {user.name || user.email}</h3>
           <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-bg-app" aria-label="Fechar">

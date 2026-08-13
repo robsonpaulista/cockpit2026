@@ -1,4 +1,3 @@
-import { getWhatsAppCeoPhone } from '@/lib/whatsapp/ceo-phone'
 import { normalizePhoneToJid } from '@/lib/whatsapp/send'
 import type { WhatsAppContact, WhatsAppContactCategory } from '@/lib/whatsapp/contact-types'
 import { WHATSAPP_CONTACT_CATEGORIES } from '@/lib/whatsapp/contact-types'
@@ -101,16 +100,9 @@ function resolveByNames(
 
 function resolvePadrao(contacts: WhatsAppContact[]): ResolvedWhatsAppRecipient[] {
   const def = contacts.find((c) => c.is_default) ?? contacts[0]
-  if (def) {
-    const r = contactToRecipient(def)
-    return r ? [r] : []
-  }
-
-  const ceo = getWhatsAppCeoPhone()
-  const jid = ceo ? normalizePhoneToJid(ceo) : null
-  if (!jid) return []
-
-  return [{ id: 'ceo-env', nome: 'CEO', phone: ceo, jid }]
+  if (!def) return []
+  const r = contactToRecipient(def)
+  return r ? [r] : []
 }
 
 function resolveByCategoria(
@@ -132,7 +124,7 @@ function wantsTodosExplicit(args: Record<string, string>): boolean {
 }
 
 /**
- * Resolve destinatários com prioridade: nomes explícitos > padrão/CEO > grupo por categoria > todos.
+ * Resolve destinatários com prioridade: nomes explícitos > contato padrão > grupo por categoria > todos.
  * Nunca mistura modos nem envia para todos os cadastros sem pedido explícito.
  */
 export function resolveWhatsAppRecipients(
@@ -178,7 +170,7 @@ export function resolveWhatsAppRecipients(
   const destinatario = (args.destinatario || '').trim()
   if (destinatario) {
     const d = norm(destinatario)
-    if (d === 'padrao' || d === 'padrão' || d === 'ceo' || d === 'default') {
+    if (d === 'padrao' || d === 'padrão' || d === 'default') {
       const padrao = resolvePadrao(active)
       if (padrao.length === 0) {
         return {
@@ -223,7 +215,7 @@ export function resolveWhatsAppRecipients(
   return {
     recipients: [],
     error:
-      'Para quem devo enviar? Diga o nome (ex.: «para o João»), dois nomes («para Maria e Pedro») ou «para o CEO».',
+      'Para quem devo enviar? Diga o nome (ex.: «para o João»), dois nomes («para Maria e Pedro») ou o contato padrão da agenda.',
   }
 }
 

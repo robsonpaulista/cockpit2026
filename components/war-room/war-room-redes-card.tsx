@@ -211,18 +211,8 @@ export function WarRoomRedesCard({ className }: Props) {
     }
     try {
       let cfg = loadInstagramConfig()
-      if (!cfg.token || !cfg.businessAccountId) {
+      if (!cfg.configured) {
         cfg = await loadInstagramConfigAsync()
-      }
-      if (!cfg.token || !cfg.businessAccountId) {
-        setConfigured(false)
-        if (!silent) {
-          setMetrics(null)
-          setHistory(null)
-          setManualVisitsByDate({})
-          setError('Instagram Pessoal não configurado')
-        }
-        return
       }
       setConfigured(true)
       const [data, hist, visitsManual] = await Promise.all([

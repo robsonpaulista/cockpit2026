@@ -155,10 +155,7 @@ export async function POST(request: Request) {
         user.id,
         instagramPosts.args,
         message,
-        {
-          token: body.context?.instagramToken,
-          businessAccountId: body.context?.instagramBusinessAccountId,
-        }
+        undefined
       )
 
       if (content) {

@@ -37,7 +37,7 @@ const exercitoAmberPrimaryButtonClass =
 const BANNER_STORAGE_KEY = 'cockpit2026.exercito-digital.banner.dismissed'
 const LOOKBACK_OPTIONS = [7, 15, 30] as const
 
-type IgCfg = { token: string; businessAccountId: string }
+type IgCfg = { configured?: boolean; token: string; businessAccountId: string }
 
 interface ExercitoDigitalHeaderProps {
   lookbackDays: number
@@ -71,7 +71,7 @@ export function ExercitoDigitalHeader({
       setLoadingCfg(true)
       const c = await loadInstagramConfigAsync()
       if (cancelled) return
-      setCfg(c.token && c.businessAccountId ? { token: c.token, businessAccountId: c.businessAccountId } : null)
+      setCfg(c.configured ? { token: c.token, businessAccountId: c.businessAccountId } : null)
       setLoadingCfg(false)
     })()
     return () => {
@@ -81,7 +81,7 @@ export function ExercitoDigitalHeader({
 
   const handleSync = useCallback(async () => {
     const c = cfg ?? (await loadInstagramConfigAsync())
-    if (!c.token || !c.businessAccountId) {
+    if (!c.configured) {
       setShowConfig(true)
       return
     }
@@ -91,7 +91,7 @@ export function ExercitoDigitalHeader({
     if (result.success) {
       dispatchInstagramCommentsSynced()
       onSyncComplete()
-    } else if (!c.token) {
+    } else if (!c.configured) {
       setShowConfig(true)
     }
   }, [cfg, lookbackDays, onSyncComplete])

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { importRecapItems } from '@/lib/obras-recap-store'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,9 @@ type RawRow = Record<string, unknown>
 /** Importa planilha para storage local JSON (sem Supabase). */
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const body = (await request.json()) as {
       obras?: RawRow[]
       tipo?: string

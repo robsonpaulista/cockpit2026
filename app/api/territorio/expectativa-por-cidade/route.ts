@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import {
   buildCitySummariesFromDb,
   resolveCityLeaders,
@@ -9,6 +10,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const body = (await request.json()) as Record<string, unknown>
     const cidade = body.cidade
     const refresh = body.refresh === true || body.refresh === '1'
@@ -68,6 +72,9 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const refresh = new URL(request.url).searchParams.get('refresh') === '1'
     const { summaries: summariesByCity } = await buildCitySummariesFromDb(refresh)
     const summariesObject = Object.fromEntries(summariesByCity.entries())

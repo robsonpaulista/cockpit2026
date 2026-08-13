@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,9 @@ interface CamaraLink {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const { searchParams } = new URL(request.url)
     const fetchAll = searchParams.get('fetchAll') === 'true'
     const idDeputadoParam = searchParams.get('idDeputado')

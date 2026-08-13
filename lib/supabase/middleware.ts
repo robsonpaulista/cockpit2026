@@ -71,7 +71,23 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const isDashboard =
+    pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+
+  if (isDashboard && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    const redirect = NextResponse.redirect(url)
+    response.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie)
+    })
+    return redirect
+  }
 
   return response
 }

@@ -1,5 +1,19 @@
 import { google } from 'googleapis'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
+import {
+  addDaysToKey,
+  todayKeyInTz,
+  WAR_ROOM_AGENDA_TZ,
+} from '@/lib/war-room/agenda-proximos'
+
+/** Offset fixo de America/Sao_Paulo (sem horário de verão). */
+const SAO_PAULO_OFFSET = '-03:00'
+
+/** Início/fim do dia civil no fuso da agenda → Instant para a API do Google. */
+function civilDayBound(dayKey: string, endOfDay: boolean): Date {
+  const clock = endOfDay ? '23:59:59.999' : '00:00:00.000'
+  return new Date(`${dayKey}T${clock}${SAO_PAULO_OFFSET}`)
+}
 
 export interface GoogleCalendarConfigInput {
   calendarId: string
@@ -126,20 +140,18 @@ export async function fetchGoogleCalendarEvents(
 
   const calendar = google.calendar({ version: 'v3', auth })
 
-  const startDate = new Date()
-  startDate.setHours(0, 0, 0, 0)
-  startDate.setDate(startDate.getDate() - 7)
-
-  // Cobre a janela da War Room (próx. visita ~15d) com folga; sem timeMax a
+  // Só o dia atual (BRT) + futuros — evita histórico que inflava attendance N+1.
+  // Janela +45d cobre War Room (próx. visita ~15d) com folga; sem timeMax a
   // API podia truncar em maxResults e deixar compromissos próximos de fora.
-  const endDate = new Date()
-  endDate.setHours(23, 59, 59, 999)
-  endDate.setDate(endDate.getDate() + 45)
+  const hojeKey = todayKeyInTz(WAR_ROOM_AGENDA_TZ)
+  const fimKey = addDaysToKey(hojeKey, 45)
+  const timeMin = civilDayBound(hojeKey, false).toISOString()
+  const timeMax = civilDayBound(fimKey, true).toISOString()
 
   const response = await calendar.events.list({
     calendarId: config.calendarId,
-    timeMin: startDate.toISOString(),
-    timeMax: endDate.toISOString(),
+    timeMin,
+    timeMax,
     maxResults: 2500,
     singleEvents: true,
     orderBy: 'startTime',

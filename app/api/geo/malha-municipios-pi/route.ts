@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { MalhaCollection, MalhaMapaPIPayload } from '@/lib/geo-malha-pi'
 import { getTerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 /** Malha municipal simplificada do IBGE (UF 22) — GeoJSON, ~100KB. */
 const MALHA_PI_URL =
@@ -20,6 +21,9 @@ interface IBGEMunicipio {
 
 export async function GET() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const [malhaRes, munRes, ufRes] = await Promise.all([
       fetch(MALHA_PI_URL, { next: { revalidate: 86_400 } }),
       fetch(MUNICIPIOS_PI_URL, { next: { revalidate: 86_400 } }),

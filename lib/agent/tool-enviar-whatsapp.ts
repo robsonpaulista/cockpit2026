@@ -87,14 +87,14 @@ export async function toolEnviarWhatsApp(
   const days = Math.min(30, Math.max(1, parseInt(args.dias || '7', 10) || 7))
 
   if (conteudo === 'briefing_territorio' && !args.cidade?.trim()) {
-    return 'Para enviar o briefing, informe o município. Ex.: «envia o briefing de Teresina para o CEO».'
+    return 'Para enviar o briefing, informe o município. Ex.: «envia o briefing de Teresina para o João».'
   }
 
   const contacts = await loadContacts(supabase, origin, cookie)
   const { recipients, error: recipientError } = resolveWhatsAppRecipients(contacts, args)
 
   if (recipientError || recipients.length === 0) {
-    return recipientError ?? 'Diga para quem enviar — ex.: «para o João», «para Maria e Pedro» ou «para o CEO».'
+    return recipientError ?? 'Diga para quem enviar — ex.: «para o João» ou «para Maria e Pedro».'
   }
 
   let text = ''

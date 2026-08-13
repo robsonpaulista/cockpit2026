@@ -65,17 +65,19 @@ function MetricBar({
   color,
   display,
   win,
+  title,
 }: {
   value: number
   max: number
   color: string
   display: string
   win: boolean
+  title?: string
 }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
   const barColor = win ? '#F2D06B' : color
   return (
-    <div className="rc-ios-map__cell">
+    <div className="rc-ios-map__cell" title={title}>
       <div className="rc-ios-bar" aria-hidden>
         <span
           className="rc-ios-bar__fill"
@@ -195,11 +197,9 @@ export function RadarCompetitivoBoard({
     const cs = model.candidates
     return {
       eng: Math.max(...cs.map((c) => c.avgEngagement), 1),
-      views: Math.max(...cs.map((c) => c.avgReelViews), 1),
       comments: Math.max(...cs.map((c) => c.avgComments), 1),
       reels: Math.max(...cs.map((c) => c.reelsShare), 1),
       eff: Math.max(...cs.map((c) => c.efficiency), 1),
-      aud: Math.max(...cs.map((c) => c.audience), 1),
       unique: Math.max(...cs.map((c) => c.uniqueCommenters), 1),
     }
   }, [model.candidates])
@@ -288,7 +288,7 @@ export function RadarCompetitivoBoard({
               <section className="rc-ios-panel rc-ios-rank" aria-label="Ranking geral">
                 <div className="rc-ios-panel__head">
                   <h3 className="rc-ios-panel__title">Ranking geral</h3>
-                  <p className="rc-ios-panel__hint">Audiência</p>
+                  <p className="rc-ios-panel__hint">Média/post</p>
                 </div>
                 <ul className="rc-ios-rank__list">
                   {model.candidates.map((c) => (
@@ -304,11 +304,16 @@ export function RadarCompetitivoBoard({
                       />
                       <span className="rc-ios-rank__name">
                         {c.name}
-                        {c.slug === w.audienceSlug ? (
+                        {c.slug === w.engagementSlug ? (
                           <Star className="rc-ios-rank__star" size={11} fill="currentColor" strokeWidth={0} />
                         ) : null}
                       </span>
-                      <span className="rc-ios-rank__val">{formatCompact(c.audience)}</span>
+                      <span
+                        className="rc-ios-rank__val"
+                        title="(curtidas + comentários) ÷ posts no período"
+                      >
+                        {formatCompact(c.avgEngagement)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -318,17 +323,20 @@ export function RadarCompetitivoBoard({
                 <div className="rc-ios-panel__head">
                   <h3 className="rc-ios-panel__title">Mapa de performance · ênfase Reels</h3>
                   <p className="rc-ios-panel__hint">
-                    Views e % de formato · demais métricas no total
+                    Views em índice 100 = maior do grupo · anúncio infla o absoluto
                   </p>
                 </div>
                 <div className="rc-ios-map__table">
                   <div className="rc-ios-map__th rc-ios-map__th--name">#</div>
                   <div className="rc-ios-map__th">Engajamento</div>
-                  <div className="rc-ios-map__th">Views / Reels</div>
+                  <div className="rc-ios-map__th" title="Índice 100 = maior média de views. Patrocínio distorce o número absoluto.">
+                    Views rel.
+                  </div>
                   <div className="rc-ios-map__th">Comentários</div>
                   <div className="rc-ios-map__th">Reels</div>
-                  <div className="rc-ios-map__th">Eficiência</div>
-                  <div className="rc-ios-map__th">Audiência</div>
+                  <div className="rc-ios-map__th" title="(engajamento médio / views médias) × 100">
+                    Eficiência
+                  </div>
                   {model.candidates.map((c, i) => (
                     <MapRow
                       key={c.slug}
@@ -493,6 +501,7 @@ export function RadarCompetitivoBoard({
                 <section className="rc-ios-panel rc-ios-tops" aria-label="Top conteúdos">
                   <div className="rc-ios-panel__head">
                     <h3 className="rc-ios-panel__title">Top conteúdos do universo</h3>
+                    <p className="rc-ios-panel__hint">Engajamento</p>
                   </div>
                   <div className="rc-ios-tops__strip">
                     {Array.from({ length: 8 }).map((_, i) => {
@@ -526,7 +535,13 @@ export function RadarCompetitivoBoard({
                               ) : (
                                 <span className="rc-ios-top__av">{initials(p.name)}</span>
                               )}
-                              <span>{formatCompact(p.viewsProxy)}</span>
+                              <span
+                                title={`${formatCompact(p.engagement)} (curtidas + comentários)${
+                                  p.viewsProxy > 0 ? ` · ${formatCompact(p.viewsProxy)} views` : ''
+                                }`}
+                              >
+                                {formatCompact(p.engagement)}
+                              </span>
                             </div>
                           </div>
                         </a>
@@ -662,11 +677,16 @@ function MapRow({
         win={winners.engagementSlug === c.slug}
       />
       <MetricBar
-        value={c.avgReelViews}
-        max={maxes.views}
+        value={c.viewsIndex}
+        max={100}
         color={c.color}
-        display={formatCompact(c.avgReelViews)}
+        display={c.avgReelViews > 0 ? String(c.viewsIndex) : '—'}
         win={false}
+        title={
+          c.avgReelViews > 0
+            ? `${formatCompact(c.avgReelViews)} views médias · índice ${c.viewsIndex} (100 = maior do grupo)`
+            : 'Sem views no período'
+        }
       />
       <MetricBar
         value={c.avgComments}
@@ -686,15 +706,12 @@ function MapRow({
         value={c.efficiency}
         max={maxes.eff}
         color={c.color}
-        display={c.efficiency.toFixed(2).replace('.', ',')}
+        display={
+          c.avgReelViews > 0
+            ? `${c.efficiency.toFixed(1).replace('.', ',')}%`
+            : '—'
+        }
         win={winners.efficiencySlug === c.slug}
-      />
-      <MetricBar
-        value={c.audience}
-        max={maxes.aud}
-        color={c.color}
-        display={formatCompact(c.audience)}
-        win={winners.audienceSlug === c.slug}
       />
     </>
   )

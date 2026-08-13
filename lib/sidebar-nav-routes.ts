@@ -117,7 +117,6 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     icon: 'Users',
     href: '/dashboard/mobilizacao/config',
     children: [
-      { id: 'mobilizacao-captacao', label: 'Captação', icon: 'Users', href: '/mobilizacao/detalhe' },
       { id: 'mobilizacao-config', label: 'Config', icon: 'Settings', href: '/dashboard/mobilizacao/config' },
     ],
   },
@@ -225,7 +224,6 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'noticias-monitoramento': ['monitoramento', 'google alerts', 'panorama', 'radar eleitoral'],
   'radar-224': ['radar 224', 'radar municipios', 'cobertura noticias', 'fontes regionais'],
   'noticias-youtube': ['youtube', 'radar youtube', 'menções youtube'],
-  'mobilizacao-captacao': ['captacao', 'mobilizacao captacao'],
   'mobilizacao-config': ['config mobilizacao', 'mobilizacao config'],
   'mobilizacao-menu': ['mobilizacao'],
   whatsapp: ['zap', 'whats'],

@@ -129,7 +129,6 @@ export function InstagramRadarPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instagramToken: igConfig.token || undefined,
           instagramBusinessAccountId: igConfig.businessAccountId || undefined,
         }),
       })

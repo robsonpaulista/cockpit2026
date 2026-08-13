@@ -208,7 +208,6 @@ function pageKeyForItem(id: string): string {
   if (id === 'ficha-atendimento') return 'ficha-atendimento'
   if (
     id === 'mobilizacao-menu' ||
-    id === 'mobilizacao-captacao' ||
     id === 'mobilizacao-config'
   ) {
     return 'mobilizacao'

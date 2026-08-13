@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { ConteudoRedesShell } from '@/components/conteudo-redes/conteudo-redes-shell'
 import { 
   MessageSquare, 
@@ -22,7 +21,6 @@ import {
   X,
   Sparkles,
   BarChart3,
-  Settings,
   RefreshCw,
   AlertCircle,
   Loader2,
@@ -32,10 +30,9 @@ import {
 } from 'lucide-react'
 import {
   fetchInstagramData,
-  loadInstagramConfig,
   loadInstagramConfigAsync,
   saveInstagramConfig,
-  clearInstagramConfig,
+  type InstagramClientConfig,
   saveInstagramSnapshot,
   fetchInstagramHistory,
   InstagramMetrics,
@@ -59,7 +56,6 @@ import {
   conteudoRedesPillInputClass,
   conteudoRedesTextClass,
 } from '@/lib/conteudo-redes-styles'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { InstagramAudienceKpiStrip } from '@/components/conteudo-redes/instagram-audience-kpi-strip'
 import { PremiumMetricCard } from '@/components/premium/metric-card'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
@@ -69,7 +65,6 @@ import {
   IconLoader2,
   IconMapPin,
   IconRefresh,
-  IconSettings,
   IconUsers,
   IconX,
 } from '@tabler/icons-react'
@@ -209,8 +204,7 @@ export default function ConteudoPage() {
   
   // Estados para Instagram
   const [isConfigured, setIsConfigured] = useState(false)
-  const [showConfig, setShowConfig] = useState(false)
-  const [config, setConfig] = useState<{ token: string; businessAccountId: string } | null>(null)
+  const [config, setConfig] = useState<InstagramClientConfig | null>(null)
   const [metrics, setMetrics] = useState<InstagramMetrics | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -438,39 +432,23 @@ export default function ConteudoPage() {
     carousel: 'Carrossel',
   }
 
-  // Carregar configuração ao montar: localStorage síncrono primeiro (evita objeto vazio no modal que sobrescrevia o cache)
   useEffect(() => {
-    const sync = loadInstagramConfig()
-    if (sync.token && sync.businessAccountId) {
-      setConfig(sync)
-      setIsConfigured(true)
-      setShowConfig(false)
-      setError(null)
-      fetchData(sync).catch((err) => {
-        console.error('Erro ao carregar dados do Instagram:', err)
-      })
-      return
-    }
-
     let cancelled = false
-    const loadConfig = async () => {
+    const boot = async () => {
       const savedConfig = await loadInstagramConfigAsync()
       if (cancelled) return
-      if (savedConfig.token && savedConfig.businessAccountId) {
-        setConfig(savedConfig)
-        setIsConfigured(true)
-        setShowConfig(false)
-        setError(null)
-        fetchData(savedConfig).catch((err) => {
-          console.error('Erro ao carregar dados do Instagram:', err)
-        })
-      } else {
-        setConfig(null)
-        setIsConfigured(false)
-        setError(null)
+      const cfg = savedConfig.configured
+        ? savedConfig
+        : { configured: true, token: '', businessAccountId: savedConfig.businessAccountId }
+      setConfig(cfg)
+      setError(null)
+      try {
+        await fetchData(cfg)
+      } catch (err) {
+        console.error('Erro ao carregar dados do Instagram:', err)
       }
     }
-    void loadConfig()
+    void boot()
     return () => {
       cancelled = true
     }
@@ -483,7 +461,7 @@ export default function ConteudoPage() {
       skipDateRangeFetchRef.current = false
       return
     }
-    if (config?.token && config.businessAccountId) {
+    if (config?.configured) {
       void fetchData(config)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch só quando o período muda
@@ -530,7 +508,7 @@ export default function ConteudoPage() {
         })
         setMetrics(data)
         setIsConfigured(true)
-        setShowConfig(false) // Garantir que o modal não está aberto
+        saveInstagramConfig('', instagramConfig.businessAccountId)
         
         // Salvar snapshot diário automaticamente
         await saveInstagramSnapshot(data)
@@ -552,30 +530,9 @@ export default function ConteudoPage() {
     }
   }
 
-  // Função para salvar configuração
-  const handleSaveConfig = (newConfig: { token: string; businessAccountId: string }) => {
-    saveInstagramConfig(newConfig.token, newConfig.businessAccountId)
-    setConfig(newConfig)
-    setIsConfigured(true)
-    setShowConfig(false)
-    fetchData(newConfig)
-  }
-
-  // Função para desconectar
-  const handleDisconnect = () => {
-    clearInstagramConfig()
-    setConfig(null)
-    setIsConfigured(false)
-    setMetrics(null)
-    // Só mostrar modal quando usuário explicitamente desconectar
-    setShowConfig(true)
-  }
-
-  // Função para atualizar dados
   const handleRefresh = () => {
-    if (config?.token && config?.businessAccountId) {
-      fetchData(config, true)
-    }
+    const cfg = config ?? { configured: true, token: '', businessAccountId: '' }
+    void fetchData(cfg, true)
   }
 
   // Usar posts reais se disponível, senão usar mock — sempre filtrados pelo período
@@ -859,44 +816,19 @@ export default function ConteudoPage() {
   )
 
   const headerActions = (
-    <>
-      {config ? (
-        <>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={loading}
-            className={cn(conteudoRedesGhostButtonClass, 'disabled:opacity-50')}
-          >
-            <IconRefresh
-              className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
-              stroke={1.5}
-              aria-hidden
-            />
-            Atualizar
-          </button>
-          <button
-            type="button"
-            onClick={handleDisconnect}
-            className={cn(
-              conteudoRedesGhostButtonClass,
-              'border-status-error/30 text-status-error hover:bg-status-error/10',
-            )}
-          >
-            <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-            Desconectar
-          </button>
-        </>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setShowConfig(true)}
-        className={sidebarPrimaryCTAButtonClass(isCockpit)}
-      >
-        <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
-        {config ? 'Configurar Instagram' : 'Conectar Instagram'}
-      </button>
-    </>
+    <button
+      type="button"
+      onClick={handleRefresh}
+      disabled={loading}
+      className={cn(conteudoRedesGhostButtonClass, 'disabled:opacity-50')}
+    >
+      <IconRefresh
+        className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+        stroke={1.5}
+        aria-hidden
+      />
+      Atualizar
+    </button>
   )
 
   return (
@@ -930,15 +862,9 @@ export default function ConteudoPage() {
                 <div className="py-12 text-center">
                   <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
                   <p className="mb-4 text-sm">
-                    Configure suas credenciais do Instagram para visualizar os dados
+                    Não foi possível carregar o Instagram pelo servidor. Credenciais ficam em
+                    INSTAGRAM_TOKEN no ambiente (Vercel / .env.local) — ninguém precisa colar o token.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfig(true)}
-                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                  >
-                    Conectar Instagram
-                  </button>
                 </div>
               ) : (
                 <>
@@ -1080,15 +1006,9 @@ export default function ConteudoPage() {
                 <div className="py-12 text-center">
                   <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
                   <p className="mb-4 text-sm">
-                    Configure suas credenciais do Instagram para visualizar os dados
+                    Não foi possível carregar o Instagram pelo servidor. Credenciais ficam em
+                    INSTAGRAM_TOKEN no ambiente (Vercel / .env.local) — ninguém precisa colar o token.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfig(true)}
-                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                  >
-                    Conectar Instagram
-                  </button>
                       </div>
               ) : (
                 <>
@@ -1524,15 +1444,9 @@ export default function ConteudoPage() {
                 <div className="py-12 text-center">
                   <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
                   <p className="mb-4 text-sm">
-                    Configure suas credenciais do Instagram para visualizar os dados
+                    Não foi possível carregar o Instagram pelo servidor. Credenciais ficam em
+                    INSTAGRAM_TOKEN no ambiente (Vercel / .env.local) — ninguém precisa colar o token.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfig(true)}
-                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                  >
-                    Conectar Instagram
-                  </button>
                 </div>
               ) : (
                 <>
@@ -1698,25 +1612,6 @@ export default function ConteudoPage() {
         </div>
       </ConteudoRedesShell>
 
-      {/* Modal de Configuração do Instagram */}
-      {showConfig && (
-        <InstagramConfigModal
-          onClose={() => {
-            setShowConfig(false)
-            if (!config?.token || !config?.businessAccountId) {
-              const savedConfig = loadInstagramConfig()
-              if (savedConfig.token && savedConfig.businessAccountId) {
-                setConfig(savedConfig)
-                setIsConfigured(true)
-              }
-            }
-          }}
-          onSave={handleSaveConfig}
-          currentConfig={
-            config && config.token && config.businessAccountId ? config : undefined
-          }
-        />
-      )}
     </>
   )
 }

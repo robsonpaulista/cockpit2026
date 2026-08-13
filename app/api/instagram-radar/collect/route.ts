@@ -10,8 +10,6 @@ export const maxDuration = 900
 
 const bodySchema = z.object({
   politicoSlug: z.string().trim().optional(),
-  instagramToken: z.string().trim().optional(),
-  instagramBusinessAccountId: z.string().trim().optional(),
 })
 
 export async function POST(request: Request) {
@@ -24,8 +22,6 @@ export async function POST(request: Request) {
     const body = bodySchema.parse(await request.json().catch(() => ({})))
     const parsed = await collectInstagramRadar({
       politicoSlug: body.politicoSlug,
-      instagramToken: body.instagramToken,
-      instagramBusinessAccountId: body.instagramBusinessAccountId,
     })
 
     return NextResponse.json({

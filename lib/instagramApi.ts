@@ -98,8 +98,6 @@ export async function fetchInstagramData(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        token,
-        businessAccountId,
         timeRange,
         forceRefresh,
       }),
@@ -149,87 +147,80 @@ export async function validateInstagramToken(
   }
 }
 
-/**
- * Salvar configurações do Instagram no localStorage
- */
-export function saveInstagramConfig(token: string, businessAccountId: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('instagramToken', token)
-    localStorage.setItem('instagramBusinessAccountId', businessAccountId)
+export type InstagramClientConfig = {
+  configured: boolean
+  businessAccountId: string
+  /** Sempre vazio — o token Graph fica só no servidor. */
+  token: string
+}
+
+const LS_BUSINESS_ID = 'instagramBusinessAccountId'
+const LS_SERVER_READY = 'instagramServerConfigured'
+
+function purgeClientInstagramToken(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('instagramToken')
+}
+
+function markInstagramServerReady(businessAccountId = ''): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(LS_SERVER_READY, '1')
+  if (businessAccountId) {
+    localStorage.setItem(LS_BUSINESS_ID, businessAccountId)
   }
 }
 
-/**
- * Buscar configurações do Instagram da API do servidor
- * Isso é mais seguro pois as credenciais não ficam expostas no código do cliente
- */
-export async function fetchInstagramConfigFromServer(): Promise<{ token: string; businessAccountId: string } | null> {
+/** Só guarda o business id (público). Nunca persiste o token. */
+export function saveInstagramConfig(_token: string, businessAccountId: string): void {
+  purgeClientInstagramToken()
+  markInstagramServerReady(businessAccountId)
+}
+
+export async function fetchInstagramConfigFromServer(): Promise<InstagramClientConfig | null> {
   try {
     const response = await fetch('/api/instagram/config')
-    if (response.ok) {
-      const data = await response.json()
-      if (data.token && data.businessAccountId) {
-        return { token: data.token, businessAccountId: data.businessAccountId }
-      }
+    if (!response.ok) return null
+    const data = (await response.json()) as {
+      configured?: boolean
+      businessAccountId?: string | null
     }
-    return null
+    const businessAccountId = String(data.businessAccountId || '').trim()
+    const configured = Boolean(data.configured) || Boolean(businessAccountId)
+    if (!configured) return null
+    return { configured: true, businessAccountId, token: '' }
   } catch (error) {
     console.error('Erro ao buscar config do servidor:', error)
     return null
   }
 }
 
-/**
- * Carregar configurações do Instagram
- * Prioridade: 1) localStorage, 2) API do servidor
- */
-export function loadInstagramConfig(): { token: string; businessAccountId: string } {
+export function loadInstagramConfig(): InstagramClientConfig {
+  purgeClientInstagramToken()
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('instagramToken')
-    const businessAccountId = localStorage.getItem('instagramBusinessAccountId')
-    
-    if (token && businessAccountId) {
-      return { token, businessAccountId }
+    const businessAccountId = localStorage.getItem(LS_BUSINESS_ID) || ''
+    const serverReady = localStorage.getItem(LS_SERVER_READY) === '1'
+    if (serverReady || businessAccountId) {
+      return { configured: true, token: '', businessAccountId }
     }
   }
-  
-  // Retorna vazio - o componente deve chamar loadInstagramConfigAsync para buscar do servidor
-  return { token: '', businessAccountId: '' }
+  return { configured: false, token: '', businessAccountId: '' }
 }
 
-/**
- * Carregar configurações do Instagram de forma assíncrona
- * Verifica localStorage primeiro, depois busca do servidor
- */
-export async function loadInstagramConfigAsync(): Promise<{ token: string; businessAccountId: string }> {
-  if (typeof window !== 'undefined') {
-    // Primeiro, verificar localStorage
-    const token = localStorage.getItem('instagramToken')
-    const businessAccountId = localStorage.getItem('instagramBusinessAccountId')
-    
-    if (token && businessAccountId) {
-      return { token, businessAccountId }
-    }
-    
-    // Se não houver no localStorage, buscar do servidor (variáveis de ambiente)
-    const serverConfig = await fetchInstagramConfigFromServer()
-    if (serverConfig && serverConfig.token && serverConfig.businessAccountId) {
-      // Salvar no localStorage para próximas vezes
-      saveInstagramConfig(serverConfig.token, serverConfig.businessAccountId)
-      return serverConfig
-    }
+export async function loadInstagramConfigAsync(): Promise<InstagramClientConfig> {
+  purgeClientInstagramToken()
+  const serverConfig = await fetchInstagramConfigFromServer()
+  if (serverConfig) {
+    saveInstagramConfig('', serverConfig.businessAccountId)
+    return serverConfig
   }
-  
-  return { token: '', businessAccountId: '' }
+  return loadInstagramConfig()
 }
 
-/**
- * Limpar configurações do Instagram do localStorage
- */
 export function clearInstagramConfig(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('instagramToken')
-    localStorage.removeItem('instagramBusinessAccountId')
+    localStorage.removeItem(LS_BUSINESS_ID)
+    localStorage.removeItem(LS_SERVER_READY)
   }
 }
 
@@ -547,8 +538,6 @@ export async function syncInstagramComments(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        token,
-        businessAccountId,
         maxMedia: maxMedia ?? undefined,
         lookbackDays: lookbackDays ?? undefined,
       }),

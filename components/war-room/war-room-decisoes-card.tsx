@@ -283,12 +283,8 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   const carregarRedesEngajamento = useCallback(async () => {
     try {
       let cfg = loadInstagramConfig()
-      if (!cfg.token || !cfg.businessAccountId) {
+      if (!cfg.configured) {
         cfg = await loadInstagramConfigAsync()
-      }
-      if (!cfg.token || !cfg.businessAccountId) {
-        setRedesItems([])
-        return
       }
       const data = await fetchInstagramData(
         cfg.token,
