@@ -1,7 +1,7 @@
 'use client'
 
 import { Bot, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DashboardPageChrome,
   DashboardPageContent,
@@ -26,7 +26,10 @@ import { parseAgendaMinutes } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomCopilotoView } from '@/components/war-room/war-room-copiloto-view'
 import { WarRoomHomeView } from '@/components/war-room/war-room-home-view'
 import { listAgendaDoDia, mapAgendaDoDiaItem } from '@/lib/war-room/agenda-proximos'
-import { fetchCalendarAttendances } from '@/lib/agenda/fetch-calendar-attendance'
+import {
+  fetchCalendarAttendances,
+  mergeAgendaAttendance,
+} from '@/lib/agenda/fetch-calendar-attendance'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
@@ -63,18 +66,35 @@ function WarRoomPanelInner() {
   const [agendaItems, setAgendaItems] = useState<WarRoomAgendaItem[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
   const [agendaError, setAgendaError] = useState<string | null>(null)
+  const agendaItemsRef = useRef(agendaItems)
+  agendaItemsRef.current = agendaItems
+  const arrivalsInFlight = useRef(false)
 
   const { register, refreshAll, refreshing } = useWarRoomRefresh()
   const { isCopiloto, toggleCopiloto } = useWarRoomViewMode()
 
+  const refreshArrivals = useCallback(async () => {
+    const current = agendaItemsRef.current
+    const ids = current.map((item) => item.id).filter(Boolean)
+    if (ids.length === 0 || arrivalsInFlight.current) return
+    arrivalsInFlight.current = true
+    try {
+      const attendanceById = await fetchCalendarAttendances(ids)
+      setAgendaItems((prev) => mergeAgendaAttendance(prev, attendanceById))
+    } finally {
+      arrivalsInFlight.current = false
+    }
+  }, [])
+
   const loadAgenda = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
-    if (!silent) {
-      setAgendaLoading(true)
-      setAgendaError(null)
+    if (silent) {
+      await refreshArrivals()
+      return
     }
+    setAgendaLoading(true)
+    setAgendaError(null)
     try {
-      // Mesma fonte da página /dashboard/agenda (config salva do Google Calendar).
       const res = await fetch('/api/agenda/events', { cache: 'no-store' })
       const data = (await res.json()) as {
         error?: string
@@ -107,14 +127,12 @@ function WarRoomPanelInner() {
       setAgendaItems(mapped)
       setAgendaError(null)
     } catch (e) {
-      if (!silent) {
-        setAgendaItems([])
-        setAgendaError(e instanceof Error ? e.message : 'Erro ao carregar agenda')
-      }
+      setAgendaItems([])
+      setAgendaError(e instanceof Error ? e.message : 'Erro ao carregar agenda')
     } finally {
-      if (!silent) setAgendaLoading(false)
+      setAgendaLoading(false)
     }
-  }, [])
+  }, [refreshArrivals])
 
   useEffect(() => {
     document.body.setAttribute('data-war-room-clean', '')
@@ -134,6 +152,15 @@ function WarRoomPanelInner() {
   useEffect(() => {
     void loadAgenda({ silent: false })
   }, [loadAgenda])
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return
+      void refreshArrivals()
+    }
+    const id = window.setInterval(tick, 5 * 60_000)
+    return () => window.clearInterval(id)
+  }, [refreshArrivals])
 
   useEffect(() => {
     return register('agenda', async ({ silent }) => {

@@ -11,7 +11,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useIpt } from '@/hooks/use-ipt'
-import { fetchCalendarAttendances } from '@/lib/agenda/fetch-calendar-attendance'
 import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
 import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { cn } from '@/lib/utils'
@@ -19,14 +18,12 @@ import {
   AGENDA_PROXIMOS_JANELA_DIAS,
   addDaysToKey,
   buildAgendaProximosPorMunicipio,
-  listAgendaDoDia,
   listAgendaVisitasProximas,
-  mapAgendaDoDiaItem,
   todayKeyInTz,
   type WarRoomAgendaProximoItem,
   type WarRoomAgendaVisita,
 } from '@/lib/war-room/agenda-proximos'
-import { parseAgendaMinutes, resolveAgendaLiveStatus } from '@/components/war-room/war-room-agenda-card'
+import { resolveAgendaLiveStatus } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomAgendaProximosModal } from '@/components/war-room/war-room-agenda-proximos-modal'
 import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
 import { useWarRoomRefresh } from '@/components/war-room/war-room-refresh-context'
@@ -195,7 +192,6 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
   const [engSeries, setEngSeries] = useState<number[]>([])
   const [decisoes, setDecisoes] = useState<WarRoomDecisao[]>([])
   const [proximas, setProximas] = useState<WarRoomAgendaVisita[]>([])
-  const [agendaDoDia, setAgendaDoDia] = useState<WarRoomAgendaItem[] | null>(null)
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
@@ -221,7 +217,9 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
     try {
       const [pollRes, agendaRes, decRes, igCfg] = await Promise.all([
         fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
-        fetch('/api/agenda/events', { cache: 'no-store' }),
+        silent
+          ? Promise.resolve(null)
+          : fetch('/api/agenda/events', { cache: 'no-store' }),
         fetch('/api/war-room/decisoes', { cache: 'no-store' }),
         loadInstagramConfigAsync().catch(() => ({ configured: false })),
       ])
@@ -236,7 +234,7 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
         setPollsCount(built.length)
       }
 
-      if (agendaRes.ok) {
+      if (agendaRes?.ok) {
         const json = (await agendaRes.json()) as { events?: CalendarEventRow[] }
         const events = json.events ?? []
         const visitas = listAgendaVisitasProximas(events, {
@@ -244,32 +242,6 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
         })
         setProximas(visitas.slice(0, 4))
         setAgendaPorMunicipio(buildAgendaProximosPorMunicipio(events))
-        const hojeKey = todayKeyInTz()
-        const doDia = listAgendaDoDia(events, { hojeKey })
-        const attendanceById = await fetchCalendarAttendances(
-          doDia.map((event) => event.id).filter(Boolean),
-        )
-        const mappedHoje = doDia.map((event, index) => {
-          const item = mapAgendaDoDiaItem(event, index)
-          const att = event.id ? attendanceById[event.id] : undefined
-          const attended = att?.attended === true
-          return {
-            ...item,
-            tipo: 'google-calendar',
-            status: attended ? 'concluido' : 'planejada',
-            attended: att?.attended ?? null,
-            arrivalTime: att?.arrival_time ?? null,
-          } satisfies WarRoomAgendaItem
-        })
-        mappedHoje.sort((a, b) => {
-          const am = parseAgendaMinutes(a.horario)
-          const bm = parseAgendaMinutes(b.horario)
-          if (am == null && bm == null) return a.titulo.localeCompare(b.titulo, 'pt-BR')
-          if (am == null) return -1
-          if (bm == null) return 1
-          return am - bm
-        })
-        setAgendaDoDia(mappedHoje)
       }
 
       if (decRes.ok) {
@@ -362,8 +334,8 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
     return live.length
   }, [decisoes])
 
-  const agendaLista = agendaDoDia ?? agendaItems
-  const agendaListaLoading = agendaDoDia == null && agendaLoading
+  const agendaLista = agendaItems
+  const agendaListaLoading = agendaLoading
   const agendaPreview = agendaLista
   const agendaStatuses = useMemo(
     () => resolveAgendaLiveStatus(agendaLista, nowMinutes),
