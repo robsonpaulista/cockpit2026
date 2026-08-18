@@ -5,8 +5,6 @@ const SHARED_POLL_PAGE_KEYS = [
   'pesquisa',
   'territorio',
   'ipt',
-  'campo',
-  'agenda',
 ] as const
 
 /**

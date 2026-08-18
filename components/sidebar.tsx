@@ -53,6 +53,7 @@ import {
   territorioCampoHref,
 } from '@/lib/territorio-campo-route'
 import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
+import { canAccessSidebarItem } from '@/lib/page-access'
 import {
   SIDEBAR_WIDTH_COLLAPSED_CLASS,
   SIDEBAR_WIDTH_EXPANDED_CLASS,
@@ -683,14 +684,13 @@ export function Sidebar() {
   }, [idleSplashAtivo, mobileOpen, setMobileOpen])
 
   const visibleItems = useMemo(() => {
-    const base = permLoading
-      ? menuItems
-      : menuItems
+    if (permLoading) return []
+    const base = menuItems
           .map((item) => {
             if (!item.children) return item
             const children = item.children.filter(
               (child) =>
-                canAccess(pageKeyForItem(child.id)) && !isSidebarChildMenuItemHidden(child.id),
+                canAccessSidebarItem(canAccess, child.id) && !isSidebarChildMenuItemHidden(child.id),
             )
             return { ...item, children }
           })
@@ -699,22 +699,16 @@ export function Sidebar() {
             if (item.id === 'backup') return isAdmin
             if (item.id === 'log-system') return isAdmin
             if (item.id === 'ficha-atendimento') {
-              return canAccess('ficha-atendimento') || canAccess('territorio')
+              return canAccess('ficha-atendimento')
             }
             if (item.id === 'territorio') {
-              return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+              return canAccessSidebarItem(canAccess, 'territorio')
             }
             if (item.id === 'resumo-operacional') {
-              return (
-                canAccess('resumo-operacional') ||
-                canAccess('campo') ||
-                canAccess('operacao') ||
-                canAccess('mobilizacao') ||
-                canAccess('conteudo')
-              )
+              return canAccess('resumo-operacional')
             }
             if (item.children) return item.children.length > 0
-            return canAccess(pageKeyForItem(item.id))
+            return canAccessSidebarItem(canAccess, item.id)
           })
 
     return base.filter((item) => !isSidebarMenuItemHidden(item.id))

@@ -14,6 +14,13 @@ export function getCalendarEventDate(event: CalendarEventRow): Date | null {
   return null
 }
 
+/** Mesma regra de Atendimento > Agenda (`agenda-panel` getEventDate). */
+export function getAgendaPanelEventDate(event: CalendarEventRow): Date | null {
+  if (event.start?.dateTime) return new Date(event.start.dateTime)
+  if (event.start?.date) return new Date(event.start.date)
+  return null
+}
+
 export function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }

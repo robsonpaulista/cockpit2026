@@ -21,6 +21,7 @@ import {
 import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -48,6 +49,7 @@ export function TerritorioCampoShell({
   const topbarVisible = useDashboardTopbarVisible()
   const pageTitle = TERRITORIO_CAMPO_PAGE_TITLE
   const isBaseTab = activeTab === TERRITORIO_CAMPO_TAB_BASE
+  const visibleTabs = useAllowedHubTabs('territorio', TABS, activeTab, onTabChange)
   const descriptionText =
     'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
 
@@ -72,7 +74,7 @@ export function TerritorioCampoShell({
           <DashboardPageHeader title={pageTitle} description={descriptionText} />
         )}
         <DashboardHubTabBar
-          tabs={TABS}
+          tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={(tab) => onTabChange(tab as TerritorioCampoTab)}
           actions={tabActions}

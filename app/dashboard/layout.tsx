@@ -9,6 +9,7 @@ import { DashboardScrollRegion } from '@/components/dashboard/dashboard-scroll-r
 import { DashboardPermissionGuard } from '@/components/dashboard-permission-guard'
 import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
 import { PageTransition } from '@/components/page-transition'
+import { PermissionsProvider } from '@/contexts/permissions-context'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { ThemeProvider } from '@/contexts/theme-context'
@@ -140,11 +141,13 @@ export default function DashboardLayout({
         <ThemeProvider>
           <NavigationLoadingProvider>
             <SidebarProvider>
-              <JarvisVisibilityProvider>
-                <JarvisHostPropsProvider>
-                  <DashboardContent>{children}</DashboardContent>
-                </JarvisHostPropsProvider>
-              </JarvisVisibilityProvider>
+              <PermissionsProvider>
+                <JarvisVisibilityProvider>
+                  <JarvisHostPropsProvider>
+                    <DashboardContent>{children}</DashboardContent>
+                  </JarvisHostPropsProvider>
+                </JarvisVisibilityProvider>
+              </PermissionsProvider>
             </SidebarProvider>
           </NavigationLoadingProvider>
         </ThemeProvider>

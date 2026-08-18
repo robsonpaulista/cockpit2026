@@ -1,6 +1,8 @@
 import {
   formatAgendaTimePt,
+  getAgendaPanelEventDate,
   getCalendarEventDate,
+  isSameLocalDay,
   type CalendarEventRow,
 } from '@/lib/agenda/calendar-event-utils'
 import { resolveMunicipioNomeFromAgendaEvent } from '@/lib/agenda/calendar-to-campo'
@@ -159,6 +161,36 @@ export function isAgendaEventParaConhecimento(event: {
     isAgendaPrefixoExcluido(title) ||
     isAgendaPrefixoExcluido(event.description || '')
   )
+}
+
+/** Compromissos do dia — mesma regra de Atendimento > Agenda (dia local, sem excluir prefixos). */
+export function listAgendaDoDia(
+  events: CalendarEventRow[],
+  opts?: { hojeKey?: string },
+): CalendarEventRow[] {
+  let day = new Date()
+  if (opts?.hojeKey) {
+    const [y, m, d] = opts.hojeKey.split('-').map(Number)
+    if (y && m && d) day = new Date(y, m - 1, d, 12, 0, 0)
+  }
+  return events.filter((event) => {
+    if (event.status === 'cancelled') return false
+    const eventDate = getAgendaPanelEventDate(event)
+    if (!eventDate || Number.isNaN(eventDate.getTime())) return false
+    return isSameLocalDay(eventDate, day)
+  })
+}
+
+export function mapAgendaDoDiaItem(
+  event: CalendarEventRow,
+  index: number,
+): { id: string; titulo: string; horario: string; municipio: string } {
+  return {
+    id: event.id || `agenda-${index}`,
+    titulo: event.summary?.trim() || 'Sem título',
+    horario: normalizeAgendaHora(formatAgendaTimePt(event)),
+    municipio: event.location?.trim() || '—',
+  }
 }
 
 export function buildAgendaProximosPorMunicipio(

@@ -1,70 +1,19 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { usePermissions } from '@/hooks/use-permissions'
-
-const PAGE_KEYS = new Set([
-  'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio', 'ipt',
-  'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'material-campanha',
-  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'backup', 'log_system', 'gestao_pesquisas',
-  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes',
-  'war-room',
-])
-
-function canAccessPageKey(
-  key: string,
-  canAccess: (pageKey: string) => boolean,
-): boolean {
-  if (key === 'ficha-atendimento') {
-    return canAccess('ficha-atendimento') || canAccess('territorio')
-  }
-  if (key === 'ipt') {
-    return (
-      canAccess('ipt') ||
-      canAccess('territorio') ||
-      canAccess('campo') ||
-      canAccess('agenda')
-    )
-  }
-  if (key === 'territorio' || key === 'campo' || key === 'agenda') {
-    return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
-  }
-  if (key === 'resumo-operacional') {
-    return (
-      canAccess('resumo-operacional') ||
-      canAccess('campo') ||
-      canAccess('operacao') ||
-      canAccess('mobilizacao') ||
-      canAccess('conteudo')
-    )
-  }
-  if (key === 'war-room') {
-    return (
-      canAccess('war-room') ||
-      canAccess('conteudo') ||
-      canAccess('material-campanha') ||
-      canAccess('ipt') ||
-      canAccess('whatsapp') ||
-      canAccess('resumo-operacional')
-    )
-  }
-  return canAccess(key)
-}
+import { DASHBOARD_GUARD_PAGE_KEYS } from '@/lib/page-permissions-catalog'
+import { canAccessDashboardPage } from '@/lib/page-access'
 
 function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard'
   if (pathname.startsWith('/dashboard/gestao-pesquisas')) return 'gestao_pesquisas'
   if (pathname.startsWith('/dashboard/log-system')) return 'log_system'
-  // Diagnóstico IPT: chave própria (antes caía em `territorio` e não aparecia no modal).
   if (pathname.startsWith('/dashboard/territorio/ipt')) return 'ipt'
   if (pathname.startsWith('/dashboard/cobertura')) return 'conteudo'
   if (pathname.startsWith('/dashboard/war-room')) return 'war-room'
-  // A página de Emendas usa a chave própria 'emendas' (mesma que a sidebar usa
-  // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
-  // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
-  // apenas 'emendas' liberado nas permissões.
   if (pathname.startsWith('/dashboard/material-campanha')) return 'material-campanha'
   if (pathname.startsWith('/dashboard/radar-224')) return 'noticias'
   if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
@@ -72,10 +21,10 @@ function getPageKey(pathname: string): string | null {
   if (pathname.startsWith('/dashboard/resumo-eleicoes')) return 'resumo-eleicoes'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
-  return first && PAGE_KEYS.has(first) ? first : null
+  return first && DASHBOARD_GUARD_PAGE_KEYS.has(first) ? first : null
 }
 
-export function DashboardPermissionGuard({ children }: { children: React.ReactNode }) {
+export function DashboardPermissionGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { canAccess, isAdmin, loading } = usePermissions()
@@ -85,19 +34,13 @@ export function DashboardPermissionGuard({ children }: { children: React.ReactNo
     const key = pathname ? getPageKey(pathname) : null
     if (!key || key === 'dashboard') return
 
-    if (key === 'usuarios') {
+    if (key === 'usuarios' || key === 'backup' || key === 'log_system') {
       if (!isAdmin) router.replace('/dashboard')
       return
     }
-    if (key === 'backup') {
-      if (!isAdmin) router.replace('/dashboard')
-      return
+    if (!isAdmin && !canAccessDashboardPage(canAccess, key, pathname ?? '')) {
+      router.replace('/dashboard')
     }
-    if (key === 'log_system') {
-      if (!isAdmin) router.replace('/dashboard')
-      return
-    }
-    if (!isAdmin && !canAccessPageKey(key, canAccess)) router.replace('/dashboard')
   }, [pathname, loading, isAdmin, canAccess, router])
 
   return <>{children}</>

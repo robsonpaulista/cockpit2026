@@ -87,6 +87,7 @@ export function DashboardHubTabBar({
   onTabChange: (id: string) => void
   actions?: React.ReactNode
 }) {
+  if (tabs.length === 0) return null
   return (
     <div className={dashboardSubnavStripClass}>
       <div className={dashboardSubnavStripPageInnerClass}>

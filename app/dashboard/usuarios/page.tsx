@@ -15,14 +15,22 @@ import {
   X,
 } from 'lucide-react'
 import { UsuariosSessoesPanel } from '@/components/usuarios-sessoes-panel'
+import {
+  PERMISSION_GROUPS,
+  listLegacyPermissionKeys,
+  legacyPermissionLabel,
+  type PermissionPage,
+} from '@/lib/page-permissions-catalog'
+import {
+  compactPermissions,
+  expandStoredPermissions,
+  isPageFullySelected,
+  isPagePartiallySelected,
+  isTabSelected,
+  togglePagePermission,
+  toggleTabPermission,
+} from '@/lib/page-access'
 import './usuarios-modals.css'
-
-interface Page {
-  id: string
-  key: string
-  label: string
-  path: string
-}
 
 interface UserRow {
   id: string
@@ -48,14 +56,12 @@ export default function UsuariosPage() {
   const router = useRouter()
   const { isAdmin, loading: permLoading } = usePermissions()
   const [users, setUsers] = useState<UserRow[]>([])
-  const [pages, setPages] = useState<Page[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showPermsModal, setShowPermsModal] = useState(false)
   const [formUser, setFormUser] = useState<UserRow | null>(null)
   const [permsUser, setPermsUser] = useState<UserRow | null>(null)
-  const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
@@ -79,18 +85,6 @@ export default function UsuariosPage() {
     }
   }, [])
 
-  const fetchPages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/pages')
-      if (res.ok) {
-        const { pages: p } = await res.json()
-        setPages(p ?? [])
-      }
-    } catch {
-      setPages([])
-    }
-  }, [])
-
   useEffect(() => {
     if (permLoading) return
     if (!isAdmin) {
@@ -98,8 +92,7 @@ export default function UsuariosPage() {
       return
     }
     fetchUsers()
-    fetchPages()
-  }, [permLoading, isAdmin, router, fetchUsers, fetchPages])
+  }, [permLoading, isAdmin, router, fetchUsers])
 
   const openCreate = () => {
     setFormUser(null)
@@ -277,7 +270,6 @@ export default function UsuariosPage() {
       {showPermsModal && permsUser && (
         <UserPermissionsModal
           user={permsUser}
-          pages={pages}
           onClose={() => {
             setShowPermsModal(false)
             setPermsUser(null)
@@ -486,18 +478,18 @@ function UserFormModal({ user, onClose, onSuccess }: UserFormModalProps) {
 
 interface UserPermissionsModalProps {
   user: UserRow
-  pages: Page[]
   onClose: () => void
   onSuccess: () => void
 }
 
-function UserPermissionsModal({ user, pages, onClose, onSuccess }: UserPermissionsModalProps) {
+function UserPermissionsModal({ user, onClose, onSuccess }: UserPermissionsModalProps) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Set<string>>(new Set(user.permissions ?? []))
+  const [selected, setSelected] = useState<Set<string>>(() => expandStoredPermissions(user.permissions))
+  const legacyKeys = listLegacyPermissionKeys(user.permissions)
 
   useEffect(() => {
-    setSelected(new Set(user.permissions ?? []))
+    setSelected(expandStoredPermissions(user.permissions))
   }, [user])
 
   const toggle = (key: string) => {
@@ -505,6 +497,30 @@ function UserPermissionsModal({ user, pages, onClose, onSuccess }: UserPermissio
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
+      return next
+    })
+  }
+
+  const togglePage = (page: PermissionPage) => {
+    setSelected((prev) => togglePagePermission(prev, page))
+  }
+
+  const toggleTab = (page: PermissionPage, tabKey: string) => {
+    setSelected((prev) => toggleTabPermission(prev, page, tabKey))
+  }
+
+  const toggleGroup = (pages: PermissionPage[], checked: boolean) => {
+    setSelected((prev) => {
+      let next = new Set(prev)
+      for (const page of pages) {
+        const fully = isPageFullySelected(next, page)
+        const partial = isPagePartiallySelected(next, page)
+        if (checked && !fully) next = togglePagePermission(next, page)
+        if (!checked && (fully || partial || next.has(page.key))) {
+          next.delete(page.key)
+          for (const tab of page.tabs ?? []) next.delete(tab.key)
+        }
+      }
       return next
     })
   }
@@ -517,7 +533,7 @@ function UserPermissionsModal({ user, pages, onClose, onSuccess }: UserPermissio
       const res = await fetch(`/api/users/${user.id}/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ permissions: Array.from(selected) }),
+        body: JSON.stringify({ permissions: compactPermissions(selected) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -556,21 +572,102 @@ function UserPermissionsModal({ user, pages, onClose, onSuccess }: UserPermissio
             </p>
           )}
 
-          <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border-card p-3">
-            {pages
-              .filter((p) => p.key !== 'usuarios')
-              .map((p) => (
-                <label key={p.key} className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(p.key)}
-                    onChange={() => toggle(p.key)}
-                    disabled={user.is_admin}
-                    className="rounded border-border-card"
-                  />
-                  <span className="text-sm text-text-primary">{p.label}</span>
-                </label>
-              ))}
+          <p className="text-sm text-text-secondary">
+            Marque a página inteira ou só as abas que a pessoa pode ver. O perfil (Articulação,
+            Comunicação, etc.) não libera acesso sozinho.
+          </p>
+
+          <div className="usuarios-perms-list max-h-[min(62vh,32rem)] space-y-4 overflow-y-auto rounded-lg border border-border-card p-3">
+            {PERMISSION_GROUPS.map((group) => {
+              const allOn = group.pages.every((page) => isPageFullySelected(selected, page))
+              return (
+                <section key={group.id} className="space-y-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div>
+                      <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+                        {group.label}
+                      </h4>
+                      {group.hint ? (
+                        <p className="text-[11px] text-text-secondary/80">{group.hint}</p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={user.is_admin}
+                      onClick={() => toggleGroup(group.pages, !allOn)}
+                      className="text-[11px] font-medium text-text-secondary hover:text-text-primary disabled:opacity-50"
+                    >
+                      {allOn ? 'Limpar' : 'Todas'}
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {group.pages.map((page) => {
+                      const fully = isPageFullySelected(selected, page)
+                      const partial = isPagePartiallySelected(selected, page)
+                      return (
+                        <div key={page.key} className="rounded-md">
+                          <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 hover:bg-bg-app">
+                            <input
+                              type="checkbox"
+                              checked={fully}
+                              ref={(el) => {
+                                if (el) el.indeterminate = partial
+                              }}
+                              onChange={() => togglePage(page)}
+                              disabled={user.is_admin}
+                              className="rounded border-border-card"
+                            />
+                            <span className="text-sm font-medium text-text-primary">{page.label}</span>
+                          </label>
+                          {page.tabs && page.tabs.length > 0 ? (
+                            <div className="ml-6 mt-0.5 space-y-0.5 border-l border-border-card pl-3">
+                              {page.tabs.map((tab) => (
+                                <label
+                                  key={tab.key}
+                                  className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 hover:bg-bg-app"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isTabSelected(selected, page, tab.key)}
+                                    onChange={() => toggleTab(page, tab.key)}
+                                    disabled={user.is_admin}
+                                    className="rounded border-border-card"
+                                  />
+                                  <span className="text-[13px] text-text-primary">{tab.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })}
+
+            {legacyKeys.length > 0 ? (
+              <section className="space-y-2 border-t border-border-card pt-3">
+                <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+                  Chaves antigas
+                </h4>
+                <p className="text-[11px] text-text-secondary">
+                  Não fazem mais parte do menu. Desmarque para remover.
+                </p>
+                {legacyKeys.map((key) => (
+                  <label key={key} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 hover:bg-bg-app">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(key)}
+                      onChange={() => toggle(key)}
+                      disabled={user.is_admin}
+                      className="rounded border-border-card"
+                    />
+                    <span className="text-sm text-text-primary">{legacyPermissionLabel(key)}</span>
+                  </label>
+                ))}
+              </section>
+            ) : null}
           </div>
 
           <div className="flex gap-3 border-t border-border-card pt-4">

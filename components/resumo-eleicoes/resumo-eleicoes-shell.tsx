@@ -21,6 +21,7 @@ import {
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 
 const TABS: { id: ResumoEleicoesHubTab; label: string; icon: typeof ClipboardList }[] = [
@@ -58,6 +59,7 @@ export function ResumoEleicoesShell({
   children,
 }: ResumoEleicoesShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
+  const visibleTabs = useAllowedHubTabs('resumo-eleicoes', TABS, activeTab, onTabChange)
   const pageTitle = 'Painel de Atendimentos'
   const description = TAB_DESCRIPTIONS[activeTab]
 
@@ -79,7 +81,7 @@ export function ResumoEleicoesShell({
           <DashboardPageHeader title={pageTitle} description={description} />
         )}
         <DashboardHubTabBar
-          tabs={TABS}
+          tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={(tab) => onTabChange(tab as ResumoEleicoesHubTab)}
           actions={tabActions}

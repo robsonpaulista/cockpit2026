@@ -229,6 +229,8 @@ export type WarRoomAgendaItem = {
   municipio: string
   tipo: string
   status: string
+  attended?: boolean | null
+  arrivalTime?: string | null
 }
 
 /** Fallback quando a API de agendas não retorna itens do dia. */

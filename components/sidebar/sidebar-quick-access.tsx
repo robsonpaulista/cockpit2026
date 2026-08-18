@@ -41,7 +41,7 @@ export function SidebarQuickAccess({
   const { canAccess, loading } = usePermissions()
 
   const items = loading
-    ? SIDEBAR_QUICK_ACCESS_ITEMS
+    ? []
     : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) => canAccess(item.pageKey))
 
   if (items.length === 0) return null

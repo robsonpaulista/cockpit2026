@@ -14,6 +14,7 @@ import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typog
 import { conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -47,6 +48,7 @@ export function ConteudoRedesShell({
   children,
 }: ConteudoRedesShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
+  const visibleTabs = useAllowedHubTabs('conteudo', TABS, activeTab, onTabChange)
   const pageTitle = 'Instagram Pessoal'
   const tabDescription = TAB_DESCRIPTIONS[activeTab]
   const description = metaLine ? (
@@ -78,7 +80,7 @@ export function ConteudoRedesShell({
           <DashboardPageHeader title={pageTitle} description={description} />
         )}
         <DashboardHubTabBar
-          tabs={TABS}
+          tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={(tab) => onTabChange(tab as ConteudoRedesTab)}
           actions={tabActions}

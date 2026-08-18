@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { PERMISSION_PAGES } from '@/lib/page-permissions-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,16 +14,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
-      .from('pages')
-      .select('id, key, label, path')
-      .order('label')
-
-    if (error) {
-      console.error('Erro ao buscar páginas:', error)
-      return NextResponse.json({ error: 'Erro ao buscar páginas' }, { status: 500 })
-    }
-    return NextResponse.json({ pages: data ?? [] })
+    const pages = PERMISSION_PAGES.map((page) => ({
+      id: page.key,
+      key: page.key,
+      label: page.label,
+      path: page.path,
+    }))
+    return NextResponse.json({ pages })
   } catch (e) {
     console.error(e)
     return NextResponse.json(

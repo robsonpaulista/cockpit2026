@@ -108,8 +108,7 @@ export function IptPanel() {
   const syncEventosLockRef = useRef<string | null>(null)
   const { loading, error, conexaoInstavel, municipios, obras, recarregar } = useIpt()
   const { isAdmin, canAccess } = usePermissions()
-  const podeVerExpectativa =
-    isAdmin || canAccess('territorio') || canAccess('ipt')
+  const podeVerExpectativa = isAdmin || canAccess('ipt')
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-operacional', '')

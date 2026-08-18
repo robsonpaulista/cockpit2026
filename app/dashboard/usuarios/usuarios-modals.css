@@ -10,3 +10,7 @@
 [data-appearance='dark'] .usuarios-modal-panel {
   background-color: rgb(var(--bg-surface)) !important;
 }
+
+.usuarios-perms-list {
+  scrollbar-width: thin;
+}

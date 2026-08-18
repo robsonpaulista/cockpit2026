@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import { filterItemsForDashboardKanban } from '@/lib/dashboard-kanban-filter'
 import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
-import { pageKeyForSidebarItem } from '@/lib/sidebar-page-key'
+import { canAccessSidebarItem } from '@/lib/page-access'
 import { usePermissions } from '@/hooks/use-permissions'
 
 function filterVisibleSidebarItems(
@@ -12,15 +12,13 @@ function filterVisibleSidebarItems(
   canAccess: (page: string) => boolean,
   isAdmin: boolean
 ): SidebarMenuItemConfig[] {
-  if (permLoading) {
-    return SIDEBAR_MENU_ITEMS.filter((item) => !isSidebarMenuItemHidden(item.id))
-  }
+  if (permLoading) return []
 
   return SIDEBAR_MENU_ITEMS.map((item) => {
     if (!item.children) return item
     const children = item.children.filter(
       (child) =>
-        canAccess(pageKeyForSidebarItem(child.id)) && !isSidebarChildMenuItemHidden(child.id),
+        canAccessSidebarItem(canAccess, child.id) && !isSidebarChildMenuItemHidden(child.id),
     )
     return { ...item, children }
   }).filter((item) => {
@@ -29,22 +27,16 @@ function filterVisibleSidebarItems(
     if (item.id === 'backup') return isAdmin
     if (item.id === 'log-system') return isAdmin
     if (item.id === 'ficha-atendimento') {
-      return canAccess('ficha-atendimento') || canAccess('territorio')
+      return canAccess('ficha-atendimento')
     }
     if (item.id === 'territorio') {
-      return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+      return canAccessSidebarItem(canAccess, 'territorio')
     }
     if (item.id === 'resumo-operacional') {
-      return (
-        canAccess('resumo-operacional') ||
-        canAccess('campo') ||
-        canAccess('operacao') ||
-        canAccess('mobilizacao') ||
-        canAccess('conteudo')
-      )
+      return canAccess('resumo-operacional')
     }
     if (item.children) return item.children.length > 0
-    return canAccess(pageKeyForSidebarItem(item.id))
+    return canAccessSidebarItem(canAccess, item.id)
   })
 }
 

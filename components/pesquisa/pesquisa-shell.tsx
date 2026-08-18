@@ -13,6 +13,7 @@ import {
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -39,6 +40,7 @@ export function PesquisaShell({
   children,
 }: PesquisaShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
+  const visibleTabs = useAllowedHubTabs('pesquisa', TABS, activeTab, onTabChange)
   const pageTitle = 'Pesquisa & Relato'
   const descriptionText =
     'Competitividade eleitoral por município. Os rankings mostram os candidatos mais bem posicionados em cada cidade e são consolidados pelo eleitorado local para formar uma visão territorial da disputa.'
@@ -62,7 +64,7 @@ export function PesquisaShell({
           <DashboardPageHeader title={pageTitle} description={descriptionText} />
         )}
         <DashboardHubTabBar
-          tabs={TABS}
+          tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={(tab) => onTabChange(tab as PesquisaTab)}
           actions={tabActions}

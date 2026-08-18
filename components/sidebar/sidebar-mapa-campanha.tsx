@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 import { usePermissions } from '@/hooks/use-permissions'
+import { canAccessPage, hrefForAllowedHub } from '@/lib/page-access'
 import {
   sidebarNavIconClass,
   sidebarNavItemClass,
@@ -27,8 +28,8 @@ type CampanhaLink = {
   id: string
   href: string
   label: string
-  icon: 'Activity' | 'MapPin' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3'
-  pageKeys: string[]
+  icon: 'Activity' | 'MapPin' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3' | 'Calendar'
+  pageKey: string
 }
 
 const CAMPANHA_LINKS: CampanhaLink[] = [
@@ -37,56 +38,63 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
     href: '/dashboard/war-room',
     label: 'War Room',
     icon: 'Activity',
-    pageKeys: ['war-room', 'conteudo', 'material-campanha', 'ipt', 'whatsapp'],
+    pageKey: 'war-room',
   },
   {
     id: 'diagnostico',
     href: '/dashboard/territorio/ipt',
     label: 'Diagnóstico Operacional',
     icon: 'MapPin',
-    pageKeys: ['ipt', 'territorio', 'campo', 'agenda'],
+    pageKey: 'ipt',
   },
   {
     id: 'base-eleitoral',
     href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
     label: 'Base Eleitoral',
     icon: 'MapPin',
-    pageKeys: ['territorio', 'campo', 'agenda'],
+    pageKey: 'territorio',
+  },
+  {
+    id: 'agenda',
+    href: '/dashboard/agenda',
+    label: 'Agenda',
+    icon: 'Calendar',
+    pageKey: 'agenda',
   },
   {
     id: 'pesquisas-opiniao',
     href: '/dashboard/pesquisa',
     label: 'Pesquisas de Opinião',
     icon: 'BarChart3',
-    pageKeys: ['pesquisa'],
+    pageKey: 'pesquisa',
   },
   {
     id: 'radar-eleitoral',
     href: '/dashboard/noticias/monitoramento',
     label: 'Radar Eleitoral',
     icon: 'Radar',
-    pageKeys: ['noticias'],
+    pageKey: 'noticias',
   },
   {
     id: 'atendimentos',
     href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO),
     label: 'Atendimentos',
     icon: 'ClipboardList',
-    pageKeys: ['resumo-eleicoes'],
+    pageKey: 'resumo-eleicoes',
   },
   {
     id: 'instagram-pessoal',
     href: '/dashboard/conteudo/redes',
     label: 'Instagram Pessoal',
     icon: 'MessageSquare',
-    pageKeys: ['conteudo'],
+    pageKey: 'conteudo',
   },
   {
     id: 'gestao-material',
     href: '/dashboard/material-campanha',
     label: 'Gestão de Material',
     icon: 'Package',
-    pageKeys: ['material-campanha'],
+    pageKey: 'material-campanha',
   },
 ]
 
@@ -96,6 +104,9 @@ function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: stri
   }
   if (link.id === 'diagnostico') {
     return pathname.startsWith('/dashboard/territorio/ipt')
+  }
+  if (link.id === 'agenda') {
+    return pathname.startsWith('/dashboard/agenda')
   }
   if (link.id === 'base-eleitoral') {
     return (
@@ -144,8 +155,8 @@ export function SidebarMapaCampanhaBlock({
   const { canAccess, loading } = usePermissions()
 
   const links = loading
-    ? CAMPANHA_LINKS
-    : CAMPANHA_LINKS.filter((link) => link.pageKeys.some((key) => canAccess(key)))
+    ? []
+    : CAMPANHA_LINKS.filter((link) => canAccessPage(canAccess, link.pageKey))
 
   if (links.length === 0) return null
 
@@ -177,13 +188,14 @@ export function SidebarMapaCampanhaBlock({
 
       <div className={cn('flex flex-col', iconOnly ? 'gap-1' : 'gap-0.5')}>
         {links.map((link) => {
+          const href = hrefForAllowedHub(canAccess, link.pageKey, link.href)
           const active = isCampanhaLinkActive(link, pathname, searchKey)
           const iconClass = sidebarNavIconClass(active)
           return (
             <div key={link.id} className="group relative">
               <Link
-                href={link.href}
-                onClick={() => onNavigate(link.href)}
+                href={href}
+                onClick={() => onNavigate(href)}
                 aria-label={link.label}
                 className={cn(
                   sidebarNavItemClass(active),

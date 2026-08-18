@@ -25,6 +25,7 @@ import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -83,6 +84,7 @@ export function MonitoramentoShell({
   children,
 }: MonitoramentoShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
+  const visibleTabs = useAllowedHubTabs('noticias', TABS, activeTab, onTabChange)
   const pageTitle =
     activeTab === MONITORAMENTO_TAB_LIDERES ? 'Radar eleitoral · Eng. líderes' : 'Radar eleitoral'
 
@@ -120,7 +122,7 @@ export function MonitoramentoShell({
           <DashboardPageHeader title={pageTitle} description={description} />
         )}
         <DashboardHubTabBar
-          tabs={TABS}
+          tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={(tab) => onTabChange(tab as MonitoramentoTab)}
           actions={tabActions}

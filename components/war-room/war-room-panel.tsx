@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Bot, RefreshCw } from 'lucide-react'
+import { Bot, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DashboardPageChrome,
@@ -9,26 +9,12 @@ import {
 } from '@/components/dashboard/dashboard-page-chrome'
 import { typographyContentRootClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
-import {
-  WAR_ROOM_CRM_FUNNEL,
-  type WarRoomAgendaItem,
-} from '@/lib/war-room/mock-data'
-import {
-  formatAgendaTimePt,
-  getCalendarEventDate,
-  type CalendarEventRow,
-} from '@/lib/agenda/calendar-event-utils'
-import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
-import { resolveCrmCardStatus } from '@/lib/war-room/card-status'
+import { type WarRoomAgendaItem } from '@/lib/war-room/mock-data'
+import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { useSetDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
-import { WarRoomExpectativaCard } from '@/components/war-room/war-room-bloco1'
-import { WarRoomOpsBar } from '@/components/war-room/war-room-ops-bar'
 import { WarRoomCidadeProvider } from '@/components/war-room/war-room-cidade-context'
-import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
-import { WarRoomNoticiasCard } from '@/components/war-room/war-room-noticias-card'
 import {
   WarRoomRefreshProvider,
-  useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import {
@@ -36,75 +22,28 @@ import {
   useWarRoomViewMode,
 } from '@/components/war-room/war-room-view-mode-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
-import {
-  WarRoomPesquisasConsolidadasCard,
-} from '@/components/war-room/war-room-pesquisas-cards'
-import { WarRoomDecisoesCard } from '@/components/war-room/war-room-decisoes-card'
-import { WarRoomAgendaCard, parseAgendaMinutes } from '@/components/war-room/war-room-agenda-card'
-import { WarRoomCrmCard } from '@/components/war-room/war-room-crm-card'
-import { WarRoomDisparosCard } from '@/components/war-room/war-room-disparos-card'
-// Oculto por hora: WarRoomFeedCard (Linha viva)
-import { WarRoomRedesCard } from '@/components/war-room/war-room-redes-card'
-import { WarRoomInstagramRadarCard } from '@/components/war-room/war-room-instagram-radar-card'
-import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas-cidade-card'
+import { parseAgendaMinutes } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomCopilotoView } from '@/components/war-room/war-room-copiloto-view'
-import { isAgendaEventParaConhecimento } from '@/lib/war-room/agenda-proximos'
+import { WarRoomHomeView } from '@/components/war-room/war-room-home-view'
+import { listAgendaDoDia, mapAgendaDoDiaItem } from '@/lib/war-room/agenda-proximos'
+import { fetchCalendarAttendances } from '@/lib/agenda/fetch-calendar-attendance'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
-
-const WAR_ROOM_TZ = 'America/Sao_Paulo'
-
-function calendarDateInTz(iso: string | Date, timeZone: string = WAR_ROOM_TZ): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d)
-}
-
-function todayKeyInTz(timeZone: string = WAR_ROOM_TZ): string {
-  return calendarDateInTz(new Date(), timeZone)
-}
-
-const boardClass = 'wr-board'
-
-function nowMinutesInTz(timeZone: string = WAR_ROOM_TZ): number {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0')
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0')
-  return hour * 60 + minute
-}
-
-function normalizeAgendaHora(hora: string | null | undefined): string {
-  if (!hora) return '—'
-  const trimmed = String(hora).trim()
-  if (/^\d{2}:\d{2}/.test(trimmed)) return trimmed.slice(0, 5)
-  return trimmed
-}
+import '@/app/dashboard/war-room/war-room-home.css'
 
 function mapGoogleEventToWarRoom(
   event: CalendarEventRow,
   index: number,
-  attended = false,
+  attendance?: { attended?: boolean | null; arrivalTime?: string | null },
 ): WarRoomAgendaItem {
-  const { origin, title } = parseEventOriginFromSummary(event.summary || '')
-  const municipio = (event.location?.trim() || origin || '—').trim()
+  const attended = attendance?.attended === true
   return {
-    id: event.id || `agenda-${index}`,
-    titulo: title,
-    horario: normalizeAgendaHora(formatAgendaTimePt(event)),
-    municipio,
+    ...mapAgendaDoDiaItem(event, index),
     tipo: 'google-calendar',
     status: attended ? 'concluido' : 'planejada',
+    attended: attendance?.attended ?? null,
+    arrivalTime: attendance?.arrivalTime ?? null,
   }
 }
 
@@ -121,15 +60,12 @@ export function WarRoomPanel() {
 }
 
 function WarRoomPanelInner() {
-  const [nowMinutes, setNowMinutes] = useState(() => nowMinutesInTz())
   const [agendaItems, setAgendaItems] = useState<WarRoomAgendaItem[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
   const [agendaError, setAgendaError] = useState<string | null>(null)
 
-  const { register, refreshAll, refreshing, lastRefreshAt } = useWarRoomRefresh()
-  const { isDesempenho, isCopiloto, toggleDesempenho, toggleCopiloto } =
-    useWarRoomViewMode()
-  const agendaChange = useWarRoomCardChange('agenda')
+  const { register, refreshAll, refreshing } = useWarRoomRefresh()
+  const { isCopiloto, toggleCopiloto } = useWarRoomViewMode()
 
   const loadAgenda = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -146,38 +82,19 @@ function WarRoomPanelInner() {
       }
       if (!res.ok) throw new Error(data.error || 'Falha ao carregar agenda')
 
-      const today = todayKeyInTz()
-      const todaysEvents = (data.events ?? []).filter((event) => {
-        if (event.status === 'cancelled') return false
-        if (isAgendaEventParaConhecimento(event)) return false
-        const date = getCalendarEventDate(event)
-        if (!date) return false
-        return calendarDateInTz(date) === today
-      })
-
-      const attendanceById: Record<string, boolean> = {}
-      await Promise.all(
-        todaysEvents.map(async (event) => {
-          if (!event.id) return
-          try {
-            const attRes = await fetch(`/api/agenda/attendance?eventId=${event.id}`, {
-              cache: 'no-store',
-            })
-            if (!attRes.ok) return
-            const attJson = (await attRes.json()) as {
-              attendance?: { attended?: boolean } | null
-            }
-            attendanceById[event.id] = Boolean(attJson.attendance?.attended)
-          } catch {
-            // Attendance é opcional — a timeline ainda resolve por horário.
-          }
-        }),
+      const todaysEvents = listAgendaDoDia(data.events ?? [])
+      const attendanceById = await fetchCalendarAttendances(
+        todaysEvents.map((event) => event.id).filter(Boolean),
       )
 
       const mapped = todaysEvents
-        .map((event, index) =>
-          mapGoogleEventToWarRoom(event, index, attendanceById[event.id || ''] === true),
-        )
+        .map((event, index) => {
+          const att = event.id ? attendanceById[event.id] : undefined
+          return mapGoogleEventToWarRoom(event, index, {
+            attended: att?.attended ?? null,
+            arrivalTime: att?.arrival_time ?? null,
+          })
+        })
         .sort((a, b) => {
           const am = parseAgendaMinutes(a.horario)
           const bm = parseAgendaMinutes(b.horario)
@@ -224,13 +141,6 @@ function WarRoomPanelInner() {
     })
   }, [register, loadAgenda])
 
-  useEffect(() => {
-    const tick = () => setNowMinutes(nowMinutesInTz())
-    tick()
-    const id = window.setInterval(tick, 30_000)
-    return () => window.clearInterval(id)
-  }, [])
-
   const agendaSnapshotLines = useMemo(
     () =>
       agendaItems.map(
@@ -245,8 +155,6 @@ function WarRoomPanelInner() {
     noun: 'compromisso',
     ready: !agendaLoading,
   })
-
-  const [, setDecisoesTotal] = useState(0)
 
   const refreshButton = useMemo(
     () => (
@@ -290,69 +198,30 @@ function WarRoomPanelInner() {
 
   useSetDashboardTopbarExtras(topbarExtras)
 
-  const crmPendentes = WAR_ROOM_CRM_FUNNEL.pendentes
-  const crmStatus = resolveCrmCardStatus(crmPendentes)
-  const alertCount = crmStatus === 'critico' ? 1 : 0
-
   return (
     <DashboardPageShell>
       <DashboardPageChrome>{null}</DashboardPageChrome>
 
-      <DashboardPageContent className={cn(typographyContentRootClass, 'pt-2 md:pt-3')}>
-        <div className={cn('wr-page-canvas', isCopiloto && 'wr-page-canvas--copiloto')}>
+      <DashboardPageContent
+        className={cn(
+          typographyContentRootClass,
+          'pt-2 md:pt-3',
+          !isCopiloto && 'overflow-hidden',
+        )}
+      >
+        <div
+          className={cn(
+            'wr-page-canvas',
+            isCopiloto ? 'wr-page-canvas--copiloto' : 'wr-page-canvas--scroll min-h-0 flex-1',
+          )}
+        >
           {isCopiloto ? (
             <WarRoomCopilotoView />
           ) : (
-            <>
-              <WarRoomOpsBar
-                alertCount={alertCount}
-                lastRefreshAt={lastRefreshAt}
-                desempenhoActive={isDesempenho}
-                onToggleDesempenho={toggleDesempenho}
-              />
-
-              <div className="wr-layout">
-                <aside className="wr-col wr-col--lead" aria-label="Agenda e expectativa">
-                  <WarRoomAgendaCard
-                    items={agendaItems}
-                    nowMinutes={nowMinutes}
-                    loading={agendaLoading}
-                    error={agendaError}
-                    badge={<WarRoomChangeBadge change={agendaChange} />}
-                  />
-                  <WarRoomExpectativaCard />
-                  <WarRoomVisitasCidadeCard />
-                </aside>
-
-                <div className={cn('wr-col wr-col--board', boardClass)} aria-label="Painel operacional">
-                  <div className="wr-board-stack wr-cell--pesquisas-noticias">
-                    <WarRoomPesquisasConsolidadasCard />
-                    <WarRoomNoticiasCard />
-                  </div>
-
-                  <div className="wr-board-stack wr-cell--redes">
-                    <WarRoomRedesCard />
-                    <WarRoomInstagramRadarCard />
-                  </div>
-
-                  <div className="wr-board-stack wr-cell--crm-evolucao">
-                    <WarRoomDisparosCard />
-                    <WarRoomCrmCard />
-                    {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
-                  </div>
-
-                  <div className="wr-board-stack wr-cell--prioridades" aria-label="Fila de decisões">
-                    <WarRoomDecisoesCard onTotalChange={setDecisoesTotal} />
-                    {/* Oculto por hora: <WarRoomFeedCard /> (Linha viva) */}
-                  </div>
-                </div>
-              </div>
-
-              <p className="mb-4 flex items-center gap-1.5 text-[11px] text-[var(--wr-muted)]">
-                <Activity className="h-3.5 w-3.5" strokeWidth={1.5} />
-                War Room · Cockpit 2026
-              </p>
-            </>
+            <WarRoomHomeView
+              agendaItems={agendaItems}
+              agendaLoading={agendaLoading}
+            />
           )}
         </div>
       </DashboardPageContent>
