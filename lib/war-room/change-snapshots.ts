@@ -14,6 +14,7 @@ export type WarRoomCardId =
   | 'visitas-cidade'
   | 'decisoes'
   | 'disparos'
+  | 'home'
 
 export type WarRoomCardChange = {
   summary: string
