@@ -10,11 +10,18 @@ export type AgendaAttendancePatch = {
   status?: string
 }
 
+export type FetchCalendarAttendancesScope = 'user' | 'global'
+
 export async function fetchCalendarAttendances(
   eventIds: string[],
+  opts?: { scope?: FetchCalendarAttendancesScope },
 ): Promise<Record<string, CalendarAttendanceRow>> {
   const unique = [...new Set(eventIds.filter(Boolean))]
   if (unique.length === 0) return {}
+
+  const scope = opts?.scope ?? 'user'
+  const path =
+    scope === 'global' ? '/api/war-room/agenda-confirmados' : '/api/agenda/attendance'
 
   try {
     const params = new URLSearchParams()
@@ -23,7 +30,7 @@ export async function fetchCalendarAttendances(
     } else {
       params.set('eventIds', unique.join(','))
     }
-    const res = await fetch(`/api/agenda/attendance?${params.toString()}`, {
+    const res = await fetch(`${path}?${params.toString()}`, {
       cache: 'no-store',
     })
     if (!res.ok) return {}

@@ -114,7 +114,7 @@ body[data-war-room-clean] .wr-page-canvas .wr-home__headline span {
 
 .wr-home__agenda-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   flex-shrink: 0;
@@ -122,6 +122,22 @@ body[data-war-room-clean] .wr-page-canvas .wr-home__headline span {
   margin: 0;
   min-width: 0;
   border-bottom: 1px solid #eceef1;
+}
+
+.wr-home__agenda-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wr-home__agenda-sync {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wr-home-gray);
+  line-height: 1.2;
 }
 
 .wr-home__agenda-count {

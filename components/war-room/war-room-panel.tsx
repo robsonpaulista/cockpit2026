@@ -30,6 +30,9 @@ import {
   fetchCalendarAttendances,
   mergeAgendaAttendance,
 } from '@/lib/agenda/fetch-calendar-attendance'
+import { proximaAtualizacaoConfirmadosAgenda } from '@/lib/war-room/agenda-arrivals-refresh'
+
+const WAR_ROOM_CONFIRMADOS_SCOPE = { scope: 'global' as const }
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
@@ -66,9 +69,16 @@ function WarRoomPanelInner() {
   const [agendaItems, setAgendaItems] = useState<WarRoomAgendaItem[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
   const [agendaError, setAgendaError] = useState<string | null>(null)
+  const [confirmadosProximaSyncEm, setConfirmadosProximaSyncEm] = useState<number | null>(
+    null,
+  )
   const agendaItemsRef = useRef(agendaItems)
   agendaItemsRef.current = agendaItems
   const arrivalsInFlight = useRef(false)
+
+  const bumpConfirmadosSyncSchedule = useCallback(() => {
+    setConfirmadosProximaSyncEm(proximaAtualizacaoConfirmadosAgenda())
+  }, [])
 
   const { register, refreshAll, refreshing } = useWarRoomRefresh()
   const { isCopiloto, toggleCopiloto } = useWarRoomViewMode()
@@ -76,15 +86,19 @@ function WarRoomPanelInner() {
   const refreshArrivals = useCallback(async () => {
     const current = agendaItemsRef.current
     const ids = current.map((item) => item.id).filter(Boolean)
-    if (ids.length === 0 || arrivalsInFlight.current) return
+    if (ids.length === 0 || arrivalsInFlight.current) {
+      bumpConfirmadosSyncSchedule()
+      return
+    }
     arrivalsInFlight.current = true
     try {
-      const attendanceById = await fetchCalendarAttendances(ids)
+      const attendanceById = await fetchCalendarAttendances(ids, WAR_ROOM_CONFIRMADOS_SCOPE)
       setAgendaItems((prev) => mergeAgendaAttendance(prev, attendanceById))
     } finally {
       arrivalsInFlight.current = false
+      bumpConfirmadosSyncSchedule()
     }
-  }, [])
+  }, [bumpConfirmadosSyncSchedule])
 
   const loadAgenda = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -105,6 +119,7 @@ function WarRoomPanelInner() {
       const todaysEvents = listAgendaDoDia(data.events ?? [])
       const attendanceById = await fetchCalendarAttendances(
         todaysEvents.map((event) => event.id).filter(Boolean),
+        WAR_ROOM_CONFIRMADOS_SCOPE,
       )
 
       const mapped = todaysEvents
@@ -126,13 +141,14 @@ function WarRoomPanelInner() {
 
       setAgendaItems(mapped)
       setAgendaError(null)
+      bumpConfirmadosSyncSchedule()
     } catch (e) {
       setAgendaItems([])
       setAgendaError(e instanceof Error ? e.message : 'Erro ao carregar agenda')
     } finally {
       setAgendaLoading(false)
     }
-  }, [refreshArrivals])
+  }, [refreshArrivals, bumpConfirmadosSyncSchedule])
 
   useEffect(() => {
     document.body.setAttribute('data-war-room-clean', '')
@@ -154,13 +170,33 @@ function WarRoomPanelInner() {
   }, [loadAgenda])
 
   useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState === 'hidden') return
-      void refreshArrivals()
+    if (confirmadosProximaSyncEm == null) return
+
+    const ms = confirmadosProximaSyncEm - Date.now()
+    if (ms <= 0) {
+      if (document.visibilityState !== 'hidden') void refreshArrivals()
+      return
     }
-    const id = window.setInterval(tick, 5 * 60_000)
-    return () => window.clearInterval(id)
-  }, [refreshArrivals])
+
+    const id = window.setTimeout(() => {
+      if (document.visibilityState !== 'hidden') void refreshArrivals()
+    }, ms)
+    return () => window.clearTimeout(id)
+  }, [confirmadosProximaSyncEm, refreshArrivals])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        confirmadosProximaSyncEm != null &&
+        Date.now() >= confirmadosProximaSyncEm
+      ) {
+        void refreshArrivals()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [confirmadosProximaSyncEm, refreshArrivals])
 
   useEffect(() => {
     return register('agenda', async ({ silent }) => {
@@ -248,6 +284,7 @@ function WarRoomPanelInner() {
             <WarRoomHomeView
               agendaItems={agendaItems}
               agendaLoading={agendaLoading}
+              confirmadosProximaSyncEm={confirmadosProximaSyncEm}
             />
           )}
         </div>

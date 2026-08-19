@@ -50,6 +50,7 @@ import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { IPT_TOTAL_MUNICIPIOS_PI, temExpectativa } from '@/lib/ipt-missoes'
 import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
+import { formatCountdownConfirmadosAgenda } from '@/lib/war-room/agenda-arrivals-refresh'
 
 type RedesHojeTotais = {
   posts: number
@@ -81,6 +82,7 @@ const REDES_ENG_ITENS: Array<{
 type Props = {
   agendaItems: WarRoomAgendaItem[]
   agendaLoading: boolean
+  confirmadosProximaSyncEm: number | null
 }
 
 const HOME_JANELA_DIAS = 60
@@ -207,7 +209,26 @@ function GoBtn({ href, onClick, label }: { href?: string; onClick?: () => void; 
   )
 }
 
-export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
+function useConfirmadosCountdown(proximoSyncEm: number | null): string | null {
+  const [agora, setAgora] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (proximoSyncEm == null) return
+    const tick = () => setAgora(Date.now())
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [proximoSyncEm])
+
+  if (proximoSyncEm == null) return null
+  return formatCountdownConfirmadosAgenda(proximoSyncEm - agora)
+}
+
+export function WarRoomHomeView({
+  agendaItems,
+  agendaLoading,
+  confirmadosProximaSyncEm,
+}: Props) {
   const { user } = useAuth()
   const { municipios, loading: iptLoading } = useIpt()
   const { register } = useWarRoomRefresh()
@@ -236,6 +257,7 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
   const [decisoesOpen, setDecisoesOpen] = useState(false)
 
   const nome = firstName(user?.profile?.name)
+  const confirmadosCountdown = useConfirmadosCountdown(confirmadosProximaSyncEm)
 
   useEffect(() => {
     const tick = () => {
@@ -530,7 +552,17 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
         <div className="wr-home__right">
           <aside className="wr-home__agenda-card">
             <header className="wr-home__agenda-head">
-              <p className="wr-home__kicker">Agenda de hoje</p>
+              <div className="wr-home__agenda-head-copy">
+                <p className="wr-home__kicker">Agenda de hoje</p>
+                {confirmadosCountdown ? (
+                  <p
+                    className="wr-home__agenda-sync tabular-nums"
+                    title="Próxima atualização silenciosa dos confirmados na agenda"
+                  >
+                    Confirmados em {confirmadosCountdown}
+                  </p>
+                ) : null}
+              </div>
               {!agendaListaLoading && agendaPreview.length > 0 ? (
                 <span className="wr-home__agenda-count tabular-nums">
                   {agendaPreview.length}
