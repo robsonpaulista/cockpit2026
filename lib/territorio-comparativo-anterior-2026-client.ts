@@ -94,7 +94,7 @@ const COMPARATIVO_CLIENT_CACHE_TTL_MS = 5 * 60 * 1000
 let comparativoClientCache: { expiresAt: number; result: ComparativoAnterior2026LoadResult } | null = null
 let comparativoClientInflight: Promise<ComparativoAnterior2026LoadResult> | null = null
 
-/** Mesma origem da aba Base: planilha Território + votos 2022 (Dep. Federal). */
+/** Mesma origem da aba Base: Supabase territorio_liderancas + votos 2022 (Dep. Federal). */
 export async function loadComparativoAnterior2026Client(): Promise<ComparativoAnterior2026LoadResult> {
   const now = Date.now()
   if (comparativoClientCache && comparativoClientCache.expiresAt > now) {
@@ -116,36 +116,32 @@ export async function loadComparativoAnterior2026Client(): Promise<ComparativoAn
 
 async function loadComparativoAnterior2026ClientUncached(): Promise<ComparativoAnterior2026LoadResult> {
   try {
-    const [sheetRes, votos2022Result] = await Promise.all([
-      fetch('/api/territorio/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      }),
+    const [baseRes, votos2022Result] = await Promise.all([
+      fetch('/api/territorio/base', { cache: 'no-store' }),
       fetchJadyelFederal2022VotosPorMunicipioPI(),
     ])
 
-    const sheetData = (await sheetRes.json()) as {
+    const baseData = (await baseRes.json()) as {
       error?: string
       records?: Array<Record<string, unknown>>
       headers?: string[]
     }
 
-    if (!sheetRes.ok) {
+    if (!baseRes.ok) {
       return {
         ok: false,
-        error: sheetData.error ?? 'Erro ao carregar planilha de Território & Base.',
+        error: baseData.error ?? 'Erro ao carregar base territorial.',
       }
     }
 
-    const headers = sheetData.headers ?? []
-    const records = sheetData.records ?? []
+    const headers = baseData.headers ?? []
+    const records = baseData.records ?? []
     const expectativaCol = resolveExpectativaLegadoCol(headers)
 
     if (!expectativaCol) {
       return {
         ok: false,
-        error: 'Coluna Expectativa 2026 não encontrada na planilha.',
+        error: 'Coluna Expectativa 2026 não encontrada na base.',
       }
     }
 
@@ -182,7 +178,7 @@ async function loadComparativoAnterior2026ClientUncached(): Promise<ComparativoA
   } catch (error: unknown) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Erro ao montar comparativo territorial.',
+      error: error instanceof Error ? error.message : 'Erro ao montar comparativo territorial (base).',
     }
   }
 }
