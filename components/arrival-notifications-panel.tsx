@@ -14,7 +14,7 @@ interface CalendarEvent {
 }
 
 interface AttendanceStatus {
-  attended: boolean
+  attended?: boolean | null
   notes?: string
   arrival_time?: string
 }

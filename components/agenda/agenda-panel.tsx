@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import type React from 'react'
 import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
 import { Calendar, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw, UserCheck } from 'lucide-react'
@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { ArrivalTimer } from '@/components/arrival-timer'
 import { ArrivalNotificationsPanel } from '@/components/arrival-notifications-panel'
 import { formatEventDescriptionForDisplay } from '@/lib/agenda/event-present'
+import { fetchCalendarAttendances } from '@/lib/agenda/fetch-calendar-attendance'
+import { WAR_ROOM_ARRIVALS_SILENT_REFRESH_MS } from '@/lib/war-room/agenda-arrivals-refresh'
 import {
   AgendaToCampoButton,
   type CampoGoogleLink,
@@ -80,6 +82,8 @@ interface CalendarEvent {
   }
 }
 
+const AGENDA_CONFIRMADOS_SCOPE = { scope: 'global' as const }
+
 export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   const { user, loading: authLoading } = useAuth()
   const [config, setConfig] = useState<CalendarConfig | null>(null)
@@ -90,11 +94,16 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   const [showConfig, setShowConfig] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string; arrival_time?: string }>>({})
+  const [attendanceStatuses, setAttendanceStatuses] = useState<
+    Record<string, { attended?: boolean | null; notes?: string; arrival_time?: string }>
+  >({})
   const [confirmingArrival, setConfirmingArrival] = useState<Record<string, boolean>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [campoLinks, setCampoLinks] = useState<Record<string, CampoGoogleLink>>({})
+  const eventsRef = useRef(events)
+  eventsRef.current = events
+  const arrivalsInFlight = useRef(false)
 
   // Função para destacar origem no texto (ex: "(THE - PI)" ou "(BSB)")
   const highlightOriginInText = (text: string): React.ReactNode => {
@@ -222,12 +231,64 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
     }
   }, [config, fetchEvents])
 
+  const loadAttendanceStatuses = useCallback(async () => {
+    const ids = eventsRef.current.map((event) => event.id).filter(Boolean)
+    if (ids.length === 0) {
+      setAttendanceStatuses({})
+      return
+    }
+    if (arrivalsInFlight.current) return
+    arrivalsInFlight.current = true
+
+    try {
+      const byId = await fetchCalendarAttendances(ids, AGENDA_CONFIRMADOS_SCOPE)
+      const statuses: Record<
+        string,
+        { attended?: boolean | null; notes?: string; arrival_time?: string }
+      > = {}
+
+      for (const [eventId, attendance] of Object.entries(byId)) {
+        statuses[eventId] = {
+          attended: attendance.attended ?? null,
+          arrival_time: attendance.arrival_time ?? undefined,
+        }
+      }
+
+      setAttendanceStatuses(statuses)
+    } catch (err) {
+      console.error('Erro ao carregar status de atendimentos:', err)
+    } finally {
+      arrivalsInFlight.current = false
+    }
+  }, [])
+
   // Carregar status de atendimentos quando eventos mudarem
   useEffect(() => {
-    if (events.length > 0 && user?.id) {
-      loadAttendanceStatuses()
+    if (events.length > 0) {
+      void loadAttendanceStatuses()
     }
-  }, [events, user?.id])
+  }, [events, loadAttendanceStatuses])
+
+  // Atualização silenciosa — todos os usuários veem chegadas confirmadas pela equipe
+  useEffect(() => {
+    if (events.length === 0) return
+
+    const interval = window.setInterval(() => {
+      void loadAttendanceStatuses()
+    }, WAR_ROOM_ARRIVALS_SILENT_REFRESH_MS)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void loadAttendanceStatuses()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [events.length, loadAttendanceStatuses])
 
   const loadCampoLinks = useCallback(async () => {
     if (!user?.id) return
@@ -278,38 +339,6 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   }, [events])
 
 
-  const loadAttendanceStatuses = async () => {
-    if (!user?.id) return
-
-    try {
-      const promises = events.map(async (event) => {
-        const response = await fetch(`/api/agenda/attendance?eventId=${event.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          return { eventId: event.id, attendance: data.attendance }
-        }
-        return { eventId: event.id, attendance: null }
-      })
-
-      const results = await Promise.all(promises)
-      const statuses: Record<string, { attended: boolean; notes?: string; arrival_time?: string }> = {}
-      
-      results.forEach(({ eventId, attendance }) => {
-        if (attendance) {
-          statuses[eventId] = {
-            attended: attendance.attended,
-            notes: attendance.notes,
-            arrival_time: attendance.arrival_time,
-          }
-        }
-      })
-
-      setAttendanceStatuses(statuses)
-    } catch (err) {
-      console.error('Erro ao carregar status de atendimentos:', err)
-    }
-  }
-
   const handleSaveConfig = async (newConfig: {
     calendarId: string
     serviceAccountEmail: string
@@ -359,15 +388,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        setAttendanceStatuses((prev) => ({
-          ...prev,
-          [eventId]: {
-            attended: data.attendance.attended,
-            notes: data.attendance.notes,
-            arrival_time: data.attendance.arrival_time,
-          },
-        }))
+        await loadAttendanceStatuses()
       }
     } catch (err) {
       console.error('Erro ao salvar status de atendimento:', err)
@@ -401,13 +422,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
           attendance: { arrival_time?: string }
           campoSync?: { synced: boolean; agendaId?: string; reason?: string }
         }
-        setAttendanceStatuses((prev) => ({
-          ...prev,
-          [eventId]: {
-            ...prev[eventId],
-            arrival_time: data.attendance.arrival_time,
-          },
-        }))
+        await loadAttendanceStatuses()
         if (data.campoSync?.synced && data.campoSync.agendaId) {
           setCampoLinks((prev) => ({
             ...prev,
@@ -507,7 +522,10 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
   const hasActiveArrivals = useMemo(() => {
     return events.some((event) => {
       const attendance = attendanceStatuses[event.id]
-      return attendance?.arrival_time && attendance?.attended === undefined
+      return (
+        attendance?.arrival_time &&
+        (attendance.attended === undefined || attendance.attended === null)
+      )
     })
   }, [events, attendanceStatuses])
 
