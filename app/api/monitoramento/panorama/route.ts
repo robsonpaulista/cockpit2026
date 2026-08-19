@@ -16,6 +16,8 @@ import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/goog
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { syncOwnCandidateInstagramRadar } from '@/lib/instagram-radar-own-sync'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
@@ -32,6 +34,17 @@ export async function GET(request: Request) {
 
     const windowDays = parsePanoramaWindowDays(new URL(request.url).searchParams.get('days'))
     const supabase = createClient()
+
+    try {
+      const admin = createAdminClient()
+      await syncOwnCandidateInstagramRadar(admin, {
+        windowLabel: `${windowDays} days`,
+        postsLimit: Math.min(100, Math.max(30, windowDays * 12)),
+      })
+    } catch (syncErr) {
+      console.warn('[monitoramento/panorama] sync candidato próprio:', syncErr)
+    }
+
     const { data: actors, error: actorsError } = await supabase
       .from('political_actors')
       .select(

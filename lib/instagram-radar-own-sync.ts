@@ -76,6 +76,78 @@ function withinWindow(iso: string | null | undefined, cutoff: Date): boolean {
   return new Date(iso).getTime() >= cutoff.getTime()
 }
 
+function ownCandidateFetchLimit(windowDays: number, postsLimit?: number): number {
+  const base = postsLimit ?? getInstagramRadarPostsLimit()
+  return Math.min(100, Math.max(base, windowDays * 12))
+}
+
+const GRAPH_MEDIA_FIELDS =
+  'id,caption,timestamp,like_count,comments_count,media_type,permalink,thumbnail_url,media_url'
+
+function mapGraphItemToRow(
+  item: GraphMediaItem,
+  username: string,
+  collectedAt: string,
+): RadarPostRow {
+  const normalizedUsername = normalizeInstagramUsername(username) ?? username
+  return {
+    politico_id: '',
+    instagram_username: normalizedUsername,
+    post_id: item.id,
+    posted_at: item.timestamp ?? null,
+    post_type: mapMediaType(item.media_type, item.permalink),
+    caption: item.caption ?? null,
+    likes_count: item.like_count ?? 0,
+    comments_count: item.comments_count ?? 0,
+    views_count: 0,
+    post_url: item.permalink ?? `https://www.instagram.com/p/${item.id}/`,
+    thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
+    collected_at: collectedAt,
+  }
+}
+
+async function fetchMediaPagesFromGraph(
+  igId: string,
+  username: string,
+  token: string,
+  maxPosts: number,
+  cutoff: Date,
+): Promise<RadarPostRow[]> {
+  const collectedAt = new Date().toISOString()
+  const normalizedUsername = normalizeInstagramUsername(username) ?? username
+  const posts: RadarPostRow[] = []
+  const pageSize = Math.min(50, maxPosts)
+  let url: string | null =
+    `${GRAPH_BASE}/${igId}/media?fields=${GRAPH_MEDIA_FIELDS}&limit=${pageSize}&access_token=${encodeURIComponent(token)}`
+
+  while (url && posts.length < maxPosts) {
+    const res = await fetch(url)
+    if (!res.ok) break
+
+    const json = (await res.json()) as {
+      data?: GraphMediaItem[]
+      paging?: { next?: string }
+    }
+    const batch = json.data ?? []
+    if (batch.length === 0) break
+
+    let hitCutoff = false
+    for (const item of batch) {
+      if (!withinWindow(item.timestamp, cutoff)) {
+        hitCutoff = true
+        break
+      }
+      posts.push(mapGraphItemToRow(item, normalizedUsername, collectedAt))
+      if (posts.length >= maxPosts) break
+    }
+
+    if (hitCutoff || posts.length >= maxPosts) break
+    url = json.paging?.next ?? null
+  }
+
+  return posts
+}
+
 export function isInstagramOwnAccountConfigured(): boolean {
   return Boolean(getInstagramEnvCredentials())
 }
@@ -83,7 +155,8 @@ export function isInstagramOwnAccountConfigured(): boolean {
 async function fetchMediaFromGraphWithCredentials(
   token: string,
   businessAccountId: string,
-  limit: number
+  maxPosts: number,
+  cutoff: Date,
 ): Promise<{
   username: string
   posts: RadarPostRow[]
@@ -108,45 +181,27 @@ async function fetchMediaFromGraphWithCredentials(
     }
   }
 
-  const res = await fetch(
-    `${GRAPH_BASE}/${igId}/media?fields=id,caption,timestamp,like_count,comments_count,media_type,permalink,thumbnail_url,media_url&limit=${limit}&access_token=${encodeURIComponent(token)}`
-  )
-  if (!res.ok) {
-    const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+  try {
+    const posts = await fetchMediaPagesFromGraph(igId, username, token, maxPosts, cutoff)
     return {
-      username,
+      username: normalizeInstagramUsername(username) ?? username,
+      posts,
+      profilePictureUrl,
+    }
+  } catch (err) {
+    return {
+      username: normalizeInstagramUsername(username) ?? username,
       posts: [],
       profilePictureUrl,
-      error: json.error?.message ?? 'Erro ao buscar mídia do Instagram',
+      error: err instanceof Error ? err.message : 'Erro ao buscar mídia do Instagram',
     }
-  }
-
-  const json = (await res.json()) as { data?: GraphMediaItem[] }
-  const collectedAt = new Date().toISOString()
-
-  const posts: RadarPostRow[] = (json.data ?? []).map((item) => ({
-    politico_id: '',
-    instagram_username: normalizeInstagramUsername(username) ?? username,
-    post_id: item.id,
-    posted_at: item.timestamp ?? null,
-    post_type: mapMediaType(item.media_type, item.permalink),
-    caption: item.caption ?? null,
-    likes_count: item.like_count ?? 0,
-    comments_count: item.comments_count ?? 0,
-    views_count: 0,
-    post_url: item.permalink ?? `https://www.instagram.com/p/${item.id}/`,
-    thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
-    collected_at: collectedAt,
-  }))
-
-  return {
-    username: normalizeInstagramUsername(username) ?? username,
-    posts,
-    profilePictureUrl,
   }
 }
 
-async function fetchMediaFromGraph(limit: number): Promise<{
+async function fetchMediaFromGraph(
+  maxPosts: number,
+  cutoff: Date,
+): Promise<{
   username: string
   posts: RadarPostRow[]
   profilePictureUrl?: string | null
@@ -154,59 +209,12 @@ async function fetchMediaFromGraph(limit: number): Promise<{
 } | null> {
   const creds = getInstagramEnvCredentials()
   if (!creds) return null
-
-  let igId: string
-  let username: string
-  let profilePictureUrl: string | null = null
-  try {
-    const resolved = await resolveInstagramBusinessAccount(creds.businessAccountId, creds.token)
-    igId = resolved.instagramBusinessId
-    username = resolved.ownerUsername
-    profilePictureUrl = resolved.profilePictureUrl
-  } catch (err) {
-    return {
-      username: '',
-      posts: [],
-      error: err instanceof Error ? err.message : 'Erro ao resolver conta Instagram',
-    }
-  }
-
-  const res = await fetch(
-    `${GRAPH_BASE}/${igId}/media?fields=id,caption,timestamp,like_count,comments_count,media_type,permalink,thumbnail_url,media_url&limit=${limit}&access_token=${encodeURIComponent(creds.token)}`
+  return fetchMediaFromGraphWithCredentials(
+    creds.token,
+    creds.businessAccountId,
+    maxPosts,
+    cutoff,
   )
-  if (!res.ok) {
-    const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-    return {
-      username,
-      posts: [],
-      profilePictureUrl,
-      error: json.error?.message ?? 'Erro ao buscar mídia do Instagram',
-    }
-  }
-
-  const json = (await res.json()) as { data?: GraphMediaItem[] }
-  const collectedAt = new Date().toISOString()
-
-  const posts: RadarPostRow[] = (json.data ?? []).map((item) => ({
-    politico_id: '',
-    instagram_username: normalizeInstagramUsername(username) ?? username,
-    post_id: item.id,
-    posted_at: item.timestamp ?? null,
-    post_type: mapMediaType(item.media_type, item.permalink),
-    caption: item.caption ?? null,
-    likes_count: item.like_count ?? 0,
-    comments_count: item.comments_count ?? 0,
-    views_count: 0,
-    post_url: item.permalink ?? `https://www.instagram.com/p/${item.id}/`,
-    thumbnail_url: item.thumbnail_url ?? item.media_url ?? null,
-    collected_at: collectedAt,
-  }))
-
-  return {
-    username: normalizeInstagramUsername(username) ?? username,
-    posts,
-    profilePictureUrl,
-  }
 }
 
 async function resolveOwnerUserId(supabase: SupabaseClient): Promise<string | null> {
@@ -239,10 +247,12 @@ async function fetchMediaFromHistory(
   }
   const records = await getLatestInstagramPostMetrics(supabase, userId)
   const collectedAt = new Date().toISOString()
+  const cap = Math.min(200, Math.max(limit, 100))
 
   const posts = records
     .filter((r) => withinWindow(r.postedAt, cutoff))
-    .slice(0, limit)
+    .sort((a, b) => String(b.postedAt).localeCompare(String(a.postedAt)))
+    .slice(0, cap)
     .map((r) => ({
       politico_id: actorId,
       instagram_username: username,
@@ -305,8 +315,11 @@ async function resolveUsernameFromHistory(supabase: SupabaseClient): Promise<str
 export async function syncOwnCandidateInstagramRadar(
   supabase: SupabaseClient,
   options?: OwnCandidateSyncOptions
-): Promise<OwnCandidateSyncResult[]> {  const limit = options?.postsLimit ?? getInstagramRadarPostsLimit()
-  const windowDays = parseWindowDays(options?.windowLabel ?? process.env.INSTAGRAM_RADAR_POSTS_WINDOW ?? '30 days')
+): Promise<OwnCandidateSyncResult[]> {
+  const windowDays = parseWindowDays(
+    options?.windowLabel ?? process.env.INSTAGRAM_RADAR_POSTS_WINDOW ?? '30 days',
+  )
+  const fetchLimit = ownCandidateFetchLimit(windowDays, options?.postsLimit)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - windowDays)
 
@@ -338,27 +351,43 @@ export async function syncOwnCandidateInstagramRadar(
     let syncError: string | undefined
     let profilePictureUrl: string | null = null
 
-    if (rows.length === 0) {
-      const hist = await fetchMediaFromHistory(supabase, actor.id, username, limit, cutoff)
-      rows = hist.posts
-      source = 'metrics_history'
-      if (hist.error && !rows.length) syncError = hist.error
-      if (rows.length && !username) {
-        username = (await resolveUsernameFromHistory(supabase)) ?? 'jadyelalencar'
-      }
-    }
+    const graphOpts =
+      options?.instagramToken?.trim() && options?.instagramBusinessAccountId?.trim()
+        ? {
+            token: options.instagramToken.trim(),
+            businessAccountId: options.instagramBusinessAccountId.trim(),
+          }
+        : null
 
-    if (rows.length === 0) {
+    if (graphOpts || isInstagramOwnAccountConfigured()) {
       source = 'graph_api'
-      const graph = await fetchMediaFromGraph(limit)
+      const graph = graphOpts
+        ? await fetchMediaFromGraphWithCredentials(
+            graphOpts.token,
+            graphOpts.businessAccountId,
+            fetchLimit,
+            cutoff,
+          )
+        : await fetchMediaFromGraph(fetchLimit, cutoff)
+
       if (graph?.posts.length) {
         username = graph.username || username
-        rows = graph.posts.filter((p) => withinWindow(p.posted_at, cutoff))
+        rows = graph.posts
         profilePictureUrl = graph.profilePictureUrl ?? null
       } else if (graph?.error) {
         syncError = graph.error
       } else if (graph?.profilePictureUrl) {
         profilePictureUrl = graph.profilePictureUrl
+      }
+    }
+
+    if (rows.length === 0) {
+      const hist = await fetchMediaFromHistory(supabase, actor.id, username, fetchLimit, cutoff)
+      rows = hist.posts
+      source = 'metrics_history'
+      if (hist.error && !rows.length) syncError = hist.error
+      if (rows.length && !username) {
+        username = (await resolveUsernameFromHistory(supabase)) ?? 'jadyelalencar'
       }
     }
     if (username && username !== actor.instagram_username) {

@@ -20,6 +20,8 @@ type Props = {
   kpis: WarRoomDesempenhoKpi[]
   className?: string
   compact?: boolean
+  /** Duplo clique no card Visitas no perfil. */
+  onVisitsDoubleClick?: () => void
 }
 
 function formatDelta(deltaPct: number | null): string {
@@ -51,17 +53,28 @@ function formatAxis(value: number): string {
 function DesempenhoMetaCard({
   kpi,
   compact = false,
+  onVisitsDoubleClick,
 }: {
   kpi: WarRoomDesempenhoKpi
   compact?: boolean
+  onVisitsDoubleClick?: () => void
 }) {
   const up = kpi.deltaPct != null && kpi.deltaPct > 0
   const down = kpi.deltaPct != null && kpi.deltaPct < 0
   const hasChart = kpi.series.length > 1
   const tickEvery = Math.max(1, Math.floor(kpi.series.length / 5))
+  const isVisitsManual = kpi.id === 'visits' && onVisitsDoubleClick
 
   return (
-    <article className="wr-copiloto-redes-desempenho__card" data-wr-kpi={kpi.id}>
+    <article
+      className={cn(
+        'wr-copiloto-redes-desempenho__card',
+        isVisitsManual && 'wr-copiloto-redes-desempenho__card--visits-manual',
+      )}
+      data-wr-kpi={kpi.id}
+      onDoubleClick={isVisitsManual ? onVisitsDoubleClick : undefined}
+      title={isVisitsManual ? 'Duplo clique para informar visitas ao perfil (Meta Insights)' : undefined}
+    >
       <header className="wr-copiloto-redes-desempenho__head">
         <h3 className="wr-copiloto-redes-desempenho__label">{kpi.label}</h3>
         <div className="wr-copiloto-redes-desempenho__head-value">
@@ -176,7 +189,12 @@ function DesempenhoMetaCard({
 }
 
 /** Grade Meta Business — visualizações, alcance, engajamento, visitas, seguidores. */
-export function WarRoomCopilotoRedesDesempenho({ kpis, className, compact = false }: Props) {
+export function WarRoomCopilotoRedesDesempenho({
+  kpis,
+  className,
+  compact = false,
+  onVisitsDoubleClick,
+}: Props) {
   if (kpis.length === 0) {
     return (
       <p className="wr-copiloto-redes__empty">
@@ -195,7 +213,12 @@ export function WarRoomCopilotoRedesDesempenho({ kpis, className, compact = fals
       aria-label="Desempenho Instagram"
     >
       {kpis.map((kpi) => (
-        <DesempenhoMetaCard key={kpi.id} kpi={kpi} compact={compact} />
+        <DesempenhoMetaCard
+          key={kpi.id}
+          kpi={kpi}
+          compact={compact}
+          onVisitsDoubleClick={onVisitsDoubleClick}
+        />
       ))}
     </div>
   )

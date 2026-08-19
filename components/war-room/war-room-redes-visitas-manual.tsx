@@ -21,6 +21,8 @@ type Props = {
   initialByDate: Record<string, number>
   formatDateLabel: (dateKey: string) => string
   onSaved: (rows: InstagramProfileVisitManual[]) => void
+  /** Sem botão colapsável — painel sempre visível (ex.: modal). */
+  embedded?: boolean
   className?: string
 }
 
@@ -30,9 +32,10 @@ export function WarRoomRedesVisitasManualForm({
   initialByDate,
   formatDateLabel,
   onSaved,
+  embedded = false,
   className,
 }: Props) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(embedded)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState(false)
@@ -89,19 +92,23 @@ export function WarRoomRedesVisitasManualForm({
     onSaved(entries.map((e) => ({ date: e.date, visits: e.visits })))
   }
 
-  return (
-    <div className={cn('wr-redes-visitas-manual', className)}>
-      <button
-        type="button"
-        className="wr-redes-visitas-manual__toggle"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Pencil className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
-        {open ? 'Fechar lançamento' : 'Informar visitas (manual)'}
-      </button>
+  const panelOpen = embedded || open
 
-      {open ? (
+  return (
+    <div className={cn('wr-redes-visitas-manual', embedded && 'wr-redes-visitas-manual--embedded', className)}>
+      {!embedded ? (
+        <button
+          type="button"
+          className="wr-redes-visitas-manual__toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Pencil className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
+          {open ? 'Fechar lançamento' : 'Informar visitas (manual)'}
+        </button>
+      ) : null}
+
+      {panelOpen ? (
         <div className="wr-redes-visitas-manual__panel">
           <p className="wr-redes-visitas-manual__hint">
             Copie do Meta Insights · Visitas ao perfil · um valor por dia.

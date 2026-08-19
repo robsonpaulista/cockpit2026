@@ -14,9 +14,11 @@ import {
 } from '@/lib/instagramApi'
 import {
   fetchInstagramProfileVisitsManual,
+  type InstagramProfileVisitManual,
 } from '@/lib/instagram-profile-visits-manual'
 import { WarRoomCopilotoJadyelAnuncios } from '@/components/war-room/war-room-copiloto-jadyel-anuncios'
 import { WarRoomCopilotoRedesDesempenho } from '@/components/war-room/war-room-copiloto-redes-desempenho'
+import { WarRoomRedesVisitasManualForm } from '@/components/war-room/war-room-redes-visitas-manual'
 import { computeThemeComparison } from '@/lib/instagram-theme-comparison'
 import { instagramCaptionHeader } from '@/lib/instagram-caption-municipio'
 import {
@@ -25,7 +27,9 @@ import {
   copilotoRedesApiTimeRange,
   copilotoRedesDays,
   COPILOTO_REDES_PERIOD_OPTIONS,
+  formatDataCurta,
   getInstagramPostIdentifier,
+  listDayKeys,
   type CopilotoRedesPeriod,
 } from '@/lib/war-room/redes-copiloto'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
@@ -113,7 +117,9 @@ export function WarRoomCopilotoRedesView() {
   const [feedExpanded, setFeedExpanded] = useState(false)
   const [themesExpanded, setThemesExpanded] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
+  const [visitasManualOpen, setVisitasManualOpen] = useState(false)
   const topPostModalTitleId = useId()
+  const visitasManualModalTitleId = useId()
 
   const loadClassifications = async () => {
     try {
@@ -180,13 +186,16 @@ export function WarRoomCopilotoRedesView() {
   }, [load])
 
   useEffect(() => {
-    if (!topPostModalTheme) return
+    if (!topPostModalTheme && !visitasManualOpen) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setTopPostModalTheme(null)
+      if (event.key === 'Escape') {
+        setTopPostModalTheme(null)
+        setVisitasManualOpen(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [topPostModalTheme])
+  }, [topPostModalTheme, visitasManualOpen])
 
   const topPosts = useMemo(
     () => buildWarRoomRedesTopPosts(metrics?.posts ?? [], days),
@@ -322,6 +331,23 @@ export function WarRoomCopilotoRedesView() {
       }),
     [history, metrics, manualVisitsByDate, days],
   )
+
+  const visitDayKeys = useMemo(() => listDayKeys(days), [days])
+
+  const formatVisitDayLabel = useCallback(
+    (dateKey: string) => formatDataCurta(`${dateKey}T12:00:00`),
+    [],
+  )
+
+  const handleManualVisitsSaved = useCallback((rows: InstagramProfileVisitManual[]) => {
+    setManualVisitsByDate((prev) => {
+      const next = { ...prev }
+      for (const row of rows) {
+        next[row.date] = row.visits
+      }
+      return next
+    })
+  }, [])
 
   if (loading && !metrics) {
     return (
@@ -614,7 +640,11 @@ export function WarRoomCopilotoRedesView() {
               Indicadores
             </div>
             <div className="wr-copiloto-redes__side-body">
-              <WarRoomCopilotoRedesDesempenho kpis={desempenhoKpis} compact />
+              <WarRoomCopilotoRedesDesempenho
+                kpis={desempenhoKpis}
+                compact
+                onVisitsDoubleClick={() => setVisitasManualOpen(true)}
+              />
             </div>
           </div>
         </section>
@@ -685,6 +715,57 @@ export function WarRoomCopilotoRedesView() {
                     Sem top postagem classificada para este tema.
                   </p>
                 )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {visitasManualOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="wr-visita-modal" role="presentation">
+              <button
+                type="button"
+                className="wr-visita-modal__backdrop"
+                aria-label="Fechar"
+                onClick={() => setVisitasManualOpen(false)}
+              />
+              <div
+                className="wr-visita-modal__panel wr-copiloto-redes__visitas-manual-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={visitasManualModalTitleId}
+              >
+                <header className="wr-visita-modal__head">
+                  <div className="wr-visita-modal__head-main min-w-0">
+                    <p className="wr-visita-modal__eyebrow">Meta Insights · Instagram</p>
+                    <h2 id={visitasManualModalTitleId} className="wr-visita-modal__title">
+                      Visitas ao perfil
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="wr-visita-modal__close"
+                    aria-label="Fechar"
+                    onClick={() => setVisitasManualOpen(false)}
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </button>
+                </header>
+
+                <div className="wr-copiloto-redes__visitas-manual-body">
+                  <p className="wr-copiloto-redes__visitas-manual-hint">
+                    Informe um valor por dia (últimos {periodLabel}). Os indicadores atualizam ao
+                    salvar.
+                  </p>
+                  <WarRoomRedesVisitasManualForm
+                    embedded
+                    dates={visitDayKeys}
+                    initialByDate={manualVisitsByDate}
+                    formatDateLabel={formatVisitDayLabel}
+                    onSaved={handleManualVisitsSaved}
+                  />
+                </div>
               </div>
             </div>,
             document.body,

@@ -374,5 +374,10 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
       series: sharesSeries,
       legend: 'Soma das postagens no dia',
     },
-  ].filter((kpi) => kpi.total !== 0 || kpi.series.some((p) => p.value !== 0))
+  ].filter(
+    (kpi) =>
+      kpi.id === 'visits' ||
+      kpi.total !== 0 ||
+      kpi.series.some((p) => p.value !== 0),
+  )
 }

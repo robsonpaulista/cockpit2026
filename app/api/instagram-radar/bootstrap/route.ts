@@ -6,6 +6,8 @@ import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { syncOwnCandidateInstagramRadar } from '@/lib/instagram-radar-own-sync'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +31,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const days = parseDays(searchParams)
     const limit = parseLimit(searchParams)
+
+    try {
+      const admin = createAdminClient()
+      await syncOwnCandidateInstagramRadar(admin, {
+        windowLabel: `${days} days`,
+        postsLimit: Math.min(100, Math.max(limit, days * 12)),
+      })
+    } catch (syncErr) {
+      console.warn('[instagram-radar/bootstrap] sync candidato próprio:', syncErr)
+    }
 
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)

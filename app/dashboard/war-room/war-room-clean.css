@@ -10327,6 +10327,49 @@ body[data-war-room-clean] .wr-mapa-obras-embedded select:focus {
   text-decoration: underline;
 }
 
+.wr-copiloto-redes__visitas-manual-modal {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.wr-copiloto-redes__visitas-manual-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px 18px;
+}
+
+.wr-copiloto-redes__visitas-manual-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-copiloto-redes__visitas-manual-body .wr-redes-visitas-manual {
+  margin-top: 0;
+  padding: 0;
+}
+
+.wr-copiloto-redes__visitas-manual-body .wr-redes-visitas-manual__panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.wr-copiloto-redes-desempenho__card--visits-manual {
+  cursor: pointer;
+  user-select: none;
+}
+
+.wr-copiloto-redes-desempenho__card--visits-manual:hover {
+  border-color: color-mix(in srgb, var(--wr-inst, #005b8f) 28%, var(--wr-divider, #e5e7eb));
+}
+
+.wr-redes-visitas-manual--embedded .wr-redes-visitas-manual__list {
+  max-height: min(52vh, 360px);
+}
+
 .wr-copiloto-redes__table-scroll {
   width: 100%;
   overflow-x: auto;
