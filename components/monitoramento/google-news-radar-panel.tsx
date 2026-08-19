@@ -84,9 +84,23 @@ export function GoogleNewsRadarPanel() {
     }
   }, [lookbackDays])
 
+  const autoCollectOnMount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/google-news/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) await carregar()
+    } catch {
+      /* coleta automática opcional ao abrir a aba */
+    }
+  }, [carregar])
+
   useEffect(() => {
     void carregar()
-  }, [carregar])
+    void autoCollectOnMount()
+  }, [carregar, autoCollectOnMount])
 
   useEffect(() => {
     if (!conexaoInstavel) return

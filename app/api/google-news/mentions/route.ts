@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
+import {
+  mentionMatchesPanoramaNewsDay,
+  PANORAMA_NEWS_COLLECT_CHANNELS,
+} from '@/lib/monitoramento-panorama-news'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +43,10 @@ export async function GET(request: Request) {
         query = query
           .gte('collected_at', `${date}T00:00:00.000Z`)
           .lt('collected_at', `${endDate}T00:00:00.000Z`)
+      } else if (channel === 'news') {
+        query = query.or(
+          `and(published_at.gte.${date}T00:00:00.000Z,published_at.lt.${endDate}T00:00:00.000Z),and(published_at.is.null,collected_at.gte.${date}T00:00:00.000Z,collected_at.lt.${endDate}T00:00:00.000Z)`
+        )
       } else {
         query = query
           .gte('published_at', `${date}T00:00:00.000Z`)
@@ -51,6 +59,10 @@ export async function GET(request: Request) {
       if (channel === 'google_videos') {
         // Janela = última coleta; data exibida = published_at (data do vídeo)
         query = query.gte('collected_at', cutoffIso)
+      } else if (channel === 'news') {
+        query = query.or(
+          `published_at.gte.${cutoffIso},and(published_at.is.null,collected_at.gte.${cutoffIso})`
+        )
       } else {
         query = query.gte('published_at', cutoffIso)
       }
@@ -65,7 +77,7 @@ export async function GET(request: Request) {
         .eq('collect_channel', 'google_videos')
         .in('platform', ['instagram', 'facebook', 'youtube', 'tiktok', 'twitter'])
     } else if (channel === 'news') {
-      query = query.in('collect_channel', ['google_news_rss', 'google_web'])
+      query = query.in('collect_channel', [...PANORAMA_NEWS_COLLECT_CHANNELS])
     } else if (channel === 'google_news_rss' || channel === 'google_web') {
       query = query.eq('collect_channel', channel)
     }
@@ -87,7 +99,11 @@ export async function GET(request: Request) {
       throw new Error(error.message)
     }
 
-    const mentions = (data ?? []) as GoogleNewsMentionWithActor[]
+    let mentions = (data ?? []) as GoogleNewsMentionWithActor[]
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date) && channel === 'news') {
+      mentions = mentions.filter((m) => mentionMatchesPanoramaNewsDay(m, date))
+    }
 
     return NextResponse.json({
       mentions,

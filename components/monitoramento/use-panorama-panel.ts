@@ -96,6 +96,19 @@ export function usePanoramaPanel(options: {
   useEffect(() => {
     if (!enabled) return
     void carregar()
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/google-news/collect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+        if (res.ok) await carregar(true)
+      } catch {
+        /* coleta em background — panorama segue com dados em cache */
+      }
+    })()
   }, [enabled, carregar])
 
   useEffect(() => {

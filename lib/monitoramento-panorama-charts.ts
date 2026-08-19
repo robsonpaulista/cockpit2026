@@ -8,6 +8,10 @@ import { buildMetaAdsPeriodTotals } from '@/lib/meta-ads-aggregate'
 import type { GoogleTrendsSearchContext } from '@/lib/google-trends-types'
 import type { PanoramaCandidateColumn, PanoramaHighlight } from '@/lib/monitoramento-panorama'
 import {
+  panoramaNewsMentionDayKey,
+  filterPanoramaNewsMentions,
+} from '@/lib/monitoramento-panorama-news'
+import {
   PANORAMA_WINDOW_DAYS,
   panoramaWindowSubtitleSuffix,
 } from '@/lib/monitoramento-panorama-window'
@@ -201,12 +205,14 @@ export function buildGoogleNewsRelatedHeatmap(
 } {
   const dates = lastNDays(windowDays)
   const items: Array<{ slug: string; date: string; value: number }> = []
+  const newsMentions = filterPanoramaNewsMentions(mentions)
 
-  for (const m of mentions) {
-    if (!m.published_at) continue
+  for (const m of newsMentions) {
     const slug = slugFromMention(m)
-    if (!slug) continue
-    items.push({ slug, date: dayKey(m.published_at), value: 1 })
+    const date = panoramaNewsMentionDayKey(m)
+    if (!slug || !date) continue
+    if (!dates.includes(date)) continue
+    items.push({ slug, date, value: 1 })
   }
 
   const chartData = buildDailyBuckets(dates, columns, items)

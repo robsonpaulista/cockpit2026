@@ -18,6 +18,7 @@ import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { syncOwnCandidateInstagramRadar } from '@/lib/instagram-radar-own-sync'
+import { filterPanoramaNewsMentions } from '@/lib/monitoramento-panorama-news'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
@@ -125,7 +126,9 @@ export async function GET(request: Request) {
       supabase
         .from('google_news_mentions')
         .select(`*, political_actors!inner ( id, name, slug, actor_type )`)
-        .gte('published_at', cutoffIso)
+        .or(
+          `published_at.gte.${cutoffIso},and(published_at.is.null,collected_at.gte.${cutoffIso})`
+        )
         .order('published_at', { ascending: false })
         .limit(3000),
       supabase
@@ -189,11 +192,12 @@ export async function GET(request: Request) {
         : ((youtubeRes.data ?? []) as YoutubeMentionWithActor[])
     for (const m of youtubeMentions) timestamps.push(m.collected_at)
 
-    const googleNewsMentions =
+    const googleNewsMentionsRaw =
       newsRes.error &&
       (newsRes.error.message.includes('does not exist') || newsRes.error.code === '42P01')
         ? []
         : ((newsRes.data ?? []) as GoogleNewsMentionWithActor[])
+    const googleNewsMentions = filterPanoramaNewsMentions(googleNewsMentionsRaw)
     for (const m of googleNewsMentions) timestamps.push(m.collected_at)
 
     const instagramPosts =

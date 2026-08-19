@@ -57,6 +57,7 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
         politico: sel.slug,
         date: sel.date,
         limit: '100',
+        channel: 'news',
       })
       const res = await fetch(`/api/google-news/mentions?${params.toString()}`, { cache: 'no-store' })
       const j = (await res.json()) as {
@@ -193,7 +194,8 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
                     />
                   </a>
                   <p className="mt-1 text-[11px] text-text-muted">
-                    {m.source_name ?? 'Fonte desconhecida'} · {formatTime(m.published_at)}
+                    {m.source_name ?? 'Fonte desconhecida'} ·{' '}
+                    {formatTime(m.published_at ?? m.collected_at)}
                   </p>
                   {m.summary ? (
                     <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-text-secondary">{m.summary}</p>
