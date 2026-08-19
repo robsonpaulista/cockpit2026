@@ -25,7 +25,7 @@ const WarRoomViewModeContext = createContext<WarRoomViewModeContextValue | null>
 )
 
 export function WarRoomViewModeProvider({ children }: { children: ReactNode }) {
-  const [viewMode, setViewModeState] = useState<WarRoomViewMode>('copiloto')
+  const [viewMode, setViewModeState] = useState<WarRoomViewMode>('padrao')
 
   const setViewMode = useCallback((mode: WarRoomViewMode) => {
     setViewModeState((prev) => (prev === mode ? prev : mode))

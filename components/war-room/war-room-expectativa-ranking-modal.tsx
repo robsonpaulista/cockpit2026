@@ -1,6 +1,11 @@
 'use client'
 
-import { AlertTriangle, ArrowDown, ArrowUp, BarChart3, Calendar, ChevronsUpDown, Download, FileSpreadsheet, FileText, Loader2, Minus, Search, Send, Sheet, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
+import {
+  IconFileTypeCsv,
+  IconFileTypePdf,
+  IconFileTypeXls,
+} from '@tabler/icons-react'
+import { AlertTriangle, ArrowDown, ArrowUp, BarChart3, Calendar, ChevronsUpDown, Loader2, Minus, Search, Send, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnimatedCounter } from '@/hooks/use-animated-counter'
@@ -14,6 +19,7 @@ import {
 } from '@/lib/emendas-filtro'
 import {
   AGENDA_PROXIMOS_JANELA_DIAS,
+  proximaAgendaDoMunicipio,
   todayKeyInTz,
   type WarRoomAgendaProximoItem,
 } from '@/lib/war-room/agenda-proximos'
@@ -60,6 +66,7 @@ import {
   type WarRoomPesquisaTendencia,
 } from '@/lib/war-room/pesquisas-consolidadas'
 import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
+import { rotuloEngajamentoDigital, rotuloSeguidoresDigital } from '@/lib/ipt-missoes'
 import {
   fetchFederal2022VotosTotaisPorMunicipioPI,
   obterVotosFederal2022TotaisMunicipio,
@@ -72,6 +79,10 @@ type SortCol =
   | 'peso'
   | 'populacao'
   | 'eleitores'
+  | 'seguidores'
+  | 'postsLegenda'
+  | 'postsLegendaEngMedio'
+  | 'engajados'
   | 'ultimaVisita'
   | 'diasVisita'
   | 'proxVisita'
@@ -79,9 +90,19 @@ type SortCol =
   | 'projPesquisa'
   | 'metaProj'
 
+type CaptionCityStats = {
+  posts: number
+  engagement: number
+  avgEngagement: number
+  likes: number
+  comments: number
+}
+
 type FiltroExpectativa = 'todos' | 'gt0' | 'eq0'
 type FiltroBinario = 'todos' | 'com' | 'sem'
 type FiltroVisitas = 'todos' | 'com' | 'sem' | 'necessidade'
+/** Política = mandatos/campo/pesquisa; Digital = Instagram por cidade. */
+type CidadesVisao = 'politica' | 'digital'
 
 type RankingRow = {
   municipio: string
@@ -89,6 +110,28 @@ type RankingRow = {
   peso: number
   populacao: number | null
   eleitores: number | null
+  /**
+   * Seguidores Instagram na cidade (follower_demographics · mesma fonte de Redes · Seguidores API).
+   * null = fora do top Meta / sem dado.
+   */
+  seguidores: number | null
+  /** Rótulo compacto (número, "< X" ou "—"). */
+  seguidoresLabel: string
+  /**
+   * Posts com a cidade na legenda (Redes · Posts legenda · últimos 30 dias).
+   * null = nenhum match no período.
+   */
+  postsLegenda: number | null
+  /** Engajamento somado dos posts com a cidade na legenda. */
+  postsLegendaEngajamento: number
+  /** Engajamento médio por post (mesma métrica de Redes · Posts legenda). */
+  postsLegendaEngMedio: number | null
+  /**
+   * Contas engajadas (engaged_audience_demographics · Redes · Engajados API).
+   * null = fora do top Meta / sem dado.
+   */
+  engajados: number | null
+  engajadosLabel: string
   ultimaVisita: string | null
   ultimaVisitaLabel: string
   /** Dias corridos desde a última visita até hoje; null se sem visita. */
@@ -158,6 +201,32 @@ const FILTRO_VISITAS_OPCOES: Array<{ id: FiltroVisitas; label: string }> = [
   { id: 'sem', label: 'Sem visita' },
   { id: 'necessidade', label: 'Com necessidade' },
 ]
+
+const CIDADES_VISAO_OPCOES: Array<{ id: CidadesVisao; label: string }> = [
+  { id: 'politica', label: 'Política' },
+  { id: 'digital', label: 'Digital' },
+]
+
+/** Período só afeta colunas digitais baseadas em posts (legenda / eng. médio). */
+const CIDADES_DIGITAL_PERIOD_OPTIONS = [
+  { days: 7, label: '7 dias' },
+  { days: 14, label: '14 dias' },
+  { days: 21, label: '21 dias' },
+  { days: 28, label: '28 dias' },
+] as const
+
+type CidadesDigitalPeriodDays = (typeof CIDADES_DIGITAL_PERIOD_OPTIONS)[number]['days']
+
+const SORT_COLS_DIGITAL = new Set<SortCol>([
+  'cidade',
+  'expectativa',
+  'peso',
+  'eleitores',
+  'seguidores',
+  'postsLegenda',
+  'postsLegendaEngMedio',
+  'engajados',
+])
 
 const FILTRO_OBRAS_OPCOES: Array<{ id: FiltroBinario; label: string }> = [
   { id: 'todos', label: 'Todas' },
@@ -437,14 +506,10 @@ function proxVisitaDe(
   dataLabel: string
   horario: string
 } {
-  if (!itens || itens.length === 0) {
+  const first = proximaAgendaDoMunicipio(itens)
+  if (!first) {
     return { label: '—', sort: '', dataLabel: '', horario: '' }
   }
-  const first = [...itens].sort((a, b) => {
-    const byDate = a.dataKey.localeCompare(b.dataKey)
-    if (byDate !== 0) return byDate
-    return a.horario.localeCompare(b.horario, 'pt-BR')
-  })[0]!
   const label = first.horario
     ? `${first.dataLabel} ${first.horario}`
     : first.dataLabel
@@ -474,6 +539,9 @@ export function WarRoomExpectativaRankingModal({
   const [filtroEmendas, setFiltroEmendas] = useState<FiltroBinario>('todos')
   const [filtroObras, setFiltroObras] = useState<FiltroBinario>('todos')
   const [filtroVisitas, setFiltroVisitas] = useState<FiltroVisitas>('todos')
+  const [visao, setVisao] = useState<CidadesVisao>('politica')
+  const [digitalPeriodDays, setDigitalPeriodDays] =
+    useState<CidadesDigitalPeriodDays>(28)
   const [sortCol, setSortCol] = useState<SortCol>('expectativa')
   const [sortAsc, setSortAsc] = useState(false)
   const [emendasKeys, setEmendasKeys] = useState<Set<string>>(() => new Set())
@@ -497,6 +565,10 @@ export function WarRoomExpectativaRankingModal({
     () => new Map(),
   )
   const [loadingFederal2022, setLoadingFederal2022] = useState(true)
+  const [captionByMun, setCaptionByMun] = useState<Map<string, CaptionCityStats>>(
+    () => new Map(),
+  )
+  const [loadingCaptionCities, setLoadingCaptionCities] = useState(true)
   const [pesquisaDetalhe, setPesquisaDetalhe] =
     useState<WarRoomPesquisaConsolidadaReal | null>(null)
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(
@@ -631,6 +703,48 @@ export function WarRoomExpectativaRankingModal({
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoadingCaptionCities(true)
+      try {
+        const res = await fetch(
+          `/api/instagram/caption-cities?days=${digitalPeriodDays}`,
+          { cache: 'no-store' },
+        )
+        if (!res.ok) {
+          if (!cancelled) setCaptionByMun(new Map())
+          return
+        }
+        const json = (await res.json()) as {
+          byMunicipio?: Record<string, CaptionCityStats>
+        }
+        const mapa = new Map<string, CaptionCityStats>()
+        for (const [key, value] of Object.entries(json.byMunicipio ?? {})) {
+          if (!value || value.posts <= 0) continue
+          mapa.set(key, {
+            posts: value.posts,
+            engagement: value.engagement,
+            avgEngagement:
+              value.avgEngagement ??
+              (value.posts > 0 ? Math.round(value.engagement / value.posts) : 0),
+            likes: value.likes ?? 0,
+            comments: value.comments ?? 0,
+          })
+        }
+        if (!cancelled) setCaptionByMun(mapa)
+      } catch {
+        if (!cancelled) setCaptionByMun(new Map())
+      } finally {
+        if (!cancelled) setLoadingCaptionCities(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [digitalPeriodDays])
+
   const carregarObras = useCallback(
     async (opts?: { force?: boolean }) => {
       const force = opts?.force === true
@@ -697,12 +811,41 @@ export function WarRoomExpectativaRankingModal({
         pesquisa != null
           ? votosProjetadosPesquisaPct(pctUltima ?? 0, votosFederal2022)
           : null
+      const seguidoresRaw = m.detalhes.digitalSeguidores
+      const seguidores =
+        seguidoresRaw != null && seguidoresRaw > 0 ? seguidoresRaw : null
+      const seguidoresLabelRaw = rotuloSeguidoresDigital(m, { compacto: true })
+      const seguidoresLabel =
+        seguidoresLabelRaw === 'Sem dado na base' ? '—' : seguidoresLabelRaw
+      const caption = captionByMun.get(key)
+      const postsLegenda =
+        caption != null && caption.posts > 0 ? caption.posts : null
+      const postsLegendaEngajamento = caption?.engagement ?? 0
+      const postsLegendaEngMedio =
+        caption != null && caption.posts > 0
+          ? caption.avgEngagement > 0
+            ? caption.avgEngagement
+            : Math.round(caption.engagement / caption.posts)
+          : null
+      const engajadosRaw = m.detalhes.digitalContasEngajadas
+      const engajados =
+        engajadosRaw != null && engajadosRaw > 0 ? engajadosRaw : null
+      const engajadosLabelRaw = rotuloEngajamentoDigital(m, { compacto: true })
+      const engajadosLabel =
+        engajadosLabelRaw === 'Sem dado na base' ? '—' : engajadosLabelRaw
       return {
         municipio: m.municipio,
         expectativa: m.expectativaVotos,
         peso: m.pesoExpectativaPct,
         populacao,
         eleitores,
+        seguidores,
+        seguidoresLabel,
+        postsLegenda,
+        postsLegendaEngajamento,
+        postsLegendaEngMedio,
+        engajados,
+        engajadosLabel,
         ultimaVisita: m.ultimaVisita ?? null,
         ultimaVisitaLabel: formatDataCurta(m.ultimaVisita),
         diasDesdeUltimaVisita: dias,
@@ -731,7 +874,9 @@ export function WarRoomExpectativaRankingModal({
         temAgendaProxima: (agendaItens?.length ?? 0) > 0,
       }
     })
-  }, [agendaPorMunicipio, emendasKeys, federal2022ByMun, municipios, pesquisaByMun])
+  }, [agendaPorMunicipio, captionByMun, emendasKeys, federal2022ByMun, municipios, pesquisaByMun])
+
+  const isDigital = visao === 'digital'
 
   const filtradas = useMemo(() => {
     const termo = normalizarBusca(busca)
@@ -739,15 +884,17 @@ export function WarRoomExpectativaRankingModal({
       if (termo && !normalizarBusca(r.municipio).includes(termo)) return false
       if (filtroExpectativa === 'gt0' && !(r.expectativa > 0)) return false
       if (filtroExpectativa === 'eq0' && r.expectativa !== 0) return false
-      if (filtroPesquisas === 'com' && !r.pesquisa) return false
-      if (filtroPesquisas === 'sem' && r.pesquisa) return false
-      if (filtroEmendas === 'com' && !r.temEmendas) return false
-      if (filtroEmendas === 'sem' && r.temEmendas) return false
-      if (filtroObras === 'com' && !r.temObras) return false
-      if (filtroObras === 'sem' && r.temObras) return false
-      if (filtroVisitas === 'com' && !r.ultimaVisita) return false
-      if (filtroVisitas === 'sem' && r.ultimaVisita) return false
-      if (filtroVisitas === 'necessidade' && !r.precisaVisita) return false
+      if (!isDigital) {
+        if (filtroPesquisas === 'com' && !r.pesquisa) return false
+        if (filtroPesquisas === 'sem' && r.pesquisa) return false
+        if (filtroEmendas === 'com' && !r.temEmendas) return false
+        if (filtroEmendas === 'sem' && r.temEmendas) return false
+        if (filtroObras === 'com' && !r.temObras) return false
+        if (filtroObras === 'sem' && r.temObras) return false
+        if (filtroVisitas === 'com' && !r.ultimaVisita) return false
+        if (filtroVisitas === 'sem' && r.ultimaVisita) return false
+        if (filtroVisitas === 'necessidade' && !r.precisaVisita) return false
+      }
       return true
     })
 
@@ -772,6 +919,34 @@ export function WarRoomExpectativaRankingModal({
       }
       if (sortCol === 'eleitores') {
         const by = compareTerritorioNumber(a.eleitores ?? -1, b.eleitores ?? -1, sortAsc)
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
+      if (sortCol === 'seguidores') {
+        const by = compareTerritorioNumber(a.seguidores ?? -1, b.seguidores ?? -1, sortAsc)
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
+      if (sortCol === 'postsLegenda') {
+        const by = compareTerritorioNumber(
+          a.postsLegenda ?? -1,
+          b.postsLegenda ?? -1,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
+      if (sortCol === 'postsLegendaEngMedio') {
+        const by = compareTerritorioNumber(
+          a.postsLegendaEngMedio ?? -1,
+          b.postsLegendaEngMedio ?? -1,
+          sortAsc,
+        )
+        if (by !== 0) return by
+        return compareTerritorioText(a.municipio, b.municipio, true)
+      }
+      if (sortCol === 'engajados') {
+        const by = compareTerritorioNumber(a.engajados ?? -1, b.engajados ?? -1, sortAsc)
         if (by !== 0) return by
         return compareTerritorioText(a.municipio, b.municipio, true)
       }
@@ -832,10 +1007,22 @@ export function WarRoomExpectativaRankingModal({
     filtroObras,
     filtroPesquisas,
     filtroVisitas,
+    isDigital,
     rows,
     sortAsc,
     sortCol,
   ])
+
+  const trocarVisao = (next: CidadesVisao) => {
+    setVisao(next)
+    if (next === 'digital' && !SORT_COLS_DIGITAL.has(sortCol)) {
+      setSortCol('seguidores')
+      setSortAsc(false)
+    } else if (next === 'politica' && sortCol === 'seguidores') {
+      setSortCol('expectativa')
+      setSortAsc(false)
+    }
+  }
 
   const maxPesoFiltrado = useMemo(() => {
     let max = 0
@@ -847,8 +1034,8 @@ export function WarRoomExpectativaRankingModal({
 
   const enterAnimKey = useMemo(
     () =>
-      `${sortCol}:${sortAsc ? 'a' : 'd'}:${filtradas.length}:${filtradas[0]?.municipio ?? ''}:${maxPesoFiltrado.toFixed(2)}`,
-    [filtradas, maxPesoFiltrado, sortAsc, sortCol],
+      `${sortCol}:${sortAsc ? 'a' : 'd'}:${filtradas.length}:${filtradas[0]?.municipio ?? ''}:${maxPesoFiltrado.toFixed(2)}:${isDigital ? digitalPeriodDays : 'p'}`,
+    [digitalPeriodDays, filtradas, isDigital, maxPesoFiltrado, sortAsc, sortCol],
   )
 
   const alternarSort = (column: SortCol) => {
@@ -866,6 +1053,13 @@ export function WarRoomExpectativaRankingModal({
     let peso = 0
     let populacao = 0
     let eleitores = 0
+    let seguidores = 0
+    let comSeguidores = 0
+    let postsLegenda = 0
+    let comPostsLegenda = 0
+    let postsLegendaEngajamento = 0
+    let engajados = 0
+    let comEngajados = 0
     let comUltimaVisita = 0
     let comProxVisita = 0
     let comEmendas = 0
@@ -877,6 +1071,19 @@ export function WarRoomExpectativaRankingModal({
       peso += row.peso
       if (row.populacao != null) populacao += row.populacao
       if (row.eleitores != null) eleitores += row.eleitores
+      if (row.seguidores != null) {
+        seguidores += row.seguidores
+        comSeguidores += 1
+      }
+      if (row.postsLegenda != null) {
+        postsLegenda += row.postsLegenda
+        comPostsLegenda += 1
+        postsLegendaEngajamento += row.postsLegendaEngajamento
+      }
+      if (row.engajados != null) {
+        engajados += row.engajados
+        comEngajados += 1
+      }
       if (row.ultimaVisita) comUltimaVisita += 1
       if (row.proxVisitaSort) comProxVisita += 1
       if (row.temEmendas) comEmendas += 1
@@ -884,6 +1091,9 @@ export function WarRoomExpectativaRankingModal({
       if (row.pesquisa != null) comPesquisa += 1
       if (row.projPesquisaVotos != null) projPesquisa += row.projPesquisaVotos
     }
+    /** Média ponderada: Σ eng ÷ Σ posts (igual Redes). */
+    const postsLegendaEngMedio =
+      postsLegenda > 0 ? Math.round(postsLegendaEngajamento / postsLegenda) : 0
     /** Σ Proj − Σ Meta (mesmos totais do rodapé). */
     const metaVsProjDiff =
       filtradas.some((r) => r.projPesquisaVotos != null)
@@ -894,6 +1104,14 @@ export function WarRoomExpectativaRankingModal({
       peso,
       populacao,
       eleitores,
+      seguidores,
+      comSeguidores,
+      postsLegenda,
+      comPostsLegenda,
+      postsLegendaEngajamento,
+      postsLegendaEngMedio,
+      engajados,
+      comEngajados,
       comUltimaVisita,
       comProxVisita,
       comEmendas,
@@ -914,6 +1132,13 @@ export function WarRoomExpectativaRankingModal({
         peso: row.peso,
         populacao: row.populacao,
         eleitores: row.eleitores,
+        seguidores: row.seguidores,
+        seguidoresLabel: row.seguidoresLabel,
+        postsLegenda: row.postsLegenda,
+        postsLegendaEngajamento: row.postsLegendaEngajamento,
+        postsLegendaEngMedio: row.postsLegendaEngMedio,
+        engajados: row.engajados,
+        engajadosLabel: row.engajadosLabel,
         ultimaVisitaLabel: row.ultimaVisitaLabel,
         diasDesdeLabel: row.diasDesdeLabel,
         proxVisitaLabel: row.proxVisitaLabel,
@@ -944,9 +1169,27 @@ export function WarRoomExpectativaRankingModal({
         pesquisaPctUltimaLabel: formatPctPesquisa(row.pesquisaPctUltima),
         pesquisaPctAnteriorLabel: formatPctPesquisa(row.pesquisaPctAnterior),
       }))
-      if (formato === 'csv') exportExpectativaRankingCsv(exportRows, totais)
-      else if (formato === 'xlsx') exportExpectativaRankingXlsx(exportRows, totais)
-      else exportExpectativaRankingPdf(exportRows, totais)
+      if (formato === 'csv')
+        exportExpectativaRankingCsv(
+          exportRows,
+          totais,
+          visao,
+          visao === 'digital' ? digitalPeriodDays : undefined,
+        )
+      else if (formato === 'xlsx')
+        exportExpectativaRankingXlsx(
+          exportRows,
+          totais,
+          visao,
+          visao === 'digital' ? digitalPeriodDays : undefined,
+        )
+      else
+        exportExpectativaRankingPdf(
+          exportRows,
+          totais,
+          visao,
+          visao === 'digital' ? digitalPeriodDays : undefined,
+        )
     } finally {
       setExportBusy('idle')
     }
@@ -1016,6 +1259,47 @@ export function WarRoomExpectativaRankingModal({
         >
           <div className="wr-expectativa-ranking-modal__toolbar-intro">
             <span className="wr-expectativa-ranking-modal__toolbar-title">Cidades</span>
+            <nav
+              className="wr-copiloto-redes__period-tabs wr-expectativa-ranking-modal__visao-tabs"
+              aria-label="Visão de cidades"
+            >
+              {CIDADES_VISAO_OPCOES.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={cn(
+                    'wr-copiloto-redes__period-tab',
+                    visao === opt.id && 'wr-copiloto-redes__period-tab--active',
+                  )}
+                  aria-pressed={visao === opt.id}
+                  onClick={() => trocarVisao(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </nav>
+            {isDigital ? (
+              <nav
+                className="wr-copiloto-redes__period-tabs wr-expectativa-ranking-modal__period-tabs"
+                aria-label="Período digital"
+              >
+                {CIDADES_DIGITAL_PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.days}
+                    type="button"
+                    className={cn(
+                      'wr-copiloto-redes__period-tab',
+                      digitalPeriodDays === opt.days &&
+                        'wr-copiloto-redes__period-tab--active',
+                    )}
+                    aria-pressed={digitalPeriodDays === opt.days}
+                    onClick={() => setDigitalPeriodDays(opt.days)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
             <label className="wr-expectativa-ranking-modal__search">
               <Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
               <input
@@ -1053,6 +1337,8 @@ export function WarRoomExpectativaRankingModal({
               </span>
             </label>
 
+            {!isDigital ? (
+              <>
             <label className="wr-expectativa-ranking-modal__filter-field">
               <span className="wr-expectativa-ranking-modal__filter-field-label">Pesquisas</span>
               <span className="wr-expectativa-ranking-modal__filter-select-wrap">
@@ -1144,11 +1430,13 @@ export function WarRoomExpectativaRankingModal({
                 />
               </span>
             </label>
+              </>
+            ) : null}
           </div>
 
           <div className="wr-expectativa-ranking-modal__toolbar-end">
             <span className="wr-expectativa-ranking-modal__count tabular-nums">
-              {loadingEmendas ? (
+              {loadingEmendas && !isDigital ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
                   Emendas…
@@ -1158,48 +1446,47 @@ export function WarRoomExpectativaRankingModal({
               )}
             </span>
             <div className="wr-expectativa-ranking-modal__export" role="group" aria-label="Exportar">
-              <span className="wr-expectativa-ranking-modal__export-label">
-                <Download className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                Exportar
-              </span>
               <button
                 type="button"
                 className="wr-expectativa-ranking-modal__export-btn"
                 disabled={filtradas.length === 0 || exportBusy !== 'idle'}
                 onClick={() => exportar('csv')}
+                aria-label="Exportar CSV"
+                title="CSV"
               >
                 {exportBusy === 'csv' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <IconFileTypeCsv className="h-4 w-4" stroke={1.5} aria-hidden />
                 )}
-                CSV
               </button>
               <button
                 type="button"
                 className="wr-expectativa-ranking-modal__export-btn"
                 disabled={filtradas.length === 0 || exportBusy !== 'idle'}
                 onClick={() => exportar('xlsx')}
+                aria-label="Exportar XLS"
+                title="XLS"
               >
                 {exportBusy === 'xlsx' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <Sheet className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <IconFileTypeXls className="h-4 w-4" stroke={1.5} aria-hidden />
                 )}
-                XLS
               </button>
               <button
                 type="button"
                 className="wr-expectativa-ranking-modal__export-btn"
                 disabled={filtradas.length === 0 || exportBusy !== 'idle'}
                 onClick={() => exportar('pdf')}
+                aria-label="Exportar PDF"
+                title="PDF"
               >
                 {exportBusy === 'pdf' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} />
                 ) : (
-                  <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <IconFileTypePdf className="h-4 w-4" stroke={1.5} aria-hidden />
                 )}
-                PDF
               </button>
             </div>
           </div>
@@ -1216,27 +1503,39 @@ export function WarRoomExpectativaRankingModal({
                 >
                   Meta de Votos
                 </th>
-                <th
-                  colSpan={3}
-                  scope="colgroup"
-                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--pesquisas"
-                >
-                  Pesquisas de Opinião
-                </th>
-                <th
-                  colSpan={2}
-                  scope="colgroup"
-                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--mandato"
-                >
-                  Mandato
-                </th>
-                <th
-                  colSpan={3}
-                  scope="colgroup"
-                  className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--cobertura"
-                >
-                  Cobertura Território
-                </th>
+                {isDigital ? (
+                  <th
+                    colSpan={4}
+                    scope="colgroup"
+                    className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--redes"
+                  >
+                    Redes
+                  </th>
+                ) : (
+                  <>
+                    <th
+                      colSpan={3}
+                      scope="colgroup"
+                      className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--pesquisas"
+                    >
+                      Pesquisas de Opinião
+                    </th>
+                    <th
+                      colSpan={2}
+                      scope="colgroup"
+                      className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--mandato"
+                    >
+                      Mandato
+                    </th>
+                    <th
+                      colSpan={3}
+                      scope="colgroup"
+                      className="wr-expectativa-ranking-modal__group-th wr-expectativa-ranking-modal__group-th--cobertura"
+                    >
+                      Cobertura Território
+                    </th>
+                  </>
+                )}
               </tr>
               <tr className="wr-expectativa-ranking-modal__cols-row">
                 <th className="wr-expectativa-ranking-modal__col-cidade">
@@ -1277,6 +1576,63 @@ export function WarRoomExpectativaRankingModal({
                     compact
                   />
                 </th>
+                {isDigital ? (
+                  <>
+                    <th
+                      className="wr-expectativa-ranking-modal__num wr-expectativa-ranking-modal__group-edge"
+                      title="Seguidores Instagram por cidade (follower_demographics · Redes · Seguidores API)"
+                    >
+                      <TerritorioSortableHeaderButton
+                        label="Seguidores"
+                        active={sortCol === 'seguidores'}
+                        asc={sortAsc}
+                        onClick={() => alternarSort('seguidores')}
+                        align="right"
+                        compact
+                      />
+                    </th>
+                    <th
+                      className="wr-expectativa-ranking-modal__num"
+                      title={`Posts com a cidade na legenda (Redes · Posts legenda · últimos ${digitalPeriodDays} dias)`}
+                    >
+                      <TerritorioSortableHeaderButton
+                        label="Posts (legenda)"
+                        active={sortCol === 'postsLegenda'}
+                        asc={sortAsc}
+                        onClick={() => alternarSort('postsLegenda')}
+                        align="right"
+                        compact
+                      />
+                    </th>
+                    <th
+                      className="wr-expectativa-ranking-modal__num"
+                      title={`Engajamento médio por post com a cidade na legenda (últimos ${digitalPeriodDays} dias)`}
+                    >
+                      <TerritorioSortableHeaderButton
+                        label="ENG.MÉD.LEG"
+                        active={sortCol === 'postsLegendaEngMedio'}
+                        asc={sortAsc}
+                        onClick={() => alternarSort('postsLegendaEngMedio')}
+                        align="right"
+                        compact
+                      />
+                    </th>
+                    <th
+                      className="wr-expectativa-ranking-modal__num"
+                      title="Contas engajadas por cidade (engaged_audience_demographics · Redes · Engajados API)"
+                    >
+                      <TerritorioSortableHeaderButton
+                        label="Engajados (API)"
+                        active={sortCol === 'engajados'}
+                        asc={sortAsc}
+                        onClick={() => alternarSort('engajados')}
+                        align="right"
+                        compact
+                      />
+                    </th>
+                  </>
+                ) : (
+                  <>
                 <th className="wr-expectativa-ranking-modal__col-pesquisa wr-expectativa-ranking-modal__group-edge">
                   <TerritorioSortableHeaderButton
                     label="Pesquisas"
@@ -1337,6 +1693,8 @@ export function WarRoomExpectativaRankingModal({
                 >
                   Comunicar
                 </th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1398,6 +1756,86 @@ export function WarRoomExpectativaRankingModal({
                   >
                     <EnterInt value={row.eleitores} resetKey={enterAnimKey} />
                   </td>
+                  {isDigital ? (
+                  <>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums wr-expectativa-ranking-modal__group-edge"
+                    title={
+                      row.seguidores != null
+                        ? `${formatInt(row.seguidores)} seguidores (Instagram · Seguidores API · last_30_days · não varia com o período)`
+                        : row.seguidoresLabel !== '—'
+                          ? `${row.seguidoresLabel} (fora do top Meta)`
+                          : 'Sem dado na base Instagram (follower_demographics)'
+                    }
+                  >
+                    {row.seguidores != null ? (
+                      <EnterInt value={row.seguidores} resetKey={enterAnimKey} />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__pesquisa-empty">
+                        {row.seguidoresLabel}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      row.postsLegenda != null
+                        ? `${formatInt(row.postsLegenda)} post${row.postsLegenda === 1 ? '' : 's'} na legenda · ${formatInt(row.postsLegendaEngajamento)} eng. total (últimos ${digitalPeriodDays} dias)`
+                        : loadingCaptionCities
+                          ? 'Carregando posts por legenda…'
+                          : `Nenhum post com esta cidade na legenda (últimos ${digitalPeriodDays} dias)`
+                    }
+                  >
+                    {row.postsLegenda != null ? (
+                      <EnterInt value={row.postsLegenda} resetKey={enterAnimKey} />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__pesquisa-empty">
+                        {loadingCaptionCities ? '…' : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      row.postsLegendaEngMedio != null
+                        ? `Média ${formatInt(row.postsLegendaEngMedio)} eng./post · ${formatInt(row.postsLegendaEngajamento)} eng. total (últimos ${digitalPeriodDays} dias)`
+                        : loadingCaptionCities
+                          ? 'Carregando…'
+                          : `Sem engajamento médio (nenhum post na legenda · ${digitalPeriodDays} dias)`
+                    }
+                  >
+                    {row.postsLegendaEngMedio != null ? (
+                      <EnterInt
+                        value={row.postsLegendaEngMedio}
+                        resetKey={enterAnimKey}
+                      />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__pesquisa-empty">
+                        {loadingCaptionCities ? '…' : '—'}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      row.engajados != null
+                        ? `${formatInt(row.engajados)} contas engajadas (Instagram · Engajados API · this_month · não varia com o período)`
+                        : row.engajadosLabel !== '—'
+                          ? `${row.engajadosLabel} (fora do top Meta)`
+                          : 'Sem dado na base Instagram (engaged_audience_demographics)'
+                    }
+                  >
+                    {row.engajados != null ? (
+                      <EnterInt value={row.engajados} resetKey={enterAnimKey} />
+                    ) : (
+                      <span className="wr-expectativa-ranking-modal__pesquisa-empty">
+                        {row.engajadosLabel}
+                      </span>
+                    )}
+                  </td>
+                  </>
+                  ) : (
+                  <>
                   <td className="wr-expectativa-ranking-modal__col-pesquisa wr-expectativa-ranking-modal__group-edge">
                     {row.pesquisa ? (
                       <button
@@ -1650,6 +2088,8 @@ export function WarRoomExpectativaRankingModal({
                       </span>
                     )}
                   </td>
+                  </>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -1677,6 +2117,50 @@ export function WarRoomExpectativaRankingModal({
                   >
                     <EnterInt value={totais.eleitores} resetKey={enterAnimKey} />
                   </td>
+                  {isDigital ? (
+                  <>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums wr-expectativa-ranking-modal__group-edge"
+                    title={`${totais.comSeguidores.toLocaleString('pt-BR')} cidades no top Instagram`}
+                  >
+                    <EnterInt value={totais.seguidores} resetKey={enterAnimKey} />
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      totais.comPostsLegenda
+                        ? `${totais.comPostsLegenda.toLocaleString('pt-BR')} cidades com post na legenda · ${formatInt(totais.postsLegendaEngajamento)} eng. total`
+                        : loadingCaptionCities
+                          ? 'Carregando…'
+                          : 'Nenhuma cidade com post na legenda'
+                    }
+                  >
+                    <EnterInt value={totais.postsLegenda} resetKey={enterAnimKey} />
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={
+                      totais.postsLegenda > 0
+                        ? `Média ponderada ${formatInt(totais.postsLegendaEngMedio)} eng./post`
+                        : loadingCaptionCities
+                          ? 'Carregando…'
+                          : 'Sem engajamento médio'
+                    }
+                  >
+                    <EnterInt
+                      value={totais.postsLegendaEngMedio}
+                      resetKey={enterAnimKey}
+                    />
+                  </td>
+                  <td
+                    className="wr-expectativa-ranking-modal__num tabular-nums"
+                    title={`${totais.comEngajados.toLocaleString('pt-BR')} cidades no top Engajados API`}
+                  >
+                    <EnterInt value={totais.engajados} resetKey={enterAnimKey} />
+                  </td>
+                  </>
+                  ) : (
+                  <>
                   <td
                     className="wr-expectativa-ranking-modal__center tabular-nums wr-expectativa-ranking-modal__group-edge"
                     title="Com pesquisa"
@@ -1721,6 +2205,8 @@ export function WarRoomExpectativaRankingModal({
                   <td className="wr-expectativa-ranking-modal__center wr-expectativa-ranking-modal__col-comunicar">
                     —
                   </td>
+                  </>
+                  )}
                 </tr>
               </tfoot>
             ) : null}

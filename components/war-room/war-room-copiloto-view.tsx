@@ -14,13 +14,21 @@ import { WarRoomCopilotoComparativoView } from '@/components/war-room/war-room-c
 import { WarRoomCopilotoObrasView } from '@/components/war-room/war-room-copiloto-obras-view'
 import { WarRoomCopilotoEmendasView } from '@/components/war-room/war-room-copiloto-emendas-view'
 import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
+import { WarRoomCopilotoRelatorioView } from '@/components/war-room/war-room-copiloto-relatorio-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { cn } from '@/lib/utils'
 
-type CopilotoTab = 'cidades' | 'obras' | 'emendas' | 'redes' | 'panorama' | 'comparativo'
+type CopilotoTab =
+  | 'cidades'
+  | 'obras'
+  | 'emendas'
+  | 'redes'
+  | 'panorama'
+  | 'comparativo'
+  | 'relatorio'
 
 /**
- * Visão Copiloto — Cidades, Obras, Emendas, Redes, Comparativo e Radar.
+ * Visão Copiloto — Cidades, Obras, Emendas, Redes, Comparativo, Radar e Relatório.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
@@ -117,6 +125,17 @@ export function WarRoomCopilotoView() {
         >
           Radar
         </button>
+        <button
+          type="button"
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'relatorio' && 'wr-copiloto-tabs__btn--active',
+          )}
+          aria-pressed={tab === 'relatorio'}
+          onClick={() => setTab('relatorio')}
+        >
+          Relatório
+        </button>
       </nav>
 
       <div key={tab} className="wr-copiloto-view__panel">
@@ -124,6 +143,8 @@ export function WarRoomCopilotoView() {
           <WarRoomCopilotoObrasView />
         ) : tab === 'emendas' ? (
           <WarRoomCopilotoEmendasView />
+        ) : tab === 'relatorio' ? (
+          <WarRoomCopilotoRelatorioView />
         ) : tab === 'redes' ? (
           <WarRoomCopilotoRedesView />
         ) : tab === 'panorama' ? (

@@ -2,11 +2,15 @@
 
 import Link from 'next/link'
 import {
-  AlertTriangle,
   ArrowUpRight,
+  Bookmark,
   Calendar,
+  Heart,
   Loader2,
-  Users,
+  MessageCircle,
+  Send,
+  Trophy,
+  type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
@@ -15,10 +19,10 @@ import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
 import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { cn } from '@/lib/utils'
 import {
-  AGENDA_PROXIMOS_JANELA_DIAS,
   addDaysToKey,
   buildAgendaProximosPorMunicipio,
-  listAgendaVisitasProximas,
+  calendarDateInTz,
+  listCidadesComAgendaProxima,
   todayKeyInTz,
   type WarRoomAgendaProximoItem,
   type WarRoomAgendaVisita,
@@ -28,24 +32,114 @@ import { WarRoomAgendaProximosModal } from '@/components/war-room/war-room-agend
 import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
 import { useWarRoomRefresh } from '@/components/war-room/war-room-refresh-context'
 import {
-  fetchInstagramHistory,
+  fetchInstagramData,
   loadInstagramConfigAsync,
+  type InstagramClientConfig,
+  type InstagramMetrics,
 } from '@/lib/instagramApi'
-import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
-import {
-  WAR_ROOM_CRM_FUNNEL_STEPS,
-  WAR_ROOM_MOBILIZACAO_MOCK,
-  WAR_ROOM_PESQUISAS_ANDAMENTO,
-  type WarRoomAgendaItem,
-} from '@/lib/war-room/mock-data'
-import { buildWarRoomPesquisasConsolidadas } from '@/lib/war-room/pesquisas-consolidadas'
+import { OWN_CANDIDATE_SLUG } from '@/lib/instagram-radar-own-sync'
+import { buildMetaAdsPeriodTotals } from '@/lib/meta-ads-aggregate'
+import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
+import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
+import { type PollIptRow } from '@/lib/ipt-pesquisa'
+import { chavePesquisaDistinta } from '@/lib/pesquisa-tendencia-executive'
+import { type WarRoomAgendaItem } from '@/lib/war-room/mock-data'
 import type { WarRoomDecisao } from '@/lib/war-room/decisoes'
 import { groupDecisoesPorSecao } from '@/lib/war-room/decisoes-secoes'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
+import { IPT_TOTAL_MUNICIPIOS_PI, temExpectativa } from '@/lib/ipt-missoes'
+import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
+import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
+
+type RedesHojeTotais = {
+  posts: number
+  likes: number
+  comments: number
+  shares: number
+  saves: number
+}
+
+const REDES_HOJE_VAZIO: RedesHojeTotais = {
+  posts: 0,
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  saves: 0,
+}
+
+const REDES_ENG_ITENS: Array<{
+  id: keyof Omit<RedesHojeTotais, 'posts'>
+  label: string
+  Icon: LucideIcon
+}> = [
+  { id: 'likes', label: 'Curtidas', Icon: Heart },
+  { id: 'comments', label: 'Comentários', Icon: MessageCircle },
+  { id: 'shares', label: 'Compartilhamentos', Icon: Send },
+  { id: 'saves', label: 'Salvamentos', Icon: Bookmark },
+]
 
 type Props = {
   agendaItems: WarRoomAgendaItem[]
   agendaLoading: boolean
+}
+
+const HOME_JANELA_DIAS = 60
+const PROXIMAS_VISITAS_JANELA_DIAS = 7
+const RADAR_LOOKBACK_DAYS = 30
+const RADAR_ADS_LIMIT = 400
+const RADAR_NEWS_LIMIT = 500
+const LIST_PREVIEW_LIMIT = 3
+
+function visitadaNosUltimosDias(m: IptMunicipio, janelaDias: number): boolean {
+  const dias = diasDesdeVisita(m.ultimaVisita)
+  if (dias != null && dias >= 0 && dias <= janelaDias) return true
+  if (janelaDias >= 15 && (m.detalhes?.visitasUltimos15Dias ?? 0) > 0) return true
+  if (janelaDias >= 30 && (m.detalhes?.visitasNoPeriodo ?? 0) > 0) return true
+  if (janelaDias >= 60 && (m.detalhes?.visitasPeriodoAnterior ?? 0) > 0) return true
+  return false
+}
+
+function nomeCidadePoll(poll: PollIptRow): string {
+  const c = poll.cities
+  if (!c) return ''
+  if (Array.isArray(c)) return (c[0]?.name ?? '').trim()
+  return (c.name ?? '').trim()
+}
+
+function nomeNormalizado(valor: string | null | undefined): string {
+  return String(valor ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+/** Cidades com ≥1 pesquisa distinta (data + instituto + cidade) na janela. */
+function municipiosComPesquisaNaJanela(
+  polls: PollIptRow[],
+  janelaDias: number,
+): Set<string> {
+  const ondas = new Set<string>()
+  const cidades = new Set<string>()
+  for (const poll of polls) {
+    const cidade = nomeCidadePoll(poll)
+    if (!cidade) continue
+    const dias = diasDesdeVisita(poll.data)
+    if (dias == null || dias < 0 || dias > janelaDias) continue
+    const ondaKey = chavePesquisaDistinta({
+      data: poll.data,
+      tipo: poll.tipo,
+      candidato_nome: poll.candidato_nome,
+      intencao: poll.intencao,
+      instituto: poll.instituto ?? '',
+      cidadeId: poll.cidade_id ?? null,
+      cidadeNome: cidade,
+    })
+    if (ondas.has(ondaKey)) continue
+    ondas.add(ondaKey)
+    cidades.add(normalizeIptMunicipio(cidade))
+  }
+  return cidades
 }
 
 function formatArrivalAgo(iso: string, now: Date = new Date()): string {
@@ -72,16 +166,6 @@ function firstName(full: string | undefined | null): string {
   return raw.split(/\s+/)[0] ?? 'Jadyel'
 }
 
-function formatDeltaPct(value: number | null): string | null {
-  if (value == null || !Number.isFinite(value)) return null
-  const rounded = Math.round(value * 10) / 10
-  const abs = Math.abs(rounded).toLocaleString('pt-BR', {
-    minimumFractionDigits: rounded % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 1,
-  })
-  return `${rounded > 0 ? '+' : rounded < 0 ? '−' : ''}${abs}%`
-}
-
 function relativeFromIso(iso: string | null | undefined): string {
   if (!iso) return ''
   const t = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`).getTime()
@@ -95,64 +179,11 @@ function relativeFromIso(iso: string | null | undefined): string {
   return `há ${days} d`
 }
 
-function Sparkline({
-  values,
-  className,
-}: {
-  values: number[]
-  className?: string
-}) {
-  const pts = values.length > 1 ? values : [0, ...(values[0] != null ? [values[0]] : [0])]
-  const min = Math.min(...pts)
-  const max = Math.max(...pts)
-  const span = max - min || 1
-  const d = pts
-    .map((v, i) => {
-      const x = (i / Math.max(1, pts.length - 1)) * 100
-      const y = 28 - ((v - min) / span) * 24
-      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
-  return (
-    <svg className={className} viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden>
-      <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PiauiDots({
-  points,
-}: {
-  points: Array<{ lat: number; lng: number; visited: boolean }>
-}) {
-  if (points.length === 0) return null
-  const lats = points.map((p) => p.lat)
-  const lngs = points.map((p) => p.lng)
-  const minLat = Math.min(...lats)
-  const maxLat = Math.max(...lats)
-  const minLng = Math.min(...lngs)
-  const maxLng = Math.max(...lngs)
-  const toXY = (lat: number, lng: number) => {
-    const x = ((lng - minLng) / (maxLng - minLng || 1)) * 92 + 4
-    const y = (1 - (lat - minLat) / (maxLat - minLat || 1)) * 72 + 4
-    return { x, y }
-  }
-  return (
-    <svg className="wr-home__pi-map" viewBox="0 0 100 80" aria-hidden>
-      {points.map((p, i) => {
-        const { x, y } = toXY(p.lat, p.lng)
-        return (
-          <circle
-            key={`${p.lat}-${p.lng}-${i}`}
-            cx={x}
-            cy={y}
-            r={p.visited ? 1.35 : 0.7}
-            className={p.visited ? 'wr-home__pi-dot wr-home__pi-dot--on' : 'wr-home__pi-dot'}
-          />
-        )
-      })}
-    </svg>
-  )
+function dataHoraCurta(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
 function GoBtn({ href, onClick, label }: { href?: string; onClick?: () => void; label: string }) {
@@ -186,12 +217,18 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
     const now = new Date()
     return now.getHours() * 60 + now.getMinutes()
   })
-  const [pollsCount, setPollsCount] = useState(0)
+  const [polls, setPolls] = useState<PollIptRow[]>([])
   const [pollsLoading, setPollsLoading] = useState(true)
-  const [engDelta, setEngDelta] = useState<number | null>(null)
-  const [engSeries, setEngSeries] = useState<number[]>([])
+  const [redesHoje, setRedesHoje] = useState<RedesHojeTotais>(REDES_HOJE_VAZIO)
+  const [redesHojePosts, setRedesHojePosts] = useState<InstagramMetrics['posts']>([])
+  const [redesLoading, setRedesLoading] = useState(true)
+  const [anunciosAtivos, setAnunciosAtivos] = useState(0)
+  const [anunciosSpend, setAnunciosSpend] = useState<string | null>(null)
+  const [anunciosRecentes, setAnunciosRecentes] = useState<MetaAdsMentionWithActor[]>([])
+  const [noticiasCount, setNoticiasCount] = useState(0)
+  const [noticiasRecentes, setNoticiasRecentes] = useState<GoogleNewsMentionWithActor[]>([])
+  const [radarLoading, setRadarLoading] = useState(true)
   const [decisoes, setDecisoes] = useState<WarRoomDecisao[]>([])
-  const [proximas, setProximas] = useState<WarRoomAgendaVisita[]>([])
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
@@ -213,35 +250,45 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
 
   const loadExtras = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
-    if (!silent) setPollsLoading(true)
+    if (!silent) {
+      setPollsLoading(true)
+      setRedesLoading(true)
+      setRadarLoading(true)
+    }
     try {
-      const [pollRes, agendaRes, decRes, igCfg] = await Promise.all([
+      const [pollRes, agendaRes, decRes, igCfg, adsRes, newsRes] = await Promise.all([
         fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
         silent
           ? Promise.resolve(null)
           : fetch('/api/agenda/events', { cache: 'no-store' }),
         fetch('/api/war-room/decisoes', { cache: 'no-store' }),
-        loadInstagramConfigAsync().catch(() => ({ configured: false })),
+        loadInstagramConfigAsync().catch((): InstagramClientConfig => ({
+          configured: false,
+          token: '',
+          businessAccountId: '',
+        })),
+        fetch(
+          `/api/meta-ads/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_ADS_LIMIT}`,
+          { cache: 'no-store' },
+        ),
+        fetch(
+          `/api/google-news/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_NEWS_LIMIT}&channel=news`,
+          { cache: 'no-store' },
+        ),
       ])
 
       if (pollRes.ok) {
-        const polls = (await pollRes.json()) as PollIptRow[]
-        const built = buildWarRoomPesquisasConsolidadas(
-          Array.isArray(polls) ? polls : [],
-          resolveCandidatoIpt(),
-          400,
-        )
-        setPollsCount(built.length)
+        const rows = (await pollRes.json()) as PollIptRow[]
+        setPolls(Array.isArray(rows) ? rows : [])
       }
 
       if (agendaRes?.ok) {
         const json = (await agendaRes.json()) as { events?: CalendarEventRow[] }
-        const events = json.events ?? []
-        const visitas = listAgendaVisitasProximas(events, {
-          janelaDias: AGENDA_PROXIMOS_JANELA_DIAS,
-        })
-        setProximas(visitas.slice(0, 4))
-        setAgendaPorMunicipio(buildAgendaProximosPorMunicipio(events))
+        setAgendaPorMunicipio(
+          buildAgendaProximosPorMunicipio(json.events ?? [], {
+            janelaDias: PROXIMAS_VISITAS_JANELA_DIAS,
+          }),
+        )
       }
 
       if (decRes.ok) {
@@ -249,23 +296,72 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
         setDecisoes(Array.isArray(json.decisoes) ? json.decisoes : [])
       }
 
-      if (igCfg.configured) {
-        const history = await fetchInstagramHistory(14)
-        const rows = [...(history?.history ?? [])].sort((a, b) =>
-          a.snapshot_date.localeCompare(b.snapshot_date),
+      if (adsRes.ok) {
+        const json = (await adsRes.json()) as { ads?: MetaAdsMentionWithActor[] }
+        const active = (json.ads ?? []).filter((ad) => ad.is_active === true)
+        setAnunciosAtivos(active.length)
+        const spend = buildMetaAdsPeriodTotals(active).spendLabel
+        setAnunciosSpend(spend && spend !== '—' ? spend : null)
+        const ordenados = [...active].sort((a, b) =>
+          String(b.started_running_at || b.created_at).localeCompare(
+            String(a.started_running_at || a.created_at),
+          ),
         )
-        const series = rows.map((r) => r.total_interactions || 0)
-        setEngSeries(series)
-        if (series.length >= 2) {
-          const first = series[0] ?? 0
-          const last = series[series.length - 1] ?? 0
-          setEngDelta(first === 0 ? null : ((last - first) / Math.abs(first)) * 100)
-        } else {
-          setEngDelta(null)
+        setAnunciosRecentes(ordenados.slice(0, LIST_PREVIEW_LIMIT))
+      } else {
+        setAnunciosAtivos(0)
+        setAnunciosSpend(null)
+        setAnunciosRecentes([])
+      }
+
+      if (newsRes.ok) {
+        const json = (await newsRes.json()) as { mentions?: GoogleNewsMentionWithActor[] }
+        const mentions = json.mentions ?? []
+        const unique = new Set(mentions.map((m) => m.article_id || m.url || m.id))
+        setNoticiasCount(unique.size)
+        const dedup = new Map<string, GoogleNewsMentionWithActor>()
+        for (const m of mentions) {
+          const key = m.article_id || m.url || m.id
+          if (!dedup.has(key)) dedup.set(key, m)
         }
+        const ordenadas = [...dedup.values()].sort((a, b) =>
+          String(b.published_at || b.collected_at).localeCompare(
+            String(a.published_at || a.collected_at),
+          ),
+        )
+        setNoticiasRecentes(ordenadas.slice(0, LIST_PREVIEW_LIMIT))
+      } else {
+        setNoticiasCount(0)
+        setNoticiasRecentes([])
+      }
+
+      if (igCfg.configured) {
+        const data = await fetchInstagramData(
+          igCfg.token,
+          igCfg.businessAccountId,
+          '7d',
+        ).catch(() => null)
+        const today = todayKeyInTz()
+        const postsHoje = (data?.posts ?? []).filter(
+          (post) => calendarDateInTz(post.postedAt) === today,
+        )
+        setRedesHojePosts(postsHoje)
+        setRedesHoje({
+          posts: postsHoje.length,
+          likes: postsHoje.reduce((s, p) => s + (p.metrics.likes || 0), 0),
+          comments: postsHoje.reduce((s, p) => s + (p.metrics.comments || 0), 0),
+          shares: postsHoje.reduce((s, p) => s + (p.metrics.shares || 0), 0),
+          saves: postsHoje.reduce((s, p) => s + (p.metrics.saves || 0), 0),
+        })
+      } else {
+        setRedesHoje(REDES_HOJE_VAZIO)
       }
     } finally {
-      if (!silent) setPollsLoading(false)
+      if (!silent) {
+        setPollsLoading(false)
+        setRedesLoading(false)
+        setRadarLoading(false)
+      }
     }
   }, [])
 
@@ -281,58 +377,113 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
 
   const universo = municipios
 
+  const proximas = useMemo(
+    () => listCidadesComAgendaProxima(universo, agendaPorMunicipio),
+    [universo, agendaPorMunicipio],
+  )
+
   const expectativaTotal = useMemo(
     () => universo.reduce((s, m) => s + (Number.isFinite(m.expectativaVotos) ? m.expectativaVotos : 0), 0),
     [universo],
   )
 
+  const cidadesComMeta = useMemo(() => universo.filter(temExpectativa), [universo])
+  const municipiosComMeta = cidadesComMeta.length
+  const coberturaMetaPct =
+    IPT_TOTAL_MUNICIPIOS_PI > 0
+      ? Math.min(100, (municipiosComMeta / IPT_TOTAL_MUNICIPIOS_PI) * 100)
+      : 0
+
   const cidadesVisitadas = useMemo(
-    () => universo.filter((m) => Boolean(m.ultimaVisita)).length,
-    [universo],
-  )
-
-  const liderancasAtivas = useMemo(
-    () => universo.reduce((s, m) => s + (m.liderancas || 0), 0),
-    [universo],
-  )
-
-  const expectativaSeries = useMemo(() => {
-    const top = [...universo]
-      .sort((a, b) => b.pesoExpectativaPct - a.pesoExpectativaPct)
-      .slice(0, 8)
-    return top.map((m) => m.expectativaVotos)
-  }, [universo])
-
-  const piPoints = useMemo(
     () =>
-      universo
-        .filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng))
-        .map((m) => ({
-          lat: m.lat,
-          lng: m.lng,
-          visited: Boolean(m.ultimaVisita),
-        })),
-    [universo],
+      cidadesComMeta.filter((m) => visitadaNosUltimosDias(m, HOME_JANELA_DIAS)).length,
+    [cidadesComMeta],
   )
+  const coberturaVisitasPct =
+    municipiosComMeta > 0
+      ? Math.min(100, (cidadesVisitadas / municipiosComMeta) * 100)
+      : 0
 
-  const pesquisasAtivas = WAR_ROOM_PESQUISAS_ANDAMENTO.filter((r) => r.status !== 'entregue')
-    .length
+  const cidadesComPesquisa = useMemo(() => {
+    const comPesquisa = municipiosComPesquisaNaJanela(polls, HOME_JANELA_DIAS)
+    return cidadesComMeta.filter((m) => comPesquisa.has(normalizeIptMunicipio(m.municipio)))
+      .length
+  }, [polls, cidadesComMeta])
+  const coberturaPesquisasPct =
+    municipiosComMeta > 0
+      ? Math.min(100, (cidadesComPesquisa / municipiosComMeta) * 100)
+      : 0
 
-  const pesquisasValor = pesquisasAtivas > 0 ? pesquisasAtivas : pollsCount
-  const pesquisasLabel = pesquisasAtivas > 0 ? 'ativas' : 'ondas'
+  const pesquisasRecentes = useMemo(() => {
+    type Item = {
+      id: string
+      cidade: string
+      instituto: string
+      data: string
+      tipo: 'estimulada' | 'espontanea'
+      intencaoJadyel: number
+      posicaoJadyel: number
+    }
 
-  const atendimentosHoje = WAR_ROOM_CRM_FUNNEL_STEPS[0]?.value ?? 0
-  const mobilizacaoPct = WAR_ROOM_MOBILIZACAO_MOCK.pctConcluido
+    const alvo = 'jadyel'
+    const linhasNaJanela = polls.filter((poll) => {
+      const dias = diasDesdeVisita(poll.data)
+      return dias != null && dias >= 0 && dias <= HOME_JANELA_DIAS
+    })
 
-  const alertasAcao = useMemo(() => {
-    const live = decisoes.filter(
-      (d) =>
-        (d.status ?? 'pendente') !== 'resolvida' &&
-        (d.status ?? 'pendente') !== 'arquivada' &&
-        (d.prioridade === 'critica' || d.prioridade === 'alta' || d.destaque),
-    )
-    return live.length
-  }, [decisoes])
+    const porOnda = new Map<string, PollIptRow[]>()
+    for (const poll of linhasNaJanela) {
+      const cidade = nomeCidadePoll(poll)
+      if (!cidade) continue
+      const key = [
+        poll.data.includes('T') ? poll.data.split('T')[0] : poll.data,
+        (poll.instituto ?? '').trim().toLowerCase(),
+        normalizeIptMunicipio(cidade),
+      ].join('|')
+      const bucket = porOnda.get(key)
+      if (bucket) bucket.push(poll)
+      else porOnda.set(key, [poll])
+    }
+
+    const itens: Item[] = []
+    for (const [key, rows] of porOnda) {
+      const amostra = rows[0]
+      const cidade = nomeCidadePoll(amostra)
+      if (!cidade) continue
+
+      const rowEstimulada = rows.find(
+        (r) => r.tipo === 'estimulada' && nomeNormalizado(r.candidato_nome).includes(alvo),
+      )
+      const rowEspontanea = rows.find(
+        (r) => r.tipo === 'espontanea' && nomeNormalizado(r.candidato_nome).includes(alvo),
+      )
+      const escolhida = rowEstimulada ?? rowEspontanea
+      if (!escolhida || !Number.isFinite(escolhida.intencao)) continue
+      const candidatosDoTipo = rows
+        .filter((r) => r.tipo === escolhida.tipo && Number.isFinite(r.intencao))
+        .sort((a, b) => b.intencao - a.intencao)
+      const posicaoJadyel =
+        candidatosDoTipo.findIndex((r) => r === escolhida) >= 0
+          ? candidatosDoTipo.findIndex((r) => r === escolhida) + 1
+          : 0
+
+      itens.push({
+        id: `${key}|${escolhida.tipo}`,
+        cidade,
+        instituto: (amostra.instituto ?? '').trim() || 'Instituto não informado',
+        data: amostra.data,
+        tipo: escolhida.tipo,
+        intencaoJadyel: escolhida.intencao,
+        posicaoJadyel,
+      })
+    }
+
+    return itens
+      .sort((a, b) => String(b.data).localeCompare(String(a.data)))
+      .slice(0, LIST_PREVIEW_LIMIT)
+  }, [polls])
+
+  // Alertas prioritários e Lideranças ativas foram removidos da Home.
 
   const agendaLista = agendaItems
   const agendaListaLoading = agendaLoading
@@ -342,32 +493,19 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
     [agendaLista, nowMinutes],
   )
 
-  const atualizacoes = useMemo(() => {
-    const items: Array<{ cidade: string; texto: string; when: string }> = []
-    const recentVisitas = [...universo]
+  const ultimasVisitas = useMemo(() => {
+    return [...universo]
       .filter((m) => m.ultimaVisita)
       .sort((a, b) => String(b.ultimaVisita).localeCompare(String(a.ultimaVisita)))
-      .slice(0, 2)
-    for (const m of recentVisitas) {
-      items.push({
+      .slice(0, 3)
+      .map((m) => ({
         cidade: m.municipio,
-        texto: 'Visita registrada',
+        texto: 'Visita realizada',
         when: relativeFromIso(m.ultimaVisita),
-      })
-    }
-    for (const p of proximas.slice(0, 2)) {
-      if (items.some((i) => i.cidade === p.municipioLabel && i.texto.startsWith('Agenda'))) continue
-      items.push({
-        cidade: p.municipioLabel,
-        texto: 'Agenda confirmada',
-        when: p.dataKey === todayKeyInTz() ? 'hoje' : `em ${p.dataLabel}`,
-      })
-    }
-    return items.slice(0, 3)
-  }, [universo, proximas])
+      }))
+  }, [universo])
 
   const municipiosTotal = universo.length || 224
-  const deltaLabel = formatDeltaPct(engDelta)
   const greeting = greetingForHour(hour)
 
   return (
@@ -458,22 +596,56 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
           <div className="wr-home__cards">
           <div className="wr-home__kpis">
             <article className="wr-home__card wr-home__card--kpi">
-              <p className="wr-home__kicker">Expectativa de votos</p>
+              <p className="wr-home__kicker">Meta de Votos</p>
               <p className="wr-home__metric tabular-nums">
                 {iptLoading ? '—' : expectativaTotal.toLocaleString('pt-BR')}
               </p>
               <p className="wr-home__delta wr-home__delta--up">universo PI</p>
-              <Sparkline values={expectativaSeries} className="wr-home__spark" />
+              <p
+                className="wr-home__coverage"
+                aria-label={
+                  iptLoading
+                    ? 'Carregando cobertura da meta de votos'
+                    : `${municipiosComMeta} de ${IPT_TOTAL_MUNICIPIOS_PI} municípios com meta de votos`
+                }
+              >
+                <span className="wr-home__coverage-label">
+                  <span className="tabular-nums">
+                    {iptLoading ? '—' : municipiosComMeta.toLocaleString('pt-BR')}
+                  </span>{' '}
+                  de {IPT_TOTAL_MUNICIPIOS_PI} municípios
+                </span>
+                <span className="wr-home__coverage-bar" aria-hidden>
+                  <span style={{ width: iptLoading ? '0%' : `${coberturaMetaPct}%` }} />
+                </span>
+              </p>
               <GoBtn href="/dashboard/territorio/ipt" label="Abrir ranking de expectativa" />
             </article>
 
             <article className="wr-home__card wr-home__card--kpi">
               <p className="wr-home__kicker">Cidades visitadas</p>
-              <p className="wr-home__metric">
-                <span className="tabular-nums">{iptLoading ? '—' : cidadesVisitadas}</span>
-                <small> de {municipiosTotal} municípios</small>
+              <p className="wr-home__metric tabular-nums">
+                {iptLoading ? '—' : cidadesVisitadas.toLocaleString('pt-BR')}
               </p>
-              <PiauiDots points={piPoints} />
+              <p className="wr-home__delta">últimos {HOME_JANELA_DIAS} dias</p>
+              <p
+                className="wr-home__coverage"
+                aria-label={
+                  iptLoading
+                    ? 'Carregando cidades visitadas'
+                    : `${cidadesVisitadas} de ${municipiosComMeta} municípios com meta visitados nos últimos ${HOME_JANELA_DIAS} dias`
+                }
+              >
+                <span className="wr-home__coverage-label">
+                  <span className="tabular-nums">
+                    {iptLoading ? '—' : cidadesVisitadas.toLocaleString('pt-BR')}
+                  </span>{' '}
+                  de {iptLoading ? '—' : municipiosComMeta.toLocaleString('pt-BR')} municípios
+                </span>
+                <span className="wr-home__coverage-bar" aria-hidden>
+                  <span style={{ width: iptLoading ? '0%' : `${coberturaVisitasPct}%` }} />
+                </span>
+              </p>
               <GoBtn href="/dashboard/territorio/ipt" label="Abrir território" />
             </article>
 
@@ -489,94 +661,99 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
           </div>
 
           <div className="wr-home__minis">
-            <article className="wr-home__card wr-home__card--mini">
+            <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
+              <p className="wr-home__kicker">Notícias</p>
+              <p className="wr-home__metric-sm tabular-nums">
+                {radarLoading ? '—' : noticiasCount.toLocaleString('pt-BR')}
+                {!radarLoading ? (
+                  <small> {noticiasCount === 1 ? 'matéria' : 'matérias'}</small>
+                ) : null}
+              </p>
+              <p className="wr-home__delta">últimos {RADAR_LOOKBACK_DAYS} dias</p>
+              {radarLoading ? (
+                <p className="wr-home__muted">Carregando notícias…</p>
+              ) : noticiasRecentes.length === 0 ? (
+                <p className="wr-home__muted">Sem notícias no período.</p>
+              ) : (
+                <ul>
+                  {noticiasRecentes.map((n) => (
+                    <li key={n.id}>
+                      <span>
+                        <strong>{(n.source_name ?? '').trim() || 'Fonte não identificada'}</strong>
+                        <a
+                          href={n.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="wr-home__list-link"
+                          title={n.title ?? 'Abrir notícia'}
+                        >
+                          {(n.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 64)}
+                        </a>
+                      </span>
+                      <time className="tabular-nums">{dataHoraCurta(n.published_at || n.collected_at)}</time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <GoBtn
+                href="/dashboard/noticias/monitoramento?tab=google-news"
+                label="Abrir notícias no Radar Eleitoral"
+              />
+            </article>
+
+            <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
               <p className="wr-home__kicker">Pesquisas</p>
               <p className="wr-home__metric-sm tabular-nums">
-                {pollsLoading ? '—' : pesquisasValor} {pesquisasLabel}
+                {pollsLoading || iptLoading ? '—' : cidadesComPesquisa.toLocaleString('pt-BR')}
               </p>
-              <Sparkline
-                values={[2, 4, 3, 6, 5, pesquisasValor || 4, 5]}
-                className="wr-home__spark wr-home__spark--mini"
-              />
+              <p className="wr-home__delta">últimos {HOME_JANELA_DIAS} dias</p>
+              {pollsLoading ? (
+                <p className="wr-home__muted">Carregando pesquisas…</p>
+              ) : pesquisasRecentes.length === 0 ? (
+                <p className="wr-home__muted">Sem pesquisas na janela.</p>
+              ) : (
+                <ul>
+                  {pesquisasRecentes.map((item) => (
+                    <li key={item.id}>
+                      <span>
+                        <strong>{item.cidade}</strong>
+                        <em
+                          className="wr-home__list-meta-inline"
+                          title={`${dataHoraCurta(item.data)} · ${item.instituto} · ${item.intencaoJadyel.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% · ${item.posicaoJadyel > 0 ? `${item.posicaoJadyel}º lugar` : 'posição n/d'}`}
+                        >
+                          {dataHoraCurta(item.data)} · {item.instituto} ·{' '}
+                          {item.intencaoJadyel.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ·{' '}
+                          <span className="wr-home__rank-chip">
+                            <Trophy className="wr-home__rank-icon" strokeWidth={1.7} aria-hidden />
+                            {item.posicaoJadyel > 0 ? `${item.posicaoJadyel}º` : 'n/d'}
+                          </span>
+                        </em>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="wr-home__coverage">
+                <span className="wr-home__coverage-label">
+                  <span className="tabular-nums">
+                    {pollsLoading || iptLoading ? '—' : cidadesComPesquisa.toLocaleString('pt-BR')}
+                  </span>{' '}
+                  de {pollsLoading || iptLoading ? '—' : municipiosComMeta.toLocaleString('pt-BR')} municípios
+                </span>
+                <span className="wr-home__coverage-bar" aria-hidden>
+                  <span style={{ width: pollsLoading || iptLoading ? '0%' : `${coberturaPesquisasPct}%` }} />
+                </span>
+              </p>
               <GoBtn href="/dashboard/gestao-pesquisas" label="Abrir pesquisas" />
             </article>
 
-            <article className="wr-home__card wr-home__card--mini">
-              <p className="wr-home__kicker">Redes sociais</p>
-              <p className="wr-home__metric-sm">
-                {deltaLabel ? (
-                  <span className={engDelta != null && engDelta < 0 ? 'wr-home__delta--down' : 'wr-home__delta--up'}>
-                    {deltaLabel}
-                  </span>
-                ) : (
-                  '—'
-                )}{' '}
-                <small>engajamento</small>
-              </p>
-              <Sparkline
-                values={engSeries.length > 1 ? engSeries : [4, 6, 5, 8, 7, 9]}
-                className="wr-home__spark wr-home__spark--mini"
-              />
-              <GoBtn href="/dashboard/conteudo/redes" label="Abrir redes" />
-            </article>
-
-            <article className="wr-home__card wr-home__card--mini">
-              <p className="wr-home__kicker">Atendimentos</p>
-              <p className="wr-home__metric-sm tabular-nums">
-                {formatWarRoomNumber(atendimentosHoje)} <small>no funil</small>
-              </p>
-              <Sparkline values={[8, 10, 9, 12, 11, 14]} className="wr-home__spark wr-home__spark--mini" />
-              <GoBtn href="/dashboard/whatsapp" label="Abrir CRM" />
-            </article>
-
-            <article className="wr-home__card wr-home__card--mini">
-              <p className="wr-home__kicker">Mobilização</p>
-              <p className="wr-home__metric-sm tabular-nums">
-                {mobilizacaoPct}% <small>da meta</small>
-              </p>
-              <div
-                className="wr-home__ring"
-                style={{ ['--wr-ring' as string]: `${mobilizacaoPct}` }}
-                aria-hidden
-              />
-              <GoBtn href="/dashboard/mobilizacao/config" label="Abrir mobilização" />
-            </article>
-          </div>
-
-          <div className="wr-home__split">
-            <article className="wr-home__card wr-home__card--status">
-              <AlertTriangle className="wr-home__status-ico wr-home__status-ico--alert" strokeWidth={1.6} />
-              <div>
-                <p className="wr-home__kicker">Alertas prioritários</p>
-                <p className="wr-home__status-copy">
-                  <strong className="tabular-nums">{alertasAcao}</strong> requerem ação
-                </p>
-              </div>
-              <GoBtn label="Abrir fila de decisões" onClick={() => setDecisoesOpen(true)} />
-            </article>
-            <article className="wr-home__card wr-home__card--status">
-              <Users className="wr-home__status-ico wr-home__status-ico--ok" strokeWidth={1.6} />
-              <div>
-                <p className="wr-home__kicker">Lideranças ativas</p>
-                <p className="wr-home__status-copy">
-                  <strong className="tabular-nums">
-                    {iptLoading ? '—' : liderancasAtivas.toLocaleString('pt-BR')}
-                  </strong>{' '}
-                  mobilizadas
-                </p>
-              </div>
-              <GoBtn href="/dashboard/territorio/ipt" label="Abrir lideranças" />
-            </article>
-          </div>
-
-          <div className="wr-home__bottom">
-            <article className="wr-home__card wr-home__card--list">
-              <p className="wr-home__kicker">Atualizações recentes</p>
-              {atualizacoes.length === 0 ? (
-                <p className="wr-home__muted">Sem movimentação recente.</p>
+            <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
+              <p className="wr-home__kicker">Últimas visitas realizadas</p>
+              {ultimasVisitas.length === 0 ? (
+                <p className="wr-home__muted">Sem visitas registradas recentemente.</p>
               ) : (
                 <ul>
-                  {atualizacoes.map((row) => (
+                  {ultimasVisitas.map((row) => (
                     <li key={`${row.cidade}-${row.texto}`}>
                       <span>
                         <strong>{row.cidade}</strong>
@@ -587,22 +764,21 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
                   ))}
                 </ul>
               )}
-              <button
-                type="button"
-                className="wr-home__text-link"
-                onClick={() => setDecisoesOpen(true)}
-              >
-                Ver todas atualizações →
-              </button>
+              <Link href="/dashboard/territorio/ipt" className="wr-home__text-link">
+                Abrir território →
+              </Link>
             </article>
+          </div>
 
+          <div className="wr-home__bottom">
             <article className="wr-home__card wr-home__card--list">
               <p className="wr-home__kicker">Próximas visitas</p>
+              <p className="wr-home__delta">próximos {PROXIMAS_VISITAS_JANELA_DIAS} dias</p>
               {proximas.length === 0 ? (
-                <p className="wr-home__muted">Nenhuma visita na janela.</p>
+                <p className="wr-home__muted">Nenhuma visita nos próximos {PROXIMAS_VISITAS_JANELA_DIAS} dias.</p>
               ) : (
                 <ul>
-                  {proximas.slice(0, 3).map((v) => {
+                  {proximas.map((v) => {
                     const hoje = todayKeyInTz()
                     const amanha = addDaysToKey(hoje, 1)
                     const quando =
@@ -634,10 +810,104 @@ export function WarRoomHomeView({ agendaItems, agendaLoading }: Props) {
               </button>
             </article>
 
-            <blockquote className="wr-home__quote">
-              <p>Cada cidade. Cada pessoa. Um Piauí melhor para todos.</p>
-              <footer>Jadyel</footer>
-            </blockquote>
+            <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
+              <p className="wr-home__kicker">Redes sociais</p>
+              <p className="wr-home__metric-sm tabular-nums">
+                {redesLoading ? '—' : redesHoje.posts.toLocaleString('pt-BR')}
+                {!redesLoading ? (
+                  <small>
+                    {' '}
+                    {redesHoje.posts === 1 ? 'postagem' : 'postagens'}
+                  </small>
+                ) : null}
+              </p>
+              <p className="wr-home__delta">hoje</p>
+              {redesLoading ? (
+                <p className="wr-home__muted">Carregando postagens…</p>
+              ) : redesHojePosts.length === 0 ? (
+                <p className="wr-home__muted">Sem postagens hoje.</p>
+              ) : (
+                <ul className="wr-home__posts-list">
+                  {redesHojePosts.map((post) => {
+                    const time = (() => {
+                      const d = new Date(post.postedAt)
+                      if (Number.isNaN(d.getTime())) return ''
+                      return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                    })()
+                    const caption = (post.caption ?? '')
+                      .replace(/\s+/g, ' ')
+                      .trim()
+                      .slice(0, 54)
+                    const captionText = caption.length > 0 ? `${caption}${post.caption.length > 54 ? '…' : ''}` : ''
+
+                    return (
+                      <li key={post.id} className="wr-home__post-item">
+                        <div className="wr-home__post-head">
+                          <span className="wr-home__post-time tabular-nums">{time}</span>
+                          {captionText ? (
+                            <span className="wr-home__post-caption">{captionText}</span>
+                          ) : (
+                            <span className="wr-home__post-caption wr-home__muted">Sem texto</span>
+                          )}
+                        </div>
+
+                        <ul className="wr-home__eng-ig wr-home__eng-ig--post" aria-label="Engajamento da postagem">
+                          {REDES_ENG_ITENS.map((item) => {
+                            const Icon = item.Icon
+                            const value = formatWarRoomNumber(post.metrics[item.id])
+                            return (
+                              <li key={item.id} title={item.label}>
+                                <Icon className="wr-home__eng-ig-icon" strokeWidth={1.75} aria-hidden />
+                                <span className="tabular-nums">{value}</span>
+                                <span className="sr-only">
+                                  {item.label}: {value}
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <GoBtn href="/dashboard/conteudo/redes" label="Abrir redes" />
+            </article>
+
+            <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
+              <p className="wr-home__kicker">Anúncios Ativos</p>
+              <p className="wr-home__metric-sm tabular-nums">
+                {radarLoading ? '—' : anunciosAtivos.toLocaleString('pt-BR')}
+                {!radarLoading ? (
+                  <small> {anunciosAtivos === 1 ? 'ativo' : 'ativos'}</small>
+                ) : null}
+              </p>
+              <p className="wr-home__delta">Jadyel Alencar</p>
+              {radarLoading ? (
+                <p className="wr-home__muted">Carregando anúncios…</p>
+              ) : anunciosRecentes.length === 0 ? (
+                <p className="wr-home__muted">Sem anúncios ativos no período.</p>
+              ) : (
+                <ul>
+                  {anunciosRecentes.map((ad) => (
+                    <li key={ad.id}>
+                      <span>
+                        <strong>{(ad.page_name ?? '').trim() || 'Página não identificada'}</strong>
+                        <em>{(ad.ad_body ?? '').replace(/\s+/g, ' ').trim().slice(0, 58) || 'Sem texto do anúncio'}</em>
+                      </span>
+                      <time className="tabular-nums">{dataHoraCurta(ad.started_running_at || ad.created_at)}</time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {anunciosSpend ? (
+                <p className="wr-home__coverage-label">{anunciosSpend}</p>
+              ) : null}
+              <GoBtn
+                href="/dashboard/noticias/monitoramento?tab=meta-ads"
+                label="Abrir anúncios no Radar Eleitoral"
+              />
+            </article>
           </div>
           </div>
         </div>

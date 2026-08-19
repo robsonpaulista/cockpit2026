@@ -210,6 +210,49 @@ export function buildAgendaProximosPorMunicipio(
   return byCity
 }
 
+/** Primeiro compromisso da janela no município (mesma ordenação do ranking Copiloto). */
+export function proximaAgendaDoMunicipio(
+  itens: WarRoomAgendaProximoItem[] | undefined,
+): WarRoomAgendaProximoItem | null {
+  if (!itens || itens.length === 0) return null
+  let best = itens[0]!
+  for (let i = 1; i < itens.length; i += 1) {
+    const item = itens[i]!
+    const byDate = item.dataKey.localeCompare(best.dataKey)
+    if (byDate < 0 || (byDate === 0 && item.horario.localeCompare(best.horario, 'pt-BR') < 0)) {
+      best = item
+    }
+  }
+  return best
+}
+
+/**
+ * Cidades da tabela War Room com agenda na janela.
+ * Mesma regra do ícone no ranking Copiloto: município IPT + ≥1 item em agendaPorMunicipio.
+ */
+export function listCidadesComAgendaProxima(
+  municipios: Array<{ municipio: string }>,
+  agendaPorMunicipio: Map<string, WarRoomAgendaProximoItem[]>,
+): WarRoomAgendaVisita[] {
+  const out: WarRoomAgendaVisita[] = []
+  for (const m of municipios) {
+    const key = normalizeIptMunicipio(m.municipio)
+    const prox = proximaAgendaDoMunicipio(agendaPorMunicipio.get(key))
+    if (!prox) continue
+    out.push({
+      ...prox,
+      municipioKey: key,
+      municipioLabel: m.municipio,
+    })
+  }
+  out.sort((a, b) => {
+    const byDate = a.dataKey.localeCompare(b.dataKey)
+    if (byDate !== 0) return byDate
+    return a.horario.localeCompare(b.horario, 'pt-BR')
+  })
+  return out
+}
+
 /** Lista plana de visitas na janela (hoje incluso → +N−1 dias), ordenada por data/hora. */
 export function listAgendaVisitasProximas(
   events: CalendarEventRow[],
