@@ -321,65 +321,6 @@ export const WAR_ROOM_MOBILIZACAO_MOCK: WarRoomMobilizacaoMock = {
   ],
 }
 
-export type WarRoomPesquisaAndamentoStatus =
-  | 'planejada'
-  | 'em_campo'
-  | 'processando'
-  | 'entregue'
-  | 'atrasada'
-
-export type WarRoomPesquisaAndamento = {
-  cidade: string
-  instituto: string
-  inicio?: string
-  termino: string
-  entrega: string
-  status?: WarRoomPesquisaAndamentoStatus
-}
-
-/** Mock — pesquisas em campo/tabulação (ainda sem API de andamento). */
-export const WAR_ROOM_PESQUISAS_ANDAMENTO: WarRoomPesquisaAndamento[] = [
-  {
-    cidade: 'Picos',
-    instituto: 'Amostragem',
-    inicio: '20/05',
-    termino: '28/05',
-    entrega: '02/06',
-    status: 'em_campo',
-  },
-  {
-    cidade: 'Teresina',
-    instituto: 'Opinar',
-    inicio: '18/05',
-    termino: '29/05',
-    entrega: '03/06',
-    status: 'processando',
-  },
-  {
-    cidade: 'Parnaíba',
-    instituto: 'DataAZ',
-    inicio: '10/05',
-    termino: '27/05',
-    entrega: '30/06',
-    status: 'atrasada',
-  },
-  {
-    cidade: 'Floriano',
-    instituto: 'Amostragem',
-    inicio: '22/05',
-    termino: '31/05',
-    entrega: '05/06',
-    status: 'planejada',
-  },
-  {
-    cidade: 'Campo Maior',
-    instituto: 'Opinar',
-    inicio: '05/05',
-    termino: '15/05',
-    entrega: '20/05',
-    status: 'entregue',
-  },
-]
 
 export type WarRoomFeedTipo =
   | 'pesquisa'

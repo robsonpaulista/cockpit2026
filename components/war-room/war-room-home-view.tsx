@@ -8,6 +8,7 @@ import {
   Heart,
   Loader2,
   MessageCircle,
+  Plus,
   Send,
   Trophy,
   type LucideIcon,
@@ -30,6 +31,7 @@ import {
 import { resolveAgendaLiveStatus } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomAgendaProximosModal } from '@/components/war-room/war-room-agenda-proximos-modal'
 import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
+import { WarRoomPesquisaAndamentoModal } from '@/components/war-room/war-room-pesquisa-andamento-modal'
 import { useWarRoomRefresh } from '@/components/war-room/war-room-refresh-context'
 import {
   fetchInstagramData,
@@ -51,6 +53,11 @@ import { IPT_TOTAL_MUNICIPIOS_PI, temExpectativa } from '@/lib/ipt-missoes'
 import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
 import { formatCountdownConfirmadosAgenda } from '@/lib/war-room/agenda-arrivals-refresh'
+import {
+  andamentoAtivos,
+  type WarRoomPesquisaAndamento,
+} from '@/lib/war-room/pesquisas-andamento'
+import { fetchPesquisasAndamento } from '@/lib/war-room/pesquisas-andamento-client'
 
 type RedesHojeTotais = {
   posts: number
@@ -255,6 +262,10 @@ export function WarRoomHomeView({
   >(() => new Map())
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(null)
   const [decisoesOpen, setDecisoesOpen] = useState(false)
+  const [andamentoAll, setAndamentoAll] = useState<WarRoomPesquisaAndamento[]>([])
+  const [andamentoModal, setAndamentoModal] = useState<
+    WarRoomPesquisaAndamento | null | undefined
+  >(undefined)
 
   const nome = firstName(user?.profile?.name)
   const confirmadosCountdown = useConfirmadosCountdown(confirmadosProximaSyncEm)
@@ -278,31 +289,35 @@ export function WarRoomHomeView({
       setRadarLoading(true)
     }
     try {
-      const [pollRes, agendaRes, decRes, igCfg, adsRes, newsRes] = await Promise.all([
-        fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
-        silent
-          ? Promise.resolve(null)
-          : fetch('/api/agenda/events', { cache: 'no-store' }),
-        fetch('/api/war-room/decisoes', { cache: 'no-store' }),
-        loadInstagramConfigAsync().catch((): InstagramClientConfig => ({
-          configured: false,
-          token: '',
-          businessAccountId: '',
-        })),
-        fetch(
-          `/api/meta-ads/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_ADS_LIMIT}`,
-          { cache: 'no-store' },
-        ),
-        fetch(
-          `/api/google-news/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_NEWS_LIMIT}&channel=news`,
-          { cache: 'no-store' },
-        ),
-      ])
+      const [pollRes, agendaRes, decRes, igCfg, adsRes, newsRes, andamentoRes] =
+        await Promise.all([
+          fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
+          silent
+            ? Promise.resolve(null)
+            : fetch('/api/agenda/events', { cache: 'no-store' }),
+          fetch('/api/war-room/decisoes', { cache: 'no-store' }),
+          loadInstagramConfigAsync().catch((): InstagramClientConfig => ({
+            configured: false,
+            token: '',
+            businessAccountId: '',
+          })),
+          fetch(
+            `/api/meta-ads/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_ADS_LIMIT}`,
+            { cache: 'no-store' },
+          ),
+          fetch(
+            `/api/google-news/mentions?politico=${OWN_CANDIDATE_SLUG}&days=${RADAR_LOOKBACK_DAYS}&limit=${RADAR_NEWS_LIMIT}&channel=news`,
+            { cache: 'no-store' },
+          ),
+          fetchPesquisasAndamento(),
+        ])
 
       if (pollRes.ok) {
         const rows = (await pollRes.json()) as PollIptRow[]
         setPolls(Array.isArray(rows) ? rows : [])
       }
+
+      setAndamentoAll(andamentoRes.items)
 
       if (agendaRes?.ok) {
         const json = (await agendaRes.json()) as { events?: CalendarEventRow[] }
@@ -504,6 +519,15 @@ export function WarRoomHomeView({
       .sort((a, b) => String(b.data).localeCompare(String(a.data)))
       .slice(0, LIST_PREVIEW_LIMIT)
   }, [polls])
+
+  const andamentoPreview = useMemo(
+    () => andamentoAtivos(andamentoAll).slice(0, LIST_PREVIEW_LIMIT),
+    [andamentoAll],
+  )
+  const pesquisasPreview = useMemo(() => {
+    const slots = Math.max(0, LIST_PREVIEW_LIMIT - andamentoPreview.length)
+    return pesquisasRecentes.slice(0, slots)
+  }, [andamentoPreview.length, pesquisasRecentes])
 
   // Alertas prioritários e Lideranças ativas foram removidos da Home.
 
@@ -734,18 +758,47 @@ export function WarRoomHomeView({
             </article>
 
             <article className="wr-home__card wr-home__card--list wr-home__card--redes-lg">
-              <p className="wr-home__kicker">Pesquisas</p>
+              <div className="wr-home__kicker-row">
+                <p className="wr-home__kicker">Pesquisas</p>
+                <button
+                  type="button"
+                  className="wr-home__incluir"
+                  onClick={() => setAndamentoModal(null)}
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                  Incluir
+                </button>
+              </div>
               <p className="wr-home__metric-sm tabular-nums">
                 {pollsLoading || iptLoading ? '—' : cidadesComPesquisa.toLocaleString('pt-BR')}
               </p>
               <p className="wr-home__delta">últimos {HOME_JANELA_DIAS} dias</p>
               {pollsLoading ? (
                 <p className="wr-home__muted">Carregando pesquisas…</p>
-              ) : pesquisasRecentes.length === 0 ? (
+              ) : andamentoPreview.length === 0 && pesquisasPreview.length === 0 ? (
                 <p className="wr-home__muted">Sem pesquisas na janela.</p>
               ) : (
                 <ul>
-                  {pesquisasRecentes.map((item) => (
+                  {andamentoPreview.map((item) => (
+                    <li key={`and-${item.id}`}>
+                      <button
+                        type="button"
+                        className="wr-home__pesquisa-live"
+                        title={`${item.dataLabel} · ${item.instituto} · em andamento`}
+                        onClick={() => setAndamentoModal(item)}
+                      >
+                        <strong>{item.cidade}</strong>
+                        <em className="wr-home__list-meta-inline">
+                          {item.dataLabel} · {item.instituto} ·{' '}
+                          <span className="wr-home__live">
+                            <span className="wr-home__live-dot" aria-hidden />
+                            Em campo
+                          </span>
+                        </em>
+                      </button>
+                    </li>
+                  ))}
+                  {pesquisasPreview.map((item) => (
                     <li key={item.id}>
                       <span>
                         <strong>{item.cidade}</strong>
@@ -963,6 +1016,19 @@ export function WarRoomHomeView({
         <WarRoomDecisoesModal
           secoes={groupDecisoesPorSecao(decisoes, { includeOutros: true })}
           onClose={() => setDecisoesOpen(false)}
+        />
+      ) : null}
+      {andamentoModal !== undefined ? (
+        <WarRoomPesquisaAndamentoModal
+          initial={andamentoModal}
+          onClose={() => setAndamentoModal(undefined)}
+          onSaved={(item) => {
+            setAndamentoAll((prev) => {
+              const without = prev.filter((row) => row.id !== item.id)
+              return [item, ...without]
+            })
+            setAndamentoModal(undefined)
+          }}
         />
       ) : null}
     </div>

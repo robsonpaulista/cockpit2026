@@ -1,13 +1,16 @@
 'use client'
 
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  WAR_ROOM_PESQUISAS_ANDAMENTO,
+  andamentoAtivos,
   type WarRoomPesquisaAndamento,
-  type WarRoomPesquisaAndamentoStatus,
-} from '@/lib/war-room/mock-data'
+} from '@/lib/war-room/pesquisas-andamento'
+import {
+  deletePesquisaAndamento,
+  fetchPesquisasAndamento,
+} from '@/lib/war-room/pesquisas-andamento-client'
 import {
   buildWarRoomPesquisasConsolidadas,
   type WarRoomPesquisaConsolidadaReal,
@@ -18,6 +21,7 @@ import {
   calcPesquisasDesempenho,
 } from '@/lib/war-room/pesquisas-desempenho'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
+import { WarRoomPesquisaAndamentoModal } from '@/components/war-room/war-room-pesquisa-andamento-modal'
 import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
 import { WarRoomPesquisasDesempenhoView } from '@/components/war-room/war-room-pesquisas-desempenho-view'
 import {
@@ -38,14 +42,6 @@ const FILTRO_OPCOES: Array<{ id: PesquisaFiltro; label: string }> = [
   { id: 'andamento', label: 'Em andamento' },
   { id: 'desempenho', label: 'Desempenho' },
 ]
-
-const ANDAMENTO_STATUS_LABEL: Record<WarRoomPesquisaAndamentoStatus, string> = {
-  planejada: 'Planejada',
-  em_campo: 'Em campo',
-  processando: 'Processando',
-  entregue: 'Entregue',
-  atrasada: 'Atrasada',
-}
 
 const KPI_TONES = ['gold', 'slate', 'mist'] as const
 
@@ -73,8 +69,19 @@ function shortCityLabel(cidade: string): string {
   return upper.slice(0, 14)
 }
 
-function andamentoAtivos(rows: WarRoomPesquisaAndamento[]): WarRoomPesquisaAndamento[] {
-  return rows.filter((r) => r.status !== 'entregue')
+function SinalAndamento({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'wr-pesquisas-clean__live',
+        compact && 'wr-pesquisas-clean__live--compact',
+      )}
+      title="Pesquisa em andamento"
+    >
+      <span className="wr-pesquisas-clean__live-dot" aria-hidden />
+      {compact ? null : <span className="wr-pesquisas-clean__live-text">Em campo</span>}
+    </span>
+  )
 }
 
 /** Pesquisas consolidadas — filtros clean + finalizadas / em andamento / desempenho. */
@@ -87,9 +94,16 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
   const [candidatoFoco, setCandidatoFoco] = useState(() => resolveCandidatoIpt())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [andamentoAll, setAndamentoAll] = useState<WarRoomPesquisaAndamento[]>([])
+  const [andamentoLoading, setAndamentoLoading] = useState(true)
+  const [andamentoError, setAndamentoError] = useState<string | null>(null)
   const [localFiltro, setLocalFiltro] = useState<PesquisaFiltro>('finalizadas')
   const filtro: PesquisaFiltro = isDesempenho ? 'desempenho' : localFiltro
   const [rankingModal, setRankingModal] = useState<WarRoomPesquisaConsolidadaReal | null>(null)
+  const [andamentoModal, setAndamentoModal] = useState<WarRoomPesquisaAndamento | null | undefined>(
+    undefined,
+  )
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
   const selectFiltro = useCallback(
     (id: PesquisaFiltro) => {
@@ -103,10 +117,16 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     [setViewMode],
   )
 
-  const andamentoRows = useMemo(
-    () => andamentoAtivos(WAR_ROOM_PESQUISAS_ANDAMENTO),
-    [],
-  )
+  const andamentoRows = useMemo(() => andamentoAtivos(andamentoAll), [andamentoAll])
+
+  const loadAndamento = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
+    if (!silent) setAndamentoLoading(true)
+    const result = await fetchPesquisasAndamento()
+    setAndamentoAll(result.items)
+    setAndamentoError(result.error ?? null)
+    if (!silent) setAndamentoLoading(false)
+  }, [])
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -137,13 +157,14 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
 
   useEffect(() => {
     void load({ silent: false })
-  }, [load])
+    void loadAndamento({ silent: false })
+  }, [load, loadAndamento])
 
   useEffect(() => {
     return register('pesquisas', async ({ silent }) => {
-      await load({ silent })
+      await Promise.all([load({ silent }), loadAndamento({ silent })])
     })
-  }, [register, load])
+  }, [register, load, loadAndamento])
 
   const desempenhoKpis = useMemo(() => {
     if (pollsRaw.length === 0) return []
@@ -152,21 +173,24 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     )
   }, [pollsRaw, candidatoFoco])
 
-  // Snapshot só dos dados — não muda com a aba (evita pintar tudo como "alterado").
   const snapshotLines = useMemo(
-    () =>
-      rows.map(
+    () => [
+      ...rows.map(
         (r) =>
           `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
       ),
-    [rows],
+      ...andamentoRows.map(
+        (r) => `and:${r.id}\t${r.cidade}\t${r.instituto}\t${r.data}\t${r.status}`,
+      ),
+    ],
+    [rows, andamentoRows],
   )
 
   const { changedKeys } = useWarRoomSnapshot({
     cardId: 'pesquisas',
-    lines: loading && rows.length === 0 ? null : snapshotLines,
+    lines: loading && rows.length === 0 && andamentoLoading ? null : snapshotLines,
     noun: 'pesquisa',
-    ready: !loading || rows.length > 0,
+    ready: !loading || rows.length > 0 || !andamentoLoading,
   })
 
   useEffect(() => {
@@ -176,6 +200,10 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
   const changedSet = useMemo(() => new Set(changedKeys), [changedKeys])
 
   const highlights = useMemo(() => rows.slice(0, HIGHLIGHTS_COUNT), [rows])
+  const andamentoHighlights = useMemo(
+    () => andamentoRows.slice(0, HIGHLIGHTS_COUNT),
+    [andamentoRows],
+  )
 
   const finalizadasList = useMemo(() => rows.slice(0, LIST_VISIBLE), [rows])
   const andamentoList = useMemo(
@@ -189,7 +217,32 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
   const showKpis = filtro === 'finalizadas'
 
   const emptyFinalizadas = !loading && rows.length === 0
-  const emptyAndamento = andamentoList.length === 0
+  const emptyAndamento = !andamentoLoading && andamentoList.length === 0
+
+  const openIncluir = () => {
+    selectFiltro('andamento')
+    setAndamentoModal(null)
+  }
+
+  const handleAndamentoSaved = (item: WarRoomPesquisaAndamento) => {
+    setAndamentoAll((prev) => {
+      const without = prev.filter((r) => r.id !== item.id)
+      return [item, ...without]
+    })
+    setAndamentoModal(undefined)
+    selectFiltro('andamento')
+  }
+
+  const handleRemoveAndamento = async (row: WarRoomPesquisaAndamento) => {
+    setRemovingId(row.id)
+    const result = await deletePesquisaAndamento(row.id)
+    setRemovingId(null)
+    if (result.error) {
+      setAndamentoError(result.error)
+      return
+    }
+    setAndamentoAll((prev) => prev.filter((r) => r.id !== row.id))
+  }
 
   return (
     <section
@@ -204,30 +257,52 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
             <p className="wr-pesquisas-clean__sub">
               {showDesempenho
                 ? 'Cobertura · top 5 · eleitorado · votos válidos'
-                : 'Resultados e campo · Votos válidos'}
+                : showAndamento
+                  ? 'Campo em aberto · data · instituto · cidade'
+                  : 'Resultados e campo · Votos válidos'}
             </p>
           </div>
           {change ? <WarRoomChangeBadge change={change} /> : null}
         </div>
-        <div
-          className="wr-pesquisas-clean__filtros"
-          role="group"
-          aria-label="Filtrar pesquisas"
-        >
-          {FILTRO_OPCOES.map((opcao) => (
+        <div className="wr-pesquisas-clean__toolbar">
+          <div
+            className="wr-pesquisas-clean__filtros"
+            role="group"
+            aria-label="Filtrar pesquisas"
+          >
+            {FILTRO_OPCOES.map((opcao) => (
+              <button
+                key={opcao.id}
+                type="button"
+                aria-pressed={filtro === opcao.id}
+                className={cn(
+                  'wr-pesquisas-clean__filtro',
+                  filtro === opcao.id && 'wr-pesquisas-clean__filtro--ativo',
+                )}
+                onClick={() => selectFiltro(opcao.id)}
+              >
+                {opcao.id === 'andamento' && andamentoRows.length > 0 ? (
+                  <SinalAndamento compact />
+                ) : null}
+                {opcao.label}
+                {opcao.id === 'andamento' && andamentoRows.length > 0 ? (
+                  <span className="wr-pesquisas-clean__filtro-count tabular-nums">
+                    {andamentoRows.length}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+          {!showDesempenho ? (
             <button
-              key={opcao.id}
               type="button"
-              aria-pressed={filtro === opcao.id}
-              className={cn(
-                'wr-pesquisas-clean__filtro',
-                filtro === opcao.id && 'wr-pesquisas-clean__filtro--ativo',
-              )}
-              onClick={() => selectFiltro(opcao.id)}
+              className="wr-pesquisas-clean__incluir"
+              onClick={openIncluir}
             >
-              {opcao.label}
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              Incluir
             </button>
-          ))}
+          ) : null}
         </div>
       </header>
 
@@ -247,8 +322,22 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         <p className="wr-pesquisas-clean__state">
           {error ?? 'Nenhuma pesquisa finalizada no momento.'}
         </p>
+      ) : andamentoLoading && filtro === 'andamento' && andamentoList.length === 0 ? (
+        <div className="wr-pesquisas-clean__state">
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" strokeWidth={1.5} />
+        </div>
       ) : emptyAndamento && filtro === 'andamento' ? (
-        <p className="wr-pesquisas-clean__state">Nenhuma pesquisa em andamento.</p>
+        <div className="wr-pesquisas-clean__state wr-pesquisas-clean__state--stack">
+          <p>{andamentoError ?? 'Nenhuma pesquisa em andamento.'}</p>
+          <button
+            type="button"
+            className="wr-pesquisas-clean__incluir wr-pesquisas-clean__incluir--cta"
+            onClick={openIncluir}
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            Incluir pesquisa em campo
+          </button>
+        </div>
       ) : emptyFinalizadas && emptyAndamento ? (
         <p className="wr-pesquisas-clean__state">
           {error ?? 'Nenhuma pesquisa no momento.'}
@@ -282,6 +371,38 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
             </div>
           ) : null}
 
+          {showAndamento && andamentoHighlights.length > 0 ? (
+            <div className="wr-pesquisas-clean__kpis" aria-label="Pesquisas em campo">
+              {andamentoHighlights.map((row, index) => {
+                const tone = KPI_TONES[index % KPI_TONES.length]
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className={cn(
+                      'wr-pesquisas-clean__kpi',
+                      'wr-pesquisas-clean__kpi--live',
+                      `wr-pesquisas-clean__kpi--${tone}`,
+                      changedSet.has(`and:${row.id}`) && 'wr-row--changed',
+                    )}
+                    title={`${row.dataLabel} · ${row.instituto} · ${row.cidade}`}
+                    onClick={() => setAndamentoModal(row)}
+                  >
+                    <span className="wr-pesquisas-clean__kpi-live">
+                      <SinalAndamento compact />
+                      <span className="wr-pesquisas-clean__kpi-value tabular-nums">
+                        {row.dataLabel}
+                      </span>
+                    </span>
+                    <span className="wr-pesquisas-clean__kpi-label">
+                      {row.instituto} · {shortCityLabel(row.cidade)}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+
           {showAndamento && andamentoList.length > 0 ? (
             <>
               <p className="wr-pesquisas-clean__section">
@@ -295,35 +416,52 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
                 >
                   <span>Município</span>
                   <span className="wr-col-hide-sm">Instituto</span>
-                  <span>Entrega</span>
-                  <span className="text-right">Status</span>
+                  <span>Data</span>
+                  <span className="text-right">Sinal</span>
                 </li>
-                {andamentoList.map((row) => {
-                  const status = row.status ?? 'planejada'
-                  return (
-                    <li
-                      key={`${row.cidade}-${row.instituto}-${row.termino}`}
-                      className="wr-pesquisas-clean__row wr-pesquisas-clean__row--andamento"
-                      title={`${row.cidade} · ${row.instituto} · ${ANDAMENTO_STATUS_LABEL[status]}`}
-                    >
-                      <span className="wr-pesquisas-clean__city truncate">{row.cidade}</span>
-                      <span className="wr-pesquisas-clean__meta truncate wr-col-hide-sm">
-                        {row.instituto}
-                      </span>
-                      <span className="wr-pesquisas-clean__meta tabular-nums">
-                        {row.entrega}
-                      </span>
-                      <span
-                        className={cn(
-                          'wr-pesquisas-clean__status',
-                          `wr-pesquisas-clean__status--${status}`,
-                        )}
+                {andamentoList.map((row) => (
+                  <li
+                    key={row.id}
+                    role="button"
+                    tabIndex={0}
+                    className={cn(
+                      'wr-pesquisas-clean__row',
+                      'wr-pesquisas-clean__row--andamento',
+                      'wr-pesquisas-clean__row--clickable',
+                      changedSet.has(`and:${row.id}`) && 'wr-row--changed',
+                    )}
+                    title={`${row.dataLabel} · ${row.instituto} · ${row.cidade} · em andamento`}
+                    onClick={() => setAndamentoModal(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setAndamentoModal(row)
+                    }}
+                  >
+                    <span className="wr-pesquisas-clean__city truncate">{row.cidade}</span>
+                    <span className="wr-pesquisas-clean__meta truncate wr-col-hide-sm">
+                      {row.instituto}
+                    </span>
+                    <span className="wr-pesquisas-clean__meta tabular-nums">{row.dataLabel}</span>
+                    <span className="wr-pesquisas-clean__live-cell">
+                      <SinalAndamento />
+                      <button
+                        type="button"
+                        className="wr-pesquisas-clean__remove"
+                        aria-label={`Remover ${row.cidade}`}
+                        disabled={removingId === row.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleRemoveAndamento(row)
+                        }}
                       >
-                        {ANDAMENTO_STATUS_LABEL[status]}
-                      </span>
-                    </li>
-                  )
-                })}
+                        {removingId === row.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.5} />
+                        ) : (
+                          <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+                        )}
+                      </button>
+                    </span>
+                  </li>
+                ))}
               </ul>
             </>
           ) : null}
@@ -384,6 +522,14 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         <WarRoomPesquisaRankingModal
           pesquisa={rankingModal}
           onClose={() => setRankingModal(null)}
+        />
+      ) : null}
+
+      {andamentoModal !== undefined ? (
+        <WarRoomPesquisaAndamentoModal
+          initial={andamentoModal}
+          onClose={() => setAndamentoModal(undefined)}
+          onSaved={handleAndamentoSaved}
         />
       ) : null}
     </section>
