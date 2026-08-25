@@ -6,6 +6,7 @@
  * Uso:
  *   node scripts/collect-meta-ads.mjs
  *   node scripts/collect-meta-ads.mjs --slug jadyel-alencar
+ *   node scripts/collect-meta-ads.mjs --purge-only
  */
 
 import fs from 'fs'
@@ -13,6 +14,12 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { chromium } from 'playwright'
 import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
+import {
+  actorInstagramHandle,
+  adBelongsToPoliticalActor,
+  filterAdsBelongingToActor,
+  foldMetaAdsMatchText,
+} from './lib/meta-ads-actor-match.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -150,10 +157,12 @@ function sleep(ms) {
 function parseArgs() {
   const args = process.argv.slice(2)
   let politicoSlug = null
+  let purgeOnly = false
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--slug' && args[i + 1]) politicoSlug = args[++i]
+    else if (args[i] === '--purge-only') purgeOnly = true
   }
-  return { politicoSlug }
+  return { politicoSlug, purgeOnly }
 }
 
 function buildSearchUrl(searchTerm, opts = {}) {
@@ -1330,38 +1339,67 @@ async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
     ads = await runListingSearch(page, searchTerm, 'keyword_exact_phrase', ctx, graphqlCollector)
   } else if (override === 'keyword_unordered') {
     ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
-  } else {
-    ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
-
-    const tryExact =
-      words.length >= 2 &&
-      (isDualSearchEnabled() || ads.length < 8)
-
-    if (tryExact) {
+  } else if (words.length >= 2) {
+    ads = await runListingSearch(page, searchTerm, 'keyword_exact_phrase', ctx, graphqlCollector)
+    if (ads.length === 0) {
       logProgress(
-        `${searchTerm}: segunda busca (frase exata) — ${isDualSearchEnabled() ? 'META_ADS_DUAL_SEARCH' : `só ${ads.length} na 1ª passagem`}`
+        `${searchTerm}: frase exata vazia — fallback unordered (depois filtra pelo candidato)`
       )
       await sleep(800)
-      const exactAds = await runListingSearch(
-        page,
-        searchTerm,
-        'keyword_exact_phrase',
-        ctx,
-        graphqlCollector
-      )
-      ads = mergeAdsByLibraryId(ads, exactAds)
-      logProgress(`${searchTerm}: total após merge — ${ads.length} anúncio(s)`)
+      ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
     }
+  } else {
+    ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
   }
 
   if (SKIP_GEO_DETAILS) return ads
   return enrichAdsWithDetails(page, ads, searchTerm, ctx)
 }
 
+async function scrapeAdsForActor(page, actor, ctx, graphqlCollector) {
+  const lists = [await scrapeAdsForTerm(page, actor.name, ctx, graphqlCollector)]
+  const handle = actorInstagramHandle(actor)
+  const nameFolded = foldMetaAdsMatchText(actor.name).replace(/\s+/g, '')
+  if (handle && handle !== nameFolded) {
+    logProgress(`${actor.name}: busca extra pelo @${handle}`)
+    await sleep(800)
+    lists.push(await scrapeAdsForTerm(page, handle, ctx, graphqlCollector))
+  }
+
+  const scraped = mergeAdsByLibraryId(...lists)
+  const ads = filterAdsBelongingToActor(scraped, actor)
+  if (scraped.length !== ads.length) {
+    logProgress(
+      `${actor.name}: ${scraped.length - ads.length} anúncio(s) de outras páginas/estados descartado(s)`
+    )
+  }
+  return ads
+}
+
+async function purgeUnrelatedAds(supabase, actor) {
+  const { data, error } = await supabase
+    .from('meta_ads_mentions')
+    .select('id, page_name, payer_name, ad_body')
+    .eq('politico_id', actor.id)
+  if (error) throw new Error(error.message)
+
+  const unrelatedIds = (data ?? [])
+    .filter((row) => !adBelongsToPoliticalActor(row, actor))
+    .map((row) => row.id)
+  if (unrelatedIds.length === 0) return 0
+
+  for (let i = 0; i < unrelatedIds.length; i += 100) {
+    const chunk = unrelatedIds.slice(i, i + 100)
+    const { error: delError } = await supabase.from('meta_ads_mentions').delete().in('id', chunk)
+    if (delError) throw new Error(delError.message)
+  }
+  return unrelatedIds.length
+}
+
 async function loadActiveActors(supabase, politicoSlug) {
   let query = supabase
     .from('political_actors')
-    .select('id, name, slug, actor_type, active')
+    .select('id, name, slug, actor_type, active, instagram_username')
     .eq('active', true)
     .order('name', { ascending: true })
 
@@ -1446,7 +1484,7 @@ async function upsertAds(supabase, politicoId, searchTerm, ads) {
 
 async function main() {
   loadEnvLocal()
-  const { politicoSlug } = parseArgs()
+  const { politicoSlug, purgeOnly } = parseArgs()
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -1479,6 +1517,31 @@ async function main() {
   if (actors.length === 0) {
     emit({ ok: false, error: 'Nenhum candidato ativo para coletar.' })
     process.exit(1)
+  }
+
+  if (purgeOnly) {
+    const results = []
+    let adsPurged = 0
+    for (const actor of actors) {
+      const purged = await purgeUnrelatedAds(supabase, actor)
+      adsPurged += purged
+      logProgress(`${actor.name}: ${purged} anúncio(s) irrelevante(s) removido(s)`)
+      results.push({
+        politicoId: actor.id,
+        politicoName: actor.name,
+        adsFound: 0,
+        adsInserted: 0,
+        adsUpdated: 0,
+        adsPurged: purged,
+        errors: [],
+      })
+    }
+    emit({
+      ok: true,
+      results,
+      totals: { adsFound: 0, adsInserted: 0, adsUpdated: 0, adsPurged, errors: [] },
+    })
+    return
   }
 
   const estSecPerActor = SKIP_GEO_DETAILS ? 18 : 90
@@ -1532,6 +1595,7 @@ async function main() {
         adsFound: 0,
         adsInserted: 0,
         adsUpdated: 0,
+        adsPurged: 0,
         errors: [],
       }
 
@@ -1542,7 +1606,7 @@ async function main() {
           phase: 'listing',
           message: `Candidato ${i + 1}/${actors.length}: ${actor.name}`,
         })
-        const ads = await scrapeAdsForTerm(page, actor.name, ctx, graphqlCollector)
+        const ads = await scrapeAdsForActor(page, actor, ctx, graphqlCollector)
         result.adsFound = ads.length
         await ctx.report({
           phase: 'upsert',
@@ -1552,14 +1616,22 @@ async function main() {
         const { inserted, updated } = await upsertAds(supabase, actor.id, actor.name, ads)
         result.adsInserted = inserted
         result.adsUpdated = updated
+        result.adsPurged = await purgeUnrelatedAds(supabase, actor)
         logProgress(
           `${actor.name}: concluído em ${formatElapsed(Date.now() - actorStarted)} — ` +
-            `${ads.length} anúncios (${inserted} novos, ${updated} atualizados)`
+            `${ads.length} anúncios (${inserted} novos, ${updated} atualizados` +
+            (result.adsPurged ? `, ${result.adsPurged} irrelevantes removidos` : '') +
+            ')'
         )
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Erro desconhecido'
         result.errors.push(msg)
         logProgress(`${actor.name}: ERRO — ${msg}`)
+        try {
+          result.adsPurged = await purgeUnrelatedAds(supabase, actor)
+        } catch {
+          /* mantém o erro original da coleta */
+        }
       }
 
       results.push(result)

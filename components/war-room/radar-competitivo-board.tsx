@@ -1,17 +1,16 @@
 'use client'
 
-import { Loader2, Star } from 'lucide-react'
-import { useEffect, useMemo, useState, Fragment, type ReactNode } from 'react'
+import { ImageIcon, Layers, Loader2, Star, Video } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
 import '@/app/dashboard/war-room/radar-competitivo-ios.css'
 import {
   buildRadarCompetitivoModel,
   formatCompact,
   type RadarCompetitivoCandidate,
-  type RadarCompetitivoModel,
   type RadarCommenterStatsInput,
+  type RadarFormatKey,
 } from '@/lib/war-room/radar-competitivo-model'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
-import { proxiedInstagramMediaUrl } from '@/lib/instagram-cdn-proxy'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
@@ -54,116 +53,197 @@ function Avatar({
   )
 }
 
-function WinStar({ show }: { show: boolean }) {
-  if (!show) return <span className="rc-ios-map__win" aria-hidden />
-  return <Star className="rc-ios-map__win" size={10} fill="currentColor" strokeWidth={0} aria-label="Vencedor" />
+function postCaptionPreview(caption: string | null): string {
+  if (!caption) return 'Sem legenda'
+  return caption.replace(/\s+/g, ' ').trim()
 }
 
-function MetricBar({
-  value,
-  max,
-  color,
-  display,
-  win,
-  title,
-}: {
-  value: number
-  max: number
-  color: string
-  display: string
-  win: boolean
-  title?: string
-}) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const barColor = win ? '#F2D06B' : color
-  return (
-    <div className="rc-ios-map__cell" title={title}>
-      <div className="rc-ios-bar" aria-hidden>
-        <span
-          className="rc-ios-bar__fill"
-          style={{ width: `${pct}%`, ['--rc-bar-color' as string]: barColor }}
-        />
-      </div>
-      <span className="rc-ios-map__val">{display}</span>
-      <WinStar show={win} />
-    </div>
-  )
-}
-
-function TopPostThumb({
-  thumbnailUrl,
-  name,
-}: {
-  thumbnailUrl: string | null
-  name: string
-}) {
-  const [broken, setBroken] = useState(false)
-  const src = proxiedInstagramMediaUrl(thumbnailUrl)
-  const showImg = Boolean(src) && !broken
-
-  useEffect(() => {
-    setBroken(false)
-  }, [src])
-
-  return (
-    <>
-      {showImg ? (
-        <img
-          src={src!}
-          alt=""
-          referrerPolicy="no-referrer"
-          loading="lazy"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        <div
-          className="rc-ios-top__media-fallback"
-          style={{ background: 'linear-gradient(160deg, #ececea, #f7f7f6)' }}
-          aria-hidden
-        >
-          <span>{initials(name)}</span>
-        </div>
-      )}
-    </>
-  )
+function igHandle(username: string | null): string | null {
+  if (!username) return null
+  const u = username.replace(/^@/, '').trim()
+  return u ? `@${u}` : null
 }
 
 function PresentationStage({ children }: { children: ReactNode }) {
   return <div className="rc-ios-stage">{children}</div>
 }
 
-function FormatPerfCell({
-  format,
-  avgEngagement,
-  count,
-  max,
+const MIX_PILL_COUNT = 16
+
+type MixKey = 'image' | 'reels' | 'carousel'
+
+function mixPillKinds(
+  mix: { image: number; reels: number; carousel: number },
+  n = MIX_PILL_COUNT,
+): MixKey[] {
+  const sum = Math.max(1, mix.image + mix.reels + mix.carousel)
+  const raw: Array<{ k: MixKey; v: number }> = [
+    { k: 'image', v: (mix.image / sum) * n },
+    { k: 'reels', v: (mix.reels / sum) * n },
+    { k: 'carousel', v: (mix.carousel / sum) * n },
+  ]
+  const counts: Record<MixKey, number> = {
+    image: Math.floor(raw[0]!.v),
+    reels: Math.floor(raw[1]!.v),
+    carousel: Math.floor(raw[2]!.v),
+  }
+  let left = n - counts.image - counts.reels - counts.carousel
+  for (const item of [...raw].sort((a, b) => (b.v % 1) - (a.v % 1))) {
+    if (left <= 0) break
+    counts[item.k] += 1
+    left -= 1
+  }
+  return [
+    ...Array<MixKey>(counts.image).fill('image'),
+    ...Array<MixKey>(counts.reels).fill('reels'),
+    ...Array<MixKey>(counts.carousel).fill('carousel'),
+  ]
+}
+
+function MixPills({
+  mix,
+  label,
 }: {
-  format: 'image' | 'reels' | 'carousel'
-  avgEngagement: number
-  count: number
-  max: number
+  mix: { image: number; reels: number; carousel: number }
+  label: string
 }) {
-  const pct = max > 0 ? Math.min(100, Math.round((avgEngagement / max) * 100)) : 0
-  const empty = count === 0
   return (
-    <div
-      className={cn('rc-ios-fperf__cell', empty && 'rc-ios-fperf__cell--empty')}
-      title={
-        empty
-          ? 'Sem posts neste formato'
-          : `${formatCompact(avgEngagement)} eng. médio · ${count} post${count === 1 ? '' : 's'}`
-      }
-    >
-      <div className="rc-ios-fperf__bar" aria-hidden>
-        <span
-          className={`rc-ios-fperf__fill rc-ios-fperf__fill--${format}`}
-          style={{ width: empty ? '0%' : `${Math.max(pct, avgEngagement > 0 ? 6 : 0)}%` }}
-        />
-      </div>
-      <span className="rc-ios-fperf__val tabular-nums">
-        {empty ? '—' : formatCompact(avgEngagement)}
-      </span>
+    <div className="rc-ios-pills rc-ios-dna__pills" aria-label={label}>
+      {mixPillKinds(mix).map((kind, i) => (
+        <i key={`${kind}-${i}`} className={`rc-ios-pills__tick rc-ios-pills__tick--${kind}`} />
+      ))}
     </div>
+  )
+}
+
+function SharePills({ pct }: { pct: number }) {
+  const on = Math.round((Math.min(100, Math.max(0, pct)) / 100) * MIX_PILL_COUNT)
+  return (
+    <div className="rc-ios-pills" aria-hidden>
+      {Array.from({ length: MIX_PILL_COUNT }, (_, i) => (
+        <i key={i} className={cn('rc-ios-pills__tick', i < on && 'rc-ios-pills__tick--on')} />
+      ))}
+    </div>
+  )
+}
+
+type FormatRankEntry = {
+  candidate: RadarCompetitivoCandidate
+  avg: number
+  rank: number
+}
+
+function isHomeCandidate(c: RadarCompetitivoCandidate): boolean {
+  return /jadyel/i.test(`${c.slug} ${c.name}`)
+}
+
+function rankByFormat(
+  candidates: RadarCompetitivoCandidate[],
+  format: RadarFormatKey,
+): FormatRankEntry[] {
+  return [...candidates]
+    .map((candidate) => ({
+      candidate,
+      avg: candidate.formatPerf[format].avgEngagement,
+    }))
+    .sort((a, b) => b.avg - a.avg || a.candidate.rank - b.candidate.rank)
+    .map((row, i) => ({ ...row, rank: i + 1 }))
+}
+
+function homeBestFormat(ours: RadarCompetitivoCandidate | undefined): RadarFormatKey | null {
+  if (!ours) return null
+  const scores: Array<{ k: RadarFormatKey; v: number }> = [
+    { k: 'image', v: ours.formatPerf.image.avgEngagement },
+    { k: 'reels', v: ours.formatPerf.reels.avgEngagement },
+    { k: 'carousel', v: ours.formatPerf.carousel.avgEngagement },
+  ]
+  const max = Math.max(...scores.map((s) => s.v))
+  if (max <= 0) return null
+  return scores.find((s) => s.v === max)?.k ?? null
+}
+
+function FormatListCard({
+  format,
+  icon,
+  title,
+  ranked,
+  ours,
+  isBestFormat,
+}: {
+  format: RadarFormatKey
+  icon: ReactNode
+  title: string
+  ranked: FormatRankEntry[]
+  ours: RadarCompetitivoCandidate | undefined
+  isBestFormat: boolean
+}) {
+  const rows = ranked
+  const max = Math.max(...rows.map((r) => r.avg), 1)
+  const ourEntry = ours ? ranked.find((r) => r.candidate.slug === ours.slug) : undefined
+  const first = ranked[0]
+  const second = ranked[1]
+  const third = ranked[2]
+  const gapToTop3 =
+    ourEntry && ourEntry.rank > 3 && third
+      ? Math.max(0, Math.round(third.avg - ourEntry.avg))
+      : null
+  const leadPct =
+    isBestFormat && ourEntry?.rank === 1 && first && second && second.avg > 0
+      ? Math.round(((first.avg - second.avg) / second.avg) * 100)
+      : null
+
+  return (
+    <article className={`rc-ios-dominio-card rc-ios-dominio-card--${format}`}>
+      <header className="rc-ios-dominio-card__head">
+        <span className="rc-ios-dominio-card__icon">{icon}</span>
+        <div className="rc-ios-dominio-card__titles">
+          <h4 className="rc-ios-dominio-card__title">{title}</h4>
+          <p className="rc-ios-dominio-card__sub">Ranking no período</p>
+        </div>
+      </header>
+      <ul className="rc-ios-dominio-list">
+        {rows.map((row) => {
+          const pct = max > 0 ? Math.min(100, Math.round((row.avg / max) * 100)) : 0
+          const isOurs = ours?.slug === row.candidate.slug
+          const showGap = Boolean(isOurs && gapToTop3 != null)
+          return (
+            <li key={row.candidate.slug} className="rc-ios-dominio-list__row">
+              {row.rank === 1 ? null : (
+                <span className="rc-ios-champ__badge">{String(row.rank).padStart(2, '0')}</span>
+              )}
+              <div className="rc-ios-dominio-list__meta">
+                <span className="rc-ios-dominio-list__name">
+                  <span className="rc-ios-dominio-list__name-text">{row.candidate.name}</span>
+                  {row.rank === 1 ? (
+                    <span className="rc-ios-champ__badge rc-ios-champ__badge--top">TOP</span>
+                  ) : null}
+                </span>
+                <span className="rc-ios-dominio-list__bar" aria-hidden>
+                  <i style={{ width: `${Math.max(pct, row.avg > 0 ? 8 : 0)}%` }} />
+                </span>
+                {showGap ? (
+                  <span className="rc-ios-dominio-chase__gap">
+                    -{formatCompact(gapToTop3!)} para o TOP 3
+                  </span>
+                ) : null}
+              </div>
+              <strong className="rc-ios-dominio-list__val tabular-nums">
+                {row.avg > 0 ? formatCompact(row.avg) : '—'}
+              </strong>
+            </li>
+          )
+        })}
+      </ul>
+      {leadPct != null ? (
+        <p className="rc-ios-dominio-banner">
+          <Star size={11} fill="currentColor" strokeWidth={0} aria-hidden />
+          <span>
+            Esse é o nosso melhor formato!
+            <strong> +{leadPct}% sobre o 2º colocado.</strong>
+          </span>
+        </p>
+      ) : null}
+    </article>
   )
 }
 
@@ -197,15 +277,18 @@ export function RadarCompetitivoBoard({
     const cs = model.candidates
     return {
       eng: Math.max(...cs.map((c) => c.avgEngagement), 1),
-      comments: Math.max(...cs.map((c) => c.avgComments), 1),
-      reels: Math.max(...cs.map((c) => c.reelsShare), 1),
-      eff: Math.max(...cs.map((c) => c.efficiency), 1),
-      unique: Math.max(...cs.map((c) => c.uniqueCommenters), 1),
     }
   }, [model.candidates])
 
-  const reachRows = useMemo(() => {
-    return [...model.candidates].sort((a, b) => b.uniqueCommenters - a.uniqueCommenters)
+  const formatDomain = useMemo(() => {
+    const ours = model.candidates.find(isHomeCandidate)
+    return {
+      ours,
+      best: homeBestFormat(ours),
+      image: rankByFormat(model.candidates, 'image'),
+      reels: rankByFormat(model.candidates, 'reels'),
+      carousel: rankByFormat(model.candidates, 'carousel'),
+    }
   }, [model.candidates])
 
   if (loading && model.empty) {
@@ -225,19 +308,22 @@ export function RadarCompetitivoBoard({
     )
   }
 
-  const w = model.winners
-
   return (
-    <div className="rc-ios" style={{ width: '100%', height: '100%', minHeight: 0 }}>
+    <div className="rc-ios rc-ios--game" style={{ width: '100%', height: '100%', minHeight: 0 }}>
       <PresentationStage>
         <div className="rc-ios-board" role="region" aria-label="Radar Competitivo">
           <div className="rc-ios-main">
-            <section className="rc-ios-panel rc-ios-panel--glass" aria-label="Visão geral competitiva">
+            <section className="rc-ios-panel rc-ios-champs" aria-label="Visão geral competitiva">
               <div className="rc-ios-panel__head">
-                <h3 className="rc-ios-panel__title">Visão geral competitiva</h3>
+                <div className="rc-ios-panel__heading">
+                  <h3 className="rc-ios-panel__title">Elenco competitivo</h3>
+                  <p className="rc-ios-panel__metric-label">
+                    Engajamento médio por post (curtidas + comentários)
+                  </p>
+                </div>
                 <div className="rc-ios-panel__head-actions">
                   <p className="rc-ios-panel__hint">
-                    {model.candidates.length} perfis · {periodLabel} · selecione até {MAX_SELECT}
+                    {model.candidates.length} perfis · {periodLabel} · toque para selecionar
                   </p>
                   <button
                     type="button"
@@ -247,239 +333,53 @@ export function RadarCompetitivoBoard({
                     )}
                     disabled={!compareReady}
                   >
-                    Comparar selecionados ({selected.length})
+                    Comparar ({selected.length})
                   </button>
                 </div>
               </div>
-              <div className="rc-ios-profiles">
-                {Array.from({ length: 9 }).map((_, i) => {
-                  const c = model.candidates[i]
-                  if (!c) {
-                    return <div key={`empty-${i}`} className="rc-ios-profile" aria-hidden />
-                  }
+              <div className="rc-ios-champs__strip">
+                {model.candidates.map((c) => {
                   const isOn = selected.includes(c.slug)
+                  const share = maxes.eng > 0 ? (c.avgEngagement / maxes.eng) * 100 : 0
                   return (
                     <button
                       key={c.slug}
                       type="button"
                       className={cn(
-                        'rc-ios-profile',
-                        hasSelection && !isOn && 'rc-ios-profile--dim',
-                        isOn && 'rc-ios-profile--selected',
+                        'rc-ios-champ',
+                        c.rank === 1 && 'rc-ios-champ--lead',
+                        hasSelection && !isOn && 'rc-ios-champ--dim',
+                        isOn && 'rc-ios-champ--selected',
                       )}
                       onClick={() => toggle(c.slug)}
                       aria-pressed={isOn}
                     >
-                      <span className="rc-ios-profile__rank">{String(c.rank).padStart(2, '0')}</span>
+                      <span className={cn('rc-ios-champ__badge', c.rank === 1 && 'rc-ios-champ__badge--top')}>
+                        {c.rank === 1 ? 'TOP' : String(c.rank).padStart(2, '0')}
+                      </span>
                       <Avatar
                         name={c.name}
                         url={c.avatarUrl}
-                        className="rc-ios-profile__avatar"
-                        fallbackClassName="rc-ios-profile__avatar--fb"
+                        className="rc-ios-champ__avatar"
+                        fallbackClassName="rc-ios-champ__avatar--fb"
                       />
-                      <p className="rc-ios-profile__name">{c.name}</p>
+                      <p className="rc-ios-champ__name">{c.name}</p>
+                      <p className="rc-ios-champ__stat">{formatCompact(c.avgEngagement)}</p>
+                      <SharePills pct={share} />
                     </button>
                   )
                 })}
               </div>
             </section>
 
-            <div className="rc-ios-mid">
-              <section className="rc-ios-panel rc-ios-rank" aria-label="Ranking geral">
-                <div className="rc-ios-panel__head">
-                  <h3 className="rc-ios-panel__title">Ranking geral</h3>
-                  <p className="rc-ios-panel__hint">Média/post</p>
-                </div>
-                <ul className="rc-ios-rank__list">
-                  {model.candidates.map((c) => (
-                    <li key={c.slug} className="rc-ios-rank__row">
-                      <span className="rc-ios-rank__pos">
-                        {String(c.rank).padStart(2, '0')}
-                      </span>
-                      <Avatar
-                        name={c.name}
-                        url={c.avatarUrl}
-                        className="rc-ios-rank__avatar"
-                        fallbackClassName="rc-ios-rank__avatar--fb"
-                      />
-                      <span className="rc-ios-rank__name">
-                        {c.name}
-                        {c.slug === w.engagementSlug ? (
-                          <Star className="rc-ios-rank__star" size={11} fill="currentColor" strokeWidth={0} />
-                        ) : null}
-                      </span>
-                      <span
-                        className="rc-ios-rank__val"
-                        title="(curtidas + comentários) ÷ posts no período"
-                      >
-                        {formatCompact(c.avgEngagement)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="rc-ios-panel rc-ios-map" aria-label="Mapa de performance com ênfase em Reels">
-                <div className="rc-ios-panel__head">
-                  <h3 className="rc-ios-panel__title">Mapa de performance · ênfase Reels</h3>
-                  <p className="rc-ios-panel__hint">
-                    Views em índice 100 = maior do grupo · anúncio infla o absoluto
-                  </p>
-                </div>
-                <div className="rc-ios-map__table">
-                  <div className="rc-ios-map__th rc-ios-map__th--name">#</div>
-                  <div className="rc-ios-map__th">Engajamento</div>
-                  <div className="rc-ios-map__th" title="Índice 100 = maior média de views. Patrocínio distorce o número absoluto.">
-                    Views rel.
-                  </div>
-                  <div className="rc-ios-map__th">Comentários</div>
-                  <div className="rc-ios-map__th">Reels</div>
-                  <div className="rc-ios-map__th" title="(engajamento médio / views médias) × 100">
-                    Eficiência
-                  </div>
-                  {model.candidates.map((c, i) => (
-                    <MapRow
-                      key={c.slug}
-                      c={c}
-                      mapIndex={i}
-                      maxes={maxes}
-                      winners={w}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              <section className="rc-ios-panel rc-ios-pulse" aria-label="Alcance de conversa">
-                <div className="rc-ios-panel__head">
-                  <h3 className="rc-ios-panel__title">Alcance de conversa</h3>
-                  <p className="rc-ios-panel__hint">
-                    Contas únicas nos comentários · posts no período
-                  </p>
-                </div>
-                <div className="rc-ios-reach">
-                  <div className="rc-ios-reach__head" aria-hidden>
-                    <span className="rc-ios-reach__h-perfil">Perfil</span>
-                    <span className="rc-ios-reach__h-posts">Posts</span>
-                    <span className="rc-ios-reach__h-unique" title="Contas únicas nos comentários">
-                      Únicas
-                    </span>
-                    <span
-                      className="rc-ios-reach__h-recur"
-                      title="Comentários amostrados ÷ contas únicas — alto = mesmas contas voltando"
-                    >
-                      Recorr.
-                    </span>
-                  </div>
-                  <ul className="rc-ios-reach__list">
-                    {reachRows.map((c, i) => {
-                      const barPct =
-                        maxes.unique > 0
-                          ? Math.min(100, Math.round((c.uniqueCommenters / maxes.unique) * 100))
-                          : 0
-                      const dimmed = hasSelection && !selected.includes(c.slug)
-                      return (
-                        <li
-                          key={c.slug}
-                          className={cn('rc-ios-reach__row', dimmed && 'rc-ios-reach__row--dim')}
-                        >
-                          <span className="rc-ios-reach__rank">{String(i + 1).padStart(2, '0')}</span>
-                          <span className="rc-ios-reach__name" title={c.name}>
-                            {c.name}
-                          </span>
-                          <span className="rc-ios-reach__posts tabular-nums">{c.postCount}</span>
-                          <div className="rc-ios-reach__unique">
-                            <div className="rc-ios-reach__bar" aria-hidden>
-                              <span
-                                className="rc-ios-reach__fill"
-                                style={{
-                                  width: c.uniqueCommenters > 0 ? `${Math.max(barPct, 6)}%` : '0%',
-                                }}
-                              />
-                            </div>
-                            <span className="rc-ios-reach__val tabular-nums">
-                              {c.uniqueCommenters > 0 ? formatCompact(c.uniqueCommenters) : '—'}
-                            </span>
-                          </div>
-                          <span
-                            className="rc-ios-reach__recur tabular-nums"
-                            title={
-                              c.uniqueCommenters > 0
-                                ? `${c.commentsSampled} comentários amostrados / ${c.uniqueCommenters} contas`
-                                : 'Sem amostra de comentários — rode a coleta Apify'
-                            }
-                          >
-                            {c.uniqueCommenters > 0
-                              ? `${c.commentsPerUnique.toFixed(1).replace('.', ',')}×`
-                              : '—'}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  {reachRows.every((c) => c.uniqueCommenters === 0) ? (
-                    <p className="rc-ios-reach__empty">
-                      Sem comentários coletados ainda. Execute a coleta do Radar (Apify comments) e o
-                      SQL <code>create-instagram-radar-comments-table.sql</code>.
-                    </p>
-                  ) : null}
-                </div>
-              </section>
-            </div>
-
-            <div className="rc-ios-bottom">
-              <section className="rc-ios-panel rc-ios-dna" aria-label="DNA do conteúdo">
-                <div className="rc-ios-panel__head">
+            <section className="rc-ios-panel rc-ios-dna" aria-label="DNA do conteúdo">
+              <div className="rc-ios-panel__head">
+                <div className="rc-ios-panel__heading">
                   <h3 className="rc-ios-panel__title">DNA do conteúdo</h3>
+                  <p className="rc-ios-panel__metric-label">
+                    Mix de formatos no período (imagem · reels · carrossel)
+                  </p>
                 </div>
-                <ul className="rc-ios-dna__rows">
-                  {model.candidates.map((c) => {
-                    const mix = c.contentMix
-                    const sum = Math.max(1, mix.image + mix.reels + mix.carousel)
-                    return (
-                      <li key={c.slug} className="rc-ios-dna__row">
-                        <span className="rc-ios-dna__rank">
-                          {String(c.rank).padStart(2, '0')}
-                        </span>
-                        <div className="rc-ios-dna__main">
-                          <div
-                            className="rc-ios-dna__stack"
-                            aria-label={`${c.name}: imagem ${mix.image}%, reels ${mix.reels}%, carrossel ${mix.carousel}%`}
-                          >
-                            <span
-                              className="rc-ios-dna__seg"
-                              style={{
-                                width: `${(mix.image / sum) * 100}%`,
-                                background: 'var(--rc-mix-image)',
-                              }}
-                              title={`Imagem ${mix.image}%`}
-                            />
-                            <span
-                              className="rc-ios-dna__seg"
-                              style={{
-                                width: `${(mix.reels / sum) * 100}%`,
-                                background: 'var(--rc-mix-reels)',
-                              }}
-                              title={`Reels ${mix.reels}%`}
-                            />
-                            <span
-                              className="rc-ios-dna__seg"
-                              style={{
-                                width: `${(mix.carousel / sum) * 100}%`,
-                                background: 'var(--rc-mix-carousel)',
-                              }}
-                              title={`Carrossel ${mix.carousel}%`}
-                            />
-                          </div>
-                          <div className="rc-ios-dna__pcts" aria-hidden>
-                            <span style={{ color: 'var(--rc-mix-image)' }}>{mix.image}%</span>
-                            <span style={{ color: 'var(--rc-mix-reels)' }}>{mix.reels}%</span>
-                            <span style={{ color: 'var(--rc-mix-carousel)' }}>{mix.carousel}%</span>
-                          </div>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
                 <div className="rc-ios-dna__legend">
                   <span>
                     <i style={{ background: 'var(--rc-mix-image)' }} />
@@ -493,225 +393,136 @@ export function RadarCompetitivoBoard({
                     <i style={{ background: 'var(--rc-mix-carousel)' }} />
                     Carrossel
                   </span>
-                  <span className="rc-ios-dna__legend-note">soma 100%</span>
                 </div>
-              </section>
+              </div>
+              <div className="rc-ios-dna__grid">
+                {model.candidates.map((c) => {
+                  const mix = c.contentMix
+                  return (
+                    <article
+                      key={c.slug}
+                      className={cn(
+                        'rc-ios-dna-tile',
+                        hasSelection && !selected.includes(c.slug) && 'rc-ios-dna-tile--dim',
+                      )}
+                    >
+                      <header className="rc-ios-dna-tile__head">
+                        <p className="rc-ios-dna-tile__name" title={c.name}>
+                          {c.name}
+                        </p>
+                      </header>
+                      <MixPills
+                        mix={mix}
+                        label={`${c.name}: imagem ${mix.image}%, reels ${mix.reels}%, carrossel ${mix.carousel}%`}
+                      />
+                      <p className="rc-ios-dna-tile__pcts" aria-hidden>
+                        <span style={{ color: 'var(--rc-mix-image)' }}>{mix.image}%</span>
+                        <span style={{ color: 'var(--rc-mix-reels)' }}>{mix.reels}%</span>
+                        <span style={{ color: 'var(--rc-mix-carousel)' }}>{mix.carousel}%</span>
+                      </p>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
 
-              <div className="rc-ios-center-stack">
-                <section className="rc-ios-panel rc-ios-tops" aria-label="Top conteúdos">
-                  <div className="rc-ios-panel__head">
-                    <h3 className="rc-ios-panel__title">Top conteúdos do universo</h3>
-                    <p className="rc-ios-panel__hint">Engajamento</p>
-                  </div>
-                  <div className="rc-ios-tops__strip">
-                    {Array.from({ length: 8 }).map((_, i) => {
-                      const p = model.topPosts[i]
-                      if (!p) {
-                        return (
-                          <div key={`top-empty-${i}`} className="rc-ios-top rc-ios-top--empty" aria-hidden>
-                            <div className="rc-ios-top__media rc-ios-top__media--empty">
-                              <span className="rc-ios-top__badge">{String(i + 1).padStart(2, '0')}</span>
-                            </div>
-                          </div>
-                        )
-                      }
-                      return (
+            <div className="rc-ios-split">
+            <section
+              className="rc-ios-panel rc-ios-fperf"
+              aria-label="Performance por formato"
+            >
+              <div className="rc-ios-panel__head">
+                <div className="rc-ios-panel__heading">
+                  <h3 className="rc-ios-panel__title">Performance por formato</h3>
+                  <p className="rc-ios-panel__metric-label">
+                    Quem performa melhor em cada tipo de conteúdo
+                  </p>
+                </div>
+              </div>
+              <div className="rc-ios-dominio">
+                <FormatListCard
+                  format="reels"
+                  title="Reels"
+                  icon={<Video size={13} strokeWidth={2.2} aria-hidden />}
+                  ranked={formatDomain.reels}
+                  ours={formatDomain.ours}
+                  isBestFormat={formatDomain.best === 'reels'}
+                />
+                <FormatListCard
+                  format="image"
+                  title="Imagem"
+                  icon={<ImageIcon size={13} strokeWidth={2.2} aria-hidden />}
+                  ranked={formatDomain.image}
+                  ours={formatDomain.ours}
+                  isBestFormat={formatDomain.best === 'image'}
+                />
+                <FormatListCard
+                  format="carousel"
+                  title="Carrossel"
+                  icon={<Layers size={13} strokeWidth={2.2} aria-hidden />}
+                  ranked={formatDomain.carousel}
+                  ours={formatDomain.ours}
+                  isBestFormat={formatDomain.best === 'carousel'}
+                />
+              </div>
+            </section>
+
+            <section className="rc-ios-panel rc-ios-tops" aria-label="Top conteúdos">
+              <div className="rc-ios-panel__head">
+                <div className="rc-ios-panel__heading">
+                  <h3 className="rc-ios-panel__title">Top conteúdos do universo</h3>
+                  <p className="rc-ios-panel__metric-label">
+                    Melhor post de cada perfil no período
+                  </p>
+                </div>
+              </div>
+              <ul className="rc-ios-tops__list">
+                {model.topPosts.length === 0 ? (
+                  <li className="rc-ios-tops__empty">Sem posts no período.</li>
+                ) : (
+                  model.topPosts.map((p) => {
+                    const handle = igHandle(p.username)
+                    const caption = postCaptionPreview(p.caption)
+                    return (
+                      <li key={p.id}>
                         <a
-                          key={p.id}
-                          className="rc-ios-top"
+                          className={cn('rc-ios-tops__row', p.rank === 1 && 'rc-ios-tops__row--lead')}
                           href={p.postUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <div className="rc-ios-top__media">
-                            <TopPostThumb
-                              thumbnailUrl={p.thumbnailUrl}
-                              name={p.name}
-                            />
-                            <span className="rc-ios-top__badge">{String(p.rank).padStart(2, '0')}</span>
-                            <div className="rc-ios-top__meta">
-                              {p.avatarUrl ? (
-                                <img src={p.avatarUrl} alt="" referrerPolicy="no-referrer" />
-                              ) : (
-                                <span className="rc-ios-top__av">{initials(p.name)}</span>
-                              )}
-                              <span
-                                title={`${formatCompact(p.engagement)} (curtidas + comentários)${
-                                  p.viewsProxy > 0 ? ` · ${formatCompact(p.viewsProxy)} views` : ''
-                                }`}
-                              >
-                                {formatCompact(p.engagement)}
-                              </span>
-                            </div>
-                          </div>
-                        </a>
-                      )
-                    })}
-                  </div>
-                </section>
-
-                <section
-                  className="rc-ios-panel rc-ios-fperf"
-                  aria-label="Performance por formato"
-                >
-                  <div className="rc-ios-panel__head">
-                    <h3 className="rc-ios-panel__title">Performance por formato</h3>
-                    <p className="rc-ios-panel__hint">engaj. médio/post · % do engajamento total</p>
-                  </div>
-                  <div className="rc-ios-fperf__table">
-                    <div className="rc-ios-fperf__th rc-ios-fperf__th--name">#</div>
-                    <div className="rc-ios-fperf__th rc-ios-fperf__th--image">Imagem</div>
-                    <div className="rc-ios-fperf__th rc-ios-fperf__th--reels">Reels</div>
-                    <div className="rc-ios-fperf__th rc-ios-fperf__th--carousel">Carrossel</div>
-                    <div className="rc-ios-fperf__th rc-ios-fperf__th--share">Mix eng.</div>
-                    {model.candidates.map((c) => {
-                      const share = c.formatEngShare
-                      return (
-                        <Fragment key={c.slug}>
-                          <div className="rc-ios-fperf__name">
-                            <span className="rc-ios-fperf__rank">
-                              {String(c.rank).padStart(2, '0')}
+                          {p.rank === 1 ? null : (
+                            <span className="rc-ios-champ__badge">
+                              {String(p.rank).padStart(2, '0')}
                             </span>
+                          )}
+                          <div className="rc-ios-tops__head">
+                            <p className="rc-ios-tops__name">
+                              <span className="rc-ios-tops__name-text">{p.name}</span>
+                              {handle ? <span className="rc-ios-tops__handle">{handle}</span> : null}
+                              {p.rank === 1 ? (
+                                <span className="rc-ios-champ__badge rc-ios-champ__badge--top">TOP</span>
+                              ) : null}
+                            </p>
+                            <p className="rc-ios-tops__caption">{caption}</p>
                           </div>
-                          <FormatPerfCell
-                            format="image"
-                            avgEngagement={c.formatPerf.image.avgEngagement}
-                            count={c.formatPerf.image.count}
-                            max={model.formatPerfMax.image.avgEngagement}
-                          />
-                          <FormatPerfCell
-                            format="reels"
-                            avgEngagement={c.formatPerf.reels.avgEngagement}
-                            count={c.formatPerf.reels.count}
-                            max={model.formatPerfMax.reels.avgEngagement}
-                          />
-                          <FormatPerfCell
-                            format="carousel"
-                            avgEngagement={c.formatPerf.carousel.avgEngagement}
-                            count={c.formatPerf.carousel.count}
-                            max={model.formatPerfMax.carousel.avgEngagement}
-                          />
-                          <div
-                            className="rc-ios-fperf__share"
-                            title={`Parte do engajamento: Imagem ${share.image}% · Reels ${share.reels}% · Carrossel ${share.carousel}%`}
+                          <strong
+                            className="rc-ios-tops__val tabular-nums"
+                            title={`${formatCompact(p.engagement)} (curtidas + comentários)`}
                           >
-                            <span className="rc-ios-fperf__share-item rc-ios-fperf__share-item--image">
-                              {share.image}%
-                            </span>
-                            <span className="rc-ios-fperf__share-item rc-ios-fperf__share-item--reels">
-                              {share.reels}%
-                            </span>
-                            <span className="rc-ios-fperf__share-item rc-ios-fperf__share-item--carousel">
-                              {share.carousel}%
-                            </span>
-                          </div>
-                        </Fragment>
-                      )
-                    })}
-                  </div>
-                </section>
-              </div>
-
-              <section className="rc-ios-panel rc-ios-connections" aria-label="Destaques por formato">
-                <div className="rc-ios-panel__head">
-                  <h3 className="rc-ios-panel__title">Destaques por formato</h3>
-                </div>
-                <ul className="rc-ios-connections__list">
-                  {model.formatLeaders.map((leader) => (
-                    <li key={leader.format} className="rc-ios-connections__row">
-                      {leader.avatarUrl ? (
-                        <img src={leader.avatarUrl} alt="" referrerPolicy="no-referrer" />
-                      ) : (
-                        <span className="rc-ios-connections__av">{initials(leader.name)}</span>
-                      )}
-                      <span className="rc-ios-connections__meta">
-                        <span className="rc-ios-connections__format">{leader.label}</span>
-                        <span className="rc-ios-connections__name">{leader.name}</span>
-                      </span>
-                      <span className="rc-ios-connections__score tabular-nums">
-                        {leader.postCount === 0
-                          ? '—'
-                          : formatCompact(leader.avgEngagement)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                            {formatCompact(p.engagement)}
+                          </strong>
+                        </a>
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
+            </section>
             </div>
           </div>
         </div>
       </PresentationStage>
     </div>
-  )
-}
-
-function MapRow({
-  c,
-  mapIndex,
-  maxes,
-  winners,
-}: {
-  c: RadarCompetitivoCandidate
-  mapIndex: number
-  maxes: {
-    eng: number
-    comments: number
-    reels: number
-    eff: number
-    unique: number
-  }
-  winners: RadarCompetitivoModel['winners']
-}) {
-  const num = String(mapIndex + 1).padStart(2, '0')
-  return (
-    <>
-      <div className="rc-ios-map__name" title={c.name}>
-        <span className="rc-ios-map__num">{num}</span>
-      </div>
-      <MetricBar
-        value={c.avgEngagement}
-        max={maxes.eng}
-        color={c.color}
-        display={formatCompact(c.avgEngagement)}
-        win={winners.engagementSlug === c.slug}
-      />
-      <MetricBar
-        value={c.viewsIndex}
-        max={100}
-        color={c.color}
-        display={c.avgReelViews > 0 ? String(c.viewsIndex) : '—'}
-        win={false}
-        title={
-          c.avgReelViews > 0
-            ? `${formatCompact(c.avgReelViews)} views médias · índice ${c.viewsIndex} (100 = maior do grupo)`
-            : 'Sem views no período'
-        }
-      />
-      <MetricBar
-        value={c.avgComments}
-        max={maxes.comments}
-        color={c.color}
-        display={formatCompact(c.avgComments)}
-        win={winners.commentsSlug === c.slug}
-      />
-      <MetricBar
-        value={c.reelsShare}
-        max={maxes.reels}
-        color={c.color}
-        display={`${c.reelsShare}%`}
-        win={winners.reelsSlug === c.slug}
-      />
-      <MetricBar
-        value={c.efficiency}
-        max={maxes.eff}
-        color={c.color}
-        display={
-          c.avgReelViews > 0
-            ? `${c.efficiency.toFixed(1).replace('.', ',')}%`
-            : '—'
-        }
-        win={winners.efficiencySlug === c.slug}
-      />
-    </>
   )
 }

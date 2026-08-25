@@ -1,26 +1,25 @@
 /* Radar Competitivo — pele iOS / macOS light (scoped). */
 
 .rc-ios {
-  /* Paleta gelo / amarelo / preto (War Room 2026) */
-  --rc-bg: #e5e6e8;
-  --rc-bg-2: #ececee;
-  --rc-surface: #ffffff;
-  --rc-surface-glass: rgba(255, 255, 255, 0.82);
-  --rc-surface-subtle: #e5e6e8;
-  --rc-text: #2b2d31;
-  --rc-text-2: #70737a;
-  --rc-text-3: #b3b6bb;
-  --rc-border: rgba(43, 45, 49, 0.1);
-  --rc-border-soft: rgba(43, 45, 49, 0.06);
-  --rc-sep: #d0d2d6;
-  --rc-accent: #f2d06b;
-  --rc-accent-gold: #f2d06b;
-  --rc-accent-light: #f7f0d4;
-  --rc-track: #d8d9dc;
-  /* Formatos: preto · cinza · amarelo */
-  --rc-mix-image: #2b2d31;
-  --rc-mix-reels: #70737a;
-  --rc-mix-carousel: #f2d06b;
+  /* Paleta Cockpit 2026 */
+  --rc-bg: var(--palette-bg, #f5f6f8);
+  --rc-bg-2: var(--palette-chart-bg, #e6eaf0);
+  --rc-surface: var(--palette-card, #ffffff);
+  --rc-surface-glass: rgba(255, 255, 255, 0.88);
+  --rc-surface-subtle: var(--palette-chart-bg, #e6eaf0);
+  --rc-text: var(--palette-petrol, #022b3a);
+  --rc-text-2: var(--palette-aux, #6b7280);
+  --rc-text-3: #94a3b8;
+  --rc-border: color-mix(in srgb, var(--palette-petrol, #022b3a) 12%, transparent);
+  --rc-border-soft: color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+  --rc-sep: var(--palette-divider, #e5e7eb);
+  --rc-accent: var(--palette-inst, #005b8f);
+  --rc-accent-gold: var(--palette-inst, #005b8f);
+  --rc-accent-light: var(--palette-inst-soft, #ddeaf3);
+  --rc-track: var(--palette-chart-bg, #e6eaf0);
+  --rc-mix-image: var(--palette-petrol, #022b3a);
+  --rc-mix-reels: var(--palette-inst, #005b8f);
+  --rc-mix-carousel: var(--palette-accent, #f04b23);
   --rc-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, sans-serif;
   --rc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
   --rc-shadow-md: 0 6px 20px rgba(0, 0, 0, 0.04);
@@ -65,14 +64,11 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  border-radius: 18px;
+  border-radius: 0;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 70% 40% at 28% -5%, rgba(255, 255, 255, 0.75), transparent 52%),
-    radial-gradient(ellipse 50% 35% at 82% 12%, rgba(180, 185, 190, 0.09), transparent 48%),
-    var(--rc-bg);
-  border: 1px solid var(--rc-border-soft);
-  box-shadow: var(--rc-shadow-md);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* —— Main shell —— */
@@ -80,13 +76,13 @@
   display: grid;
   grid-template-rows:
     auto
-    minmax(0, 0.95fr)
-    minmax(0, 1.35fr);
+    auto
+    minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
   padding: 8px 10px 8px;
-  gap: 6px;
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -141,6 +137,23 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px 4px;
+}
+
+.rc-ios-panel__heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.rc-ios-panel__metric-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rc-text-2);
 }
 
 .rc-ios-panel__title {
@@ -263,99 +276,36 @@
   line-height: 1.1;
 }
 
-/* Colunas alinhadas: ranking|mapa|pulso  ≡  dna|tops+comunidade|conexões */
-.rc-ios-mid,
-.rc-ios-bottom {
+.rc-ios-mid {
   display: grid;
-  grid-template-columns: minmax(176px, 0.68fr) minmax(0, 1.75fr) minmax(220px, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px;
   min-height: 0;
   overflow: hidden;
 }
 
-.rc-ios-rank {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 0 6px;
-  overflow: hidden;
-  height: 100%;
-}
-
-.rc-ios-rank__list {
-  list-style: none;
-  margin: 0;
-  padding: 0 6px 4px;
-  overflow: hidden;
-  flex: 1 1 auto;
+.rc-ios-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-}
-
-.rc-ios-rank__row {
-  display: grid;
-  grid-template-columns: 18px 22px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  min-height: 26px;
-  height: auto;
-  padding: 0 6px;
-  border-bottom: 1px solid var(--rc-border-soft);
-  transition: background var(--rc-ease);
-}
-
-.rc-ios-rank__row:hover {
-  background: rgba(120, 120, 128, 0.06);
-}
-
-.rc-ios-rank__pos {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  color: var(--rc-text-2) !important; /* ignora cor por candidato */
-  font-variant-numeric: tabular-nums;
-}
-
-.rc-ios-rank__avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--rc-surface-subtle);
-}
-
-.rc-ios-rank__avatar--fb {
-  display: grid;
-  place-items: center;
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--rc-text-2);
-}
-
-.rc-ios-rank__name {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   min-width: 0;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--rc-text);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.rc-ios-rank__star {
-  flex-shrink: 0;
-  color: var(--rc-accent-gold);
+.rc-ios-split .rc-ios-fperf,
+.rc-ios-split .rc-ios-tops {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
 }
 
-.rc-ios-rank__val {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  color: var(--rc-text);
+.rc-ios-bottom {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* —— Performance map —— */
@@ -440,7 +390,7 @@
   display: block;
   height: 100%;
   border-radius: 3px;
-  background: var(--rc-bar-color, #2b2d31);
+  background: var(--rc-bar-color, var(--palette-inst, #005b8f));
   opacity: 0.85;
 }
 
@@ -524,280 +474,382 @@
   border-radius: 50%;
 }
 
-/* —— Bottom modules —— */
+/* —— DNA do conteúdo (faixa de cartas, mesmo padrão do Elenco) —— */
 .rc-ios-dna {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
-}
-
-.rc-ios-dna__rows {
-  list-style: none;
-  margin: 0;
-  padding: 0 10px 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  gap: 4px;
-  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
-}
-
-.rc-ios-dna__row {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-}
-
-.rc-ios-dna__rank {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  color: var(--rc-text-2) !important;
-  font-variant-numeric: tabular-nums;
-}
-
-.rc-ios-dna__main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.rc-ios-dna__stack {
-  display: flex;
-  height: 10px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--rc-surface-subtle);
-}
-
-.rc-ios-dna__seg {
-  height: 100%;
-}
-
-.rc-ios-dna__pcts {
-  display: flex;
-  gap: 8px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  font-variant-numeric: tabular-nums;
 }
 
 .rc-ios-dna__legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-  padding: 0 12px 8px;
+  margin-left: auto;
   font-size: 9.5px;
   color: var(--rc-text-3);
-}
-
-.rc-ios-dna__legend-note {
-  margin-left: auto;
-  font-weight: 500;
-  color: var(--rc-text-2);
+  flex-shrink: 0;
 }
 
 .rc-ios-dna__legend i {
   display: inline-block;
   width: 7px;
   height: 7px;
-  border-radius: 2px;
+  border-radius: 50%;
   margin-right: 4px;
 }
 
-/* —— Performance por formato (mesma estrutura de colunas do Mapa) —— */
+/* —— Performance por formato (domínio / pódio) —— */
 .rc-ios-fperf {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
+  height: auto;
   min-height: 0;
+  min-width: 0;
 }
 
-.rc-ios-fperf__table {
+.rc-ios-dominio {
   display: grid;
-  grid-template-columns: 28px repeat(4, minmax(0, 1fr));
-  gap: 0;
-  padding: 0 8px 6px;
-  flex: 1 1 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 2px 8px 8px;
   min-height: 0;
-  align-content: start;
-  row-gap: 0;
-}
-
-.rc-ios-fperf__th {
-  padding: 2px 4px 4px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--rc-text-3);
-  border-bottom: 1px solid var(--rc-sep);
-}
-
-.rc-ios-fperf__th--name {
-  text-align: center;
-  color: var(--rc-text-3);
-}
-
-.rc-ios-fperf__th--image {
-  color: var(--rc-mix-image);
-}
-
-.rc-ios-fperf__th--reels {
-  color: var(--rc-mix-reels);
-}
-
-.rc-ios-fperf__th--carousel {
-  color: var(--rc-mix-carousel);
-}
-
-.rc-ios-fperf__th--share {
-  color: var(--rc-text-3);
-  padding-left: 14px;
-}
-
-.rc-ios-fperf__name {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding: 2px 0;
-  border-bottom: 1px solid var(--rc-border-soft);
-}
-
-.rc-ios-fperf__rank {
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--rc-text-2);
-  line-height: 1;
-}
-
-.rc-ios-fperf__cell {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
-  border-bottom: 1px solid var(--rc-border-soft);
-  min-width: 0;
-  max-width: 100%;
-}
-
-.rc-ios-fperf__cell--empty .rc-ios-fperf__val {
-  color: var(--rc-text-3);
-  font-weight: 500;
-}
-
-.rc-ios-fperf__bar {
-  flex: 1;
-  min-width: 0;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--rc-track);
+  flex: 1 1 auto;
   overflow: hidden;
 }
 
-.rc-ios-fperf__fill {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  opacity: 0.9;
+.rc-ios-dominio-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 10px 8px;
+  border: 1px solid var(--rc-border-soft);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(2, 43, 58, 0.05);
 }
 
-.rc-ios-fperf__fill--image {
+.rc-ios-dominio-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rc-ios-dominio-card__icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--rc-mix-image);
+  background: color-mix(in srgb, var(--palette-petrol) 8%, #fff);
+}
+
+.rc-ios-dominio-card--reels .rc-ios-dominio-card__icon {
+  color: var(--rc-mix-reels);
+  background: color-mix(in srgb, var(--palette-inst) 12%, #fff);
+}
+
+.rc-ios-dominio-card--carousel .rc-ios-dominio-card__icon {
+  color: var(--rc-mix-carousel);
+  background: color-mix(in srgb, var(--palette-accent) 12%, #fff);
+}
+
+.rc-ios-dominio-card__titles {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rc-ios-dominio-card__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rc-text);
+}
+
+.rc-ios-dominio-card__sub {
+  margin: 1px 0 0;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-dominio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rc-ios-dominio-list__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.rc-ios-dominio-list__row:has(.rc-ios-champ__badge--top) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.rc-ios-dominio-list__row .rc-ios-champ__badge {
+  justify-self: start;
+}
+
+.rc-ios-dominio-list__pos {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--rc-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-dominio-list__av,
+.rc-ios-dominio-list__av--fb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(2, 43, 58, 0.14);
+}
+
+.rc-ios-dominio-list__av--fb {
+  display: grid;
+  place-items: center;
+  background: var(--rc-track);
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.rc-ios-dominio-list__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rc-ios-dominio-list__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--rc-text);
+}
+
+.rc-ios-dominio-list__name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-ios-dominio-list__name .rc-ios-champ__badge {
+  flex-shrink: 0;
+}
+
+.rc-ios-dominio-list__bar {
+  display: block;
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--palette-petrol) 8%, #fff);
+  overflow: hidden;
+}
+
+.rc-ios-dominio-list__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
   background: var(--rc-mix-image);
 }
 
-.rc-ios-fperf__fill--reels {
+.rc-ios-dominio-card--reels .rc-ios-dominio-list__bar i {
   background: var(--rc-mix-reels);
 }
 
-.rc-ios-fperf__fill--carousel {
+.rc-ios-dominio-card--carousel .rc-ios-dominio-list__bar i {
   background: var(--rc-mix-carousel);
 }
 
-.rc-ios-fperf__val {
-  flex-shrink: 0;
-  width: auto;
-  min-width: 3.25rem;
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+.rc-ios-dominio-list__val {
+  font-size: 10.5px;
+  font-weight: 800;
   color: var(--rc-text);
-  line-height: 1.15;
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
-.rc-ios-fperf__share {
+.rc-ios-dominio-chase__gap {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--palette-accent);
+}
+
+.rc-ios-dominio-banner {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  align-items: flex-start;
   gap: 6px;
-  min-width: 0;
-  padding: 2px 4px 2px 14px;
-  border-bottom: 1px solid var(--rc-border-soft);
-  font-variant-numeric: tabular-nums;
-}
-
-.rc-ios-fperf__share-item {
+  margin: 8px 0 0;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--palette-accent) 10%, #fff);
+  color: var(--palette-accent);
   font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  line-height: 1.3;
 }
 
-.rc-ios-fperf__share-item--image {
-  color: var(--rc-mix-image);
-}
-
-.rc-ios-fperf__share-item--reels {
-  color: var(--rc-mix-reels);
-}
-
-.rc-ios-fperf__share-item--carousel {
-  color: var(--rc-mix-carousel);
+.rc-ios-dominio-banner strong {
+  display: block;
+  color: var(--rc-text);
+  font-weight: 750;
 }
 
 /* —— Top posts + format perf stack —— */
 .rc-ios-center-stack {
-  display: grid;
-  grid-template-rows: minmax(88px, 0.72fr) minmax(0, 1.35fr);
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
+}
+
+.rc-ios-tops {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .rc-ios-tops .rc-ios-panel__head {
+  flex: 0 0 auto;
   padding: 6px 10px 2px;
 }
 
-.rc-ios-tops__strip {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 5px;
-  padding: 0 8px 4px;
-  flex: 1;
+.rc-ios-tops__list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 6px;
+  flex: 1 1 auto;
   min-height: 0;
-  align-content: start;
+  overflow-y: auto;
+}
+
+.rc-ios-tops__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.rc-ios-tops__row--lead {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.rc-ios-tops__row:hover .rc-ios-tops__name {
+  color: var(--palette-inst);
+}
+
+.rc-ios-tops__head {
+  min-width: 0;
+}
+
+.rc-ios-tops__name {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--rc-text);
+  line-height: 1.2;
+}
+
+.rc-ios-tops__name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-ios-tops__name .rc-ios-champ__badge {
+  flex-shrink: 0;
+}
+
+.rc-ios-tops__handle {
+  font-size: 10px;
+  font-weight: 550;
+  color: var(--rc-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-tops__caption {
+  margin: 3px 0 0;
+  font-size: 11px;
+  font-weight: 450;
+  color: var(--rc-text-2);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rc-ios-tops__val {
+  padding-top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--rc-text);
+}
+
+.rc-ios-tops__empty {
+  padding: 12px 4px;
+  font-size: 12px;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-tops__strip {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 5px;
+  padding: 0 8px 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .rc-ios-top {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  max-width: 100%;
   min-height: 0;
-  height: 100%;
+  height: auto;
   text-decoration: none;
   color: inherit;
   transition: transform var(--rc-ease);
@@ -809,9 +861,12 @@
 
 .rc-ios-top__media {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 56px;
-  max-height: 88px;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: 96px;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
   background: var(--rc-surface-subtle);
@@ -820,6 +875,7 @@
 .rc-ios-top__media img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
   object-fit: cover;
   display: block;
 }
@@ -1156,4 +1212,731 @@
 
 .rc-ios-reach__empty code {
   font-size: 10px;
+}
+
+/* —— Plano original: bento, gauge, pílulas, faixa com setas —— */
+.rc-ios-hero {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.95fr) minmax(0, 1.35fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.rc-ios-hero__lead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 14px;
+}
+
+.rc-ios-gauge {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  flex: 0 0 auto;
+}
+
+.rc-ios-gauge svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rc-ios-gauge__tick {
+  stroke: var(--rc-track);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.rc-ios-gauge__tick.is-on {
+  stroke: var(--rc-accent);
+}
+
+.rc-ios-gauge__hole {
+  position: absolute;
+  inset: 22px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--rc-surface);
+  box-shadow: inset 0 0 0 3px var(--rc-surface);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rc-text);
+}
+
+.rc-ios-gauge__hole img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rc-ios-gauge__pct {
+  position: absolute;
+  right: 2px;
+  bottom: 10px;
+  min-width: 36px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--rc-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--rc-accent) 35%, transparent);
+}
+
+.rc-ios-hero__lead-copy {
+  min-width: 0;
+}
+
+.rc-ios-hero__kicker {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rc-accent);
+}
+
+.rc-ios-hero__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--rc-text);
+  line-height: 1.15;
+}
+
+.rc-ios-hero__metric {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-hero__podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.rc-ios-podium__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rc-ios-pills__tick--on {
+  background: var(--rc-accent);
+}
+
+.rc-ios-hero__kicker {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rc-accent);
+}
+
+.rc-ios-hero__name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--rc-text);
+  line-height: 1.15;
+}
+
+.rc-ios-hero__metric {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-hero__podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.rc-ios-podium {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px 12px;
+  border-radius: 16px;
+  background: var(--rc-surface-subtle);
+  border: 1px solid var(--rc-border-soft);
+  min-width: 0;
+}
+
+.rc-ios-podium--lead {
+  background: var(--rc-accent-light);
+  border-color: color-mix(in srgb, var(--rc-accent) 22%, transparent);
+}
+
+.rc-ios-podium__rank {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-podium img,
+.rc-ios-podium__fb {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rc-ios-podium__fb {
+  display: grid;
+  place-items: center;
+  background: var(--rc-track);
+  color: var(--rc-text-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rc-ios-podium__name {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.rc-ios-podium__val {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rc-text-2);
+}
+
+.rc-ios-pills {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 14px;
+}
+
+.rc-ios-pills__tick {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--rc-track);
+}
+
+.rc-ios-pills__tick--image {
+  background: var(--rc-mix-image);
+}
+
+.rc-ios-pills__tick--reels {
+  background: var(--rc-mix-reels);
+}
+
+.rc-ios-pills__tick--carousel {
+  background: var(--rc-mix-carousel);
+}
+
+.rc-ios-pills__tick--on {
+  background: var(--rc-accent);
+}
+
+.rc-ios-dna__pills {
+  width: 100%;
+  height: 12px;
+}
+
+.rc-ios-tops__nav {
+  display: flex;
+  gap: 4px;
+}
+
+.rc-ios-tops__nav button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.rc-ios-tops__nav button:hover {
+  background: var(--rc-accent-light);
+  color: var(--rc-accent);
+}
+
+.rc-ios-tops__strip {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  padding: 4px 12px 14px;
+  gap: 10px;
+}
+
+.rc-ios-tops__strip .rc-ios-top,
+.rc-ios-tops__strip .rc-ios-loot {
+  flex: 0 0 118px;
+  max-width: 118px;
+  scroll-snap-align: start;
+}
+
+@media (max-width: 980px) {
+  .rc-ios-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* —— Camada game (fotos reais + cartas / pódio / elenco) —— */
+.rc-ios--game {
+  --rc-r: 24px;
+  --rc-r-sm: 18px;
+  --rc-shadow-sm: 0 8px 20px rgba(2, 43, 58, 0.06);
+  --rc-shadow-md: 0 14px 36px rgba(2, 43, 58, 0.08);
+}
+
+.rc-ios--game .rc-ios-board {
+  background: transparent;
+}
+
+.rc-ios--game .rc-ios-panel {
+  border-radius: 22px;
+  box-shadow: var(--rc-shadow-sm);
+}
+
+.rc-ios--game .rc-ios-hero__lead {
+  padding: 16px 18px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--palette-inst) 10%, #fff), #fff 55%);
+}
+
+.rc-ios--game .rc-ios-hero__name {
+  font-size: 22px;
+}
+
+.rc-ios--game .rc-ios-podium {
+  align-items: center;
+  text-align: center;
+  padding: 14px 10px 12px;
+  border-radius: 20px;
+  box-shadow: 0 10px 22px rgba(2, 43, 58, 0.06);
+}
+
+.rc-ios--game .rc-ios-podium__avatar,
+.rc-ios--game .rc-ios-podium__fb {
+  width: 56px;
+  height: 56px;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 14px rgba(2, 43, 58, 0.12);
+}
+
+.rc-ios--game .rc-ios-podium--lead .rc-ios-podium__rank {
+  background: var(--palette-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.rc-ios-champs__strip {
+  display: flex;
+  gap: 10px;
+  padding: 4px 12px 14px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.rc-ios-champ {
+  flex: 0 0 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px 10px;
+  border: 1px solid var(--rc-border-soft);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(2, 43, 58, 0.05);
+  cursor: pointer;
+  min-width: 0;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.rc-ios-champ:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 24px rgba(2, 43, 58, 0.1);
+}
+
+.rc-ios-champ--lead {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--palette-inst) 12%, #fff), #fff);
+  border-color: color-mix(in srgb, var(--palette-inst) 28%, transparent);
+}
+
+.rc-ios-champ--selected {
+  border-color: var(--palette-inst);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--palette-inst) 25%, transparent);
+}
+
+.rc-ios-champ--dim {
+  opacity: 0.45;
+}
+
+.rc-ios-champ__badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--rc-text-3);
+}
+
+.rc-ios-champ--lead .rc-ios-champ__badge,
+.rc-ios-champ__badge--top {
+  color: #fff;
+  background: var(--palette-accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.rc-ios-champ__avatar,
+.rc-ios-champ__avatar--fb {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 14px rgba(2, 43, 58, 0.14);
+}
+
+.rc-ios-champ__avatar--fb {
+  display: grid;
+  place-items: center;
+  background: var(--rc-track);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rc-ios-champ__name {
+  margin: 0;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-champ__stat {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--rc-accent);
+}
+
+.rc-ios-champ .rc-ios-pills {
+  width: 100%;
+  height: 8px;
+}
+
+.rc-ios-dna__grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 2px 10px 10px;
+  overflow: hidden;
+}
+
+.rc-ios-dna-tile {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 8px 7px;
+  border: 1px solid var(--rc-border-soft);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(2, 43, 58, 0.05);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.rc-ios-dna-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px rgba(2, 43, 58, 0.1);
+}
+
+.rc-ios-dna-tile--dim {
+  opacity: 0.45;
+}
+
+.rc-ios-dna-tile__head {
+  min-width: 0;
+}
+
+.rc-ios-dna-tile__name {
+  margin: 0;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-ios-dna-tile .rc-ios-pills,
+.rc-ios-dna-tile .rc-ios-dna__pills {
+  width: 100%;
+  height: 8px;
+}
+
+.rc-ios-dna-tile__pcts {
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-ios-loot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.rc-ios-loot__art {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--rc-track);
+  box-shadow:
+    0 10px 20px rgba(2, 43, 58, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.rc-ios-loot__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rc-ios-loot__rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 26px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--palette-petrol);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.rc-ios-loot:first-child .rc-ios-loot__rank {
+  background: var(--palette-accent);
+}
+
+.rc-ios-loot__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.rc-ios-loot__foot img,
+.rc-ios-loot__av {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(2, 43, 58, 0.16);
+}
+
+.rc-ios-loot__av {
+  display: grid;
+  place-items: center;
+  background: var(--palette-petrol);
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.rc-ios-loot__foot strong {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rc-text);
+}
+
+.rc-ios--game .rc-ios-fperf {
+  min-height: 0;
+}
+
+/* —— Redes Sociais (Copiloto): mesma pele gamer do Comparativo —— */
+.wr-redes-game.rc-ios {
+  height: 100%;
+  min-height: 0;
+}
+
+.wr-redes-game .wr-copiloto-redes__main > .wr-redes-game__panel--feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-redes-game__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wr-redes-game__panel--kpis {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.wr-redes-game__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 4px 8px;
+}
+
+.wr-redes-game__list {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 2px 10px 8px;
+}
+
+.wr-redes-game__head-link {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--palette-inst, #005b8f);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wr-redes-game__head-link:hover {
+  text-decoration: underline;
+}
+
+.wr-redes-game__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 10px 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--palette-inst, #005b8f);
+  cursor: pointer;
+}
+
+.wr-redes-game__theme-btn {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.wr-redes-game__theme-btn--lead {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.wr-redes-game .rc-ios-dominio-list__row:has(.wr-redes-game__theme-btn) {
+  display: block;
+}
+
+.wr-redes-game__theme-sub {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--rc-text-3);
+}
+
+.wr-redes-game .wr-copiloto-redes__side > .wr-redes-game__panel--kpis {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-redes-game__panel--kpis .wr-copiloto-redes__side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.wr-redes-game .wr-copiloto-redes-desempenho--compact .wr-copiloto-redes-desempenho__card {
+  border: 1px solid var(--rc-border-soft);
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(2, 43, 58, 0.05);
+  background: #fff;
+}
+
+.wr-redes-game .wr-copiloto-redes-desempenho--compact .wr-copiloto-redes-desempenho__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rc-text-2);
+}
+
+.wr-redes-game .wr-copiloto-redes-desempenho--compact .wr-copiloto-redes-desempenho__total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--rc-text);
+}
+
+.wr-redes-game .wr-copiloto-list-card {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+.wr-redes-game .wr-copiloto-list-card__row-inner {
+  border-radius: 12px;
+}
+
+.wr-redes-game .wr-copiloto-list-card__title {
+  font-weight: 650;
+  color: var(--rc-text);
 }

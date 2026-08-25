@@ -14,17 +14,17 @@ export type RadarCommenterStatsInput = {
   postsWithComments: number
 }
 
-/** Paleta de séries — gelo / amarelo / preto (War Room 2026). */
+/** Paleta de séries — Cockpit (petróleo · azul · coral pontual). */
 export const RADAR_COMPETITIVO_COLORS = [
-  '#2B2D31', // preto
-  '#F2D06B', // amarelo logo
-  '#70737A', // cinza
-  '#B3B6BB', // cinza gelo
-  '#52555A', // cinza médio-escuro
-  '#E0BC4F', // amarelo profundo
-  '#3A3C40', // carvão
-  '#8A8D93', // cinza médio
-  '#1F2124', // preto profundo
+  '#022B3A',
+  '#005B8F',
+  '#3D7A99',
+  '#6B7280',
+  '#F04B23',
+  '#1A4A5C',
+  '#4A90B8',
+  '#94A3B8',
+  '#0B3344',
 ] as const
 
 const DEFAULT_HIDDEN = new Set(['instagram-causa-animal'])
@@ -404,43 +404,29 @@ export function buildRadarCompetitivoModel(opts: {
     })
     .sort((a, b) => b.engagement - a.engagement)
 
-  /** Rodízio: melhor post de cada candidato, depois 2º melhor, até 8 — confronto entre todos. */
-  const universePosts: typeof scoredPosts = []
-  const usedIds = new Set<string>()
-  let round = 0
-  while (universePosts.length < 8 && round < 6) {
-    const bySlug = new Map<string, (typeof scoredPosts)[number]>()
-    for (const entry of scoredPosts) {
-      if (usedIds.has(entry.post.post_id)) continue
-      const prev = bySlug.get(entry.cand.slug)
-      if (!prev || entry.engagement > prev.engagement) {
-        bySlug.set(entry.cand.slug, entry)
-      }
+  const bestBySlug = new Map<string, (typeof scoredPosts)[number]>()
+  for (const entry of scoredPosts) {
+    if (!bestBySlug.has(entry.cand.slug)) {
+      bestBySlug.set(entry.cand.slug, entry)
     }
-    const roundPick = [...bySlug.values()].sort((a, b) => b.engagement - a.engagement)
-    if (roundPick.length === 0) break
-    for (const entry of roundPick) {
-      if (universePosts.length >= 8) break
-      universePosts.push(entry)
-      usedIds.add(entry.post.post_id)
-    }
-    round += 1
   }
 
-  const topPosts: RadarCompetitivoTopPost[] = universePosts.map((entry, i) => ({
-    id: entry.post.post_id,
-    rank: i + 1,
-    slug: entry.cand.slug,
-    name: entry.cand.name,
-    username: entry.cand.username,
-    avatarUrl: entry.cand.avatarUrl,
-    color: entry.cand.color,
-    thumbnailUrl: entry.post.thumbnail_url,
-    postUrl: entry.post.post_url,
-    viewsProxy: entry.viewsProxy,
-    engagement: entry.engagement,
-    caption: entry.post.caption,
-  }))
+  const topPosts: RadarCompetitivoTopPost[] = [...bestBySlug.values()]
+    .sort((a, b) => b.engagement - a.engagement)
+    .map((entry, i) => ({
+      id: entry.post.post_id,
+      rank: i + 1,
+      slug: entry.cand.slug,
+      name: entry.cand.name,
+      username: entry.cand.username,
+      avatarUrl: entry.cand.avatarUrl,
+      color: entry.cand.color,
+      thumbnailUrl: entry.post.thumbnail_url,
+      postUrl: entry.post.post_url,
+      viewsProxy: entry.viewsProxy,
+      engagement: entry.engagement,
+      caption: entry.post.caption,
+    }))
 
   const winEngagement = argMax(candidates, (c) => c.avgEngagement)
   const winReels = argMax(candidates, (c) => c.reelsShare)

@@ -15,6 +15,7 @@ import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
+import { adBelongsToPoliticalActor } from '@/lib/meta-ads-actor-match'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { syncOwnCandidateInstagramRadar } from '@/lib/instagram-radar-own-sync'
@@ -139,12 +140,12 @@ export async function GET(request: Request) {
         .limit(3000),
       supabase
         .from('meta_ads_mentions')
-        .select(`*, political_actors!inner ( id, name, slug, actor_type )`)
+        .select(`*, political_actors!inner ( id, name, slug, actor_type, instagram_username )`)
         .or(
           `started_running_at.gte.${cutoffIso},and(started_running_at.is.null,collected_at.gte.${cutoffIso})`
         )
         .order('collected_at', { ascending: false })
-        .limit(500),
+        .limit(2000),
       supabase
         .from('meta_ads_collect_log')
         .select('finished_at, started_at')
@@ -207,11 +208,26 @@ export async function GET(request: Request) {
         : ((instagramRes.data ?? []) as InstagramRadarPostWithActor[])
     for (const p of instagramPosts) timestamps.push(p.collected_at)
 
-    const metaAdsMentions =
+    const metaAdsMentionsRaw =
       metaRes.error &&
       (metaRes.error.message.includes('does not exist') || metaRes.error.code === '42P01')
         ? []
         : ((metaRes.data ?? []) as MetaAdsMentionWithActor[])
+    const metaAdsMentions = metaAdsMentionsRaw.filter((ad) => {
+      const actor = ad.political_actors
+      if (!actor) return false
+      return adBelongsToPoliticalActor(
+        {
+          page_name: ad.page_name,
+          payer_name: ad.payer_name,
+          ad_body: ad.ad_body,
+        },
+        {
+          name: actor.name,
+          instagram_username: actor.instagram_username,
+        },
+      )
+    })
     for (const m of metaAdsMentions) timestamps.push(m.collected_at)
 
     if (collectLogRes.data?.finished_at) timestamps.push(collectLogRes.data.finished_at)

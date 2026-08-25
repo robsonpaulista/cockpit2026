@@ -115,7 +115,7 @@ export function MetaAdsCompareBoard({
   loading = false,
 }: MetaAdsCompareBoardProps) {
   const rows = buildMetaAdsCompareRows(actors, ads)
-  const periodTotals = buildMetaAdsPeriodTotals(ads)
+  const periodTotals = buildMetaAdsPeriodTotals(rows.flatMap((row) => row.ads))
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
 
   if (loading) {

@@ -44,7 +44,10 @@ import { InstagramContentTypeComparison } from '@/components/conteudo-redes/inst
 import { InstagramThemeComparisonTable } from '@/components/conteudo-redes/instagram-theme-comparison-table'
 import { InstagramBestPostByThemeTable } from '@/components/conteudo-redes/instagram-best-post-by-theme-table'
 import { InstagramCaptionCityRanking } from '@/components/conteudo-redes/instagram-caption-city-ranking'
+import { InstagramApiCityRanking } from '@/components/conteudo-redes/instagram-api-city-ranking'
 import { aggregateInstagramMetricsByCaptionCity } from '@/lib/instagram-city-caption-stats'
+import { fetchInstagramCityDemographicsHistory } from '@/lib/instagram-city-demographics-client'
+import type { CityDemographicsSeriesPoint } from '@/lib/instagram-city-demographics-history'
 import { mapMetricsPostsToDayRecords } from '@/lib/instagram-day-posts'
 import { followersHistoryDaysFromRange, FOLLOWERS_HISTORY_RANGE_OPTIONS } from '@/lib/instagram-followers-history-chart'
 import { cn } from '@/lib/utils'
@@ -57,15 +60,12 @@ import {
   conteudoRedesTextClass,
 } from '@/lib/conteudo-redes-styles'
 import { InstagramAudienceKpiStrip } from '@/components/conteudo-redes/instagram-audience-kpi-strip'
-import { PremiumMetricCard } from '@/components/premium/metric-card'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import { ChampionPostCard } from '@/components/conteudo-redes/champion-post-card'
 import {
   IconAlertCircle,
   IconLoader2,
-  IconMapPin,
   IconRefresh,
-  IconUsers,
   IconX,
 } from '@tabler/icons-react'
 
@@ -198,6 +198,9 @@ export default function ConteudoPage() {
 
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
   const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged' | 'caption'>('caption')
+  const [cityDemoSeries, setCityDemoSeries] = useState<
+    Record<string, CityDemographicsSeriesPoint[]>
+  >({})
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
   const [postClassifications, setPostClassifications] = useState<Record<string, PostClassification>>({})
@@ -268,6 +271,18 @@ export default function ConteudoPage() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (activeSubTab !== 'locations') return
+    if (locationsMode === 'caption') return
+    let cancelled = false
+    void fetchInstagramCityDemographicsHistory(90).then((res) => {
+      if (!cancelled) setCityDemoSeries(res.seriesByCity)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeSubTab, locationsMode])
 
   // Função para adicionar novo tema
   const handleAddTheme = (postId: string, currentIsBoosted: boolean) => {
@@ -1453,7 +1468,7 @@ export default function ConteudoPage() {
                   <section className={sectionWrapClass}>
                     <PremiumSectionHeader
                       title="Distribuição por cidade"
-                      description="Demografia Meta (seguidores/engajados) ou engajamento das postagens por município citado na legenda"
+                      description="Demografia Meta (seguidores/engajados) ou linha do tempo de engajamento das postagens por município citado na legenda"
                     />
 
                     <div className="mb-4 flex flex-wrap gap-1.5">
@@ -1498,111 +1513,17 @@ export default function ConteudoPage() {
                         cardClassName={municipalityCardClass}
                       />
                     ) : (
-                    (() => {
-                      const isEngaged = locationsMode === 'engaged'
-                      const locationMap = isEngaged
-                        ? metrics?.demographics?.engagedTopLocations
-                        : metrics?.demographics?.topLocations
-                      const entries = Object.entries(locationMap || {}).sort(([, a], [, b]) => b - a)
-                      const mappedTotal = entries.reduce((sum, [, count]) => sum + count, 0)
-                      const maxCount = Math.max(...entries.map(([, count]) => count), 0)
-                      const totalFollowers = metrics?.followers?.total || 0
-                      const unitLabel = isEngaged ? 'contas engajadas' : 'seguidores'
-                      const metricLabel = isEngaged ? 'Engajamento mapeado' : 'Seguidores mapeados'
-                      const pctBase = isEngaged ? mappedTotal : totalFollowers
-                      const pctSuffix = isEngaged
-                        ? 'do engajamento mapeado'
-                        : 'do total de seguidores'
-
-                      if (entries.length === 0) {
-                        return (
-                          <div className="py-12 text-center">
-                            <IconMapPin
-                              className={cn('mx-auto mb-4 h-12 w-12 opacity-70', conteudoRedesAmberTextClass)}
-                              stroke={1.5}
-                            />
-                            <p className="mb-2 font-medium">
-                              {isEngaged
-                                ? 'Engajamento por cidade não disponível'
-                                : 'Dados de localização não disponíveis'}
-                            </p>
-                            <p className="mx-auto max-w-lg text-sm">
-                              {isEngaged
-                                ? 'A API exige pelo menos 100 engajamentos no período (this_month) e pode atrasar até 48h. Use Atualizar para forçar nova coleta.'
-                                : 'A API exige conta profissional com 100+ seguidores e pode atrasar até 48h. Use Atualizar para forçar nova coleta.'}{' '}
-                              A Meta devolve só o top de cidades (não o histórico nem os 224 municípios).
-                            </p>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <>
-                          <p className="mb-3 text-[12px] text-black/60">
-                            {isEngaged
-                              ? 'Quem interagiu com publicações no período (engaged_audience_demographics · this_month).'
-                              : 'Base atual de seguidores (follower_demographics · last_30_days).'}
-                          </p>
-                          <div className="mb-4 grid grid-cols-2 gap-3 sm:max-w-lg">
-                            <PremiumMetricCard
-                              label="Total de cidades"
-                              value={entries.length}
-                              icon={IconMapPin}
-                            />
-                            <PremiumMetricCard
-                              label={metricLabel}
-                              value={mappedTotal.toLocaleString('pt-BR')}
-                              icon={IconUsers}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            {entries.map(([city, count], index) => {
-                              const percentage =
-                                pctBase > 0 ? ((count / pctBase) * 100).toFixed(1) : '0.0'
-                              const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0
-
-                              return (
-                                <div key={`${locationsMode}-${city}`} className={cn(municipalityCardClass, 'p-4')}>
-                                  <div className="mb-2 flex items-center justify-between">
-                                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                                      <div
-                                        className={cn(
-                                          'flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-medium',
-                                          index === 0
-                                            ? 'bg-[#f04b23] text-white'
-                                            : 'bg-[#f04b23]/12 text-[#f04b23]'
-                                        )}
-                                      >
-                                        {index + 1}
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[13.5px] font-medium">{city}</p>
-                                        <p className="text-[11px]">
-                                          {percentage}% {pctSuffix}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="ml-4 text-right">
-                                      <p className="text-base font-medium tabular-nums text-[#f04b23]">
-                                        {count.toLocaleString('pt-BR')}
-                                      </p>
-                                      <p className="text-[11px]">{unitLabel}</p>
-                                    </div>
-                                  </div>
-                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
-                                    <div
-                                      className="h-full rounded-full bg-[#f04b23] transition-all duration-500"
-                                      style={{ width: `${barWidth}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </>
-                      )
-                    })()
+                      <InstagramApiCityRanking
+                        mode={locationsMode}
+                        locationMap={
+                          locationsMode === 'engaged'
+                            ? metrics?.demographics?.engagedTopLocations
+                            : metrics?.demographics?.topLocations
+                        }
+                        totalFollowers={metrics?.followers?.total || 0}
+                        seriesByCity={cityDemoSeries}
+                        cardClassName={municipalityCardClass}
+                      />
                     )}
                   </section>
                 </>

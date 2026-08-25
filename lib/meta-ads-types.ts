@@ -46,6 +46,7 @@ export type MetaAdsMentionWithActor = MetaAdsMentionRow & {
     name: string
     slug: string
     actor_type: PoliticalActorType
+    instagram_username?: string | null
   } | null
 }
 

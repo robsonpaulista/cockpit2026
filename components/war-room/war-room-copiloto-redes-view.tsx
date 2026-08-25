@@ -1,6 +1,8 @@
 'use client'
 
-import { ChevronDown, Instagram, Loader2, RefreshCw, Trophy, X } from 'lucide-react'
+import { Instagram, Loader2, RefreshCw, X } from 'lucide-react'
+import '@/app/dashboard/war-room/radar-competitivo-ios.css'
+import '@/app/dashboard/war-room/war-room-redes-hud.css'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
@@ -16,8 +18,7 @@ import {
   fetchInstagramProfileVisitsManual,
   type InstagramProfileVisitManual,
 } from '@/lib/instagram-profile-visits-manual'
-import { WarRoomCopilotoJadyelAnuncios } from '@/components/war-room/war-room-copiloto-jadyel-anuncios'
-import { WarRoomCopilotoRedesDesempenho } from '@/components/war-room/war-room-copiloto-redes-desempenho'
+import { WarRoomRedesHud } from '@/components/war-room/war-room-redes-hud'
 import { WarRoomRedesVisitasManualForm } from '@/components/war-room/war-room-redes-visitas-manual'
 import { computeThemeComparison } from '@/lib/instagram-theme-comparison'
 import { instagramCaptionHeader } from '@/lib/instagram-caption-municipio'
@@ -42,9 +43,6 @@ type PostClassification = {
 
 type ThemeSortKey = 'engagement' | 'views'
 
-const FEED_PREVIEW = 5
-const THEMES_PREVIEW = 5
-
 function formatLastUpdateLabel(date: Date): string {
   return new Intl.DateTimeFormat('pt-BR', {
     day: 'numeric',
@@ -55,26 +53,10 @@ function formatLastUpdateLabel(date: Date): string {
   }).format(date)
 }
 
-function ThemeRankTrophy({ rank }: { rank: number }) {
-  // Sempre renderiza o slot: se null, o grid perde a coluna e o texto “corta” (ex. item 04).
-  if (rank < 1 || rank > 3) {
-    return <span className="wr-copiloto-list-card__theme-icon" aria-hidden />
-  }
-  const lugarClass =
-    rank === 1
-      ? 'wr-expectativa-ranking-modal__pesquisa-trophy--ouro'
-      : rank === 2
-        ? 'wr-expectativa-ranking-modal__pesquisa-trophy--prata'
-        : 'wr-expectativa-ranking-modal__pesquisa-trophy--bronze'
-  return (
-    <span className="wr-copiloto-list-card__theme-icon" aria-label={`${rank}º lugar`}>
-      <Trophy
-        className={cn('wr-expectativa-ranking-modal__pesquisa-trophy', lugarClass)}
-        strokeWidth={1.5}
-        aria-hidden
-      />
-    </span>
-  )
+function igHandle(username: string | null | undefined): string | null {
+  if (!username) return null
+  const u = username.replace(/^@/, '').trim()
+  return u ? `@${u}` : null
 }
 
 type BestPostByTheme = {
@@ -113,9 +95,7 @@ export function WarRoomCopilotoRedesView() {
   const [error, setError] = useState<string | null>(null)
   const [configured, setConfigured] = useState(false)
   const [topPostModalTheme, setTopPostModalTheme] = useState<string | null>(null)
-  const [themeSort, setThemeSort] = useState<ThemeSortKey>('engagement')
-  const [feedExpanded, setFeedExpanded] = useState(false)
-  const [themesExpanded, setThemesExpanded] = useState(false)
+  const themeSort: ThemeSortKey = 'engagement'
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
   const [visitasManualOpen, setVisitasManualOpen] = useState(false)
   const topPostModalTitleId = useId()
@@ -207,10 +187,7 @@ export function WarRoomCopilotoRedesView() {
     return (metrics?.posts ?? []).filter((p) => ids.has(getInstagramPostIdentifier(p)))
   }, [metrics, topPosts])
 
-  const feedVisible = useMemo(
-    () => (feedExpanded ? topPosts : topPosts.slice(0, FEED_PREVIEW)),
-    [feedExpanded, topPosts],
-  )
+  const profileHandle = igHandle(metrics?.username)
 
   const themeStats = useMemo(() => {
     if (postsInPeriod.length === 0 || Object.keys(classifications).length === 0) return null
@@ -287,16 +264,6 @@ export function WarRoomCopilotoRedesView() {
       ),
     )
   }, [themeRows, themeSort])
-
-  const themeRowsVisible = useMemo(
-    () => (themesExpanded ? themeRows : themeRows.slice(0, THEMES_PREVIEW)),
-    [themesExpanded, themeRows],
-  )
-
-  useEffect(() => {
-    setThemesExpanded(false)
-    setFeedExpanded(false)
-  }, [period])
 
   const bestPostByTheme = useMemo(() => {
     const best = new Map<string, BestPostByTheme>()
@@ -381,7 +348,7 @@ export function WarRoomCopilotoRedesView() {
   }
 
   return (
-    <div className="wr-copiloto-redes wr-copiloto-redes--page wr-copiloto-reveal">
+    <div className="wr-copiloto-redes wr-copiloto-redes--page wr-copiloto-reveal rc-ios rc-ios--game wr-redes-game">
       <header
         className="wr-copiloto-redes__toolbar wr-copiloto-reveal__card"
         style={{ ['--wr-reveal-i' as string]: 0 }}
@@ -434,221 +401,22 @@ export function WarRoomCopilotoRedesView() {
         </div>
       </header>
 
-      <div className="wr-copiloto-redes__cols wr-copiloto-redes__cols--split">
-        <div className="wr-copiloto-redes__main">
-          <section
-            className="wr-copiloto-redes__band wr-copiloto-redes__band--feed wr-copiloto-reveal__card"
-            style={{ ['--wr-reveal-i' as string]: 1 }}
-            aria-label="Feed do período"
-          >
-            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--posts wr-copiloto-redes__group-th--split">
-              <span className="wr-copiloto-redes__group-th-title">
-                Feed do período
-                <span className="wr-copiloto-redes__group-th-badge tabular-nums">
-                  {topPosts.length} posts
-                </span>
-              </span>
-              <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__group-th-link">
-                Ver tudo →
-              </Link>
-            </div>
-            <div className="wr-copiloto-redes__band-body">
-              {topPosts.length === 0 ? (
-                <p className="wr-copiloto-redes__empty">
-                  Nenhuma postagem nos últimos {periodLabel}.
-                </p>
-              ) : (
-                <div className="wr-copiloto-list-card">
-                  <ul className="wr-copiloto-list-card__list" aria-label="Posts do período">
-                    {feedVisible.map((post) => {
-                      const rowInner = (
-                        <>
-                          <span className="wr-copiloto-list-card__time-chip tabular-nums">
-                            {post.dateLabel}
-                          </span>
-                          <span className="wr-copiloto-list-card__main">
-                            <span className="wr-copiloto-list-card__title" title={post.header}>
-                              {post.header}
-                            </span>
-                          </span>
-                          <span className="wr-copiloto-list-card__metrics wr-copiloto-list-card__metrics--feed">
-                            <span className="wr-copiloto-list-card__metric-primary tabular-nums">
-                              {formatWarRoomNumber(post.engagement)}
-                            </span>
-                            <span className="wr-copiloto-list-card__metric-secondary">
-                              engajamento
-                            </span>
-                          </span>
-                        </>
-                      )
-                      return (
-                        <li key={post.id} className="wr-copiloto-list-card__row">
-                          {post.url ? (
-                            <a
-                              href={post.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--link wr-copiloto-list-card__row-inner--feed"
-                            >
-                              {rowInner}
-                            </a>
-                          ) : (
-                            <div className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--feed">
-                              {rowInner}
-                            </div>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  {topPosts.length > FEED_PREVIEW ? (
-                    <button
-                      type="button"
-                      className="wr-copiloto-list-card__more"
-                      onClick={() => setFeedExpanded((v) => !v)}
-                    >
-                      {feedExpanded ? (
-                        'Ver menos'
-                      ) : (
-                        <>
-                          Ver mais publicações
-                          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                        </>
-                      )}
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <div className="wr-copiloto-redes__temas-anuncios">
-            <section
-              className="wr-copiloto-redes__band wr-copiloto-redes__band--temas wr-copiloto-reveal__card"
-              style={{ ['--wr-reveal-i' as string]: 2 }}
-              aria-label="Desempenho por tema"
-            >
-              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--temas wr-copiloto-redes__group-th--split">
-                <span className="wr-copiloto-redes__group-th-title">Desempenho por tema</span>
-                <label className="wr-copiloto-redes__sort">
-                  <span className="sr-only">Ordenar temas por</span>
-                  <select
-                    className="wr-copiloto-redes__sort-select"
-                    value={themeSort}
-                    onChange={(e) => setThemeSort(e.target.value as ThemeSortKey)}
-                  >
-                    <option value="engagement">Engajamento</option>
-                    <option value="views">Views</option>
-                  </select>
-                </label>
-              </div>
-              <div className="wr-copiloto-redes__band-body">
-                {themeRows.length === 0 ? (
-                  <p className="wr-copiloto-redes__empty">
-                    Sem temas classificados nos últimos {periodLabel}.
-                  </p>
-                ) : (
-                  <div className="wr-copiloto-list-card wr-copiloto-list-card--dense">
-                    <ol className="wr-copiloto-list-card__list" aria-label="Ranking de temas">
-                      {themeRowsVisible.map(({ theme, stats }, index) => {
-                        const rank = index + 1
-                        const metricValue =
-                          themeSort === 'views' ? stats.views : stats.engagement
-                        const barPct = Math.round((metricValue / themeMetricMax) * 100)
-                        const rankLabel = String(rank).padStart(2, '0')
-                        return (
-                          <li key={theme} className="wr-copiloto-list-card__row">
-                            <button
-                              type="button"
-                              className="wr-copiloto-list-card__row-inner wr-copiloto-list-card__row-inner--btn"
-                              title="Ver top postagem deste tema"
-                              onClick={() => setTopPostModalTheme(theme)}
-                            >
-                              <span className="wr-copiloto-list-card__rank tabular-nums">
-                                {rankLabel}
-                              </span>
-                              <ThemeRankTrophy rank={rank} />
-                              <span className="wr-copiloto-list-card__main">
-                                <span className="wr-copiloto-list-card__title" title={theme}>
-                                  {theme}
-                                </span>
-                                <span className="wr-copiloto-list-card__sub">
-                                  {stats.posts} post{stats.posts === 1 ? '' : 's'}
-                                  {' · '}
-                                  {formatWarRoomNumber(stats.views)} views
-                                </span>
-                              </span>
-                              <span className="wr-copiloto-list-card__metrics">
-                                <span className="wr-copiloto-list-card__metric-primary tabular-nums">
-                                  {formatWarRoomNumber(stats.engagement)}
-                                </span>
-                                <span
-                                  className="wr-copiloto-list-card__bar"
-                                  role="presentation"
-                                  aria-hidden
-                                >
-                                  <span
-                                    className="wr-copiloto-list-card__bar-fill"
-                                    style={{ width: `${barPct}%` }}
-                                  />
-                                </span>
-                              </span>
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ol>
-                    {themeRows.length > THEMES_PREVIEW ? (
-                      <button
-                        type="button"
-                        className="wr-copiloto-list-card__more"
-                        onClick={() => setThemesExpanded((v) => !v)}
-                      >
-                        {themesExpanded
-                          ? 'Ver menos'
-                          : `Ver todos os temas →`}
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section
-              className="wr-copiloto-redes__band wr-copiloto-redes__band--anuncios wr-copiloto-reveal__card"
-              style={{ ['--wr-reveal-i' as string]: 3 }}
-              aria-label="Anúncios ativos Jadyel Alencar"
-            >
-              <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--anuncios wr-copiloto-redes__group-th--split">
-                <span className="wr-copiloto-redes__group-th-title">
-                  Anúncios ativos · Jadyel Alencar
-                </span>
-              </div>
-              <div className="wr-copiloto-redes__band-body">
-                <WarRoomCopilotoJadyelAnuncios />
-              </div>
-            </section>
-          </div>
-        </div>
-
-        <section className="wr-copiloto-redes__side" aria-label="Indicadores">
-          <div
-            className="wr-copiloto-redes__band wr-copiloto-redes__band--indicadores wr-copiloto-reveal__card"
-            style={{ ['--wr-reveal-i' as string]: 4 }}
-          >
-            <div className="wr-copiloto-redes__group-th wr-copiloto-redes__group-th--indicadores">
-              Indicadores
-            </div>
-            <div className="wr-copiloto-redes__side-body">
-              <WarRoomCopilotoRedesDesempenho
-                kpis={desempenhoKpis}
-                compact
-                onVisitsDoubleClick={() => setVisitasManualOpen(true)}
-              />
-            </div>
-          </div>
-        </section>
-      </div>
+      <WarRoomRedesHud
+        days={days}
+        periodLabel={periodLabel}
+        handle={profileHandle}
+        postsInPeriod={postsInPeriod.map((post) => ({
+          id: getInstagramPostIdentifier(post),
+          type: post.type,
+          metrics: post.metrics,
+        }))}
+        topPosts={topPosts}
+        themeRows={themeRows}
+        themeMetricMax={themeMetricMax}
+        kpis={desempenhoKpis}
+        onThemeClick={setTopPostModalTheme}
+        onVisitsDoubleClick={() => setVisitasManualOpen(true)}
+      />
 
       {topPostModalTheme && typeof document !== 'undefined'
         ? createPortal(

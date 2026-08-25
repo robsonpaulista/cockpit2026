@@ -150,3 +150,57 @@ export async function loadInstagramCityDemographicsEvolution(input: {
 
   return { latestByMunicipio, previousByMunicipio }
 }
+
+export type CityDemographicsSeriesPoint = {
+  date: string
+  followers: number
+  engaged: number
+}
+
+/**
+ * Série diária por rótulo Instagram (city_label) a partir dos snapshots salvos.
+ * A API da Meta não devolve histórico; esta série só existe após coletas repetidas.
+ */
+export async function loadInstagramCityDemographicsSeries(input: {
+  userId: string
+  lookbackDays?: number
+}): Promise<Record<string, CityDemographicsSeriesPoint[]>> {
+  const supabase = createClient()
+  const lookbackDays = input.lookbackDays ?? 90
+  const since = new Date()
+  since.setDate(since.getDate() - Math.max(lookbackDays, 7))
+  const sinceStr = since.toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('instagram_city_demographics_history')
+    .select('city_label, followers_count, engaged_accounts, snapshot_date')
+    .eq('user_id', input.userId)
+    .gte('snapshot_date', sinceStr)
+    .order('snapshot_date', { ascending: true })
+
+  if (error || !data) {
+    if (error) logger.warn('Falha ao ler série demografia cidade', { error: error.message })
+    return {}
+  }
+
+  const byLabel = new Map<string, Map<string, CityDemographicsSeriesPoint>>()
+  for (const raw of data) {
+    const city_label = String(raw.city_label ?? '').trim()
+    if (!city_label) continue
+    const date = String(raw.snapshot_date).slice(0, 10)
+    const point: CityDemographicsSeriesPoint = {
+      date,
+      followers: Number(raw.followers_count) || 0,
+      engaged: Number(raw.engaged_accounts) || 0,
+    }
+    const days = byLabel.get(city_label) ?? new Map<string, CityDemographicsSeriesPoint>()
+    days.set(date, point)
+    byLabel.set(city_label, days)
+  }
+
+  const out: Record<string, CityDemographicsSeriesPoint[]> = {}
+  for (const [label, days] of byLabel) {
+    out[label] = [...days.values()].sort((a, b) => a.date.localeCompare(b.date))
+  }
+  return out
+}

@@ -4,6 +4,7 @@ import { IconMapPin } from '@tabler/icons-react'
 import type { InstagramCityCaptionAggregate } from '@/lib/instagram-city-caption-stats'
 import { cn } from '@/lib/utils'
 import { conteudoRedesAmberTextClass } from '@/lib/conteudo-redes-styles'
+import { InstagramCityTrendChart } from '@/components/conteudo-redes/instagram-city-trend-chart'
 
 type SortKey = 'engagement' | 'likes' | 'comments' | 'posts' | 'avgEngagement'
 
@@ -100,7 +101,7 @@ export function InstagramCaptionCityRanking({
         {aggregate.postsWithoutCity > 0
           ? ` · ${formatInt(aggregate.postsWithoutCity)} sem match`
           : ''}
-        . Ordenado por engajamento.
+        . Ordenado por engajamento · 1 ponto por dia (posts no mesmo dia somados).
       </p>
 
       <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:max-w-3xl">
@@ -130,7 +131,7 @@ export function InstagramCaptionCityRanking({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {cities.map((city, index) => {
           const primary =
             sortKey === 'likes'
@@ -187,20 +188,24 @@ export function InstagramCaptionCityRanking({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-[#78716c] sm:grid-cols-4">
-                <span>
-                  Curtidas <strong className="font-medium text-[#57534e]">{formatInt(city.likes)}</strong>
-                </span>
-                <span>
-                  Coment. <strong className="font-medium text-[#57534e]">{formatInt(city.comments)}</strong>
-                </span>
-                <span>
-                  Views <strong className="font-medium text-[#57534e]">{formatInt(city.views)}</strong>
-                </span>
-                <span>
-                  Salv. <strong className="font-medium text-[#57534e]">{formatInt(city.saves)}</strong>
-                </span>
-              </div>
+              <InstagramCityTrendChart
+                points={city.series.map((p) => ({
+                  date: p.postedAt,
+                  value: p.engagement,
+                  postsCount: p.postsInDay ?? 1,
+                  label: new Date(p.postedAt).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  }),
+                }))}
+                valueLabel="Engajamento"
+                emptyHint={
+                  city.posts <= 1
+                    ? 'Só 1 post nesta cidade no período — precisa de mais postagens para ver tendência.'
+                    : 'Sem data nas postagens para montar a linha do tempo.'
+                }
+              />
 
               <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-[#f3f1ec]">
                 <div

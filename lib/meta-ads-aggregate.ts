@@ -10,6 +10,7 @@ import {
   sumSpendRange,
 } from '@/lib/meta-ads-format'
 import { buildMetaAdsGeoSummary } from '@/lib/meta-ads-targeting'
+import { filterAdsBelongingToActor } from '@/lib/meta-ads-actor-match'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 
 export type MetaAdsPeriodTotals = {
@@ -94,11 +95,13 @@ export function buildMetaAdsCompareRows(
   const rows: MetaAdsCompareActorRow[] = actors
     .filter((a) => a.active)
     .map((actor) => {
-      const actorAds = [...(bySlug.get(actor.slug) ?? [])].sort((a, b) => {
-        const da = a.started_running_at ?? a.collected_at
-        const db = b.started_running_at ?? b.collected_at
-        return db.localeCompare(da)
-      })
+      const actorAds = filterAdsBelongingToActor(bySlug.get(actor.slug) ?? [], actor).sort(
+        (a, b) => {
+          const da = a.started_running_at ?? a.collected_at
+          const db = b.started_running_at ?? b.collected_at
+          return db.localeCompare(da)
+        },
+      )
       const totals = buildMetaAdsPeriodTotals(actorAds)
       const geo = buildMetaAdsGeoSummary(actorAds)
       return {

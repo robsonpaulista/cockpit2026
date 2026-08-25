@@ -160,12 +160,12 @@ function DesempenhoMetaCard({
                 type="monotone"
                 dataKey="value"
                 name={kpi.label}
-                stroke="color-mix(in srgb, var(--wr-petrol, #022b3a) 72%, var(--wr-aux, #6b7280))"
+                stroke="var(--palette-inst, #005b8f)"
                 strokeWidth={compact ? 1.75 : 2}
                 dot={false}
                 activeDot={{
                   r: 4,
-                  fill: 'var(--wr-petrol, #022b3a)',
+                  fill: 'var(--palette-inst, #005b8f)',
                   stroke: 'var(--wr-card, #fff)',
                   strokeWidth: 2,
                 }}

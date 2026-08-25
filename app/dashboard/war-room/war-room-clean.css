@@ -1473,7 +1473,10 @@ body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__num,
 body[data-war-room-clean] .wr-page-canvas .wr-expectativa-ranking-modal__cidade,
 body[data-war-room-clean] .wr-page-canvas .tabular-nums:not(
     .wr-copiloto-redes-candidatos__seg-val,
-    .wr-heatmap-cell-val
+    .wr-heatmap-cell-val,
+    .wr-pc-mod__val,
+    .wr-pc-kpi__val,
+    .wr-pc-hero__eng
   ) {
   color: #20201f !important;
   font-weight: 400 !important;
@@ -15107,7 +15110,7 @@ body[data-war-room-clean] .wr-copiloto-comparativo__body {
 }
 
 body[data-war-room-clean] .rc-ios {
-  --rc-bg: var(--wr-bg);
+  --rc-bg: transparent;
   --rc-bg-2: var(--wr-surface-subtle);
   --rc-surface: var(--wr-surface);
   --rc-surface-glass: var(--wr-glass-strong);
@@ -15118,9 +15121,12 @@ body[data-war-room-clean] .rc-ios {
   --rc-border: rgba(20, 20, 20, 0.08);
   --rc-border-soft: var(--wr-glass-border);
   --rc-sep: var(--wr-divider);
-  --rc-accent: var(--wr-brand);
-  --rc-accent-gold: var(--wr-brand);
-  --rc-accent-light: var(--wr-attention-soft);
+  --rc-accent: var(--palette-inst);
+  --rc-accent-gold: var(--palette-inst);
+  --rc-accent-light: var(--palette-inst-soft);
+  --rc-mix-image: var(--palette-petrol);
+  --rc-mix-reels: var(--palette-inst);
+  --rc-mix-carousel: var(--palette-accent);
   --rc-track: var(--wr-surface-hover);
   --rc-shadow-sm: var(--wr-shadow-1);
   --rc-shadow-md: var(--wr-shadow-2);
@@ -15131,13 +15137,10 @@ body[data-war-room-clean] .rc-ios {
 }
 
 body[data-war-room-clean] .rc-ios-board {
-  background:
-    radial-gradient(ellipse 70% 40% at 20% -5%, rgba(255, 255, 255, 0.7), transparent 50%),
-    radial-gradient(ellipse 50% 35% at 85% 10%, rgba(180, 185, 190, 0.08), transparent 48%),
-    var(--wr-bg) !important;
-  border: 1px solid var(--wr-glass-border) !important;
-  border-radius: var(--wr-radius-xl) !important;
-  box-shadow: var(--wr-shadow-2) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 body[data-war-room-clean] .rc-ios-panel {

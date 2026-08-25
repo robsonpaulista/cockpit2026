@@ -214,7 +214,7 @@ export function WarRoomCopilotoRelatorioView() {
         <div className="wr-relatorio-exec__toolbar-meta">
           <h2 className="wr-relatorio-exec__title">Relatório</h2>
           <p className="wr-relatorio-exec__hint">
-            Executivo municipal · emendas e obras separados (sem dupla contagem)
+            Executivo municipal · A4 paisagem · emendas e obras separados (sem dupla contagem)
           </p>
         </div>
         <div className="wr-relatorio-exec__toolbar-actions">

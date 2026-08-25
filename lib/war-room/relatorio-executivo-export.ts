@@ -267,7 +267,7 @@ export function exportRelatorioExecutivoPdf(
   data: RelatorioExecutivoMunicipio,
 ): void {
   ensureJspdfAutotable()
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const pdf = doc as JsPdfWithAutoTable
   const pageW = pdf.internal.pageSize.getWidth()
   const pageH = pdf.internal.pageSize.getHeight()
@@ -326,7 +326,7 @@ export function exportRelatorioExecutivoPdf(
     pdf.text('Sem registros no município.', 14, y + 4)
     y += 10
   } else {
-    const cols = Math.min(3, data.porAno.length)
+    const cols = Math.min(4, data.porAno.length)
     const gap = 4
     const anoCardW = (pageW - 28 - gap * (cols - 1)) / cols
 
@@ -431,16 +431,16 @@ export function exportRelatorioExecutivoPdf(
             row.pago > 0 ? formatRelatorioBrl(row.pago) : '—',
             row.status,
           ]),
-    styles: { fontSize: 6.5, cellPadding: 1.2, overflow: 'linebreak' },
-    headStyles: { fillColor: BLACK, textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+    styles: { fontSize: 7.5, cellPadding: 1.4, overflow: 'linebreak' },
+    headStyles: { fillColor: BLACK, textColor: 255, fontStyle: 'bold', fontSize: 7 },
     columnStyles: {
-      0: { cellWidth: 12 },
-      1: { cellWidth: 38 },
-      2: { cellWidth: 52 },
-      3: { cellWidth: 22, halign: 'right' },
-      4: { cellWidth: 22, halign: 'right' },
-      5: { cellWidth: 22, halign: 'right' },
-      6: { cellWidth: 18 },
+      0: { cellWidth: 16 },
+      1: { cellWidth: 52 },
+      2: { cellWidth: 'auto' },
+      3: { cellWidth: 32, halign: 'right' },
+      4: { cellWidth: 32, halign: 'right' },
+      5: { cellWidth: 32, halign: 'right' },
+      6: { cellWidth: 30 },
     },
   })
   y = finalY(pdf, y) + 8
@@ -546,12 +546,12 @@ export function exportRelatorioExecutivoPdf(
             valor != null && valor > 0 ? formatRelatorioBrl(valor) : 'SEM VALOR',
           ]
         }),
-        styles: { fontSize: 7, cellPadding: 1.2, overflow: 'linebreak' },
-        headStyles: { fillColor: BLACK, textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+        styles: { fontSize: 8, cellPadding: 1.5, overflow: 'linebreak' },
+        headStyles: { fillColor: BLACK, textColor: 255, fontStyle: 'bold', fontSize: 7 },
         columnStyles: {
-          0: { cellWidth: 36 },
+          0: { cellWidth: 48 },
           1: { cellWidth: 'auto' },
-          2: { cellWidth: 28, halign: 'right' },
+          2: { cellWidth: 36, halign: 'right' },
         },
       })
       y = finalY(pdf, y) + 7
@@ -598,8 +598,8 @@ export function exportRelatorioExecutivoPdf(
       styles: { fontSize: 7.5, cellPadding: 1.4, overflow: 'linebreak' },
       headStyles: { fillColor: BLACK, textColor: 255, fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 36 },
+        0: { cellWidth: 90 },
+        1: { cellWidth: 44 },
         2: { cellWidth: 'auto', textColor: GRAY },
       },
       didDrawCell: (hookData) => {
