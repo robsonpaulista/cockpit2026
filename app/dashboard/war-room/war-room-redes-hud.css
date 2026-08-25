@@ -8,6 +8,8 @@
   --pc-text-2: var(--palette-aux, #6b7280);
   --pc-text-3: #94a3b8;
   --pc-graphite: var(--palette-petrol, #022b3a);
+  --pc-sair: #f2d06b;
+  --pc-sair-ink: #2b2d31;
   --pc-spark: #656970;
   --pc-ok: #16a05d;
   --pc-down: #e64a45;
@@ -282,8 +284,13 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
 }
 
 .wr-pc-dna__ico--carousel {
-  background: color-mix(in srgb, var(--palette-accent, #f04b23) 14%, #fff);
-  color: var(--palette-accent, #f04b23);
+  background: var(--pc-sair);
+  color: #2b2d31;
+}
+
+.wr-pc-dna__ico--carousel svg {
+  color: #2b2d31;
+  stroke: #2b2d31;
 }
 
 .wr-pc-dna__name {
@@ -830,9 +837,18 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
   place-items: center;
 }
 
-.wr-pc-win__ico--trophy { background: color-mix(in srgb, var(--palette-accent, #f04b23) 16%, #fff); color: var(--palette-accent, #f04b23); }
+.wr-pc-win__ico--trophy,
+.wr-pc-win__ico--flame {
+  background: var(--pc-sair);
+  color: #2b2d31;
+}
+
+.wr-pc-win__ico--trophy svg,
+.wr-pc-win__ico--flame svg {
+  color: #2b2d31 !important;
+  stroke: #2b2d31 !important;
+}
 .wr-pc-win__ico--chart { background: color-mix(in srgb, var(--palette-inst, #005b8f) 16%, #fff); color: var(--palette-inst, #005b8f); }
-.wr-pc-win__ico--flame { background: color-mix(in srgb, var(--palette-accent, #f04b23) 12%, #fff); color: var(--palette-accent, #f04b23); }
 .wr-pc-win__ico--eye { background: color-mix(in srgb, var(--palette-inst, #005b8f) 12%, #fff); color: var(--palette-inst, #005b8f); }
 .wr-pc-win__ico--zap { background: color-mix(in srgb, #16a05d 16%, #fff); color: #16a05d; }
 
@@ -859,6 +875,8 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  background: var(--pc-sair);
+  color: var(--pc-sair-ink);
 }
 
 /* Filtros em pílula nesta página */
