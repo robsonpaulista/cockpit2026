@@ -79,6 +79,11 @@
   padding: 14px 16px 12px;
 }
 
+/* Placar: tip do spark precisa vazar do card sem ser cortado */
+.wr-pc-panel.wr-pc-placar {
+  overflow: visible;
+}
+
 .wr-pc-panel__head {
   display: flex;
   align-items: baseline;
@@ -131,6 +136,43 @@
   width: 100%;
   height: 28px;
   margin-top: 4px;
+  overflow: visible;
+  position: relative;
+}
+
+/* Tip compacto: data + valor (sem rótulo longo que estoura o card) */
+.wr-pc-spark-tip {
+  min-width: 48px;
+  max-width: 76px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #d8dde3;
+  box-shadow: 0 8px 18px rgba(2, 43, 58, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.wr-pc-spark-tip span {
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #6b7280;
+}
+
+.wr-pc-spark-tip strong {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #022b3a;
+}
+
+.wr-pc-spark .recharts-tooltip-wrapper {
+  z-index: 30 !important;
+  overflow: visible !important;
 }
 
 .wr-pc-empty {
@@ -588,6 +630,7 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
 /* —— Placar —— */
 .wr-pc-placar {
   grid-column: span 5;
+  overflow: visible;
 }
 
 .wr-pc-placar__grid {
@@ -597,6 +640,7 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
   gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: visible;
 }
 
 .wr-pc-kpi {
@@ -608,6 +652,13 @@ body[data-war-room-clean] .wr-redes-hud .wr-pc-mod .wr-pc-spark {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+
+.wr-pc-kpi:hover {
+  z-index: 5;
 }
 
 .wr-pc-kpi--action { cursor: pointer; }

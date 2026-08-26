@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.territorio_liderancas (
   senador_1 TEXT,
   senador_2 TEXT,
   dep_estadual TEXT,
+  governador TEXT,
   lideranca_atual TEXT,
   cargo_2020 TEXT,
   votos_2020 NUMERIC,

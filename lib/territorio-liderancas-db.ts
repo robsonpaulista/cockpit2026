@@ -25,6 +25,7 @@ export type TerritorioLiderancaRow = {
   senador_1: string | null
   senador_2: string | null
   dep_estadual: string | null
+  governador: string | null
   lideranca_atual: string | null
   cargo_2020: string | null
   cargo_2024: string | null
@@ -76,6 +77,7 @@ async function fetchAllLiderancasRows(): Promise<TerritorioLiderancaRow[]> {
           'senador_1',
           'senador_2',
           'dep_estadual',
+          'governador',
           'lideranca_atual',
           'cargo_2020',
           'cargo_2024',
@@ -144,6 +146,7 @@ export async function listTerritorioLiderancasByCidade(cidade: string): Promise<
         'senador_1',
         'senador_2',
         'dep_estadual',
+        'governador',
         'lideranca_atual',
         'cargo_2020',
         'cargo_2024',

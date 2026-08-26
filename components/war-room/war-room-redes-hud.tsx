@@ -155,6 +155,25 @@ function MiniSpark({ values, className }: { values: number[]; className?: string
   )
 }
 
+function PlacarSparkTip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: ReadonlyArray<{ payload?: { label?: string; value?: number } }>
+}) {
+  if (!active || !payload?.[0]?.payload) return null
+  const point = payload[0].payload
+  return (
+    <div className="wr-pc-spark-tip">
+      <span>{String(point.label ?? '')}</span>
+      <strong className="tabular-nums">
+        {formatWarRoomNumber(Number(point.value ?? 0))}
+      </strong>
+    </div>
+  )
+}
+
 function PlacarSpark({ kpi }: { kpi: WarRoomDesempenhoKpi }) {
   if (kpi.series.length < 2) return <div className="wr-pc-spark" />
   return (
@@ -164,19 +183,11 @@ function PlacarSpark({ kpi }: { kpi: WarRoomDesempenhoKpi }) {
           <YAxis hide domain={['dataMin', 'dataMax']} />
           <Tooltip
             cursor={false}
-            contentStyle={{
-              background: 'rgba(25,25,27,.92)',
-              border: '0',
-              borderRadius: 8,
-              fontSize: 10,
-              padding: '6px 8px',
-              color: '#fff',
-            }}
-            formatter={(value) => [
-              formatWarRoomNumber(typeof value === 'number' ? value : Number(value ?? 0)),
-              kpi.label,
-            ]}
-            labelFormatter={(_, payload) => String(payload?.[0]?.payload?.label ?? '')}
+            allowEscapeViewBox={{ x: true, y: true }}
+            // Fixo no canto esquerdo do spark — sempre cabe, inclusive nos cards da direita
+            position={{ x: 0, y: 0 }}
+            wrapperStyle={{ zIndex: 40, pointerEvents: 'none', outline: 'none' }}
+            content={PlacarSparkTip}
           />
           <Line
             type="monotone"

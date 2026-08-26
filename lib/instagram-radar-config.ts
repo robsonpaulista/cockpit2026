@@ -11,8 +11,8 @@
  * + comentários (até 8 posts/perfil × 20 cmt) sob teto separado
  *
  * Multi-conta (opcional):
- *   APIFY_TOKEN2..5 → divide posts/comentários (até 4 contas)
- *   (APIFY_TOKEN desativado se limite; cada free ≈ US$ 5/mês).
+ *   APIFY_TOKEN + APIFY_TOKEN3..5 → divide posts/comentários
+ *   (TOKEN2 fora do rateio se hard limit; override via APIFY_TOKENS_DISABLED).
  * Comentários: no máx. 1× / 7 dias (INSTAGRAM_RADAR_SKIP_COMMENTS_COOLDOWN=1 para forçar).
  */
 

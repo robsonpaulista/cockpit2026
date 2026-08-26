@@ -18,6 +18,7 @@ const patchSchema = z.object({
   lideranca: z.string().min(1).optional(),
   cargo_2024: z.string().optional().nullable(),
   dep_estadual: z.string().optional().nullable(),
+  governador: z.string().optional().nullable(),
   lideranca_atual: z.string().optional().nullable(),
   votos_2024: z.coerce.number().optional().nullable(),
   expectativa_votos_2026: z.coerce.number().optional().nullable(),
@@ -36,6 +37,7 @@ function mapRow(row: Record<string, unknown>) {
     nome: String(row.lideranca || ''),
     cargo: String(row.cargo_2024 || row.cargo_2020 || '-'),
     depEstadual: String(row.dep_estadual || ''),
+    governador: String(row.governador || ''),
     liderancaAtual,
     emDialogo: resolveLiderancaEmDialogo(liderancaAtual, row.em_dialogo),
     expectativaLegado: Number(row.expectativa_votos_2026 || 0),
@@ -77,6 +79,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (body.lideranca !== undefined) patch.lideranca = body.lideranca.trim()
     if (body.cargo_2024 !== undefined) patch.cargo_2024 = body.cargo_2024?.trim() || null
     if (body.dep_estadual !== undefined) patch.dep_estadual = body.dep_estadual?.trim() || null
+    if (body.governador !== undefined) patch.governador = body.governador?.trim() || null
     if (body.lideranca_atual !== undefined) {
       const liderancaAtual = canonicalizeLiderancaAtual(body.lideranca_atual)
       patch.lideranca_atual = liderancaAtual

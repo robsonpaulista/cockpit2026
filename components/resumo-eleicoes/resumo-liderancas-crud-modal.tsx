@@ -14,6 +14,7 @@ export type LiderancaCrudRow = {
   nome: string
   cargo: string
   depEstadual: string
+  governador: string
   liderancaAtual: string
   emDialogo: boolean
   expectativaLegado: number
@@ -27,6 +28,7 @@ type FormState = {
   nome: string
   cargo: string
   depEstadual: string
+  governador: string
   liderancaAtual: string
   expectativaLegado: string
   expectativaAferida: string
@@ -37,6 +39,7 @@ export type LiderancaFormPrefill = {
   nome: string
   cargo?: string
   depEstadual?: string
+  governador?: string
   liderancaAtual?: string
   expectativaLegado?: number
   expectativaAferida?: number
@@ -47,6 +50,7 @@ const EMPTY_FORM: FormState = {
   nome: '',
   cargo: '',
   depEstadual: '',
+  governador: 'Rafael',
   // Default SIM para a nova liderança entrar na lista/soma da cidade (aba Lideranças).
   liderancaAtual: 'SIM',
   expectativaLegado: '0',
@@ -59,6 +63,7 @@ function formFromPrefill(prefill: LiderancaFormPrefill): FormState {
     nome: String(prefill.nome || '').trim(),
     cargo: String(prefill.cargo || '').trim(),
     depEstadual: String(prefill.depEstadual || '').trim(),
+    governador: String(prefill.governador || '').trim() || 'Rafael',
     liderancaAtual: canonicalizeLiderancaAtual(prefill.liderancaAtual) ?? 'SIM',
     expectativaLegado: String(prefill.expectativaLegado ?? 0),
     expectativaAferida: String(prefill.expectativaAferida ?? 0),
@@ -159,6 +164,7 @@ export function ResumoLiderancasCrudModal({
         nome: row.nome,
         cargo: row.cargo === '-' ? '' : row.cargo,
         depEstadual: row.depEstadual,
+        governador: row.governador || 'Rafael',
         liderancaAtual: canonicalizeLiderancaAtual(row.liderancaAtual) ?? '',
         expectativaLegado: String(row.expectativaLegado || 0),
         expectativaAferida: String(row.expectativaAferida || 0),
@@ -201,6 +207,7 @@ export function ResumoLiderancasCrudModal({
       nome: row.nome,
       cargo: row.cargo === '-' ? '' : row.cargo,
       depEstadual: row.depEstadual,
+      governador: row.governador || 'Rafael',
       liderancaAtual: canonicalizeLiderancaAtual(row.liderancaAtual) ?? '',
       expectativaLegado: String(row.expectativaLegado || 0),
       expectativaAferida: String(row.expectativaAferida || 0),
@@ -229,6 +236,7 @@ export function ResumoLiderancasCrudModal({
       lideranca: nome,
       cargo_2024: form.cargo.trim() || null,
       dep_estadual: form.depEstadual.trim() || null,
+      governador: form.governador.trim() || null,
       lideranca_atual: canonicalizeLiderancaAtual(form.liderancaAtual),
       expectativa_votos_2026: parseNum(form.expectativaLegado),
       expectativa_jadyel_2026: parseNum(form.expectativaAferida),
@@ -343,6 +351,14 @@ export function ResumoLiderancasCrudModal({
                 <input
                   value={form.depEstadual}
                   onChange={(e) => setForm((prev) => ({ ...prev, depEstadual: e.target.value }))}
+                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
+                />
+              </label>
+              <label className="text-xs text-text-secondary">
+                Governador
+                <input
+                  value={form.governador}
+                  onChange={(e) => setForm((prev) => ({ ...prev, governador: e.target.value }))}
                   className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
                 />
               </label>

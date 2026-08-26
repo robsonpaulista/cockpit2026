@@ -14,7 +14,8 @@
  *   npm run instagram:avatars:reprocess   # só reprocessa avatares já salvos
  *
  * Env:
- *   APIFY_TOKEN2..5  (split em até 4 contas; APIFY_TOKEN desativado — limite)
+ *   APIFY_TOKEN + APIFY_TOKEN3..5  (split; TOKEN2 desativado — limite mensal)
+ *   APIFY_TOKENS_DISABLED=2       (opcional; default 2)
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   INSTAGRAM_RADAR_MAX_ACTORS (default 10)
@@ -313,12 +314,26 @@ async function fetchDatasetItems(token, datasetId) {
 }
 
 /**
- * Tokens ativos para split. Conta 1 (APIFY_TOKEN) estourou o limite — usar 2..5.
- * Ordem: TOKEN2 → TOKEN3 → TOKEN4 → TOKEN5. APIFY_TOKEN é ignorado de propósito.
+ * Tokens ativos para split (rateio).
+ * Conta 1 (APIFY_TOKEN / Robson) ativa.
+ * Conta 2 (APIFY_TOKEN2) fora — hard limit mensal excedido (403).
+ * Ordem: TOKEN → TOKEN3 → TOKEN4 → TOKEN5.
  */
 function resolveApifyTokens() {
   const tokens = []
+  const disabled = new Set(
+    String(process.env.APIFY_TOKENS_DISABLED || '2')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+
+  const primary = process.env.APIFY_TOKEN?.trim() || null
+  if (primary && !disabled.has('1')) {
+    tokens.push({ token: primary, envKey: 'APIFY_TOKEN', label: 'token1' })
+  }
   for (const n of [2, 3, 4, 5]) {
+    if (disabled.has(String(n))) continue
     const envKey = `APIFY_TOKEN${n}`
     const token = process.env[envKey]?.trim() || null
     if (token) tokens.push({ token, envKey, label: `token${n}` })
@@ -721,7 +736,7 @@ async function main() {
   const tokens = resolveApifyTokens()
   if (tokens.length === 0) {
     throw new Error(
-      'Coleta de concorrentes não configurada (APIFY_TOKEN2..5). APIFY_TOKEN está desativado (limite).',
+      'Coleta de concorrentes não configurada (APIFY_TOKEN / APIFY_TOKEN2..5).',
     )
   }
 
@@ -790,7 +805,7 @@ async function main() {
 
   logProgress(
     tokens.length > 1
-      ? `Split Apify (sem TOKEN1): ${shards.map((s) => `${s.label}=${s.actors.length}`).join(' · ')} · env ${shards.map((s) => s.envKey).join(' + ')}`
+      ? `Split Apify: ${shards.map((s) => `${s.label}=${s.actors.length}`).join(' · ')} · env ${shards.map((s) => s.envKey).join(' + ')}`
       : `1 token Apify (${tokens[0].envKey}) · ${capped.length} perfis`,
   )
 

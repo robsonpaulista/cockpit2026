@@ -79,6 +79,7 @@ type InlineForm = {
   nome: string
   cargo: string
   depEstadual: string
+  governador: string
   liderancaAtual: string
   votos2024: string
   promessa: string
@@ -237,6 +238,7 @@ export function LiderancasPanel() {
       nome: lideranca.nome,
       cargo: lideranca.cargo === '-' ? '' : lideranca.cargo,
       depEstadual: lideranca.depEstadual,
+      governador: lideranca.governador || 'Rafael',
       liderancaAtual: lideranca.liderancaAtual,
       votos2024: String(lideranca.votos2024 ?? 0),
       promessa: String(lideranca.promessa),
@@ -266,6 +268,7 @@ export function LiderancasPanel() {
           lideranca: inlineForm.nome.trim(),
           cargo_2024: inlineForm.cargo.trim() || null,
           dep_estadual: inlineForm.depEstadual.trim() || null,
+          governador: inlineForm.governador.trim() || null,
           lideranca_atual: canonicalizeLiderancaAtual(inlineForm.liderancaAtual),
           votos_2024: parseNumero(inlineForm.votos2024),
           promessa_lideranca_2026: parseNumero(inlineForm.promessa),
@@ -491,12 +494,13 @@ export function LiderancasPanel() {
 
                 {!recolhida ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[860px] text-xs">
+                    <table className="w-full min-w-[960px] text-xs">
                       <thead>
                         <tr className="text-text-secondary">
                           <th className="px-4 py-2 text-left font-medium">Liderança</th>
                           <th className="px-3 py-2 text-left font-medium">Cargo</th>
                           <th className="px-3 py-2 text-left font-medium">Dep. Estadual</th>
+                          <th className="px-3 py-2 text-left font-medium">Governador</th>
                           <th className="px-3 py-2 text-left font-medium">Situação</th>
                           <th className="px-3 py-2 text-right font-medium">Votos 2024</th>
                           <th className="px-3 py-2 text-right font-medium">Promessa 2026</th>
@@ -593,6 +597,30 @@ export function LiderancasPanel() {
                                   />
                                 ) : (
                                   lideranca.depEstadual || '-'
+                                )}
+                              </td>
+                              <td
+                                className="cursor-pointer px-2 py-1.5 text-text-secondary"
+                                onClick={() => {
+                                  if (!editando) iniciarEdicaoInline(lideranca, 'governador')
+                                }}
+                                title={editando ? undefined : 'Clique para editar'}
+                              >
+                                {editando ? (
+                                  <InlineInput
+                                    value={inlineForm.governador}
+                                    onChange={(value) =>
+                                      setInlineForm(
+                                        (form) => form && { ...form, governador: value },
+                                      )
+                                    }
+                                    ariaLabel="Governador"
+                                    autoFocus={focusField === 'governador'}
+                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
+                                    onCancel={cancelarEdicaoInline}
+                                  />
+                                ) : (
+                                  lideranca.governador || '-'
                                 )}
                               </td>
                               <td

@@ -12,17 +12,22 @@ export type OwnInstagramRadarReady = {
 }
 
 /** Apify — lê process.env com fallback para .env.local se o dev server não recarregou.
- * Preferência operacional: TOKEN2..5 (TOKEN1 pode estar no limite).
+ * Pool ativo: APIFY_TOKEN (token1) + TOKEN3..5 (TOKEN2 no limite — ver APIFY_TOKENS_DISABLED).
  */
 export function isApifyConfigured(): boolean {
   ensureEnvLocalLoaded()
-  return Boolean(
-    process.env.APIFY_TOKEN2?.trim() ||
-      process.env.APIFY_TOKEN3?.trim() ||
-      process.env.APIFY_TOKEN4?.trim() ||
-      process.env.APIFY_TOKEN5?.trim() ||
-      process.env.APIFY_TOKEN?.trim(),
+  const disabled = new Set(
+    String(process.env.APIFY_TOKENS_DISABLED || '2')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
   )
+  if (!disabled.has('1') && process.env.APIFY_TOKEN?.trim()) return true
+  for (const n of [2, 3, 4, 5] as const) {
+    if (disabled.has(String(n))) continue
+    if (process.env[`APIFY_TOKEN${n}`]?.trim()) return true
+  }
+  return false
 }
 
 export async function getOwnInstagramRadarReady(

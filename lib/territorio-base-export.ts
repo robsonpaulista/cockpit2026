@@ -17,6 +17,7 @@ export const TERRITORIO_BASE_EXPORT_FIELDS: TerritorioBaseExportField[] = [
   { id: 'LIDERANÇA', label: 'Liderança', defaultSelected: true },
   { id: 'CARGO 2024', label: 'Cargo 2024', defaultSelected: true },
   { id: 'DEP. ESTADUAL', label: 'Dep. estadual', defaultSelected: true },
+  { id: 'GOVERNADOR', label: 'Governador', defaultSelected: true },
   { id: 'LIDERANÇA ATUAL', label: 'Liderança atual', defaultSelected: true },
   {
     id: 'EXPECTATIVA DE VOTOS 2026',
