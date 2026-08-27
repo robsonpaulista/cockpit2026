@@ -13,6 +13,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { cn } from '@/lib/utils'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 import bbox from '@turf/bbox'
 import bboxPolygon from '@turf/bbox-polygon'
 import difference from '@turf/difference'
@@ -4145,17 +4146,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         const munisPane = map.createPane('piMunicipios')
         munisPane.style.zIndex = '450'
 
-        const tileUrl =
+        const style =
           visualPreset === 'futuristic'
             ? isFuturisticLight
-              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-        L.tileLayer(tileUrl, {
-          attribution: '&copy; OpenStreetMap &copy; CARTO · Malha IBGE',
-          maxZoom: 19,
-          maxNativeZoom: 19,
-          subdomains: 'abcd',
+              ? 'light'
+              : 'dark_nolabels'
+            : 'light'
+        const basemap = getLeafletBasemapLayerOptions(style)
+        L.tileLayer(basemap.url, {
+          ...basemap.options,
+          attribution: `${basemap.options.attribution} · Malha IBGE`,
+          maxNativeZoom: basemap.options.maxZoom,
           opacity: visualPreset === 'futuristic' ? (isFuturisticLight ? 0.4 : 0.52) : 0.32,
         }).addTo(map)
 

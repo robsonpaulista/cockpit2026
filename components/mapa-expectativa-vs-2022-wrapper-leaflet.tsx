@@ -11,6 +11,7 @@ import {
 } from '@/lib/comparativo-expectativa-2022'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 
 type MapAppearance = 'light' | 'dark'
 
@@ -99,14 +100,8 @@ export function MapaExpectativaVs2022WrapperLeaflet({
     const markersPane = map.getPane('markersPane')
     if (markersPane) markersPane.style.zIndex = '400'
 
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    L.tileLayer(tileUrl, {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions(isDark ? 'dark' : 'light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     return () => {
       map.remove()

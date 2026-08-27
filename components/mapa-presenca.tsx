@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Maximize2,
@@ -26,7 +26,7 @@ import { getAllEleitores } from '@/lib/eleitores'
 import demografiaMunicipiosPiaui from '@/data/demografia-municipios-piaui.json'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
-import type { MapStats } from './mapa-wrapper-leaflet'
+import type { MapMarkerTheme, MapStats } from './mapa-wrapper-leaflet'
 
 // Dynamic import (client-only)
 const MapWrapperLeaflet = dynamic(
@@ -65,6 +65,15 @@ interface MapaPresencaProps {
   showStatsOverlay?: boolean
   embedded?: boolean
   hideFooterLegend?: boolean
+  /**
+   * Em tela cheia, mostra filtros + painel “Prioridade no campo” (Base Eleitoral).
+   * Desligar na Cobertura do War Room, que já tem lista própria.
+   */
+  fullscreenChrome?: boolean
+  /** Cores dos pins: default ou war-room (amarelo/preto/cinza) */
+  markerTheme?: MapMarkerTheme
+  /** Rótulo da expectativa no popup (ex.: Meta) */
+  expectativaLabel?: string
   onMapStatsChange?: (stats: MapStats) => void
   territoriosQuentes?: TerritorioInfo[]
   territoriosMornos?: TerritorioInfo[]
@@ -167,6 +176,9 @@ export function MapaPresenca({
   showStatsOverlay = true,
   embedded = false,
   hideFooterLegend = false,
+  fullscreenChrome = true,
+  markerTheme = 'default',
+  expectativaLabel,
   onMapStatsChange,
   territoriosQuentes = [],
   territoriosMornos = [],
@@ -175,6 +187,7 @@ export function MapaPresenca({
 }: MapaPresencaProps) {
   const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
+  const rootRef = useRef<HTMLDivElement>(null)
   const [clientReady, setClientReady] = useState<boolean>(false)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(false)
   const [filtroAtivo, setFiltroAtivo] = useState<string>('todas')
@@ -188,22 +201,27 @@ export function MapaPresenca({
     setClientReady(true)
   }, [])
 
-  // Fullscreen listener
+  // Fullscreen: só reage se ESTE mapa estiver dentro do elemento em tela cheia
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsNativeFullscreen(!!document.fullscreenElement)
+      const fs = document.fullscreenElement
+      const root = rootRef.current
+      setIsNativeFullscreen(!!(fs && root && (fs === root || fs.contains(root))))
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
+  /** Chrome da Base Eleitoral (filtros + prioridade no campo) — opcional. */
+  const showFsChrome = fullscreenChrome && isNativeFullscreen
+
   useEffect(() => {
-    if (!isNativeFullscreen) {
+    if (!showFsChrome) {
       setPrioridadeBuscaMunicipio('')
       setPrioridadeListaFiltro('sem-lideranca')
       setCidadePrioridadeSelecionada('')
     }
-  }, [isNativeFullscreen])
+  }, [showFsChrome])
 
   const handleExitFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -519,9 +537,11 @@ export function MapaPresenca({
         onStatsCalculated={handleStatsCalculated}
         showRegionLabels={!embedded || isNativeFullscreen}
         compactMarkers={embedded && !isNativeFullscreen}
+        markerTheme={markerTheme}
+        expectativaLabel={expectativaLabel}
       />
 
-      {(fullscreen || isNativeFullscreen) && (
+      {(fullscreen || showFsChrome) && (
         <div
           className={cn(
             'pointer-events-none absolute left-3 top-3 z-[1000] min-w-[260px] rounded-xl border p-3 shadow-lg backdrop-blur-md',
@@ -562,7 +582,7 @@ export function MapaPresenca({
       )}
 
       {/* Live Counter Overlay — oculto no card embutido; visível em tela cheia */}
-      {showStatsOverlay && mapStats && (!embedded || isNativeFullscreen) && (
+      {showStatsOverlay && mapStats && (!embedded || showFsChrome) && (
         <div
           className={cn(
             'pointer-events-none absolute right-3 top-3 z-[1000] min-w-[170px] space-y-1.5 rounded-xl border p-3 shadow-lg backdrop-blur-md',
@@ -597,11 +617,12 @@ export function MapaPresenca({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         'w-full min-h-0',
         embedded
           ? 'flex h-full min-h-0 flex-col overflow-hidden'
-          : isNativeFullscreen
+          : showFsChrome
             ? 'flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-background'
             : 'space-y-3'
       )}
@@ -609,11 +630,11 @@ export function MapaPresenca({
       {/* Header com Título Dinâmico */}
       {!embedded ? (
       <div
-        className={`flex items-center justify-between ${isNativeFullscreen ? 'shrink-0 bg-surface border-b border-card px-4 py-3' : ''}`}
+        className={`flex items-center justify-between ${showFsChrome ? 'shrink-0 bg-surface border-b border-card px-4 py-3' : ''}`}
       >
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <h3 className={`font-semibold text-text-primary ${isNativeFullscreen ? 'text-lg' : 'text-sm'}`}>
+            <h3 className={`font-semibold text-text-primary ${showFsChrome ? 'text-lg' : 'text-sm'}`}>
               Mapa de Estratégia Territorial
             </h3>
           </div>
@@ -653,7 +674,7 @@ export function MapaPresenca({
               <Maximize2 className="w-4 h-4" />
             </button>
           )}
-          {isNativeFullscreen && (
+          {showFsChrome && (
             <button
               onClick={handleExitFullscreen}
               className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
@@ -666,12 +687,12 @@ export function MapaPresenca({
       </div>
       ) : null}
 
-      {/* Filtros Rápidos + Região — ocultos no card embutido; disponíveis em tela cheia */}
-      {(!embedded || isNativeFullscreen) ? (
+      {/* Filtros Rápidos + Região — ocultos no card embutido; disponíveis em tela cheia da Base */}
+      {(!embedded || showFsChrome) ? (
       <div
         className={cn(
           'flex flex-wrap items-center gap-1.5',
-          embedded ? 'shrink-0 px-1 pb-1.5' : isNativeFullscreen ? 'shrink-0 border-b border-card bg-surface px-4 py-2' : ''
+          embedded ? 'shrink-0 px-1 pb-1.5' : showFsChrome ? 'shrink-0 border-b border-card bg-surface px-4 py-2' : ''
         )}
       >
         <Filter className="w-3.5 h-3.5 text-secondary mr-0.5" />
@@ -730,12 +751,12 @@ export function MapaPresenca({
       </div>
       ) : null}
 
-      {/* Mapa com Overlay de Contadores — em tela cheia, apenas acrescenta coluna ao lado */}
-      {isNativeFullscreen ? (
+      {/* Mapa com Overlay de Contadores — em tela cheia da Base, acrescenta coluna ao lado */}
+      {showFsChrome ? (
         <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
           <div
             className={`relative w-full min-h-0 overflow-hidden bg-surface ${
-              isNativeFullscreen ? 'min-h-0 flex-1' : ''
+              showFsChrome ? 'min-h-0 flex-1' : ''
             }`}
           >
             {mapaComOverlays}
@@ -1034,33 +1055,67 @@ export function MapaPresenca({
         className={cn(
           'flex flex-wrap items-center justify-center gap-3 text-secondary',
           embedded ? 'shrink-0 gap-2 px-1 pb-0.5 text-[10px]' : 'gap-4 text-xs',
-          isNativeFullscreen ? 'shrink-0 bg-surface border-t border-card px-4 py-3' : ''
+          isNativeFullscreen && fullscreenChrome ? 'shrink-0 bg-surface border-t border-card px-4 py-3' : ''
         )}
       >
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-700 flex items-center justify-center">
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-          <span>Visitada</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-blue-600"></div>
-          <span>Com liderança</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 animate-pulse"></div>
-          <span className="text-amber-700 font-medium">Oportunidade</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-600 opacity-70"></div>
-          <span>Sem liderança</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-2 rounded bg-blue-400/20 border border-blue-300/30"></div>
-          <span>Zona de presença</span>
-        </div>
+        {markerTheme === 'war-room' ? (
+          <>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="flex h-4 w-4 items-center justify-center rounded-full border-2"
+                style={{ background: '#f2d06b', borderColor: '#2b2d31' }}
+              >
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#2b2d31" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span>Visitada</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full border-2" style={{ background: '#2b2d31', borderColor: '#20201f' }} />
+              <span>Com meta</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 animate-pulse rounded-full border" style={{ background: '#f2d06b', borderColor: '#2b2d31' }} />
+              <span className="font-medium" style={{ color: '#2b2d31' }}>Oportunidade</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full border opacity-80" style={{ background: '#686865', borderColor: '#52524f' }} />
+              <span>Sem meta</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-4 rounded border" style={{ background: 'rgba(242,208,107,0.25)', borderColor: 'rgba(43,45,49,0.2)' }} />
+              <span>Zona de presença</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-700 flex items-center justify-center">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <span>Visitada</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-blue-600"></div>
+              <span>Com liderança</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 animate-pulse"></div>
+              <span className="text-amber-700 font-medium">Oportunidade</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-600 opacity-70"></div>
+              <span>Sem liderança</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-2 rounded bg-blue-400/20 border border-blue-300/30"></div>
+              <span>Zona de presença</span>
+            </div>
+          </>
+        )}
       </div>
       ) : null}
     </div>

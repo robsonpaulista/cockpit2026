@@ -51,11 +51,14 @@ import {
   resumoKpiBarTrackClass,
   resumoKpiBarFillClass,
   resumoKpiBarLabelClass,
+  resumoWrCardClass,
+  resumoWrCardGlassClass,
 } from '@/lib/resumo-eleicoes-table-styles'
 import {
   ResumoEleicoesCidadesTabela,
   type ResumoEleicoesCidadeLinha,
 } from '@/components/resumo-eleicoes/resumo-eleicoes-cidades-tabela'
+import '@/app/dashboard/shared/resumo-eleicoes-wr-cards.css'
 
 interface ResultadoEleicao {
   uf: string
@@ -360,10 +363,10 @@ export function ResumoEleicoesAtendimentoPanel() {
   const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
   const sectionShellClass = isCockpit
     ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'rounded-2xl border border-card bg-surface p-4 shadow-card'
+    : resumoWrCardGlassClass('p-4')
   const innerPanelClass = isCockpit
     ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'rounded-xl border border-card bg-surface p-3'
+    : resumoWrCardClass('p-3')
   const [cidade, setCidade] = useState('')
   const [cidades, setCidades] = useState<string[]>([])
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
@@ -2324,8 +2327,7 @@ export function ResumoEleicoesAtendimentoPanel() {
         {dados.length > 0 && (
           <>
           {resumoCidade && (
-            <div className={cn(innerPanelClass, 'mb-2')}>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+            <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
                   <span className={kpiIconWrapClass}>
@@ -2449,7 +2451,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                 </button>
               </div>
             </div>
-            </div>
           )}
           {visaoTodasCidades && buscaIniciada && dados.length > 0 ? (
             <ResumoEleicoesCidadesTabela
@@ -2462,11 +2463,11 @@ export function ResumoEleicoesAtendimentoPanel() {
             />
           ) : null}
           {mostrarFeedbackMarcacao && feedbackMarcacao && (
-            <div className="mb-3 rounded-md border border-card bg-surface px-3 py-2 text-xs text-text-primary">
+            <div className={cn(resumoWrCardClass(), 'mb-3 px-3 py-2 text-xs text-text-primary')}>
               {feedbackMarcacao}
             </div>
           )}
-          <div className="mb-3 flex items-center justify-between rounded-lg border border-card bg-surface p-2 text-xs">
+          <div className={cn(resumoWrCardClass(), 'mb-3 flex items-center justify-between p-2 text-xs')}>
             <span className="text-text-secondary">
               Simulação de vereadores: <strong className="text-text-primary">{vereadoresMapeadosCount}</strong> de{' '}
               <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados

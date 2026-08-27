@@ -8,6 +8,7 @@ import type { CidadeIntencaoTopoRow } from '@/lib/pesquisa-tendencia-executive'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 import { scoreCorrespondenciaNomeCandidato } from '@/lib/candidato-nome-correspondencia'
 import { isCandidatoJadyelAlencar } from '@/lib/resumo-operacional-pesquisas'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 
 interface Municipio {
   nome: string
@@ -384,14 +385,8 @@ export function MapaIntencaoMunicipios({
     const markersPane = map.getPane('mapaIntencaoMarkers')
     if (markersPane) markersPane.style.zIndex = '400'
 
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    L.tileLayer(tileUrl, {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions(isDark ? 'dark' : 'light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     const markersLayer = L.layerGroup().addTo(map)
 

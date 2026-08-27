@@ -5,6 +5,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 
 export type PontoVotosMunicipio = { municipio: string; votos: number }
 
@@ -76,11 +77,8 @@ export function MapaVotosHistoricoMunicipal({
       attributionControl: false,
     }).setView([-6.5, -42.5], 6.5)
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions('light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     const layerGroup = L.layerGroup().addTo(map)
 
@@ -247,11 +245,8 @@ export function MapaVotosMunicipioCompare({
       attributionControl: false,
     }).setView([-6.5, -42.5], 6.5)
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions('light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     const layerGroup = L.layerGroup().addTo(map)
     const lista = municipiosPiaui as MunicipioCoord[]

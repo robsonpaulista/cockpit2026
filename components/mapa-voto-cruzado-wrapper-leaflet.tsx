@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 
 interface Point {
   cidade: string
@@ -70,11 +71,8 @@ export function MapaVotoCruzadoWrapperLeaflet({ points }: MapaVotoCruzadoWrapper
     }).setView([-6.5, -42.8], 7)
     mapInstanceRef.current = map
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions('light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     return () => {
       map.remove()

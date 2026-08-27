@@ -14,6 +14,7 @@ import {
   faseMarkerParaMunicipio,
   normalizeObraText,
 } from '@/lib/obras-mapa'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 import {
   createObraMarkerHtml,
   createObraPopupHtml,
@@ -70,9 +71,7 @@ function scheduleInvalidateSize(map: L.Map) {
 }
 
 function tileUrlForAppearance(appearance: ObraMapAppearance): string {
-  return appearance === 'dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+  return getLeafletBasemapLayerOptions(appearance === 'dark' ? 'dark' : 'light').url
 }
 
 export function MapaObrasLeaflet({
@@ -122,11 +121,8 @@ export function MapaObrasLeaflet({
     const markersPane = map.getPane('obrasMarkersPane')
     if (markersPane) markersPane.style.zIndex = '450'
 
-    const tileLayer = L.tileLayer(tileUrlForAppearance(mapAppearance), {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions(mapAppearance === 'dark' ? 'dark' : 'light')
+    const tileLayer = L.tileLayer(basemap.url, basemap.options).addTo(map)
     tileLayerRef.current = tileLayer
 
     markersLayerRef.current = L.layerGroup().addTo(map)

@@ -15,11 +15,13 @@ import { WarRoomCopilotoObrasView } from '@/components/war-room/war-room-copilot
 import { WarRoomCopilotoEmendasView } from '@/components/war-room/war-room-copiloto-emendas-view'
 import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
 import { WarRoomCopilotoRelatorioView } from '@/components/war-room/war-room-copiloto-relatorio-view'
+import { WarRoomCopilotoCoberturaView } from '@/components/war-room/war-room-copiloto-cobertura-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { cn } from '@/lib/utils'
 
 type CopilotoTab =
   | 'cidades'
+  | 'cobertura'
   | 'obras'
   | 'emendas'
   | 'redes'
@@ -28,7 +30,7 @@ type CopilotoTab =
   | 'relatorio'
 
 /**
- * Visão Copiloto — Cidades, Obras, Emendas, Redes, Comparativo, Radar e Relatório.
+ * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes, Comparativo, Radar e Relatório.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
@@ -69,6 +71,17 @@ export function WarRoomCopilotoView() {
           onClick={() => setTab('cidades')}
         >
           Cidades
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'cobertura' && 'wr-copiloto-tabs__btn--active',
+          )}
+          aria-pressed={tab === 'cobertura'}
+          onClick={() => setTab('cobertura')}
+        >
+          Cobertura
         </button>
         <button
           type="button"
@@ -151,6 +164,8 @@ export function WarRoomCopilotoView() {
           <WarRoomCopilotoPanoramaView />
         ) : tab === 'comparativo' ? (
           <WarRoomCopilotoComparativoView />
+        ) : tab === 'cobertura' ? (
+          <WarRoomCopilotoCoberturaView municipios={municipios} loading={loading} />
         ) : loading && municipios.length === 0 ? (
           <div className="wr-copiloto-view__state">
             <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" strokeWidth={1.5} />

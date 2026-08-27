@@ -12,6 +12,7 @@ import { IPT_MAP_VIEW_PI, iptLatLngPointsFromMunicipios } from '@/lib/ipt-td'
 import { createIptMarkerHtml, createIptPopupHtml, createIptTooltipBasicoHtml } from '@/lib/ipt-popup'
 import { createIptPesquisaFullscreenChipHtml } from '@/lib/ipt-chip'
 import { hydrateIptPopupInsights } from '@/lib/ipt-popup-insights'
+import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
 
 // ========== Types ==========
 interface Municipio {
@@ -51,6 +52,9 @@ export interface MapStats {
 
 type MapAppearance = 'light' | 'dark'
 
+/** Paleta institucional War Room (amarelo / preto / cinza). */
+export type MapMarkerTheme = 'default' | 'war-room'
+
 interface MapWrapperProps {
   cidadesComPresenca: string[]
   cidadesVisitadas?: string[]
@@ -67,6 +71,10 @@ interface MapWrapperProps {
   showRegionLabels?: boolean
   /** Marcadores menores para cards embutidos */
   compactMarkers?: boolean
+  /** Cores dos pins: default (azul/vermelho) ou war-room (amarelo/preto/cinza) */
+  markerTheme?: MapMarkerTheme
+  /** Rótulo da expectativa no popup (ex.: Meta) */
+  expectativaLabel?: string
   /** Modo IPT: um marcador por município com score 0–100 */
   iptMunicipios?: IptMunicipio[]
   /** Lente do mapa IPT: recolore pins pelo sinal do indicador escolhido */
@@ -95,6 +103,22 @@ const EMPTY_STRING_ARRAY: string[] = []
 const EMPTY_TERRITORIO_ARRAY: TerritorioInfo[] = []
 const EMPTY_ELEITORES: Record<string, number> = {}
 const EMPTY_IPT_BOUNDS: IptMunicipio[] = []
+
+/** War Room clean — amarelo logo / preto / cinza. */
+const WR_MARKER = {
+  yellow: '#f2d06b',
+  yellowBorder: '#d4b45a',
+  black: '#2b2d31',
+  blackBorder: '#20201f',
+  gray: '#686865',
+  grayMid: '#969692',
+  graySoft: 'rgba(104,104,101,0.55)',
+  graySoftBorder: 'rgba(104,104,101,0.75)',
+  grayMidSoft: 'rgba(150,150,146,0.7)',
+  grayMidBorder: 'rgba(104,104,101,0.85)',
+  grayStrong: 'rgba(43,45,49,0.85)',
+  grayStrongBorder: 'rgba(32,32,31,0.9)',
+} as const
 
 // ========== Helper Functions ==========
 function normalizeName(name: string): string {
@@ -184,6 +208,48 @@ function findEleitorado(nomeCidade: string, eleitoresPorCidade: Record<string, n
   return 0
 }
 
+/** Ícones SVG premium (traço fino) para popups Leaflet — sem emoji. */
+function popupSvgIcon(
+  paths: string,
+  color: string,
+  size = 14,
+): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`
+}
+
+const POPUP_ICON = {
+  mapPin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  navigation: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  spark: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+} as const
+
+function popupIconWell(svg: string, bg: string): string {
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:${bg};flex-shrink:0;">${svg}</span>`
+}
+
+function popupMetricRow(opts: {
+  icon: string
+  iconBg: string
+  label: string
+  value: string
+  valueColor: string
+  labelColor: string
+  border: string
+  last?: boolean
+}): string {
+  const border = opts.last ? 'none' : `1px solid ${opts.border}`
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:${border};">
+    ${popupIconWell(opts.icon, opts.iconBg)}
+    <span style="flex:1;min-width:0;font-size:11px;font-weight:500;letter-spacing:0.02em;color:${opts.labelColor};">${opts.label}</span>
+    <span style="font-size:13px;font-weight:650;letter-spacing:-0.01em;color:${opts.valueColor};font-variant-numeric:tabular-nums;">${opts.value}</span>
+  </div>`
+}
+
 // ========== Tooltip HTML Generator ==========
 function createTooltipHTML(
   appearance: MapAppearance,
@@ -196,25 +262,40 @@ function createTooltipHTML(
     expectativaVotos?: number
     visitas?: number
   },
+  options?: { markerTheme?: MapMarkerTheme; expectativaLabel?: string },
 ): string {
   const { nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas } = config
   const isDark = appearance === 'dark'
+  const isWarRoom = options?.markerTheme === 'war-room'
+  const metaLabel = options?.expectativaLabel ?? (isWarRoom ? 'Meta' : 'Exp. Votos')
+
+  if (isWarRoom) {
+    return createWarRoomTooltipHTML({
+      nome,
+      tipo,
+      eleitorado,
+      motivo,
+      expectativaVotos,
+      visitas,
+      metaLabel,
+    })
+  }
 
   const statusMap: Record<string, { text: string; color: string; headerBg: string }> = isDark
     ? {
-        visitada: { text: '✓ Visitada', color: '#5eead4', headerBg: '#0f766e' },
-        'com-presenca': { text: '● Com liderança', color: '#99f6e4', headerBg: '#115e59' },
-        'sem-presenca': { text: '⚠ Sem liderança', color: '#fca5a5', headerBg: '#991b1b' },
-        oportunidade: { text: '🎯 Oportunidade', color: '#fcd34d', headerBg: '#92400e' },
+        visitada: { text: 'Visitada', color: '#5eead4', headerBg: '#0f766e' },
+        'com-presenca': { text: 'Com liderança', color: '#99f6e4', headerBg: '#115e59' },
+        'sem-presenca': { text: 'Sem liderança', color: '#fca5a5', headerBg: '#991b1b' },
+        oportunidade: { text: 'Oportunidade', color: '#fcd34d', headerBg: '#92400e' },
       }
     : {
-        visitada: { text: '✓ Visitada', color: '#2563EB', headerBg: '#1D4ED8' },
-        'com-presenca': { text: '● Com liderança', color: '#2563EB', headerBg: '#2563EB' },
-        'sem-presenca': { text: '⚠ Sem liderança', color: '#DC2626', headerBg: '#DC2626' },
-        oportunidade: { text: '🎯 Oportunidade', color: '#D97706', headerBg: '#B45309' },
+        visitada: { text: 'Visitada', color: '#2563EB', headerBg: '#1D4ED8' },
+        'com-presenca': { text: 'Com liderança', color: '#2563EB', headerBg: '#2563EB' },
+        'sem-presenca': { text: 'Sem liderança', color: '#DC2626', headerBg: '#DC2626' },
+        oportunidade: { text: 'Oportunidade', color: '#D97706', headerBg: '#B45309' },
       }
   const s = statusMap[tipo]
-
+  const ink = '#ffffff'
   const rowBorder = isDark ? '#334155' : '#F3F4F6'
   const muted = isDark ? '#94a3b8' : '#6B7280'
   const strong = isDark ? '#f1f5f9' : '#1F2937'
@@ -223,61 +304,224 @@ function createTooltipHTML(
   const motivoBoxFg = isDark ? '#cbd5e1' : '#4B5563'
   const oportBoxBg = isDark ? 'rgba(120,53,15,0.45)' : '#FEF3C7'
   const oportBoxFg = isDark ? '#fde68a' : '#92400E'
+  const iconTone = isDark ? '#e2e8f0' : '#374151'
+  const wellBg = isDark ? 'rgba(148,163,184,0.12)' : '#F3F4F6'
 
-  // Classification badge
   let classificacaoBadge = ''
   if (classificacao) {
     const badges: Record<string, { bg: string; label: string }> = {
-      'quente': { bg: '#059669', label: '🔥 Quente' },
-      'morno': { bg: '#D97706', label: '🌤 Morno' },
-      'frio': { bg: '#DC2626', label: '❄️ Frio' },
+      quente: { bg: '#059669', label: 'Quente' },
+      morno: { bg: '#D97706', label: 'Morno' },
+      frio: { bg: '#DC2626', label: 'Frio' },
     }
     const b = badges[classificacao]
     if (b) {
-      classificacaoBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:white;background:${b.bg};">${b.label}</span>`
+      classificacaoBadge = `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;color:white;background:${b.bg};letter-spacing:0.02em;">${b.label}</span>`
     }
   }
 
-  // Info rows
+  const statusIcon =
+    tipo === 'visitada'
+      ? POPUP_ICON.check
+      : tipo === 'oportunidade'
+        ? POPUP_ICON.spark
+        : tipo === 'sem-presenca'
+          ? POPUP_ICON.alert
+          : POPUP_ICON.mapPin
+
   let rows = ''
-  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
-    <span style="font-size:11px;color:${muted};">📍 Status</span>
-    <span style="font-size:12px;font-weight:600;color:${s.color};">${s.text}</span>
-  </div>`
-
-  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
-    <span style="font-size:11px;color:${muted};">🗳️ Eleitores</span>
-    <span style="font-size:12px;font-weight:600;color:${strong};">${eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D'}</span>
-  </div>`
-
+  rows += popupMetricRow({
+    icon: popupSvgIcon(statusIcon, iconTone),
+    iconBg: wellBg,
+    label: 'Status',
+    value: s.text,
+    valueColor: s.color,
+    labelColor: muted,
+    border: rowBorder,
+  })
+  rows += popupMetricRow({
+    icon: popupSvgIcon(POPUP_ICON.users, iconTone),
+    iconBg: wellBg,
+    label: 'Eleitores',
+    value: eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D',
+    valueColor: strong,
+    labelColor: muted,
+    border: rowBorder,
+    last: !(visitas && visitas > 0) && !(expectativaVotos && expectativaVotos > 0),
+  })
   if (visitas && visitas > 0) {
-    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
-      <span style="font-size:11px;color:${muted};">📋 Visitas</span>
-      <span style="font-size:12px;font-weight:600;color:${strong};">${visitas}</span>
-    </div>`
+    rows += popupMetricRow({
+      icon: popupSvgIcon(POPUP_ICON.navigation, iconTone),
+      iconBg: wellBg,
+      label: 'Visitas',
+      value: String(visitas),
+      valueColor: strong,
+      labelColor: muted,
+      border: rowBorder,
+      last: !(expectativaVotos && expectativaVotos > 0),
+    })
   }
-
   if (expectativaVotos && expectativaVotos > 0) {
-    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
-      <span style="font-size:11px;color:${muted};">🎯 Exp. Votos</span>
-      <span style="font-size:12px;font-weight:600;color:${strong};">${expectativaVotos.toLocaleString('pt-BR')}</span>
-    </div>`
+    rows += popupMetricRow({
+      icon: popupSvgIcon(POPUP_ICON.target, iconTone),
+      iconBg: wellBg,
+      label: metaLabel,
+      value: expectativaVotos.toLocaleString('pt-BR'),
+      valueColor: strong,
+      labelColor: muted,
+      border: rowBorder,
+      last: true,
+    })
   }
 
   let extras = ''
   if (motivo) {
-    extras += `<div style="margin-top:6px;padding:6px 8px;background:${motivoBoxBg};border-radius:6px;font-size:11px;color:${motivoBoxFg};line-height:1.4;">💡 ${motivo}</div>`
+    extras += `<div style="margin-top:8px;padding:8px 10px;background:${motivoBoxBg};border-radius:8px;font-size:11px;color:${motivoBoxFg};line-height:1.45;display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;margin-top:1px;">${popupSvgIcon(POPUP_ICON.info, motivoBoxFg, 13)}</span>
+      <span>${motivo}</span>
+    </div>`
   }
   if (tipo === 'oportunidade') {
-    extras += `<div style="margin-top:6px;padding:6px 8px;background:${oportBoxBg};border-radius:6px;font-size:11px;color:${oportBoxFg};font-weight:600;text-align:center;">🚀 Alto potencial de crescimento</div>`
+    extras += `<div style="margin-top:8px;padding:8px 10px;background:${oportBoxBg};border-radius:8px;font-size:11px;color:${oportBoxFg};font-weight:600;text-align:center;letter-spacing:0.01em;">Alto potencial de crescimento</div>`
   }
 
-  return `<div style="font-family:${APP_FONT_STACK_CSS};min-width:220px;max-width:280px;">
-    <div style="background:${s.headerBg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <strong style="color:white;font-size:14px;">${nome}</strong>
+  return `<div style="font-family:${APP_FONT_STACK_CSS};min-width:232px;max-width:288px;">
+    <div style="background:${s.headerBg};padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <strong style="color:${ink};font-size:14px;font-weight:650;letter-spacing:-0.01em;">${nome}</strong>
       ${classificacaoBadge}
     </div>
-    <div style="padding:10px 14px;background:${bodyBg};">
+    <div style="padding:4px 14px 12px;background:${bodyBg};">
+      ${rows}
+      ${extras}
+    </div>
+  </div>`
+}
+
+/** Popup War Room — amarelo / preto / cinza, ícones SVG premium. */
+function createWarRoomTooltipHTML(config: {
+  nome: string
+  tipo: 'visitada' | 'com-presenca' | 'sem-presenca' | 'oportunidade'
+  eleitorado: number
+  motivo?: string | null
+  expectativaVotos?: number
+  visitas?: number
+  metaLabel: string
+}): string {
+  const { nome, tipo, eleitorado, motivo, expectativaVotos, visitas, metaLabel } = config
+  const ink = WR_MARKER.black
+  const muted = WR_MARKER.gray
+  const soft = '#f3f3f1'
+  const border = 'rgba(43,45,49,0.08)'
+  const yellow = WR_MARKER.yellow
+  const yellowSoft = 'rgba(242,208,107,0.35)'
+
+  const statusMeta: Record<
+    string,
+    { label: string; pillBg: string; pillFg: string; icon: string; wellBg: string }
+  > = {
+    visitada: {
+      label: 'Visitada',
+      pillBg: yellow,
+      pillFg: ink,
+      icon: POPUP_ICON.check,
+      wellBg: yellow,
+    },
+    'com-presenca': {
+      label: 'Com meta',
+      pillBg: ink,
+      pillFg: yellow,
+      icon: POPUP_ICON.target,
+      wellBg: soft,
+    },
+    'sem-presenca': {
+      label: 'Sem meta',
+      pillBg: WR_MARKER.gray,
+      pillFg: '#fff',
+      icon: POPUP_ICON.alert,
+      wellBg: soft,
+    },
+    oportunidade: {
+      label: 'Oportunidade',
+      pillBg: yellow,
+      pillFg: ink,
+      icon: POPUP_ICON.spark,
+      wellBg: yellowSoft,
+    },
+  }
+  const st = statusMeta[tipo]
+
+  const hasVisitas = !!(visitas && visitas > 0)
+  const hasMeta = !!(expectativaVotos && expectativaVotos > 0)
+
+  let rows = ''
+  rows += popupMetricRow({
+    icon: popupSvgIcon(st.icon, ink),
+    iconBg: st.wellBg,
+    label: 'Status',
+    value: st.label,
+    valueColor: ink,
+    labelColor: muted,
+    border,
+  })
+  rows += popupMetricRow({
+    icon: popupSvgIcon(POPUP_ICON.users, ink),
+    iconBg: soft,
+    label: 'Eleitores',
+    value: eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D',
+    valueColor: ink,
+    labelColor: muted,
+    border,
+    last: !hasVisitas && !hasMeta,
+  })
+  if (hasVisitas) {
+    rows += popupMetricRow({
+      icon: popupSvgIcon(POPUP_ICON.navigation, ink),
+      iconBg: soft,
+      label: 'Visitas',
+      value: String(visitas),
+      valueColor: ink,
+      labelColor: muted,
+      border,
+      last: !hasMeta,
+    })
+  }
+  if (hasMeta) {
+    rows += popupMetricRow({
+      icon: popupSvgIcon(POPUP_ICON.target, ink),
+      iconBg: yellowSoft,
+      label: metaLabel,
+      value: expectativaVotos!.toLocaleString('pt-BR'),
+      valueColor: ink,
+      labelColor: muted,
+      border,
+      last: true,
+    })
+  }
+
+  let extras = ''
+  if (motivo) {
+    extras += `<div style="margin-top:10px;padding:10px 12px;background:${soft};border-radius:10px;border:1px solid ${border};font-size:11px;color:${muted};line-height:1.45;display:flex;gap:8px;align-items:flex-start;">
+      <span style="flex-shrink:0;margin-top:1px;">${popupSvgIcon(POPUP_ICON.info, muted, 13)}</span>
+      <span style="color:${ink};">${motivo}</span>
+    </div>`
+  }
+  if (tipo === 'oportunidade') {
+    extras += `<div style="margin-top:10px;padding:9px 12px;background:${yellow};border-radius:10px;font-size:11px;font-weight:650;color:${ink};text-align:center;letter-spacing:0.01em;">Alto potencial de crescimento</div>`
+  }
+
+  return `<div class="mapa-wr-popup" style="font-family:${APP_FONT_STACK_CSS};min-width:248px;max-width:300px;background:#fff;">
+    <div style="height:3px;background:${yellow};"></div>
+    <div style="padding:14px 40px 12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+      <div style="min-width:0;">
+        <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${muted};">Município</p>
+        <strong style="display:block;margin-top:2px;color:${ink};font-size:16px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;">${nome}</strong>
+      </div>
+      <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:${st.pillBg};color:${st.pillFg};font-size:10px;font-weight:700;letter-spacing:0.02em;">
+        ${popupSvgIcon(st.icon, st.pillFg, 11)}
+        ${st.label}
+      </span>
+    </div>
+    <div style="padding:0 16px 14px;">
       ${rows}
       ${extras}
     </div>
@@ -324,10 +568,11 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
 
   const base = `
   .leaflet-popup-content-wrapper {
-    border-radius: 12px !important;
+    border-radius: 14px !important;
     padding: 0 !important;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.18) !important;
+    box-shadow: 0 14px 40px rgba(43,45,49,0.16), 0 2px 8px rgba(43,45,49,0.06) !important;
+    border: 1px solid rgba(43,45,49,0.06);
   }
   .leaflet-popup-content {
     margin: 0 !important;
@@ -335,6 +580,31 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
   }
   .leaflet-popup-tip {
     box-shadow: 0 3px 10px rgba(0,0,0,0.1) !important;
+  }
+  .mapa-leaflet-host--wr .leaflet-popup-content-wrapper {
+    border-radius: 14px !important;
+    border: 1px solid rgba(43,45,49,0.08) !important;
+    box-shadow: 0 18px 48px rgba(43,45,49,0.18), 0 2px 10px rgba(43,45,49,0.06) !important;
+  }
+  .mapa-leaflet-host--wr .leaflet-popup-tip {
+    background: #fff !important;
+  }
+  .mapa-leaflet-host--wr .leaflet-popup-close-button {
+    top: 10px !important;
+    right: 10px !important;
+    width: 22px !important;
+    height: 22px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    color: #686865 !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    line-height: 20px !important;
+    background: #f3f3f1 !important;
+  }
+  .mapa-leaflet-host--wr .leaflet-popup-close-button:hover {
+    color: #2b2d31 !important;
+    background: #f2d06b !important;
   }
 
   @keyframes mapa-marker-enter {
@@ -434,6 +704,8 @@ export function MapWrapperLeaflet({
   appearance = 'light',
   showRegionLabels = true,
   compactMarkers = false,
+  markerTheme = 'default',
+  expectativaLabel,
   iptMunicipios,
   iptIndicadorFiltro = null,
   iptEvolucaoFiltro = 'todos',
@@ -492,14 +764,8 @@ export function MapWrapperLeaflet({
     const labelsPane = map.getPane('labelsPane')
     if (labelsPane) { labelsPane.style.zIndex = '500'; labelsPane.style.pointerEvents = 'none' }
 
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-    L.tileLayer(tileUrl, {
-      attribution: '&copy; OSM &copy; CARTO',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map)
+    const basemap = getLeafletBasemapLayerOptions(isDark ? 'dark' : 'light')
+    L.tileLayer(basemap.url, basemap.options).addTo(map)
 
     // Normalize city name sets
     const cidadesPresencaNorm = new Set(cidadesComPresenca.map(c => normalizeName(c)))
@@ -874,14 +1140,18 @@ export function MapWrapperLeaflet({
     const zonasLayer = L.layerGroup()
 
     // ========== 1) HEATMAP CIRCLES ==========
-    const heatColor = isDark ? '#2dd4bf' : '#3B82F6'
+    const heatColor = markerTheme === 'war-room'
+      ? WR_MARKER.yellow
+      : isDark
+        ? '#2dd4bf'
+        : '#3B82F6'
     const heatRadius = compactMarkers ? 16000 : 25000
     cidades.filter(c => c.tipo === 'visitada' || c.tipo === 'com-presenca').forEach(c => {
       const opacity = c.tipo === 'visitada' ? (isDark ? 0.14 : 0.1) : (isDark ? 0.09 : 0.06)
       L.circle([c.municipio.lat, c.municipio.lng], {
         radius: heatRadius,
         fillColor: heatColor,
-        fillOpacity: opacity,
+        fillOpacity: markerTheme === 'war-room' ? (c.tipo === 'visitada' ? 0.18 : 0.1) : opacity,
         stroke: false,
         pane: 'heatmapPane',
         interactive: false,
@@ -892,6 +1162,7 @@ export function MapWrapperLeaflet({
     // Sort: draw smaller/less important first (behind), larger/important on top
     const drawOrder: Record<string, number> = { 'sem-presenca': 0, 'oportunidade': 1, 'com-presenca': 2, 'visitada': 3 }
     const sortedCidades = [...cidades].sort((a, b) => (drawOrder[a.tipo] || 0) - (drawOrder[b.tipo] || 0))
+    const isWarRoom = markerTheme === 'war-room'
 
     sortedCidades.forEach(c => {
       const { municipio, eleitorado, tipo, classificacao, motivo, expectativaVotos, visitas } = c
@@ -900,15 +1171,24 @@ export function MapWrapperLeaflet({
       const normalizedLat = (municipio.lat - minLat) / latRange // 0 (south) to 1 (north)
       const animDelay = Math.round((1 - normalizedLat) * 1500)
 
-      const tooltipHTML = createTooltipHTML(appearance, { nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas })
+      const tooltipHTML = createTooltipHTML(
+        appearance,
+        { nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas },
+        { markerTheme, expectativaLabel },
+      )
 
       if (tipo === 'visitada') {
         const size = compactMarkers ? 12 : 24
         const checkSize = compactMarkers ? 7 : 12
         const borderWidth = compactMarkers ? 1.5 : 2
-        const vBg = isDark ? '#0d9488' : '#2563EB'
-        const vBorder = isDark ? '#0f766e' : '#1D4ED8'
-        const vShadow = isDark ? '0 2px 12px rgba(45,212,191,0.45)' : '0 2px 8px rgba(37,99,235,0.5)'
+        const vBg = isWarRoom ? WR_MARKER.yellow : isDark ? '#0d9488' : '#2563EB'
+        const vBorder = isWarRoom ? WR_MARKER.black : isDark ? '#0f766e' : '#1D4ED8'
+        const vCheck = isWarRoom ? WR_MARKER.black : 'white'
+        const vShadow = isWarRoom
+          ? '0 2px 8px rgba(43,45,49,0.28)'
+          : isDark
+            ? '0 2px 12px rgba(45,212,191,0.45)'
+            : '0 2px 8px rgba(37,99,235,0.5)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${size}px;height:${size}px;position:relative;">
@@ -920,7 +1200,7 @@ export function MapWrapperLeaflet({
               box-shadow:${vShadow};
               animation-delay:${animDelay}ms;
             ">
-              <svg width="${checkSize}" height="${checkSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="${checkSize}" height="${checkSize}" viewBox="0 0 24 24" fill="none" stroke="${vCheck}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </div>
@@ -937,9 +1217,13 @@ export function MapWrapperLeaflet({
         const size = compactMarkers ? 9 : 14
         const container = size + (compactMarkers ? 6 : 10)
         const borderWidth = compactMarkers ? 1.5 : 2
-        const cBg = isDark ? '#14b8a6' : '#3B82F6'
-        const cBorder = isDark ? '#0d9488' : '#2563EB'
-        const cShadow = isDark ? '0 1px 6px rgba(45,212,191,0.35)' : '0 1px 4px rgba(37,99,235,0.4)'
+        const cBg = isWarRoom ? WR_MARKER.black : isDark ? '#14b8a6' : '#3B82F6'
+        const cBorder = isWarRoom ? WR_MARKER.blackBorder : isDark ? '#0d9488' : '#2563EB'
+        const cShadow = isWarRoom
+          ? '0 1px 4px rgba(43,45,49,0.35)'
+          : isDark
+            ? '0 1px 6px rgba(45,212,191,0.35)'
+            : '0 1px 4px rgba(37,99,235,0.4)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">
@@ -963,14 +1247,17 @@ export function MapWrapperLeaflet({
         const size = getMarkerSize(eleitorado, compactMarkers)
         const pulseSize = size * (compactMarkers ? 2 : 2.5)
         const container = pulseSize + (compactMarkers ? 4 : 6)
+        const oBg = isWarRoom ? WR_MARKER.yellow : '#F59E0B'
+        const oBorder = isWarRoom ? WR_MARKER.black : '#D97706'
+        const oPulse = isWarRoom ? 'rgba(242,208,107,0.35)' : 'rgba(245,158,11,0.25)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">
-            <div class="mapa-pulse-ring" style="width:${pulseSize}px;height:${pulseSize}px;"></div>
+            <div class="mapa-pulse-ring" style="width:${pulseSize}px;height:${pulseSize}px;background:${oPulse};"></div>
             <div class="mapa-marker-dot mapa-opportunity-dot" style="
               width:${size}px;height:${size}px;
-              background:#F59E0B;
-              border:2px solid #D97706;
+              background:${oBg};
+              border:2px solid ${oBorder};
               animation-delay:${animDelay}ms;
             "></div>
           </div>`,
@@ -988,8 +1275,28 @@ export function MapWrapperLeaflet({
         const container = size + (compactMarkers ? 6 : 10)
         const isLarge = eleitorado >= 20000
         const isMedium = eleitorado >= 10000
-        const bgColor = isLarge ? 'rgba(220,38,38,0.85)' : isMedium ? 'rgba(239,68,68,0.7)' : 'rgba(248,113,113,0.5)'
-        const borderColor = isLarge ? 'rgba(153,27,27,0.9)' : isMedium ? 'rgba(220,38,38,0.8)' : 'rgba(239,68,68,0.6)'
+        const bgColor = isWarRoom
+          ? isLarge
+            ? WR_MARKER.grayStrong
+            : isMedium
+              ? WR_MARKER.grayMidSoft
+              : WR_MARKER.graySoft
+          : isLarge
+            ? 'rgba(220,38,38,0.85)'
+            : isMedium
+              ? 'rgba(239,68,68,0.7)'
+              : 'rgba(248,113,113,0.5)'
+        const borderColor = isWarRoom
+          ? isLarge
+            ? WR_MARKER.grayStrongBorder
+            : isMedium
+              ? WR_MARKER.grayMidBorder
+              : WR_MARKER.graySoftBorder
+          : isLarge
+            ? 'rgba(153,27,27,0.9)'
+            : isMedium
+              ? 'rgba(220,38,38,0.8)'
+              : 'rgba(239,68,68,0.6)'
         const borderWidth = isLarge ? 2 : 1
 
         const icon = L.divIcon({
@@ -1087,7 +1394,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro, iptFullscreen])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, markerTheme, expectativaLabel, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro, iptFullscreen])
 
   // ========== Handle filter changes ==========
   useEffect(() => {
@@ -1165,7 +1472,12 @@ export function MapWrapperLeaflet({
     }
   }, [iptMunicipios, iptFiltroTd, iptMunicipiosBounds, iptMissaoFiltro])
 
-  const hostClass = appearance === 'dark' ? 'mapa-leaflet-host--dark' : 'mapa-leaflet-host--light'
+  const hostClass = [
+    appearance === 'dark' ? 'mapa-leaflet-host--dark' : 'mapa-leaflet-host--light',
+    markerTheme === 'war-room' ? 'mapa-leaflet-host--wr' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <>
