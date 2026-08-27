@@ -1062,8 +1062,8 @@ export function MapaPresenca({
           <>
             <div className="flex items-center gap-1.5">
               <div
-                className="flex h-4 w-4 items-center justify-center rounded-full border-2"
-                style={{ background: '#f2d06b', borderColor: '#2b2d31' }}
+                className="flex h-4 w-4 items-center justify-center rounded-full"
+                style={{ background: '#f2d06b' }}
               >
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#2b2d31" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"></polyline>
@@ -1072,15 +1072,15 @@ export function MapaPresenca({
               <span>Visitada</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-full border-2" style={{ background: '#2b2d31', borderColor: '#20201f' }} />
+              <div className="h-3 w-3 rounded-full" style={{ background: '#f2d06b' }} />
               <span>Com meta</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 animate-pulse rounded-full border" style={{ background: '#f2d06b', borderColor: '#2b2d31' }} />
+              <div className="h-3 w-3 animate-pulse rounded-full" style={{ background: '#2b2d31' }} />
               <span className="font-medium" style={{ color: '#2b2d31' }}>Oportunidade</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full border opacity-80" style={{ background: '#686865', borderColor: '#52524f' }} />
+              <div className="h-2.5 w-2.5 rounded-full opacity-80" style={{ background: '#686865' }} />
               <span>Sem meta</span>
             </div>
             <div className="flex items-center gap-1.5">

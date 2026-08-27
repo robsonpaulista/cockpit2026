@@ -1,0 +1,88 @@
+/**
+ * Cards de postagem — Instagram Pessoal · Audiência
+ * Chrome alinhado ao War Room Copiloto · Comparativo (radius / borda / sombra).
+ * Thumb mantém ~192px — só o acabamento muda.
+ */
+
+.ig-audience-post-card {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #2b2d31 10%, transparent);
+  background: #ffffff;
+  box-shadow: 0 1px 2px color-mix(in srgb, #2b2d31 3%, transparent);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ig-audience-post-card:hover {
+  border-color: color-mix(in srgb, #2b2d31 16%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #2b2d31 5%, transparent),
+    0 4px 14px color-mix(in srgb, #2b2d31 6%, transparent);
+}
+
+.ig-audience-post-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ig-audience-post-card__media {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  height: 12rem;
+  overflow: hidden;
+  background: #f3f3f1;
+}
+
+.ig-audience-post-card__media-img {
+  width: 100%;
+  height: 100%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.ig-audience-post-card__badges {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  z-index: 1;
+}
+
+.ig-audience-post-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(43, 45, 49, 0.18);
+}
+
+@media (min-width: 640px) {
+  .ig-audience-post-card__body {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.625rem;
+  }
+
+  .ig-audience-post-card__media {
+    width: 11.5rem;
+    height: 11.5rem;
+    border-radius: 12px;
+    box-shadow:
+      0 8px 18px rgba(43, 45, 49, 0.1),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+}

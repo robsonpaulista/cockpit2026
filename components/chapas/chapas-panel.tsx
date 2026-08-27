@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight, Target, BarChart3, Trophy, ClipboardList, Crosshair, Calculator, CheckCircle2, Users, ArrowRight, type LucideIcon } from 'lucide-react'
 import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
 import { gerarRelatorioChapasPdf } from '@/lib/chapas-pdf-report'
 import * as chapasFederalService from '@/lib/chapasService'
@@ -20,6 +20,40 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+
+function ChapasSectionTitle({
+  icon: Icon,
+  children,
+  className,
+  size = 'md',
+}: {
+  icon: LucideIcon
+  children: React.ReactNode
+  className?: string
+  size?: 'sm' | 'md'
+}) {
+  const isSm = size === 'sm'
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 font-semibold text-text-primary',
+        isSm ? 'mb-2 text-sm' : 'mb-3 text-base',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center rounded-md bg-[#f2d06b] text-[#2b2d31]',
+          isSm ? 'h-5 w-5' : 'h-6 w-6',
+        )}
+        aria-hidden
+      >
+        <Icon className={isSm ? 'h-3 w-3' : 'h-3.5 w-3.5'} strokeWidth={2.25} />
+      </span>
+      <span>{children}</span>
+    </div>
+  )
+}
 
 /** Mesmo gradiente do item ativo da sidebar / KPIs (Republicanos no mapa). */
 const COR_REPUBLICANOS_GRADIENTE =
@@ -2114,9 +2148,9 @@ export function ChapasPanel({
 
           {/* Seção de detalhes das sobras - Método D'Hondt (largura alinhada ao grid de partidos acima) */}
           <div className={cn(sectionShellClass, 'mt-4 w-full min-w-0')}>
-            <div className="text-base font-semibold mb-3 text-text-primary">
-              📊 Cálculo de Sobras - Método D'Hondt (Legislação Brasileira)
-            </div>
+            <ChapasSectionTitle icon={BarChart3}>
+              Cálculo de Sobras - Método D&apos;Hondt (Legislação Brasileira)
+            </ChapasSectionTitle>
             <div className="text-sm text-text-primary mb-3">
               <strong>Fórmula:</strong> Quociente Partidário = Votos ÷ (Vagas Obtidas + 1)
             </div>
@@ -2173,9 +2207,9 @@ export function ChapasPanel({
             
             {/* Seção de distribuição completa das vagas */}
             <div className={cn(sectionShellClass, 'mt-4')}>
-              <div className="text-base font-semibold mb-3 text-text-primary">
-                🎯 Distribuição Completa das {numVagas} Vagas - Método D'Hondt
-              </div>
+              <ChapasSectionTitle icon={Target}>
+                Distribuição Completa das {numVagas} Vagas - Método D&apos;Hondt
+              </ChapasSectionTitle>
               
               {(() => {
                 const simulacao = simularDistribuicaoCompleta()
@@ -2184,7 +2218,9 @@ export function ChapasPanel({
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className={innerPanelClass}>
-                        <div className="mb-2 text-sm font-semibold text-text-primary">📊 Resumo das Vagas</div>
+                        <ChapasSectionTitle icon={BarChart3} size="sm">
+                          Resumo das Vagas
+                        </ChapasSectionTitle>
                         <div className="text-xs space-y-1">
                           <div className="flex justify-between">
                             <span>Vagas Diretas:</span>
@@ -2202,7 +2238,9 @@ export function ChapasPanel({
                       </div>
                       
                       <div className={innerPanelClass}>
-                        <div className="mb-2 text-sm font-semibold text-text-primary">🏆 Vagas por Partido</div>
+                        <ChapasSectionTitle icon={Trophy} size="sm">
+                          Vagas por Partido
+                        </ChapasSectionTitle>
                         <div className="text-xs space-y-1">
                           {simulacao.partidosComVagas.map(partido => (
                             <div key={partido.partido} className="flex justify-between">
@@ -2216,7 +2254,9 @@ export function ChapasPanel({
 
                     {/* Histórico das sobras */}
                     <div className={innerPanelClass}>
-                      <div className="mb-2 text-sm font-semibold text-text-primary">📋 Histórico das Sobras - Método D'Hondt</div>
+                      <ChapasSectionTitle icon={ClipboardList} size="sm">
+                        Histórico das Sobras - Método D&apos;Hondt
+                      </ChapasSectionTitle>
                       <div className="text-xs space-y-3">
                         {simulacao.historicoSobras.map((sobra, index) => {
                           const quocientesRodada = simulacao.partidosComVagas
@@ -2246,16 +2286,24 @@ export function ChapasPanel({
 
                           return (
                             <div key={index} className={innerPanelClass}>
-                              <div className="flex items-center gap-3 mb-2 p-2 bg-surface rounded">
-                                <span className="font-bold text-text-primary">🎯 Rodada {sobra.rodada}</span>
-                                <span className="text-secondary">→</span>
-                                <span className="font-medium bg-background/70 px-2 py-1 rounded">{sobra.partido}</span>
+                              <div className="mb-2 flex items-center gap-3 rounded bg-surface p-2">
+                                <span className="inline-flex items-center gap-1.5 font-bold text-text-primary">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-[#f2d06b] text-[#2b2d31]" aria-hidden>
+                                    <Crosshair className="h-3 w-3" strokeWidth={2.25} />
+                                  </span>
+                                  Rodada {sobra.rodada}
+                                </span>
+                                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
+                                <span className="rounded bg-background/70 px-2 py-1 font-medium">{sobra.partido}</span>
                                 <span className="text-secondary">ganha a</span>
-                                <span className="font-bold text-text-primary bg-background/70 px-2 py-1 rounded">Vaga #{sobra.vaga}</span>
+                                <span className="rounded bg-background/70 px-2 py-1 font-bold text-text-primary">Vaga #{sobra.vaga}</span>
                               </div>
 
-                              <div className="mb-2 p-2 bg-surface rounded">
-                                <div className="font-semibold text-text-primary mb-1">📊 Cálculo dos Quocientes Partidários:</div>
+                              <div className="mb-2 rounded bg-surface p-2">
+                                <div className="mb-1 flex items-center gap-1.5 font-semibold text-text-primary">
+                                  <Calculator className="h-3.5 w-3.5 shrink-0 text-[#2b2d31]" strokeWidth={2.25} aria-hidden />
+                                  Cálculo dos Quocientes Partidários:
+                                </div>
                                 <div className="space-y-1">
                                   {quocientesRodada.map((q) => (
                                     <div key={q.partido} className={`flex justify-between items-center p-1 rounded ${
@@ -2272,20 +2320,26 @@ export function ChapasPanel({
                                         })}
                                       </span>
                                       {q.partido === sobra.partido && (
-                                        <span className="text-secondary font-bold ml-2">🏆 MAIOR</span>
+                                        <span className="ml-2 inline-flex items-center gap-1 font-bold text-secondary">
+                                          <Trophy className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                                          MAIOR
+                                        </span>
                                       )}
                                     </div>
                                   ))}
                                 </div>
                               </div>
 
-                              <div className="p-2 bg-background/70 rounded">
-                                <div className="font-semibold text-text-primary">
-                                  ✅ Resultado: {sobra.partido} ganha a Vaga #{sobra.vaga} com quociente partidário de{' '}
-                                  {sobra.quocientePartidario.toLocaleString('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  })}
+                              <div className="rounded bg-background/70 p-2">
+                                <div className="flex items-start gap-1.5 font-semibold text-text-primary">
+                                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2b2d31]" strokeWidth={2.25} aria-hidden />
+                                  <span>
+                                    Resultado: {sobra.partido} ganha a Vaga #{sobra.vaga} com quociente partidário de{' '}
+                                    {sobra.quocientePartidario.toLocaleString('pt-BR', { 
+                                      minimumFractionDigits: 2, 
+                                      maximumFractionDigits: 2 
+                                    })}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -2296,7 +2350,9 @@ export function ChapasPanel({
 
                     {/* Seção dos candidatos eleitos */}
                     <div className={innerPanelClass}>
-                      <div className="mb-3 text-sm font-semibold text-text-primary">🏆 Candidatos Eleitos</div>
+                      <ChapasSectionTitle icon={Users} size="sm">
+                        Candidatos Eleitos
+                      </ChapasSectionTitle>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {(() => {
                           try {

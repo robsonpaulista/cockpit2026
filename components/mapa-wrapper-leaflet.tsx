@@ -428,10 +428,10 @@ function createWarRoomTooltipHTML(config: {
     },
     'com-presenca': {
       label: 'Com meta',
-      pillBg: ink,
-      pillFg: yellow,
+      pillBg: yellow,
+      pillFg: ink,
       icon: POPUP_ICON.target,
-      wellBg: soft,
+      wellBg: yellowSoft,
     },
     'sem-presenca': {
       label: 'Sem meta',
@@ -442,10 +442,10 @@ function createWarRoomTooltipHTML(config: {
     },
     oportunidade: {
       label: 'Oportunidade',
-      pillBg: yellow,
-      pillFg: ink,
+      pillBg: ink,
+      pillFg: yellow,
       icon: POPUP_ICON.spark,
-      wellBg: yellowSoft,
+      wellBg: soft,
     },
   }
   const st = statusMeta[tipo]
@@ -506,7 +506,7 @@ function createWarRoomTooltipHTML(config: {
     </div>`
   }
   if (tipo === 'oportunidade') {
-    extras += `<div style="margin-top:10px;padding:9px 12px;background:${yellow};border-radius:10px;font-size:11px;font-weight:650;color:${ink};text-align:center;letter-spacing:0.01em;">Alto potencial de crescimento</div>`
+    extras += `<div style="margin-top:10px;padding:9px 12px;background:${ink};border-radius:10px;font-size:11px;font-weight:650;color:${yellow};text-align:center;letter-spacing:0.01em;">Alto potencial de crescimento</div>`
   }
 
   return `<div class="mapa-wr-popup" style="font-family:${APP_FONT_STACK_CSS};min-width:248px;max-width:300px;background:#fff;">
@@ -1182,10 +1182,10 @@ export function MapWrapperLeaflet({
         const checkSize = compactMarkers ? 7 : 12
         const borderWidth = compactMarkers ? 1.5 : 2
         const vBg = isWarRoom ? WR_MARKER.yellow : isDark ? '#0d9488' : '#2563EB'
-        const vBorder = isWarRoom ? WR_MARKER.black : isDark ? '#0f766e' : '#1D4ED8'
+        const vBorder = isWarRoom ? WR_MARKER.yellow : isDark ? '#0f766e' : '#1D4ED8'
         const vCheck = isWarRoom ? WR_MARKER.black : 'white'
         const vShadow = isWarRoom
-          ? '0 2px 8px rgba(43,45,49,0.28)'
+          ? '0 2px 8px rgba(43,45,49,0.18)'
           : isDark
             ? '0 2px 12px rgba(45,212,191,0.45)'
             : '0 2px 8px rgba(37,99,235,0.5)'
@@ -1217,10 +1217,10 @@ export function MapWrapperLeaflet({
         const size = compactMarkers ? 9 : 14
         const container = size + (compactMarkers ? 6 : 10)
         const borderWidth = compactMarkers ? 1.5 : 2
-        const cBg = isWarRoom ? WR_MARKER.black : isDark ? '#14b8a6' : '#3B82F6'
-        const cBorder = isWarRoom ? WR_MARKER.blackBorder : isDark ? '#0d9488' : '#2563EB'
+        const cBg = isWarRoom ? WR_MARKER.yellow : isDark ? '#14b8a6' : '#3B82F6'
+        const cBorder = isWarRoom ? WR_MARKER.yellowBorder : isDark ? '#0d9488' : '#2563EB'
         const cShadow = isWarRoom
-          ? '0 1px 4px rgba(43,45,49,0.35)'
+          ? '0 1px 4px rgba(43,45,49,0.18)'
           : isDark
             ? '0 1px 6px rgba(45,212,191,0.35)'
             : '0 1px 4px rgba(37,99,235,0.4)'
@@ -1247,9 +1247,9 @@ export function MapWrapperLeaflet({
         const size = getMarkerSize(eleitorado, compactMarkers)
         const pulseSize = size * (compactMarkers ? 2 : 2.5)
         const container = pulseSize + (compactMarkers ? 4 : 6)
-        const oBg = isWarRoom ? WR_MARKER.yellow : '#F59E0B'
-        const oBorder = isWarRoom ? WR_MARKER.black : '#D97706'
-        const oPulse = isWarRoom ? 'rgba(242,208,107,0.35)' : 'rgba(245,158,11,0.25)'
+        const oBg = isWarRoom ? WR_MARKER.black : '#F59E0B'
+        const oBorder = isWarRoom ? WR_MARKER.blackBorder : '#D97706'
+        const oPulse = isWarRoom ? 'rgba(43,45,49,0.22)' : 'rgba(245,158,11,0.25)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">

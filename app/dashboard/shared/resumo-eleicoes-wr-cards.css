@@ -58,6 +58,48 @@
   color: #2b2d31;
 }
 
+.resumo-wr-kpi-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.375rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.resumo-wr-kpi-bar-comb {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5px;
+  height: 14px;
+  min-width: 0;
+  width: 100%;
+}
+
+.resumo-wr-kpi-bar-tick {
+  flex: 1 1 0;
+  min-width: 1px;
+  border-radius: 1px;
+  background: color-mix(in srgb, #686865 22%, #fff);
+  transform-origin: center bottom;
+}
+
+.resumo-wr-kpi-bar-tick--on {
+  background: #2b2d31;
+}
+
+.resumo-wr-kpi-bar-label {
+  min-width: 2.5rem;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: right;
+  color: var(--wr-text-primary, #2b2d31);
+  font-variant-numeric: tabular-nums;
+}
+
+/* legado — mantido se algum caller antigo ainda referenciar */
 .resumo-wr-kpi-bar-track {
   position: relative;
   margin: 0.375rem auto 0;

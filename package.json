@@ -24,7 +24,8 @@
     "db:backup": "node scripts/backup-supabase.mjs",
     "db:backup:full": "node scripts/backup-supabase.mjs --full",
     "db:backup:upload": "node scripts/backup-supabase.mjs --upload",
-    "instagram:avatars:reprocess": "node scripts/reprocess-instagram-avatars.mjs"
+    "instagram:avatars:reprocess": "node scripts/reprocess-instagram-avatars.mjs",
+    "emendas:comparativo-pi": "node scripts/sync-emendas-comparativo-pi.mjs"
   },
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.5",

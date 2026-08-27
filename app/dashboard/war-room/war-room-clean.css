@@ -1020,23 +1020,23 @@ body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon.text-\[\#f04a2
   color: #969692 !important;
 }
 
-/* Ativo — branco + detalhe amarelo */
+/* Ativo — amarelo vivo sólido (mesmo do War Room) */
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\] {
-  background-color: #ffffff !important;
-  color: #20201f !important;
-  border: 1px solid #e8e8e6 !important;
-  border-left: 3px solid #f2d06b !important;
+  background-color: #f2d06b !important;
+  color: #2b2d31 !important;
+  border: 1px solid #f2d06b !important;
+  border-left: 1px solid #f2d06b !important;
   box-shadow: none !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a[class*='bg-[linear-gradient'] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button[class*='bg-[linear-gradient'] .cockpit-icon {
-  color: #f2d06b !important;
+  color: #2b2d31 !important;
   opacity: 1;
 }
 
@@ -1048,8 +1048,9 @@ body[data-war-room-clean] aside[data-sidebar-shell] button:focus-visible {
 
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-\[linear-gradient\(135deg\,\#243443_0\%\,\#2f4353_52\%\,\#3b5466_100\%\)\] {
   background-image: none !important;
-  background-color: #ffffff !important;
-  border: 1px solid #e8e8e6 !important;
+  background-color: #f2d06b !important;
+  border: 1px solid #f2d06b !important;
+  color: #2b2d31 !important;
   box-shadow: none !important;
 }
 
@@ -1066,7 +1067,7 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\].text-w
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\].text-white,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .text-white,
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\] .text-white {
-  color: #20201f !important;
+  color: #2b2d31 !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .group:hover .cockpit-icon,
@@ -1095,8 +1096,8 @@ body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon {
-  color: #686865 !important;
-  opacity: 0.9;
+  color: #2b2d31 !important;
+  opacity: 1;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='uppercase'][class*='tracking'] {
@@ -1227,8 +1228,9 @@ body[data-war-room-clean] header.wr-topbar-clean {
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav a.bg-white\/\[0\.06\],
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav button.bg-white\/\[0\.06\],
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav .bg-white\/\[0\.06\] {
-    background-color: #ffffff !important;
-    border: 1px solid #e8e8e6 !important;
+    background-color: #f2d06b !important;
+    border: 1px solid #f2d06b !important;
+    color: #2b2d31 !important;
     box-shadow: none !important;
   }
 
@@ -9144,9 +9146,531 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 }
 
 .wr-copiloto-obras__body > .wr-mapa-obras-embedded,
-.wr-copiloto-emendas__body > .wr-emendas-panel {
+.wr-copiloto-emendas__body > .wr-emendas-panel,
+.wr-copiloto-emendas__body > .wr-emendas-cmp {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.wr-copiloto-emendas__subtabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wr-text-primary, #2b2d31) 6%, #fff);
+}
+
+.wr-copiloto-emendas__subtab {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wr-text-secondary, #686865);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wr-copiloto-emendas__subtab--on {
+  background: #f2d06b;
+  color: #2b2d31;
+}
+
+/* —— Emendas Comparativo PI —— */
+.wr-emendas-cmp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+
+.wr-emendas-cmp__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__sub {
+  margin: 4px 0 0;
+  max-width: 52ch;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wr-emendas-cmp__anos {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(60, 60, 67, 0.08);
+}
+
+.wr-emendas-cmp__ano {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wr-text-secondary, #686865);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wr-emendas-cmp__ano--on {
+  background: #f2d06b;
+  color: #2b2d31;
+}
+
+.wr-emendas-cmp__kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__kpi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(60, 60, 67, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.wr-emendas-cmp__kpi-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f2d06b;
+  color: #2b2d31;
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__kpi-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__kpi-val {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #2b2d31);
+  line-height: 1.15;
+}
+
+.wr-emendas-cmp__kpi-val span {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__disclaimer {
+  margin: 0;
+  font-size: 11px;
+  color: var(--wr-text-muted, #969692);
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.85fr);
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-emendas-cmp__ranking,
+.wr-emendas-cmp__detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(60, 60, 67, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.wr-emendas-cmp__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 14px 8px;
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__section-head-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wr-emendas-cmp__section-head h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__section-head-main span {
+  font-size: 11px;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__sort {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f3f3f1;
+}
+
+.wr-emendas-cmp__sort-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wr-text-secondary, #686865);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wr-emendas-cmp__sort-btn--on {
+  background: #f2d06b;
+  color: #2b2d31;
+}
+
+.wr-emendas-cmp__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wr-emendas-cmp__row {
+  display: grid;
+  grid-template-columns: 28px 40px minmax(0, 1fr) minmax(120px, 1.1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.wr-emendas-cmp__row:hover {
+  background: color-mix(in srgb, #f2d06b 18%, #fff);
+}
+
+.wr-emendas-cmp__row--on {
+  background: color-mix(in srgb, #f2d06b 28%, #fff);
+  color: #2b2d31;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #2b2d31 14%, transparent);
+}
+
+.wr-emendas-cmp__row--on .wr-emendas-cmp__who em,
+.wr-emendas-cmp__row--on .wr-emendas-cmp__meta {
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__row--on .wr-emendas-cmp__pago {
+  color: #2b2d31;
+}
+
+.wr-emendas-cmp__rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: inherit;
+  opacity: 0.55;
+}
+
+.wr-emendas-cmp__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e8e8e6;
+  flex-shrink: 0;
+}
+
+.wr-emendas-cmp__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wr-emendas-cmp__who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.wr-emendas-cmp__who strong {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wr-emendas-cmp__who em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wr-emendas-cmp__bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(43, 45, 49, 0.08);
+  overflow: hidden;
+}
+
+.wr-emendas-cmp__row--on .wr-emendas-cmp__bar {
+  background: rgba(43, 45, 49, 0.1);
+}
+
+.wr-emendas-cmp__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #f2d06b;
+}
+
+.wr-emendas-cmp__pago {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__meta {
+  font-size: 10px;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__detail {
+  padding: 14px;
+  gap: 14px;
+  overflow: auto;
+}
+
+.wr-emendas-cmp__detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wr-emendas-cmp__detail-hero img {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #e8e8e6;
+}
+
+.wr-emendas-cmp__detail-rank {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f2d06b;
+  background: #2b2d31;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.wr-emendas-cmp__detail-hero h4 {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__detail-hero p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.wr-emendas-cmp__detail-stats > div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f3f3f1;
+}
+
+.wr-emendas-cmp__detail-stats dt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__detail-stats dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__munis header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__munis ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wr-emendas-cmp__munis li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fafafa;
+  border: 1px solid rgba(60, 60, 67, 0.06);
+  font-size: 12px;
+}
+
+.wr-emendas-cmp__munis li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-emendas-cmp__munis li strong {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #2b2d31;
+}
+
+.wr-emendas-cmp__empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--wr-text-secondary, #686865);
+  line-height: 1.4;
+}
+
+.wr-emendas-cmp__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 240px;
+  font-size: 13px;
+  color: var(--wr-text-secondary, #686865);
+}
+
+.wr-emendas-cmp__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+  font-size: 11px;
+  color: var(--wr-text-muted, #969692);
+}
+
+.wr-emendas-cmp__foot a {
+  color: var(--wr-text-primary, #2b2d31);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .wr-emendas-cmp__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wr-emendas-cmp__body {
+    grid-template-columns: 1fr;
+  }
+  .wr-emendas-cmp__detail {
+    max-height: 360px;
+  }
 }
 
 /* —— Copiloto · Relatório Executivo —— */
@@ -14506,32 +15030,24 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-\[linear-gradient\(135deg\,\#243443_0\%\,\#2f4353_52\%\,\#3b5466_100\%\)\] {
-  background: rgba(255, 255, 255, 0.82) !important;
+  background: #f2d06b !important;
   background-image: none !important;
-  color: var(--wr-text-primary) !important;
-  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  color: #2b2d31 !important;
+  border: 1px solid #f2d06b !important;
   border-radius: 12px !important;
-  box-shadow: var(--wr-shadow-1) !important;
-  font-weight: 500 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
   position: relative;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\]::before,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\]::before {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 22%;
-  bottom: 22%;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--wr-text-primary);
-  opacity: 0.55;
+  content: none;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon {
-  color: var(--wr-icon-active) !important;
+  color: #2b2d31 !important;
   opacity: 1;
 }
 
@@ -15656,18 +16172,61 @@ body[data-war-room-clean] aside.sidebar-apify-shell .group:hover .cockpit-icon {
   color: #20201e !important;
 }
 
-/* Item ativo — cinza, sem barra dourada/azul legado */
+/* Item ativo — amarelo vivo sólido (links + botões de submenu) */
 body[data-war-room-clean] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\],
 body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\],
 body[data-war-room-clean] aside[data-sidebar-shell] a[aria-current='page'],
-body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] {
-  background: #ffffff !important;
+body[data-war-room-clean] aside[data-sidebar-shell] a.wr-nav-active,
+body[data-war-room-clean] aside[data-sidebar-shell] button.wr-nav-active,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-\[\#f2d06b\],
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\],
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/60,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/60 {
+  background: #f2d06b !important;
+  background-color: #f2d06b !important;
   background-image: none !important;
-  color: #20201e !important;
-  border-left-color: #20201e !important;
-  border-color: #e8e8e6 !important;
+  color: #2b2d31 !important;
+  border-left-color: #f2d06b !important;
+  border-color: #f2d06b !important;
   box-shadow: none !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a.wr-nav-active:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button.wr-nav-active:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\]:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\]:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-\[\#f2d06b\]:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\]:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70:hover,
+body[data-war-room-clean] aside[data-sidebar-shell] a[aria-current='page']:hover {
+  background: #f2d06b !important;
+  background-color: #f2d06b !important;
+  color: #2b2d31 !important;
+  border-color: #f2d06b !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] a.wr-nav-active .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button.wr-nav-active .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-\[\#f2d06b\] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70 .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70 .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] a.wr-nav-active svg,
+body[data-war-room-clean] aside[data-sidebar-shell] button.wr-nav-active svg,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-\[\#f2d06b\] svg,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] svg,
+body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70 svg,
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70 svg {
+  color: #2b2d31 !important;
+  opacity: 1 !important;
 }
 
 /* ==========================================================================

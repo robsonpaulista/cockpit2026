@@ -1,0 +1,548 @@
+{
+  "geradoEm": "2026-08-27T13:52:42.407632+00:00",
+  "fonte": "Portal da Transparência · EmendasParlamentares.csv",
+  "fonteUrl": "https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares",
+  "anos": [
+    "2023",
+    "2024",
+    "2025",
+    "2026"
+  ],
+  "periodoLabel": "Mandato 2023–2026",
+  "uf": "PI",
+  "kpis": {
+    "valorPago": 1267257451.9199998,
+    "valorEmpenhado": 1505780497.01,
+    "valorPix": 499891762.90999997,
+    "valorProjeto": 767365689.01,
+    "qtdEmendas": 276,
+    "parlamentares": 10,
+    "valorMedio": 4591512.506956521
+  },
+  "ranking": [
+    {
+      "id": 74317,
+      "nome": "Júlio Cesar",
+      "partido": "PSD",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/74317.jpg",
+      "valorEmpenhado": 249550415.76,
+      "valorLiquidado": 183696465.92,
+      "valorPago": 183123016.28,
+      "valorPix": 50662955.65,
+      "valorProjeto": 132460060.63000001,
+      "qtdEmendas": 66,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 63141792.629999995,
+          "valorPago": 46289976.029999994,
+          "valorPix": 11897215.0,
+          "qtd": 23
+        },
+        "2024": {
+          "valorEmpenhado": 37300981.120000005,
+          "valorPago": 33515506.14,
+          "valorPix": 14300000.0,
+          "qtd": 11
+        },
+        "2025": {
+          "valorEmpenhado": 85968150.77000001,
+          "valorPago": 62893209.93,
+          "valorPix": 17461612.08,
+          "qtd": 18
+        },
+        "2026": {
+          "valorEmpenhado": 63139491.24,
+          "valorPago": 40424324.18,
+          "valorPix": 7004128.57,
+          "qtd": 14
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "PARNAÍBA",
+          "valorPago": 3000000.0,
+          "valorEmpenhado": 6000000.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "CAMPO MAIOR",
+          "valorPago": 2000000.0,
+          "valorEmpenhado": 2000000.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 1
+    },
+    {
+      "id": 191923,
+      "nome": "Flávio Nogueira",
+      "partido": "PT",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/191923.jpg",
+      "valorEmpenhado": 159439205.56,
+      "valorLiquidado": 144789960.82,
+      "valorPago": 144289960.82,
+      "valorPix": 57368392.82,
+      "valorProjeto": 86921568.0,
+      "qtdEmendas": 16,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 32103399.0,
+          "valorPago": 32103399.0,
+          "valorPix": 15151646.0,
+          "qtd": 4
+        },
+        "2024": {
+          "valorEmpenhado": 37871585.0,
+          "valorPago": 37871585.0,
+          "valorPix": 18935792.0,
+          "qtd": 3
+        },
+        "2025": {
+          "valorEmpenhado": 50158974.59,
+          "valorPago": 38297634.08,
+          "valorPix": 17263612.08,
+          "qtd": 6
+        },
+        "2026": {
+          "valorEmpenhado": 39305246.97,
+          "valorPago": 36017342.74,
+          "valorPix": 6017342.74,
+          "qtd": 3
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "PARNAÍBA",
+          "valorPago": 4000000.0,
+          "valorEmpenhado": 4000000.0,
+          "qtd": 2
+        },
+        {
+          "municipio": "TERESINA",
+          "valorPago": 349434.0,
+          "valorEmpenhado": 686401.06,
+          "qtd": 1
+        }
+      ],
+      "rank": 2
+    },
+    {
+      "id": 123086,
+      "nome": "Átila Lira",
+      "partido": "PP",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/123086.jpg",
+      "valorEmpenhado": 153971664.29000002,
+      "valorLiquidado": 134715810.32000002,
+      "valorPago": 134594099.57,
+      "valorPix": 62652480.87,
+      "valorProjeto": 71941618.69999999,
+      "qtdEmendas": 21,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 32103202.65,
+          "valorPago": 27556402.740000002,
+          "valorPix": 15558949.0,
+          "qtd": 5
+        },
+        "2024": {
+          "valorEmpenhado": 37871037.07,
+          "valorPago": 36970185.0,
+          "valorPix": 17585585.0,
+          "qtd": 6
+        },
+        "2025": {
+          "valorEmpenhado": 45136152.21,
+          "valorPago": 39910290.11,
+          "valorPix": 16806225.15,
+          "qtd": 6
+        },
+        "2026": {
+          "valorEmpenhado": 38861272.36,
+          "valorPago": 30157221.72,
+          "valorPix": 12701721.72,
+          "qtd": 4
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "PIRIPIRI",
+          "valorPago": 100000.0,
+          "valorEmpenhado": 100000.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "BATALHA",
+          "valorPago": 25900.0,
+          "valorEmpenhado": 1099900.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "PARNAÍBA",
+          "valorPago": 0.0,
+          "valorEmpenhado": 3003000.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 3
+    },
+    {
+      "id": 204431,
+      "nome": "Marcos Aurélio Sampaio",
+      "partido": "MDB",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/204431.jpg",
+      "valorEmpenhado": 154952875.32,
+      "valorLiquidado": 132147762.64999999,
+      "valorPago": 132147762.64999999,
+      "valorPix": 66542801.41,
+      "valorProjeto": 65604961.239999995,
+      "qtdEmendas": 16,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 32103063.0,
+          "valorPago": 23957000.0,
+          "valorPix": 16051699.0,
+          "qtd": 4
+        },
+        "2024": {
+          "valorEmpenhado": 37871585.0,
+          "valorPago": 37871585.0,
+          "valorPix": 18935792.0,
+          "qtd": 4
+        },
+        "2025": {
+          "valorEmpenhado": 45025850.32,
+          "valorPago": 37691472.32,
+          "valorPix": 18253612.080000002,
+          "qtd": 5
+        },
+        "2026": {
+          "valorEmpenhado": 39952377.0,
+          "valorPago": 32627705.33,
+          "valorPix": 13301698.33,
+          "qtd": 3
+        }
+      },
+      "municipiosTop": [],
+      "rank": 4
+    },
+    {
+      "id": 220688,
+      "nome": "Dr. Francisco",
+      "partido": "PT",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/220688.jpg",
+      "valorEmpenhado": 141764684.03,
+      "valorLiquidado": 126482018.99,
+      "valorPago": 125486364.07999998,
+      "valorPix": 37242705.3,
+      "valorProjeto": 88243658.78,
+      "qtdEmendas": 51,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 32102986.7,
+          "valorPago": 27152761.979999997,
+          "valorPix": 4900000.0,
+          "qtd": 13
+        },
+        "2024": {
+          "valorEmpenhado": 37864164.12,
+          "valorPago": 36806371.94,
+          "valorPix": 17000000.0,
+          "qtd": 15
+        },
+        "2025": {
+          "valorEmpenhado": 43205126.96,
+          "valorPago": 34039112.769999996,
+          "valorPix": 10543500.0,
+          "qtd": 17
+        },
+        "2026": {
+          "valorEmpenhado": 28592406.25,
+          "valorPago": 27488117.39,
+          "valorPix": 4799205.3,
+          "qtd": 6
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "IPIRANGA DO PIAUÍ",
+          "valorPago": 1000000.0,
+          "valorEmpenhado": 1000000.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "RIBEIRA DO PIAUÍ",
+          "valorPago": 344515.0,
+          "valorEmpenhado": 344515.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "MIGUEL ALVES",
+          "valorPago": 199821.0,
+          "valorEmpenhado": 199821.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "TERESINA",
+          "valorPago": 163522.44,
+          "valorEmpenhado": 195373.16,
+          "qtd": 1
+        }
+      ],
+      "rank": 5
+    },
+    {
+      "id": 188097,
+      "nome": "Merlong Solano",
+      "partido": "PT",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/188097.jpg",
+      "valorEmpenhado": 144868687.74,
+      "valorLiquidado": 123438294.28999999,
+      "valorPago": 122677412.19999999,
+      "valorPix": 51312746.15,
+      "valorProjeto": 71364666.05,
+      "qtdEmendas": 35,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 30922280.35,
+          "valorPago": 28882855.55,
+          "valorPix": 14455074.0,
+          "qtd": 5
+        },
+        "2024": {
+          "valorEmpenhado": 36799382.36,
+          "valorPago": 34394155.61,
+          "valorPix": 15435792.0,
+          "qtd": 11
+        },
+        "2025": {
+          "valorEmpenhado": 44585673.1,
+          "valorPago": 33560528.91,
+          "valorPix": 13798612.08,
+          "qtd": 9
+        },
+        "2026": {
+          "valorEmpenhado": 32561351.93,
+          "valorPago": 25839872.13,
+          "valorPix": 7623268.07,
+          "qtd": 10
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "TERESINA",
+          "valorPago": 1150000.0,
+          "valorEmpenhado": 1650000.0,
+          "qtd": 3
+        },
+        {
+          "municipio": "SÃO RAIMUNDO NONATO",
+          "valorPago": 0.0,
+          "valorEmpenhado": 750000.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 6
+    },
+    {
+      "id": 220699,
+      "nome": "Castro Neto",
+      "partido": "MDB",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/220699.jpg",
+      "valorEmpenhado": 122334862.00999999,
+      "valorLiquidado": 110489025.78999999,
+      "valorPago": 109689025.78999999,
+      "valorPix": 45320613.2,
+      "valorProjeto": 64368412.59,
+      "qtdEmendas": 13,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 0.0,
+          "valorPago": 0.0,
+          "valorPix": 0.0,
+          "qtd": 0
+        },
+        "2024": {
+          "valorEmpenhado": 37871585.0,
+          "valorPago": 37871585.0,
+          "valorPix": 18835792.0,
+          "qtd": 3
+        },
+        "2025": {
+          "valorEmpenhado": 45991270.010000005,
+          "valorPago": 38130612.59,
+          "valorPix": 14850000.0,
+          "qtd": 7
+        },
+        "2026": {
+          "valorEmpenhado": 38472007.0,
+          "valorPago": 33686828.2,
+          "valorPix": 11634821.2,
+          "qtd": 3
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "TERESINA",
+          "valorPago": 500000.0,
+          "valorEmpenhado": 500000.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 7
+    },
+    {
+      "id": 66385,
+      "nome": "Julio Arcoverde",
+      "partido": "PP",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/66385.jpg",
+      "valorEmpenhado": 123699520.05,
+      "valorLiquidado": 110505486.7,
+      "valorPago": 109605486.7,
+      "valorPix": 50116546.699999996,
+      "valorProjeto": 59488940.0,
+      "qtdEmendas": 13,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 0.0,
+          "valorPago": 0.0,
+          "valorPix": 0.0,
+          "qtd": 0
+        },
+        "2024": {
+          "valorEmpenhado": 37871585.0,
+          "valorPago": 37870185.0,
+          "valorPix": 18485792.0,
+          "qtd": 5
+        },
+        "2025": {
+          "valorEmpenhado": 46472538.08,
+          "valorPago": 39231159.08,
+          "valorPix": 17956612.08,
+          "qtd": 5
+        },
+        "2026": {
+          "valorEmpenhado": 39355396.97,
+          "valorPago": 32504142.619999997,
+          "valorPix": 13674142.62,
+          "qtd": 3
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "TERESINA",
+          "valorPago": 250000.0,
+          "valorEmpenhado": 250000.0,
+          "qtd": 2
+        }
+      ],
+      "rank": 8
+    },
+    {
+      "id": 220700,
+      "nome": "Florentino Neto",
+      "partido": "PT",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/220700.jpg",
+      "valorEmpenhado": 125565082.35,
+      "valorLiquidado": 108303090.37,
+      "valorPago": 108293504.37,
+      "valorPix": 49766462.35,
+      "valorProjeto": 58527042.02,
+      "qtdEmendas": 26,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 0.0,
+          "valorPago": 0.0,
+          "valorPix": 0.0,
+          "qtd": 0
+        },
+        "2024": {
+          "valorEmpenhado": 37870002.29,
+          "valorPago": 36800994.0,
+          "valorPix": 17385792.0,
+          "qtd": 15
+        },
+        "2025": {
+          "valorEmpenhado": 47558475.0,
+          "valorPago": 36722060.62,
+          "valorPix": 17955630.0,
+          "qtd": 6
+        },
+        "2026": {
+          "valorEmpenhado": 40136605.06,
+          "valorPago": 34770449.75,
+          "valorPix": 14425040.35,
+          "qtd": 5
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "PIRACURUCA",
+          "valorPago": 2482490.0,
+          "valorEmpenhado": 2482490.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "CARAÚBAS DO PIAUÍ",
+          "valorPago": 535783.0,
+          "valorEmpenhado": 535783.0,
+          "qtd": 1
+        },
+        {
+          "municipio": "LUZILÂNDIA",
+          "valorPago": 130819.0,
+          "valorEmpenhado": 399177.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 9
+    },
+    {
+      "id": 220697,
+      "nome": "Jadyel Alencar",
+      "partido": "REPUBLICANOS",
+      "foto": "https://www.camara.leg.br/internet/deputado/bandep/220697.jpg",
+      "valorEmpenhado": 129633499.9,
+      "valorLiquidado": 100650392.14999999,
+      "valorPago": 97350819.46,
+      "valorPix": 28906058.459999997,
+      "valorProjeto": 68444761.0,
+      "qtdEmendas": 19,
+      "porAno": {
+        "2023": {
+          "valorEmpenhado": 0.0,
+          "valorPago": 0.0,
+          "valorPix": 0.0,
+          "qtd": 0
+        },
+        "2024": {
+          "valorEmpenhado": 37871585.0,
+          "valorPago": 32970185.0,
+          "valorPix": 13685792.0,
+          "qtd": 5
+        },
+        "2025": {
+          "valorEmpenhado": 52875816.91,
+          "valorPago": 32989605.08,
+          "valorPix": 8551612.08,
+          "qtd": 7
+        },
+        "2026": {
+          "valorEmpenhado": 38886097.99,
+          "valorPago": 31391029.38,
+          "valorPix": 6668654.38,
+          "qtd": 7
+        }
+      },
+      "municipiosTop": [
+        {
+          "municipio": "COCAL",
+          "valorPago": 0.0,
+          "valorEmpenhado": 995000.0,
+          "qtd": 1
+        }
+      ],
+      "rank": 10
+    }
+  ],
+  "disclaimer": "A cor e a posição medem magnitude do repasse, não avaliação política. Recorte: mandato federal 2023–2026."
+}

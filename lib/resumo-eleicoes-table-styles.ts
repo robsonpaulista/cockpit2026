@@ -109,15 +109,24 @@ export function resumoKpiIconClass(): string {
 }
 
 export function resumoKpiBarTrackClass(): string {
-  return 'resumo-wr-kpi-bar-track'
+  return 'resumo-wr-kpi-bar'
 }
 
+export function resumoKpiBarCombClass(): string {
+  return 'resumo-wr-kpi-bar-comb'
+}
+
+export function resumoKpiBarTickClass(on: boolean): string {
+  return on ? 'resumo-wr-kpi-bar-tick resumo-wr-kpi-bar-tick--on' : 'resumo-wr-kpi-bar-tick'
+}
+
+/** @deprecated Prefer comb ticks (`resumoKpiBarCombClass`). */
 export function resumoKpiBarFillClass(): string {
   return 'resumo-wr-kpi-bar-fill'
 }
 
 export function resumoKpiBarLabelClass(): string {
-  return 'relative z-10 flex h-full items-center justify-center text-[10px] font-bold tabular-nums leading-none text-[var(--wr-text-primary,#2b2d31)]'
+  return 'resumo-wr-kpi-bar-label'
 }
 
 /** Coral fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */

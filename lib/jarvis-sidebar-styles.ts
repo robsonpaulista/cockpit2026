@@ -1,9 +1,9 @@
-/** Menu lateral na home glass gelo — tipografia petróleo, accent amarelo. */
+/** Menu lateral na home glass / War Room — item ativo em amarelo vivo. */
 export const JARVIS_SIDEBAR_ACTIVE_ITEM =
-  'border border-[rgba(43, 45, 49,0.12)] bg-white/70 !text-[#2b2d31] shadow-[0_4px_16px_rgba(43, 45, 49,0.08)]'
+  'wr-nav-active border border-[#f2d06b] bg-[#f2d06b] !text-[#2b2d31] shadow-none font-semibold'
 
 export const JARVIS_SIDEBAR_ACTIVE_CHILD =
-  'border border-[rgba(43, 45, 49,0.1)] bg-white/60 !text-[#2b2d31] shadow-[0_2px_10px_rgba(43, 45, 49,0.06)]'
+  'wr-nav-active border border-[#f2d06b] bg-[#f2d06b] !text-[#2b2d31] shadow-none font-semibold'
 
 export const JARVIS_SIDEBAR_HOVER =
   'hover:bg-white/55 hover:text-[#2b2d31]'

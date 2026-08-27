@@ -62,6 +62,7 @@ import {
 import { InstagramAudienceKpiStrip } from '@/components/conteudo-redes/instagram-audience-kpi-strip'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import { ChampionPostCard } from '@/components/conteudo-redes/champion-post-card'
+import '@/components/conteudo-redes/instagram-audience-posts.css'
 import {
   IconAlertCircle,
   IconLoader2,
@@ -1144,41 +1145,44 @@ export default function ConteudoPage() {
                       return (
                         <div
                           key={post.id}
-                          className={cn(municipalityCardClass, 'border-2')}
+                          className="ig-audience-post-card"
                         >
-                          <div className="flex flex-col sm:flex-row">
-                            <div className="w-full sm:w-48 h-48 bg-background relative flex-shrink-0">
+                          <div className="ig-audience-post-card__body">
+                            <div className="ig-audience-post-card__media">
                               <div
-                                className="w-full h-full bg-center bg-cover"
+                                className="ig-audience-post-card__media-img"
                                 style={{ backgroundImage: `url(${post.thumbnail})` }}
+                                role="img"
+                                aria-label="Preview da postagem"
                               />
-                              <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                              <div className="ig-audience-post-card__badges">
                                 <div
-                                  className={`text-white text-xs px-2 py-1 rounded ${
+                                  className={cn(
+                                    'ig-audience-post-card__badge',
                                     post.type === 'video'
                                       ? 'bg-red-500'
                                       : post.type === 'carousel'
                                       ? 'bg-[#9A6B08]'
-                                      : 'bg-[#f04b23]'
-                                  }`}
+                                      : 'bg-[#f04b23]',
+                                  )}
                                 >
                                   {typeLabels[post.type as keyof typeof typeLabels] || post.type}
                                 </div>
                                 {classification?.isBoosted && (
-                                  <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                                  <div className="ig-audience-post-card__badge bg-yellow-500">
                                     <Sparkles className="h-3 w-3" />
                                     Impulsionada
                                   </div>
                                 )}
                                 {classification?.theme && (
-                                  <div className="bg-status-success text-white text-xs px-2 py-1 rounded">
+                                  <div className="ig-audience-post-card__badge bg-status-success">
                                     {classification.theme}
                                   </div>
                                 )}
                               </div>
                             </div>
 
-                            <div className="p-3 flex-1 flex flex-col min-h-0">
+                            <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-2 sm:pl-0">
                               <div className="flex justify-between items-start mb-1.5 flex-shrink-0">
                                 <div>
                                   <span className="text-xs">

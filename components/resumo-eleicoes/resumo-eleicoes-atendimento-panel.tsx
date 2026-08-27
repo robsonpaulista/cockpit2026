@@ -49,7 +49,8 @@ import {
   resumoKpiIconClass,
   resumoKpiIconWrapClass,
   resumoKpiBarTrackClass,
-  resumoKpiBarFillClass,
+  resumoKpiBarCombClass,
+  resumoKpiBarTickClass,
   resumoKpiBarLabelClass,
   resumoWrCardClass,
   resumoWrCardGlassClass,
@@ -2214,12 +2215,21 @@ export function ResumoEleicoesAtendimentoPanel() {
   const kpiMetaClass = resumoKpiMetaClass()
   const kpiLinkClass = resumoKpiLinkClass()
   const kpiBarTrackClass = resumoKpiBarTrackClass()
-  const kpiBarFillClass = resumoKpiBarFillClass()
+  const kpiBarCombClass = resumoKpiBarCombClass()
   const kpiBarLabelClass = resumoKpiBarLabelClass()
   const alcancePctFmt =
     percentualAlcance !== null ? percentualAlcance.toFixed(1).replace('.', ',') : null
   const alcanceBarWidth =
     percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : 0
+  const alcanceSegments = 28
+  const alcanceFilled = Math.round((alcanceBarWidth / 100) * alcanceSegments)
+  const expectativaCrescimentoBarWidth =
+    percentualCrescimentoVs2022 !== null
+      ? Math.min(100, Math.max(0, Math.abs(percentualCrescimentoVs2022)))
+      : 0
+  const expectativaCrescimentoFilled = Math.round(
+    (expectativaCrescimentoBarWidth / 100) * alcanceSegments,
+  )
 
   return (
     <div className="w-full min-w-0">
@@ -2350,11 +2360,14 @@ export function ResumoEleicoesAtendimentoPanel() {
                     aria-label={`Alcance do eleitorado: ${alcancePctFmt}%`}
                     title={`${alcancePctFmt}% alcance`}
                   >
-                    <div
-                      className={kpiBarFillClass}
-                      style={{ width: `${alcanceBarWidth}%` }}
-                      aria-hidden
-                    />
+                    <div className={kpiBarCombClass} aria-hidden>
+                      {Array.from({ length: alcanceSegments }, (_, i) => (
+                        <span
+                          key={i}
+                          className={resumoKpiBarTickClass(i < alcanceFilled)}
+                        />
+                      ))}
+                    </div>
                     <span className={kpiBarLabelClass}>{alcancePctFmt}%</span>
                   </div>
                 ) : (
@@ -2379,6 +2392,29 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
                 </div>
                 <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
+                {crescimentoPctFmt !== null ? (
+                  <div
+                    className={kpiBarTrackClass}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(expectativaCrescimentoBarWidth)}
+                    aria-label={`${labelCenarioAtivo}: ${crescimentoPctFmt} vs. 2022`}
+                    title={`${crescimentoPctFmt} vs. 2022`}
+                  >
+                    <div className={kpiBarCombClass} aria-hidden>
+                      {Array.from({ length: alcanceSegments }, (_, i) => (
+                        <span
+                          key={i}
+                          className={resumoKpiBarTickClass(i < expectativaCrescimentoFilled)}
+                        />
+                      ))}
+                    </div>
+                    <span className={kpiBarLabelClass}>{crescimentoPctFmt}</span>
+                  </div>
+                ) : (
+                  <p className={kpiMetaClass}>Sem base 2022</p>
+                )}
                 <div className="mt-1 flex w-full flex-col items-center gap-0.5">
                   <p
                     className={cn(
@@ -2399,14 +2435,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                     <span className="font-medium text-[var(--palette-petrol)]/55">vs.</span>
                     <span>2022</span>
                   </p>
-                  {crescimentoPctFmt !== null ? (
-                    <p className="text-[10px] leading-tight text-[var(--palette-aux)]">
-                      {crescimentoPctFmt} de{' '}
-                      {diferencaCenarioVs2022 < 0 ? 'queda' : 'crescimento'}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] leading-tight text-[var(--palette-aux)]">Sem base 2022</p>
-                  )}
                 </div>
               </div>
               <div className={summaryCardBaseClass}>
