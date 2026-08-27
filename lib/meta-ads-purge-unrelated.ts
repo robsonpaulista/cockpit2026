@@ -29,9 +29,21 @@ export async function purgeUnrelatedMetaAdsMentions(supabase: SupabaseClient): P
     throw new Error(error.message)
   }
 
-  const unrelatedIds = ((data ?? []) as MentionPurgeRow[])
+  type QueryRow = {
+    id: string
+    page_name: string | null
+    payer_name: string | null
+    ad_body: string | null
+    political_actors:
+      | MentionPurgeRow['political_actors']
+      | NonNullable<MentionPurgeRow['political_actors']>[]
+      | null
+  }
+
+  const unrelatedIds = ((data ?? []) as unknown as QueryRow[])
     .filter((row) => {
-      const actor = row.political_actors
+      const raw = row.political_actors
+      const actor = Array.isArray(raw) ? (raw[0] ?? null) : raw
       if (!actor) return true
       return !adBelongsToPoliticalActor(
         {

@@ -41,8 +41,6 @@ type PostClassification = {
   isBoosted?: boolean
 }
 
-type ThemeSortKey = 'engagement' | 'views'
-
 function formatLastUpdateLabel(date: Date): string {
   return new Intl.DateTimeFormat('pt-BR', {
     day: 'numeric',
@@ -95,7 +93,6 @@ export function WarRoomCopilotoRedesView() {
   const [error, setError] = useState<string | null>(null)
   const [configured, setConfigured] = useState(false)
   const [topPostModalTheme, setTopPostModalTheme] = useState<string | null>(null)
-  const themeSort: ThemeSortKey = 'engagement'
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
   const [visitasManualOpen, setVisitasManualOpen] = useState(false)
   const topPostModalTitleId = useId()
@@ -241,10 +238,6 @@ export function WarRoomCopilotoRedesView() {
     const comparison = computeThemeComparison(themeStats)
     return Object.entries(themeStats)
       .sort(([, a], [, b]) => {
-        if (themeSort === 'views') {
-          if (b.views !== a.views) return b.views - a.views
-          return b.engagement - a.engagement
-        }
         if (b.engagement !== a.engagement) return b.engagement - a.engagement
         return b.views - a.views
       })
@@ -253,17 +246,12 @@ export function WarRoomCopilotoRedesView() {
         stats,
         isLeader: comparison.overallLeader === theme,
       }))
-  }, [themeStats, themeSort])
+  }, [themeStats])
 
   const themeMetricMax = useMemo(() => {
     if (themeRows.length === 0) return 1
-    return Math.max(
-      1,
-      ...themeRows.map((row) =>
-        themeSort === 'views' ? row.stats.views : row.stats.engagement,
-      ),
-    )
-  }, [themeRows, themeSort])
+    return Math.max(1, ...themeRows.map((row) => row.stats.engagement))
+  }, [themeRows])
 
   const bestPostByTheme = useMemo(() => {
     const best = new Map<string, BestPostByTheme>()
