@@ -293,12 +293,38 @@ body[data-war-room-clean] .preview-home .preview-home__btn,
   min-height: 100%;
 }
 
+.preview-home__ai-credit {
+  position: absolute;
+  z-index: 2;
+  left: clamp(1.25rem, 4vw, 2.5rem);
+  bottom: clamp(1rem, 3.2vh, 1.75rem);
+  margin: 0;
+  max-width: min(28rem, 86vw);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ph-white) 72%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.7s ease 0.55s,
+    transform 0.7s ease 0.55s;
+}
+
+.preview-home--ready .preview-home__ai-credit {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .preview-home__video,
   .preview-home__brand,
   .preview-home__headline,
   .preview-home__lead,
-  .preview-home__cta {
+  .preview-home__cta,
+  .preview-home__ai-credit {
     transition: none;
     opacity: 1;
     transform: none;

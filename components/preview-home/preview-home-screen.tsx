@@ -146,6 +146,10 @@ export function PreviewHomeScreen({
         </div>
       </div>
 
+      <p className="preview-home__ai-credit">
+        Imagem gerada por inteligência artificial · Gemini
+      </p>
+
       {showLogin ? (
         <LoginForm
           variant="floating"
