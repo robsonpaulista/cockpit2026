@@ -8,7 +8,7 @@ import {
 } from '@/lib/rest-screen-chrome'
 
 /**
- * Frame final do videohome como plano de fundo estático (sem playback contínuo).
+ * Frame final do vídeo da cena como plano de fundo estático (sem playback contínuo).
  * Glass da sidebar/painel deixa a cor da cena aparecer.
  */
 export function HomeSceneBackdrop() {
@@ -28,25 +28,26 @@ export function HomeSceneBackdrop() {
     const video = videoRef.current
     if (!video) return
 
-    const freezeAtCut = () => {
+    const freezeAtCut = (frameSec: number) => {
       video.pause()
-      if (Math.abs(video.currentTime - HOME_SCENE_VIDEO_END_SEC) > 0.05) {
-        video.currentTime = HOME_SCENE_VIDEO_END_SEC
+      if (Math.abs(video.currentTime - frameSec) > 0.05) {
+        video.currentTime = frameSec
       }
     }
 
     const onLoaded = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : HOME_SCENE_VIDEO_END_SEC
+      const frameSec = Math.max(0, duration - 0.05)
       const seek = () => {
         try {
-          video.currentTime = HOME_SCENE_VIDEO_END_SEC
+          video.currentTime = frameSec
         } catch {
           /* ignore */
         }
       }
       seek()
-      // Garante frame após seek
-      video.addEventListener('seeked', freezeAtCut, { once: true })
-      freezeAtCut()
+      video.addEventListener('seeked', () => freezeAtCut(frameSec), { once: true })
+      freezeAtCut(frameSec)
     }
 
     if (video.readyState >= 1) onLoaded()

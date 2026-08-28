@@ -1,13 +1,18 @@
 'use client'
 
-import { Loader2, Radio, X } from 'lucide-react'
+import { CheckCircle2, Loader2, Radio, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   fetchCidadesPesquisa,
+  finalizarPesquisaAndamento,
   savePesquisaAndamento,
 } from '@/lib/war-room/pesquisas-andamento-client'
-import type { WarRoomPesquisaAndamento } from '@/lib/war-room/pesquisas-andamento'
+import {
+  isPesquisaAndamentoEmCampo,
+  isPesquisaAndamentoFinalizadaRecente,
+  type WarRoomPesquisaAndamento,
+} from '@/lib/war-room/pesquisas-andamento'
 import { cn } from '@/lib/utils'
 
 type CityOption = {
@@ -47,9 +52,14 @@ export function WarRoomPesquisaAndamentoModal({ initial, onClose, onSaved }: Pro
   const [instituto, setInstituto] = useState(initial?.instituto ?? '')
   const [cidade, setCidade] = useState(initial?.cidade ?? '')
   const [saving, setSaving] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const editing = Boolean(initial?.id)
+  const emCampo = initial ? isPesquisaAndamentoEmCampo(initial) : true
+  const finalizadaRecente = initial
+    ? isPesquisaAndamentoFinalizadaRecente(initial)
+    : false
 
   useEffect(() => {
     setMounted(true)
@@ -110,7 +120,33 @@ export function WarRoomPesquisaAndamentoModal({ initial, onClose, onSaved }: Pro
     onSaved(result.item)
   }
 
+  const handleFinalizar = async () => {
+    if (!initial?.id) return
+    const cidadeNome = cidadeMatch?.name || cidade.trim()
+    if (!data || !instituto.trim() || !cidadeNome) {
+      setError('Preencha data, instituto e cidade.')
+      return
+    }
+    setFinalizing(true)
+    setError(null)
+    const result = await finalizarPesquisaAndamento({
+      id: initial.id,
+      data,
+      instituto: instituto.trim(),
+      cidade: cidadeNome,
+      cidadeId: cidadeMatch?.id ?? initial.cidadeId ?? null,
+    })
+    setFinalizing(false)
+    if (result.error || !result.item) {
+      setError(result.error ?? 'Não foi possível finalizar.')
+      return
+    }
+    onSaved(result.item)
+  }
+
   if (!mounted) return null
+
+  const busy = saving || finalizing
 
   return createPortal(
     <div className="wr-visita-modal" role="presentation">
@@ -149,8 +185,9 @@ export function WarRoomPesquisaAndamentoModal({ initial, onClose, onSaved }: Pro
         </header>
 
         <p className="wr-visita-modal__lead">
-          Mesmo formato das finalizadas: data, instituto e cidade. O sinal intermitente
-          indica que o campo ainda está aberto.
+          {finalizadaRecente
+            ? 'Pesquisa finalizada — permanece neste card por até 24 horas após a conclusão.'
+            : 'Mesmo formato das finalizadas: data, instituto e cidade. O sinal intermitente indica que o campo ainda está aberto.'}
         </p>
 
         <form
@@ -205,10 +242,26 @@ export function WarRoomPesquisaAndamentoModal({ initial, onClose, onSaved }: Pro
           ) : null}
 
           <div className="wr-pesquisa-andamento-modal__actions">
+            {editing && emCampo ? (
+              <button
+                type="button"
+                className="wr-pesquisa-andamento-modal__finalize"
+                disabled={busy}
+                onClick={() => void handleFinalizar()}
+              >
+                {finalizing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                )}
+                Marcar como finalizada
+              </button>
+            ) : null}
             <button
               type="button"
               className="wr-pesquisa-andamento-modal__cancel"
               onClick={onClose}
+              disabled={busy}
             >
               Cancelar
             </button>
@@ -218,7 +271,7 @@ export function WarRoomPesquisaAndamentoModal({ initial, onClose, onSaved }: Pro
                 'wr-pesquisa-andamento-modal__save',
                 saving && 'is-busy',
               )}
-              disabled={saving}
+              disabled={busy}
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />

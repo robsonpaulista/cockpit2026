@@ -228,6 +228,25 @@ body[data-war-room-clean] .wr-page-canvas .wr-home__headline span {
   animation: wr-home-live-blink 1.1s ease-in-out infinite;
 }
 
+.wr-home__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--wr-success, #299a55);
+}
+
+.wr-home__done-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--wr-success, #299a55);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--wr-success, #299a55) 45%, transparent);
+  animation: wr-home-live-blink 1.1s ease-in-out infinite;
+}
+
 @keyframes wr-home-live-blink {
   0%,
   100% {
@@ -240,6 +259,11 @@ body[data-war-room-clean] .wr-page-canvas .wr-home__headline span {
 
 @media (prefers-reduced-motion: reduce) {
   .wr-home__live-dot {
+    animation: none;
+    opacity: 1;
+  }
+
+  .wr-home__done-dot {
     animation: none;
     opacity: 1;
   }

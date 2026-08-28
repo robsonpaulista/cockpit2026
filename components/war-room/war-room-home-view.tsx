@@ -54,7 +54,8 @@ import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { diasDesdeVisita } from '@/lib/war-room/expectativa-visita-alerta'
 import { formatCountdownConfirmadosAgenda } from '@/lib/war-room/agenda-arrivals-refresh'
 import {
-  andamentoAtivos,
+  andamentoVisiveisNoCard,
+  isPesquisaAndamentoFinalizadaRecente,
   type WarRoomPesquisaAndamento,
 } from '@/lib/war-room/pesquisas-andamento'
 import { fetchPesquisasAndamento } from '@/lib/war-room/pesquisas-andamento-client'
@@ -521,7 +522,7 @@ export function WarRoomHomeView({
   }, [polls])
 
   const andamentoPreview = useMemo(
-    () => andamentoAtivos(andamentoAll).slice(0, LIST_PREVIEW_LIMIT),
+    () => andamentoVisiveisNoCard(andamentoAll).slice(0, LIST_PREVIEW_LIMIT),
     [andamentoAll],
   )
   const pesquisasPreview = useMemo(() => {
@@ -779,25 +780,35 @@ export function WarRoomHomeView({
                 <p className="wr-home__muted">Sem pesquisas na janela.</p>
               ) : (
                 <ul>
-                  {andamentoPreview.map((item) => (
+                  {andamentoPreview.map((item) => {
+                    const finalizada = isPesquisaAndamentoFinalizadaRecente(item)
+                    return (
                     <li key={`and-${item.id}`}>
                       <button
                         type="button"
                         className="wr-home__pesquisa-live"
-                        title={`${item.dataLabel} · ${item.instituto} · em andamento`}
+                        title={`${item.dataLabel} · ${item.instituto} · ${finalizada ? 'finalizada' : 'em andamento'}`}
                         onClick={() => setAndamentoModal(item)}
                       >
                         <strong>{item.cidade}</strong>
                         <em className="wr-home__list-meta-inline">
                           {item.dataLabel} · {item.instituto} ·{' '}
-                          <span className="wr-home__live">
-                            <span className="wr-home__live-dot" aria-hidden />
-                            Em campo
-                          </span>
+                          {finalizada ? (
+                            <span className="wr-home__done">
+                              <span className="wr-home__done-dot" aria-hidden />
+                              Finalizada
+                            </span>
+                          ) : (
+                            <span className="wr-home__live">
+                              <span className="wr-home__live-dot" aria-hidden />
+                              Em campo
+                            </span>
+                          )}
                         </em>
                       </button>
                     </li>
-                  ))}
+                    )
+                  })}
                   {pesquisasPreview.map((item) => (
                     <li key={item.id}>
                       <span>

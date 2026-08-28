@@ -15,6 +15,8 @@ export type WarRoomPesquisaAndamento = {
   data: string
   dataLabel: string
   status: WarRoomPesquisaAndamentoStatus
+  finalizadaAt: string | null
+  updatedAt: string | null
 }
 
 export const WAR_ROOM_PESQUISA_ANDAMENTO_STATUS: WarRoomPesquisaAndamentoStatus[] = [
@@ -25,6 +27,7 @@ export const WAR_ROOM_PESQUISA_ANDAMENTO_STATUS: WarRoomPesquisaAndamentoStatus[
   'atrasada',
 ]
 
+/** Pesquisas em campo permanecem no card até serem finalizadas. */
 const STATUS_ATIVO = new Set<WarRoomPesquisaAndamentoStatus>([
   'planejada',
   'em_campo',
@@ -32,7 +35,11 @@ const STATUS_ATIVO = new Set<WarRoomPesquisaAndamentoStatus>([
   'atrasada',
 ])
 
-const SELECT_COLS = 'id, data, instituto, cidade, cidade_id, status, created_at, updated_at'
+/** Tempo que uma pesquisa finalizada permanece visível no card. */
+export const PESQUISA_ANDAMENTO_FINALIZADA_TTL_MS = 24 * 60 * 60 * 1000
+
+const SELECT_COLS =
+  'id, data, instituto, cidade, cidade_id, status, finalizada_at, created_at, updated_at'
 
 function dataCurta(data: string): string {
   return data.includes('T') ? (data.split('T')[0] ?? data) : data
@@ -64,13 +71,55 @@ function mapRow(row: Record<string, unknown>): WarRoomPesquisaAndamento {
     data,
     dataLabel: formatPesquisaAndamentoDataLabel(data),
     status: isStatus(statusRaw) ? statusRaw : 'em_campo',
+    finalizadaAt:
+      row.finalizada_at != null && String(row.finalizada_at).trim()
+        ? String(row.finalizada_at)
+        : null,
+    updatedAt:
+      row.updated_at != null && String(row.updated_at).trim()
+        ? String(row.updated_at)
+        : null,
   }
 }
 
+function finalizadaTimestamp(row: WarRoomPesquisaAndamento): number | null {
+  if (row.status !== 'entregue') return null
+  const raw = row.finalizadaAt ?? row.updatedAt
+  if (!raw) return null
+  const ts = Date.parse(raw)
+  return Number.isFinite(ts) ? ts : null
+}
+
+export function isPesquisaAndamentoEmCampo(row: WarRoomPesquisaAndamento): boolean {
+  return STATUS_ATIVO.has(row.status)
+}
+
+export function isPesquisaAndamentoFinalizadaRecente(
+  row: WarRoomPesquisaAndamento,
+  now = Date.now(),
+): boolean {
+  if (row.status !== 'entregue') return false
+  const ts = finalizadaTimestamp(row)
+  if (ts == null) return false
+  return now - ts < PESQUISA_ANDAMENTO_FINALIZADA_TTL_MS
+}
+
+/** Pesquisas ativas + finalizadas há menos de 24h (visíveis no card). */
+export function andamentoVisiveisNoCard(
+  rows: WarRoomPesquisaAndamento[],
+  now = Date.now(),
+): WarRoomPesquisaAndamento[] {
+  return rows.filter((r) => {
+    if (STATUS_ATIVO.has(r.status)) return true
+    return isPesquisaAndamentoFinalizadaRecente(r, now)
+  })
+}
+
+/** @deprecated Use andamentoVisiveisNoCard */
 export function andamentoAtivos(
   rows: WarRoomPesquisaAndamento[],
 ): WarRoomPesquisaAndamento[] {
-  return rows.filter((r) => STATUS_ATIVO.has(r.status))
+  return andamentoVisiveisNoCard(rows)
 }
 
 export type WarRoomPesquisaAndamentoInput = {
@@ -109,13 +158,35 @@ export async function salvarPesquisaAndamentoDb(
   if (!cidade) throw new Error('Cidade é obrigatória')
 
   const status = opts.status && isStatus(opts.status) ? opts.status : 'em_campo'
+  const now = new Date().toISOString()
+
+  let finalizadaAt: string | null = null
+  if (status === 'entregue') {
+    if (opts.id) {
+      const { data: existing, error: readError } = await supabase
+        .from('war_room_pesquisas_andamento')
+        .select('status, finalizada_at')
+        .eq('id', opts.id)
+        .maybeSingle()
+      if (readError) throw readError
+      const wasEntregue = existing?.status === 'entregue'
+      finalizadaAt =
+        wasEntregue && existing?.finalizada_at
+          ? String(existing.finalizada_at)
+          : now
+    } else {
+      finalizadaAt = now
+    }
+  }
+
   const payload = {
     data,
     instituto,
     cidade,
     cidade_id: opts.cidadeId?.trim() || null,
     status,
-    updated_at: new Date().toISOString(),
+    finalizada_at: finalizadaAt,
+    updated_at: now,
   }
 
   if (opts.id) {

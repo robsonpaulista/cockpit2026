@@ -117,6 +117,7 @@ export function WarRoomCopilotoPanoramaView() {
               refreshing={refreshing}
               animationEpoch={animationEpoch}
               heatmapComparativeBase={WR_PANORAMA_HEATMAP_COMPARATIVE}
+              intelligenceMode
             />
           </div>
         )}

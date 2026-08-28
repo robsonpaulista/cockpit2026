@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.war_room_pesquisas_andamento (
   cidade_id TEXT,
   status TEXT NOT NULL DEFAULT 'em_campo'
     CHECK (status IN ('planejada', 'em_campo', 'processando', 'entregue', 'atrasada')),
+  finalizada_at TIMESTAMPTZ,
   created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

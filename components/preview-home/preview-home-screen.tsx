@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoginForm } from '@/components/auth/login-form'
+import { HOME_SCENE_VIDEO } from '@/lib/rest-screen-chrome'
 import './preview-home.css'
 
 export type PreviewHomeScreenProps = {
@@ -112,7 +113,7 @@ export function PreviewHomeScreen({
           <video
             ref={videoRef}
             className="preview-home__video"
-            src="/videohome.mp4"
+            src={HOME_SCENE_VIDEO}
             autoPlay
             muted
             loop

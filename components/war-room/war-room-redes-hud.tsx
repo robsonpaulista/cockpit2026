@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import {
   Activity,
@@ -12,6 +12,8 @@ import {
   Flame,
   ImageIcon,
   Layers,
+  Maximize2,
+  Minimize2,
   Send,
   Trophy,
   Video,
@@ -95,6 +97,76 @@ function weekdayPt(dateKey: string): string {
 function prefersReduceMotion(): boolean {
   if (typeof window === 'undefined') return true
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+type RedesPanelProps = {
+  panelId: string
+  className?: string
+  ariaLabel: string
+  title: string
+  sub: string
+  children: ReactNode
+}
+
+function RedesPanel({
+  panelId,
+  className,
+  ariaLabel,
+  title,
+  sub,
+  children,
+}: RedesPanelProps) {
+  const fsId = `wr-redes-panel-${panelId}`
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const onFs = () => {
+      const fs = document.fullscreenElement
+      setIsFullscreen(!!(fs && fs.id === fsId))
+    }
+    document.addEventListener('fullscreenchange', onFs)
+    return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [fsId])
+
+  const toggleFullscreen = useCallback(() => {
+    const el = document.getElementById(fsId)
+    if (!el) return
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+    } else {
+      void el.requestFullscreen()
+    }
+  }, [fsId])
+
+  return (
+    <section
+      id={fsId}
+      className={cn('wr-pc-panel', className, isFullscreen && 'wr-pc-panel--fs')}
+      aria-label={ariaLabel}
+    >
+      <div className="wr-pc-panel__head">
+        <div className="wr-pc-panel__head-main">
+          <h3 className="wr-pc-panel__title">{title}</h3>
+          <p className="wr-pc-panel__sub">{sub}</p>
+        </div>
+        <button
+          type="button"
+          className="wr-pc-panel__fs-btn"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Sair da tela cheia' : 'Ver em tela cheia'}
+          aria-label={isFullscreen ? 'Sair da tela cheia' : 'Ver em tela cheia'}
+        >
+          {isFullscreen ? (
+            <Minimize2 size={14} strokeWidth={2.2} aria-hidden />
+          ) : (
+            <Maximize2 size={14} strokeWidth={2.2} aria-hidden />
+          )}
+          <span className="wr-pc-panel__fs-label">{isFullscreen ? 'Sair' : 'Tela cheia'}</span>
+        </button>
+      </div>
+      {children}
+    </section>
+  )
 }
 
 function useCountUp(value: number, enabled: boolean): number {
@@ -389,11 +461,13 @@ export function WarRoomRedesHud({
 
   return (
     <div className="wr-redes-hud">
-      <section className="wr-pc-panel wr-pc-momento" aria-label="Momento do perfil">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">Momento do perfil</h3>
-          <p className="wr-pc-panel__sub">Desempenho geral nos últimos {periodLabel}</p>
-        </div>
+      <RedesPanel
+        panelId="momento"
+        className="wr-pc-momento"
+        ariaLabel="Momento do perfil"
+        title="Momento do perfil"
+        sub={`Desempenho geral nos últimos ${periodLabel}`}
+      >
         <div className="wr-pc-momento__mods">
           <article className="wr-pc-mod">
             <div className="wr-pc-mod__head">
@@ -473,13 +547,15 @@ export function WarRoomRedesHud({
             <p className="wr-pc-mod__hint">vs. período de {periodLabel}</p>
           </article>
         </div>
-      </section>
+      </RedesPanel>
 
-      <section className="wr-pc-panel wr-pc-dna" aria-label="DNA do conteúdo">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">DNA do conteúdo</h3>
-          <p className="wr-pc-panel__sub">Mix de formatos no período</p>
-        </div>
+      <RedesPanel
+        panelId="dna"
+        className="wr-pc-dna"
+        ariaLabel="DNA do conteúdo"
+        title="DNA do conteúdo"
+        sub="Mix de formatos no período"
+      >
         {postsInPeriod.length === 0 ? (
           <p className="wr-pc-empty">Nenhum conteúdo publicado neste período.</p>
         ) : (
@@ -515,13 +591,15 @@ export function WarRoomRedesHud({
             </div>
           </>
         )}
-      </section>
+      </RedesPanel>
 
-      <section className="wr-pc-panel wr-pc-posts" aria-label="Conteúdos em destaque">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">Conteúdos em destaque</h3>
-          <p className="wr-pc-panel__sub">Melhores posts por engajamento</p>
-        </div>
+      <RedesPanel
+        panelId="posts"
+        className="wr-pc-posts"
+        ariaLabel="Conteúdos em destaque"
+        title="Conteúdos em destaque"
+        sub="Melhores posts por engajamento"
+      >
         {!champion ? (
           <p className="wr-pc-empty">Nenhum conteúdo publicado neste período.</p>
         ) : (
@@ -579,13 +657,15 @@ export function WarRoomRedesHud({
             </Link>
           </div>
         )}
-      </section>
+      </RedesPanel>
 
-      <section className="wr-pc-panel wr-pc-placar" aria-label="Placar de performance">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">Placar de performance</h3>
-          <p className="wr-pc-panel__sub">Série dos últimos {periodLabel}</p>
-        </div>
+      <RedesPanel
+        panelId="placar"
+        className="wr-pc-placar"
+        ariaLabel="Placar de performance"
+        title="Placar de performance"
+        sub={`Série dos últimos ${periodLabel}`}
+      >
         {placarKpis.length === 0 ? (
           <p className="wr-pc-empty">Dados insuficientes para calcular tendência.</p>
         ) : (
@@ -618,13 +698,15 @@ export function WarRoomRedesHud({
             })}
           </div>
         )}
-      </section>
+      </RedesPanel>
 
-      <section className="wr-pc-panel wr-pc-themes" aria-label="Poder dos temas">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">Poder dos temas</h3>
-          <p className="wr-pc-panel__sub">Ranking por engajamento médio/post</p>
-        </div>
+      <RedesPanel
+        panelId="themes"
+        className="wr-pc-themes"
+        ariaLabel="Poder dos temas"
+        title="Poder dos temas"
+        sub="Ranking por engajamento médio/post"
+      >
         {themeRank.length === 0 ? (
           <p className="wr-pc-empty">Sem temas classificados nos últimos {periodLabel}.</p>
         ) : (
@@ -682,13 +764,15 @@ export function WarRoomRedesHud({
             </div>
           </div>
         )}
-      </section>
+      </RedesPanel>
 
-      <section className="wr-pc-panel wr-pc-wins" aria-label="Conquistas do período">
-        <div className="wr-pc-panel__head">
-          <h3 className="wr-pc-panel__title">Conquistas do período</h3>
-          <p className="wr-pc-panel__sub">Milestones e destaques alcançados</p>
-        </div>
+      <RedesPanel
+        panelId="wins"
+        className="wr-pc-wins"
+        ariaLabel="Conquistas do período"
+        title="Conquistas do período"
+        sub="Milestones e destaques alcançados"
+      >
         <div className="wr-pc-wins__rail">
           {wins.map((win) => (
             <article key={win.ico} className="wr-pc-win">
@@ -701,7 +785,7 @@ export function WarRoomRedesHud({
             </article>
           ))}
         </div>
-      </section>
+      </RedesPanel>
     </div>
   )
 }

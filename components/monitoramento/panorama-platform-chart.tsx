@@ -203,7 +203,81 @@ function metaAdsDotRenderer(
   }
 }
 
-function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
+export function PanoramaTrendsLegacyLineChart({ chart }: { chart: PanoramaPlatformChart }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-[180px] w-full flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chart.chartData}
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatDateLabel}
+              tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
+              minTickGap={20}
+            />
+            <YAxis
+              tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
+              width={36}
+              allowDecimals={false}
+              domain={[0, 100]}
+            />
+            <Tooltip
+              labelFormatter={(v) => formatDateLabel(String(v))}
+              formatter={(value: number, _name, item) => {
+                const line = chart.lines.find((l) => l.slug === item.dataKey)
+                return formatValue(value, line?.name ?? chart.metricLabel, chart.id)
+              }}
+              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            />
+            {chart.lines.map((line, lineIndex) => (
+              <Line
+                key={line.slug}
+                type="monotone"
+                dataKey={line.slug}
+                name={line.name}
+                stroke={line.color}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
+                connectNulls
+                {...panoramaLineAnimationProps(lineIndex)}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-2 shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {chart.lines.map((line) => (
+            <span
+              key={line.slug}
+              className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
+              title={line.name}
+            >
+              <span
+                className="h-0.5 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: line.color }}
+                aria-hidden
+              />
+              <span className="truncate">{line.name}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      {chart.searchContexts && chart.searchContexts.length > 0 ? (
+        <div className="mt-2 max-h-[120px] shrink-0 overflow-y-auto">
+          <TrendsSearchContextList contexts={chart.searchContexts} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
   const [selection, setSelection] = useState<MetaAdsPointSelection | null>(null)
 
   return (
@@ -306,8 +380,6 @@ export function PanoramaPlatformChart({
   const isTable = chart.chartType === 'table'
   const isDetailLayout = chart.layoutTier === 'detail'
   const [heatmapScaleMode, setHeatmapScaleMode] = useState<HeatmapScaleMode>('comparative')
-  const useExternalLegend =
-    !isHeatmap && !isTable && !isYoutube && !chart.empty && chart.lines.length > 0 && !isMetaAds
 
   return (
     <div
@@ -366,77 +438,7 @@ export function PanoramaPlatformChart({
       ) : isYoutube ? (
         <PanoramaYoutubeChart chart={chart} className="min-h-0 flex-1" />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-[180px] w-full flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={chart.chartData}
-                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDateLabel}
-                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
-                  minTickGap={20}
-                />
-                <YAxis
-                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
-                  width={36}
-                  allowDecimals={chart.id !== 'google-trends'}
-                  domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
-                />
-                <Tooltip
-                  labelFormatter={(v) => formatDateLabel(String(v))}
-                  formatter={(value: number, _name, item) => {
-                    const line = chart.lines.find((l) => l.slug === item.dataKey)
-                    return formatValue(value, line?.name ?? chart.metricLabel, chart.id)
-                  }}
-                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                />
-                {chart.lines.map((line, lineIndex) => (
-                  <Line
-                    key={line.slug}
-                    type="monotone"
-                    dataKey={line.slug}
-                    name={line.name}
-                    stroke={line.color}
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
-                    connectNulls
-                    {...panoramaLineAnimationProps(lineIndex)}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          {useExternalLegend ? (
-            <div className="mt-2 shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2">
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {chart.lines.map((line) => (
-                  <span
-                    key={line.slug}
-                    className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
-                    title={line.name}
-                  >
-                    <span
-                      className="h-0.5 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: line.color }}
-                      aria-hidden
-                    />
-                    <span className="truncate">{line.name}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {chart.id === 'google-trends' && chart.searchContexts && chart.searchContexts.length > 0 ? (
-            <div className="mt-2 max-h-[72px] shrink-0 overflow-y-auto">
-              <TrendsSearchContextList contexts={chart.searchContexts} />
-            </div>
-          ) : null}
-        </div>
+        <PanoramaTrendsLegacyLineChart chart={chart} />
       )}
     </div>
   )

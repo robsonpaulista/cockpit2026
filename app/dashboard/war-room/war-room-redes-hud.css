@@ -86,11 +86,134 @@
 
 .wr-pc-panel__head {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.wr-pc-panel__head-main {
+  display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 6px 10px;
-  margin-bottom: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.wr-pc-panel__fs-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--pc-border-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--pc-text);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
   flex-shrink: 0;
+}
+
+.wr-pc-panel__fs-btn:hover {
+  border-color: var(--palette-petrol, #022b3a);
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-pc-panel__fs-label {
+  text-transform: none;
+}
+
+.wr-pc-panel:fullscreen,
+.wr-pc-panel:-webkit-full-screen,
+.wr-pc-panel--fs {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 20px 24px 24px;
+  background: var(--pc-surface, #fff);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-momento__mods,
+.wr-pc-panel:-webkit-full-screen .wr-pc-momento__mods,
+.wr-pc-panel--fs .wr-pc-momento__mods {
+  flex: 1 1 auto;
+  align-content: stretch;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-dna__mix,
+.wr-pc-panel:-webkit-full-screen .wr-pc-dna__mix,
+.wr-pc-panel--fs .wr-pc-dna__mix {
+  flex: 1 1 auto;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-posts__body,
+.wr-pc-panel:-webkit-full-screen .wr-pc-posts__body,
+.wr-pc-panel--fs .wr-pc-posts__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-rail,
+.wr-pc-panel:-webkit-full-screen .wr-pc-rail,
+.wr-pc-panel--fs .wr-pc-rail {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  align-content: start;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-hero__art,
+.wr-pc-panel:-webkit-full-screen .wr-pc-hero__art,
+.wr-pc-panel--fs .wr-pc-hero__art,
+.wr-pc-panel:fullscreen .wr-pc-mini__art,
+.wr-pc-panel:-webkit-full-screen .wr-pc-mini__art,
+.wr-pc-panel--fs .wr-pc-mini__art {
+  width: 72px;
+  height: 72px;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-placar__grid,
+.wr-pc-panel:-webkit-full-screen .wr-pc-placar__grid,
+.wr-pc-panel--fs .wr-pc-placar__grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-rows: none;
+  flex: 1 1 auto;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-kpi .wr-pc-spark,
+.wr-pc-panel:-webkit-full-screen .wr-pc-kpi .wr-pc-spark,
+.wr-pc-panel--fs .wr-pc-kpi .wr-pc-spark {
+  height: 56px;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-themes__body,
+.wr-pc-panel:-webkit-full-screen .wr-pc-themes__body,
+.wr-pc-panel--fs .wr-pc-themes__body {
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  min-height: 0;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-themes__list,
+.wr-pc-panel:-webkit-full-screen .wr-pc-themes__list,
+.wr-pc-panel--fs .wr-pc-themes__list {
+  max-height: none;
+}
+
+.wr-pc-panel:fullscreen .wr-pc-wins__rail,
+.wr-pc-panel:-webkit-full-screen .wr-pc-wins__rail,
+.wr-pc-panel--fs .wr-pc-wins__rail {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  flex: 1 1 auto;
+  align-content: start;
 }
 
 .wr-pc-panel__title {

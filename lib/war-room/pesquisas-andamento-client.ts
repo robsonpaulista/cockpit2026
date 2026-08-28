@@ -101,3 +101,19 @@ export async function deletePesquisaAndamento(
   }
   return {}
 }
+
+export async function finalizarPesquisaAndamento(
+  row: Pick<
+    WarRoomPesquisaAndamento,
+    'id' | 'data' | 'instituto' | 'cidade' | 'cidadeId'
+  >,
+): Promise<{ item?: WarRoomPesquisaAndamento; error?: string; setupRequired?: boolean }> {
+  return savePesquisaAndamento({
+    id: row.id,
+    data: row.data,
+    instituto: row.instituto,
+    cidade: row.cidade,
+    cidadeId: row.cidadeId,
+    status: 'entregue',
+  })
+}

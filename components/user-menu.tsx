@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -59,6 +60,7 @@ export function UserMenu({
   } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -67,9 +69,10 @@ export function UserMenu({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
+      const target = event.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (dropdownRef.current?.contains(target)) return
+      setOpen(false)
     }
 
     if (open) {
@@ -310,78 +313,90 @@ export function UserMenu({
       </button>
 
       {open ? (
-        <div
-          role="menu"
-          className={cn(
-            'w-56 overflow-hidden rounded-xl border border-card bg-surface shadow-card',
-            isSidebar
-              ? 'fixed z-[200]'
-              : cn(
-                  'absolute z-50',
-                  placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
-                  'right-0',
-                ),
-          )}
-          style={
-            isSidebar && sidebarDropdownCoords
-              ? {
-                  top: sidebarDropdownCoords.top,
-                  bottom: sidebarDropdownCoords.bottom,
-                  left: sidebarDropdownCoords.left,
-                }
-              : undefined
+        (() => {
+          const dropdown = (
+            <div
+              ref={dropdownRef}
+              role="menu"
+              className={cn(
+                'user-menu-dropdown w-56 overflow-hidden rounded-xl border border-[#e8e8e6] bg-[#ffffff] shadow-[0_8px_24px_rgba(43,45,49,0.14),0_2px_6px_rgba(43,45,49,0.06)]',
+                isSidebar
+                  ? 'fixed z-[300]'
+                  : cn(
+                      'absolute z-50',
+                      placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
+                      'right-0',
+                    ),
+              )}
+              style={
+                isSidebar && sidebarDropdownCoords
+                  ? {
+                      top: sidebarDropdownCoords.top,
+                      bottom: sidebarDropdownCoords.bottom,
+                      left: sidebarDropdownCoords.left,
+                      backgroundColor: '#ffffff',
+                    }
+                  : { backgroundColor: '#ffffff' }
+              }
+            >
+              <div className="border-b border-[#e8e8e6] bg-[#ffffff] p-4">
+                <p className="text-sm font-semibold text-[#2b2d31]">
+                  {user.profile?.name || 'Usuário'}
+                </p>
+                <p className="mt-1 text-xs text-[#686865]">{user.email}</p>
+                {user.profile?.role ? (
+                  <span className="mt-2 inline-block rounded-lg bg-[#f2d06b] px-2 py-1 text-xs font-medium text-[#2b2d31]">
+                    {roleLabels[user.profile.role] || user.profile.role}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="bg-[#ffffff] p-1">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false)
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#2b2d31] transition-colors hover:bg-[#f3f3f1]"
+                >
+                  <User className="h-4 w-4 text-[#686865]" />
+                  <span>Meu Perfil</span>
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false)
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-[#2b2d31] transition-colors hover:bg-[#f3f3f1]"
+                >
+                  <Settings className="h-4 w-4 text-[#686865]" />
+                  <span>Configurações</span>
+                </button>
+
+                <div className="my-1 border-t border-[#e8e8e6]" />
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-status-error transition-colors hover:bg-status-error/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+          )
+
+          // Portal no body: escapa backdrop-filter / isolation da sidebar (fundo transparente).
+          if (isSidebar && typeof document !== 'undefined') {
+            return createPortal(dropdown, document.body)
           }
-        >
-          <div className="border-b border-card p-4">
-            <p className="text-sm font-semibold text-text-primary">
-              {user.profile?.name || 'Usuário'}
-            </p>
-            <p className="mt-1 text-xs text-secondary">{user.email}</p>
-            {user.profile?.role ? (
-              <span className="mt-2 inline-block rounded-lg bg-accent-gold-soft px-2 py-1 text-xs font-medium text-accent-gold">
-                {roleLabels[user.profile.role] || user.profile.role}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="p-1">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false)
-              }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-primary transition-colors hover:bg-background"
-            >
-              <User className="h-4 w-4 text-secondary" />
-              <span>Meu Perfil</span>
-            </button>
-
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false)
-              }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-primary transition-colors hover:bg-background"
-            >
-              <Settings className="h-4 w-4 text-secondary" />
-              <span>Configurações</span>
-            </button>
-
-            <div className="my-1 border-t border-card" />
-
-            <button
-              type="button"
-              role="menuitem"
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-status-error transition-colors hover:bg-status-error/10"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sair</span>
-            </button>
-          </div>
-        </div>
+          return dropdown
+        })()
       ) : null}
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { PanoramaBoardSkeleton } from '@/components/monitoramento/panorama-board-skeleton'
+import { PanoramaIntelligenceSection } from '@/components/monitoramento/panorama-intelligence-section'
 import { PanoramaPlatformChart } from '@/components/monitoramento/panorama-platform-chart'
 import { PanoramaPlatformKpiStrip } from '@/components/monitoramento/panorama-platform-kpi-strip'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
@@ -19,6 +20,8 @@ interface PanoramaBoardProps {
   animationEpoch?: number
   /** Cor base do heatmap “Todos” (ex.: azul WR no Copiloto). */
   heatmapComparativeBase?: string
+  /** WR Copiloto: cards de inteligência competitiva em vez de line charts. */
+  intelligenceMode?: boolean
 }
 
 export function PanoramaBoard({
@@ -27,6 +30,7 @@ export function PanoramaBoard({
   refreshing = false,
   animationEpoch = 0,
   heatmapComparativeBase,
+  intelligenceMode = false,
 }: PanoramaBoardProps) {
   if (loading) {
     return <PanoramaBoardSkeleton />
@@ -75,19 +79,29 @@ export function PanoramaBoard({
       {simpleCharts.length > 0 ? (
         <section>
           <h3 className={cn('mb-3', typographySectionLabelClass)}>
-            YouTube, Trends e Meta Ads · séries diárias
+            {intelligenceMode
+              ? 'YouTube, Trends e Meta Ads · inteligência competitiva'
+              : 'YouTube, Trends e Meta Ads · séries diárias'}
           </h3>
-          <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {simpleCharts.map((chart, chartIndex) => (
-              <PanoramaPlatformChart
-                key={`${chart.id}-${animationEpoch}`}
-                chart={chart}
-                staggerIndex={detailCharts.length + chartIndex}
-                animationEpoch={animationEpoch}
-                heatmapComparativeBase={heatmapComparativeBase}
-              />
-            ))}
-          </div>
+          {intelligenceMode ? (
+            <PanoramaIntelligenceSection
+              charts={simpleCharts}
+              columns={panorama.columns}
+              animationEpoch={animationEpoch}
+            />
+          ) : (
+            <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              {simpleCharts.map((chart, chartIndex) => (
+                <PanoramaPlatformChart
+                  key={`${chart.id}-${animationEpoch}`}
+                  chart={chart}
+                  staggerIndex={detailCharts.length + chartIndex}
+                  animationEpoch={animationEpoch}
+                  heatmapComparativeBase={heatmapComparativeBase}
+                />
+              ))}
+            </div>
+          )}
         </section>
       ) : null}
     </div>

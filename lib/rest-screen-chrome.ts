@@ -13,7 +13,8 @@ export const HOME_SCENE_PETROL = '#2b2d31'
 export const HOME_SCENE_ICE = '#e5e6e8'
 export const HOME_SCENE_GREY_SOFT = '#b3b6bb'
 export const HOME_SCENE_GREY = '#70737a'
-export const HOME_SCENE_VIDEO = '/videohome.mp4'
+export const HOME_SCENE_VIDEO = '/videocarronovo.mp4'
+/** Fallback se metadata ainda não carregou (home-scene-backdrop usa duração real do vídeo). */
 export const HOME_SCENE_VIDEO_END_SEC = 8.3
 
 /** Painel glass gelo/branco — home e superfícies sobre a cena. */
