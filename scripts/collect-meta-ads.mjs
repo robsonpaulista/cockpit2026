@@ -227,23 +227,24 @@ function parseMoneyFromRange(range, currency) {
   return { spendText, spendMinBrl: lo, spendMaxBrl: hi ?? lo }
 }
 
-function mapGraphqlAdNode(node) {
+function mapGraphqlAdNode(node, root = null) {
   if (!node || typeof node !== 'object') return null
-  const collated = Array.isArray(node.collated_results) ? node.collated_results[0] : null
-  const base = collated ?? node
-  const libraryAdId = String(base.ad_archive_id ?? node.ad_archive_id ?? '').trim()
+  // Quando o item já é um collated_result, NÃO puxar de novo o [0] do grupo (bug que colapsava N anúncios em 1).
+  const base = node
+  const libraryAdId = String(base.ad_archive_id ?? root?.ad_archive_id ?? '').trim()
   if (!libraryAdId || !/^\d+$/.test(libraryAdId)) return null
 
-  const snap = base.snapshot ?? base
+  const snap = base.snapshot ?? root?.snapshot ?? base
   const bodyText =
     snap.body?.text ??
     snap.body ??
     (Array.isArray(snap.ad_creative_bodies) ? snap.ad_creative_bodies[0] : null) ??
     null
 
-  const spendRaw = base.spend ?? snap.spend ?? node.spend
-  const impressionsRaw = base.impressions ?? snap.impressions ?? node.impressions
-  const currency = base.currency ?? snap.currency ?? node.currency ?? 'BRL'
+  const spendRaw = base.spend ?? snap.spend ?? root?.spend ?? node.spend
+  const impressionsRaw =
+    base.impressions ?? snap.impressions ?? root?.impressions ?? node.impressions
+  const currency = base.currency ?? snap.currency ?? root?.currency ?? node.currency ?? 'BRL'
   const spend = parseMoneyFromRange(spendRaw, currency)
 
   const platformsRaw =
@@ -251,6 +252,8 @@ function mapGraphqlAdNode(node) {
     base.publisher_platforms ??
     snap.publisher_platform ??
     snap.publisher_platforms ??
+    root?.publisher_platform ??
+    root?.publisher_platforms ??
     node.publisher_platform ??
     node.publisher_platforms
   const platforms = Array.isArray(platformsRaw)
@@ -260,11 +263,23 @@ function mapGraphqlAdNode(node) {
       : null
 
   const startedRunningAt =
-    unixToIso(base.start_date ?? node.start_date ?? base.ad_delivery_start_time) ?? null
+    unixToIso(
+      base.start_date ??
+        root?.start_date ??
+        node.start_date ??
+        base.ad_delivery_start_time ??
+        root?.ad_delivery_start_time,
+    ) ?? null
   const endedRunningAt =
-    unixToIso(base.end_date ?? node.end_date ?? base.ad_delivery_stop_time) ?? null
+    unixToIso(
+      base.end_date ??
+        root?.end_date ??
+        node.end_date ??
+        base.ad_delivery_stop_time ??
+        root?.ad_delivery_stop_time,
+    ) ?? null
 
-  let isActive = base.is_active ?? node.is_active
+  let isActive = base.is_active ?? root?.is_active ?? node.is_active
   if (typeof isActive !== 'boolean') {
     isActive = endedRunningAt ? new Date(endedRunningAt).getTime() > Date.now() : true
   }
@@ -274,18 +289,30 @@ function mapGraphqlAdNode(node) {
     snap.bylines ??
     base.paid_for_by ??
     snap.paid_for_by ??
+    root?.bylines ??
     null
 
-  const brReach = base.br_total_reach ?? snap.br_total_reach ?? node.br_total_reach
+  const brReach =
+    base.br_total_reach ?? snap.br_total_reach ?? root?.br_total_reach ?? node.br_total_reach
   const audienceSizeText =
     brReach != null
       ? `Alcance BR: ${Number(brReach).toLocaleString('pt-BR')}`
-      : formatInsightsRange(base.estimated_audience_size ?? snap.estimated_audience_size)
+      : formatInsightsRange(
+          base.estimated_audience_size ??
+            snap.estimated_audience_size ??
+            root?.estimated_audience_size,
+        )
+
+  const collatedLen = Array.isArray(root?.collated_results)
+    ? root.collated_results.length
+    : Array.isArray(node.collated_results)
+      ? node.collated_results.length
+      : null
 
   return {
     libraryAdId,
-    pageName: snap.page_name ?? base.page_name ?? node.page_name ?? null,
-    pageId: snap.page_id ?? base.page_id ?? node.page_id ?? null,
+    pageName: snap.page_name ?? base.page_name ?? root?.page_name ?? node.page_name ?? null,
+    pageId: String(snap.page_id ?? base.page_id ?? root?.page_id ?? node.page_id ?? '').trim() || null,
     payerName: typeof payerName === 'string' ? payerName.trim() : null,
     adBody: typeof bodyText === 'string' ? bodyText.trim() : null,
     libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
@@ -297,7 +324,7 @@ function mapGraphqlAdNode(node) {
     spendMaxBrl: spend.spendMaxBrl,
     impressionsText: formatInsightsRange(impressionsRaw),
     audienceSizeText,
-    adsInGroup: Array.isArray(node.collated_results) ? node.collated_results.length : null,
+    adsInGroup: collatedLen,
     targetLocations: [],
     targetLocationsText: null,
     deliveryByRegion: [],
@@ -314,9 +341,9 @@ function ingestGraphqlPayload(json, adsById) {
     for (const edge of edges) {
       const node = edge?.node
       if (!node) continue
-      if (Array.isArray(node.collated_results)) {
+      if (Array.isArray(node.collated_results) && node.collated_results.length > 0) {
         for (const item of node.collated_results) {
-          const mapped = mapGraphqlAdNode({ ...node, ...item, collated_results: node.collated_results })
+          const mapped = mapGraphqlAdNode(item, node)
           if (mapped && !adsById.has(mapped.libraryAdId)) {
             adsById.set(mapped.libraryAdId, mapped)
             added += 1
@@ -750,11 +777,18 @@ function parseAdDetailFromBodyText(bodyText) {
   }
 }
 
-function parseAdBlock(libraryAdId, block, statusHint) {
-  const isActive =
-    statusHint != null
-      ? /^Ativo|^Active/i.test(statusHint)
-      : /\bAtivo\b/i.test(block.slice(0, 120)) && !/\bInativo\b/i.test(block.slice(0, 80))
+function parseAdBlock(libraryAdId, block, statusHint, beforeText = '') {
+  const statusWindow = `${beforeText}\n${block}`.slice(0, 900)
+  let isActive = null
+  if (statusHint != null) {
+    isActive = /^(Ativo|Active)$/i.test(String(statusHint).trim())
+  } else {
+    const inactive =
+      /\bInativo\b/i.test(statusWindow) || /\bInactive\b/i.test(statusWindow)
+    const active = /\bAtivo\b/i.test(statusWindow) || /\bActive\b/i.test(statusWindow)
+    if (inactive && !active) isActive = false
+    else if (active) isActive = true
+  }
 
   const dateRangeMatch = block.match(
     /(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})(?:\s+a\s+(\d{1,2}\s+de\s+\w+\s+de\s+\d{4}))?/i
@@ -885,7 +919,7 @@ function parseAdsFromBodyTextByIds(bodyText) {
     const before = bodyText.slice(Math.max(0, index - 180), index)
     const block = bodyText.slice(index, end)
     const statusMatch = before.match(/(Ativo|Inativo|Active|Inactive)\s*$/i)
-    ads.push(parseAdBlock(id, block, statusMatch?.[1] ?? null))
+    ads.push(parseAdBlock(id, block, statusMatch?.[1] ?? null, before))
     if (ads.length >= MAX_ADS_PER_ACTOR) break
   }
   return ads
@@ -933,37 +967,29 @@ async function extractAdsFromDom(page) {
   return page.evaluate(() => {
     const results = []
     const seen = new Set()
+    const idRe = /(?:Identifica(?:ç|c)ão da biblioteca|Library ID)[:\s]*(\d+)/gi
 
-    for (const link of document.querySelectorAll('a[href*="ads/library/?id="]')) {
-      const href = link.href
-      const idMatch = href.match(/[?&]id=(\d+)/)
-      if (!idMatch) continue
-      const libraryAdId = idMatch[1]
-      if (seen.has(libraryAdId)) continue
+    function pushFromCard(libraryAdId, cardText) {
+      if (!libraryAdId || seen.has(libraryAdId)) return
       seen.add(libraryAdId)
-
-      let card = link.closest('div[data-testid]') ?? link.parentElement
-      for (let depth = 0; depth < 10 && card; depth++) {
-        const text = card.innerText?.trim() ?? ''
-        if (text.length > 120) break
-        card = card.parentElement
-      }
-      const text = card?.innerText ?? link.innerText ?? ''
-      const statusWindow = text.slice(0, 600)
+      const statusWindow = String(cardText ?? '').slice(0, 900)
       const isInactive =
         /\bInativo\b/i.test(statusWindow) || /\bInactive\b/i.test(statusWindow)
       const isActiveLabel =
         /\bAtivo\b/i.test(statusWindow) || /\bActive\b/i.test(statusWindow)
-      // null = desconhecido (não forçar false — GraphQL / outras fontes ainda podem marcar ativo)
       let isActive = null
       if (isInactive && !isActiveLabel) isActive = false
       else if (isActiveLabel) isActive = true
 
+      const pageMatch = statusWindow.match(
+        /(?:Patrocinado|Sponsored)[\s\S]{0,40}?\n([^\n]{3,80})/i,
+      )
+
       results.push({
         libraryAdId,
-        pageName: null,
+        pageName: pageMatch?.[1]?.trim() || null,
         payerName: null,
-        adBody: text.slice(0, 500) || null,
+        adBody: statusWindow.slice(0, 500) || null,
         libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
         isActive,
         startedRunningAt: null,
@@ -979,6 +1005,32 @@ async function extractAdsFromDom(page) {
         deliveryByRegion: [],
         deliveryByRegionText: null,
       })
+    }
+
+    // 1) Links clássicos (quando existem)
+    for (const link of document.querySelectorAll('a[href*="ads/library"]')) {
+      const href = link.href || link.getAttribute('href') || ''
+      const idMatch = href.match(/[?&]id=(\d+)/) || href.match(/\/ads\/library\/(?:\?.*)?id[=/](\d+)/)
+      if (!idMatch) continue
+      let card = link.parentElement
+      for (let depth = 0; depth < 12 && card; depth++) {
+        const text = card.innerText?.trim() ?? ''
+        if (text.length > 160) break
+        card = card.parentElement
+      }
+      pushFromCard(idMatch[1], card?.innerText ?? link.innerText ?? '')
+    }
+
+    // 2) innerText do body — FB costuma partir "Identificação… / ID" em vários text nodes;
+    // TreeWalker por nó falha, mas o texto concatenado bate com o contador do scroll.
+    const bodyText = document.body?.innerText ?? ''
+    idRe.lastIndex = 0
+    let match
+    while ((match = idRe.exec(bodyText)) !== null) {
+      const id = match[1]
+      const idx = match.index ?? 0
+      const window = bodyText.slice(Math.max(0, idx - 450), idx + 550)
+      pushFromCard(id, window)
     }
 
     return results
@@ -1424,7 +1476,71 @@ async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
   return enrichAdsWithDetails(page, ads, searchTerm, ctx)
 }
 
-async function scrapeAdsForActor(page, actor, ctx, graphqlCollector) {
+function buildPageSearchUrl(pageId, opts = {}) {
+  const params = new URLSearchParams({
+    active_status: opts.activeStatus ?? 'active',
+    ad_type: 'political_and_issue_ads',
+    country: 'BR',
+    view_all_page_id: String(pageId),
+    media_type: 'all',
+  })
+  return `https://www.facebook.com/ads/library/?${params.toString()}`
+}
+
+async function runPageListingSearch(page, pageId, ctx, graphqlCollector, opts = {}) {
+  const activeStatus = opts.activeStatus ?? 'active'
+  const label = `página ${pageId}${activeStatus === 'active' ? ' · só ativos' : ''}`
+
+  graphqlCollector.clear()
+
+  await ctx.report({
+    phase: 'listing',
+    message: `Abrindo biblioteca — ${label}`,
+  })
+
+  const url = buildPageSearchUrl(pageId, { activeStatus })
+  logProgress(`Buscando: ${label}`)
+  const navStarted = Date.now()
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT_MS })
+  await dismissCookieBanner(page)
+  await page.waitForTimeout(LISTING_SETTLE_MS)
+
+  await scrollAdListing(page, label, graphqlCollector)
+  await page.waitForTimeout(800)
+
+  const graphqlAds = graphqlCollector.getAds()
+  const bodyText = await page.evaluate(() => document.body.innerText)
+  const domAds = await extractAdsFromDom(page)
+  const textAds = parseAdsFromBodyText(bodyText)
+  const ads = mergeAdsByLibraryId(graphqlAds, domAds, textAds)
+
+  if (activeStatus === 'active') {
+    for (const ad of ads) {
+      if (ad.isActive == null) ad.isActive = true
+      if (!ad.pageId) ad.pageId = String(pageId)
+    }
+  }
+
+  logProgress(
+    `${label}: ${ads.length} anúncio(s) em ${formatElapsed(Date.now() - navStarted)} ` +
+      `(${graphqlAds.length} GraphQL · ${domAds.length} DOM · ${textAds.length} texto)`
+  )
+
+  return ads
+}
+
+async function loadKnownPageIds(supabase, politicoId) {
+  const { data, error } = await supabase
+    .from('meta_ads_mentions')
+    .select('page_id')
+    .eq('politico_id', politicoId)
+    .not('page_id', 'is', null)
+    .limit(50)
+  if (error) return []
+  return [...new Set((data ?? []).map((r) => String(r.page_id).trim()).filter(Boolean))]
+}
+
+async function scrapeAdsForActor(page, actor, ctx, graphqlCollector, knownPageIds = []) {
   const lists = [await scrapeAdsForTerm(page, actor.name, ctx, graphqlCollector)]
   const handle = actorInstagramHandle(actor)
   const nameFolded = foldMetaAdsMatchText(actor.name).replace(/\s+/g, '')
@@ -1434,7 +1550,26 @@ async function scrapeAdsForActor(page, actor, ctx, graphqlCollector) {
     lists.push(await scrapeAdsForTerm(page, handle, ctx, graphqlCollector))
   }
 
-  const scraped = mergeAdsByLibraryId(...lists)
+  let scraped = mergeAdsByLibraryId(...lists)
+
+  const pageIds = new Set(knownPageIds.map(String))
+  for (const ad of scraped) {
+    if (ad.pageId && adBelongsToPoliticalActor(ad, actor)) {
+      pageIds.add(String(ad.pageId))
+    }
+  }
+
+  for (const pageId of pageIds) {
+    logProgress(`${actor.name}: busca pela página Facebook ${pageId} (ativos)`)
+    await sleep(800)
+    lists.push(
+      await runPageListingSearch(page, pageId, ctx, graphqlCollector, {
+        activeStatus: 'active',
+      }),
+    )
+  }
+
+  scraped = mergeAdsByLibraryId(...lists)
   const ads = filterAdsBelongingToActor(scraped, actor)
   if (scraped.length !== ads.length) {
     logProgress(
@@ -1508,6 +1643,7 @@ async function upsertAds(supabase, politicoId, searchTerm, ads) {
       search_term: searchTerm,
       library_ad_id: ad.libraryAdId,
       page_name: ad.pageName,
+      page_id: ad.pageId ?? null,
       payer_name: ad.payerName,
       ad_body: ad.adBody,
       library_url: ad.libraryUrl,
@@ -1674,7 +1810,19 @@ async function main() {
           phase: 'listing',
           message: `Candidato ${i + 1}/${actors.length}: ${actor.name}`,
         })
-        const ads = await scrapeAdsForActor(page, actor, ctx, graphqlCollector)
+        const knownPageIds = await loadKnownPageIds(supabase, actor.id)
+        if (knownPageIds.length) {
+          logProgress(
+            `${actor.name}: ${knownPageIds.length} page_id(s) conhecidos no banco → busca por página`,
+          )
+        }
+        const ads = await scrapeAdsForActor(
+          page,
+          actor,
+          ctx,
+          graphqlCollector,
+          knownPageIds,
+        )
         result.adsFound = ads.length
         await ctx.report({
           phase: 'upsert',
