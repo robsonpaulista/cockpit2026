@@ -40,7 +40,26 @@ function getMaxScrolls() {
 
 function isDualSearchEnabled() {
   const v = process.env.META_ADS_DUAL_SEARCH?.trim().toLowerCase()
-  return v === '1' || v === 'true' || v === 'yes'
+  // Default ON: frase exata sozinha deixa de fora anúncios ativos que a Library acha com unordered.
+  if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false
+  return true
+}
+
+function mergeIsActive(a, b) {
+  if (a === true || b === true) return true
+  if (typeof a === 'boolean') return a
+  if (typeof b === 'boolean') return b
+  return null
+}
+
+/** Resolve status final para persistência — null vira ativo se não há data de fim. */
+function resolveIsActiveForUpsert(ad) {
+  if (typeof ad.isActive === 'boolean') return ad.isActive
+  if (ad.endedRunningAt) {
+    const endMs = new Date(ad.endedRunningAt).getTime()
+    if (Number.isFinite(endMs)) return endMs > Date.now()
+  }
+  return true
 }
 
 function getSearchTypeOverride() {
@@ -167,7 +186,7 @@ function parseArgs() {
 
 function buildSearchUrl(searchTerm, opts = {}) {
   const params = new URLSearchParams({
-    active_status: getActiveStatusFilter(),
+    active_status: opts.activeStatus ?? getActiveStatusFilter(),
     ad_type: 'political_and_issue_ads',
     country: 'BR',
     q: searchTerm,
@@ -887,7 +906,7 @@ function mergeAdsByLibraryId(...lists) {
         pageId: prev.pageId || ad.pageId,
         payerName: prev.payerName || ad.payerName,
         adBody: prev.adBody || ad.adBody,
-        isActive: prev.isActive ?? ad.isActive,
+        isActive: mergeIsActive(prev.isActive, ad.isActive),
         startedRunningAt: prev.startedRunningAt || ad.startedRunningAt,
         endedRunningAt: prev.endedRunningAt || ad.endedRunningAt,
         spendText: prev.spendText || ad.spendText,
@@ -930,9 +949,15 @@ async function extractAdsFromDom(page) {
         card = card.parentElement
       }
       const text = card?.innerText ?? link.innerText ?? ''
-      const head = text.slice(0, 250)
-      const isActive = /\bAtivo\b/i.test(head) || /\bActive\b/i.test(head)
-      const isInactive = /\bInativo\b/i.test(head) || /\bInactive\b/i.test(head)
+      const statusWindow = text.slice(0, 600)
+      const isInactive =
+        /\bInativo\b/i.test(statusWindow) || /\bInactive\b/i.test(statusWindow)
+      const isActiveLabel =
+        /\bAtivo\b/i.test(statusWindow) || /\bActive\b/i.test(statusWindow)
+      // null = desconhecido (não forçar false — GraphQL / outras fontes ainda podem marcar ativo)
+      let isActive = null
+      if (isInactive && !isActiveLabel) isActive = false
+      else if (isActiveLabel) isActive = true
 
       results.push({
         libraryAdId,
@@ -940,7 +965,7 @@ async function extractAdsFromDom(page) {
         payerName: null,
         adBody: text.slice(0, 500) || null,
         libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
-        isActive: isActive && !isInactive,
+        isActive,
         startedRunningAt: null,
         endedRunningAt: null,
         spendText: null,
@@ -1065,13 +1090,15 @@ async function scrollAdListing(page, searchTerm, graphqlCollector) {
   logProgress(`${searchTerm}: scroll concluído — ${prevCount} anúncio(s) visíveis`)
 }
 
-async function runListingSearch(page, searchTerm, searchType, ctx, graphqlCollector) {
+async function runListingSearch(page, searchTerm, searchType, ctx, graphqlCollector, opts = {}) {
   const override = getSearchTypeOverride()
   const effectiveType = override ?? searchType
-  const label =
-    effectiveType === 'keyword_exact_phrase'
-      ? `${searchTerm} (frase exata)`
-      : searchTerm
+  const activeStatus = opts.activeStatus ?? getActiveStatusFilter()
+  const labelParts = [
+    effectiveType === 'keyword_exact_phrase' ? `${searchTerm} (frase exata)` : searchTerm,
+  ]
+  if (activeStatus === 'active') labelParts.push('só ativos')
+  const label = labelParts.join(' · ')
 
   graphqlCollector.clear()
 
@@ -1080,7 +1107,7 @@ async function runListingSearch(page, searchTerm, searchType, ctx, graphqlCollec
     message: `Abrindo biblioteca — ${label}`,
   })
 
-  const url = buildSearchUrl(searchTerm, { searchType: effectiveType })
+  const url = buildSearchUrl(searchTerm, { searchType: effectiveType, activeStatus })
   logProgress(`Buscando: ${label}`)
   const navStarted = Date.now()
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT_MS })
@@ -1100,6 +1127,13 @@ async function runListingSearch(page, searchTerm, searchType, ctx, graphqlCollec
   const domAds = await extractAdsFromDom(page)
   const textAds = parseAdsFromBodyText(bodyText)
   const ads = mergeAdsByLibraryId(graphqlAds, domAds, textAds)
+
+  // Passagem "só ativos": se o GraphQL não trouxe flag, confia no filtro da URL
+  if (activeStatus === 'active') {
+    for (const ad of ads) {
+      if (ad.isActive == null) ad.isActive = true
+    }
+  }
 
   logProgress(
     `${label}: ${ads.length} anúncio(s) em ${formatElapsed(Date.now() - navStarted)} ` +
@@ -1333,6 +1367,7 @@ async function enrichAdsWithDetails(page, ads, actorName, ctx) {
 async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
   const override = getSearchTypeOverride()
   const words = searchTerm.trim().split(/\s+/).filter(Boolean)
+  const baseActive = getActiveStatusFilter()
 
   let ads
   if (override === 'keyword_exact_phrase') {
@@ -1341,7 +1376,21 @@ async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
     ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
   } else if (words.length >= 2) {
     ads = await runListingSearch(page, searchTerm, 'keyword_exact_phrase', ctx, graphqlCollector)
-    if (ads.length === 0) {
+    if (isDualSearchEnabled()) {
+      logProgress(
+        `${searchTerm}: dual search — também unordered (frase exata: ${ads.length} anúncio(s))`
+      )
+      await sleep(800)
+      const unordered = await runListingSearch(
+        page,
+        searchTerm,
+        'keyword_unordered',
+        ctx,
+        graphqlCollector,
+      )
+      ads = mergeAdsByLibraryId(ads, unordered)
+      logProgress(`${searchTerm}: após merge dual = ${ads.length} anúncio(s)`)
+    } else if (ads.length === 0) {
       logProgress(
         `${searchTerm}: frase exata vazia — fallback unordered (depois filtra pelo candidato)`
       )
@@ -1350,6 +1399,25 @@ async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
     }
   } else {
     ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
+  }
+
+  // Espelha o filtro "Anúncios ativos" da Library — captura o que a busca "all" às vezes deixa de fora
+  if (baseActive === 'all') {
+    logProgress(`${searchTerm}: passagem extra só ativos…`)
+    await sleep(800)
+    const activeAds = await runListingSearch(
+      page,
+      searchTerm,
+      words.length >= 2 ? 'keyword_unordered' : 'keyword_unordered',
+      ctx,
+      graphqlCollector,
+      { activeStatus: 'active' },
+    )
+    const before = ads.length
+    ads = mergeAdsByLibraryId(ads, activeAds)
+    logProgress(
+      `${searchTerm}: +${Math.max(0, ads.length - before)} anúncio(s) da passagem só ativos (total ${ads.length})`
+    )
   }
 
   if (SKIP_GEO_DETAILS) return ads
@@ -1446,7 +1514,7 @@ async function upsertAds(supabase, politicoId, searchTerm, ads) {
       platforms: null,
       started_running_at: ad.startedRunningAt,
       ended_running_at: ad.endedRunningAt,
-      is_active: ad.isActive,
+      is_active: resolveIsActiveForUpsert(ad),
       spend_text: ad.spendText,
       spend_min_brl: ad.spendMinBrl,
       spend_max_brl: ad.spendMaxBrl,
