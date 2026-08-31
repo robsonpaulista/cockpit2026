@@ -10,7 +10,7 @@ import {
   Save,
   Trash2,
 } from 'lucide-react'
-import { IconFileTypePdf } from '@tabler/icons-react'
+import { IconFileTypeCsv, IconFileTypePdf } from '@tabler/icons-react'
 import { IptMunicipioSelect } from '@/components/ipt/ipt-municipio-select'
 import { useWarRoomCidade } from '@/components/war-room/war-room-cidade-context'
 import type { EmendaRegistro } from '@/lib/emendas-filtro'
@@ -18,7 +18,9 @@ import {
   demandasToObrasMapa,
   type CampoDemandaObraRow,
 } from '@/lib/campo-demandas-obras'
+import type { IptMunicipio } from '@/lib/ipt'
 import { valorExibidoMapaObra, type ObraMapaRow } from '@/lib/obras-mapa'
+import { exportRelatorioEmendasDemandasCsv } from '@/lib/war-room/relatorio-executivo-csv-export'
 import { exportRelatorioExecutivoPdf } from '@/lib/war-room/relatorio-executivo-export'
 import type { RelatorioAcervoSalvo } from '@/lib/war-room/relatorio-executivo-acervo'
 import {
@@ -92,16 +94,22 @@ function toneStatusRelatorio(status: string): StatusTone {
 }
 
 /** Copiloto · Relatório Executivo municipal (modelo Teresina). */
-export function WarRoomCopilotoRelatorioView() {
+export function WarRoomCopilotoRelatorioView({
+  municipios = [],
+}: {
+  municipios?: IptMunicipio[]
+}) {
   const { municipio, setMunicipio } = useWarRoomCidade()
   const [bloco, setBloco] = useState<BlocoId>('capa')
   const [emendasAll, setEmendasAll] = useState<EmendaRegistro[]>([])
+  const [demandasAll, setDemandasAll] = useState<CampoDemandaObraRow[]>([])
   const [obrasAll, setObrasAll] = useState<ObraMapaRow[]>([])
   const [planosDrive, setPlanosDrive] = useState<PlanoDriveRow[]>([])
   const [acervoSalvo, setAcervoSalvo] = useState<RelatorioAcervoSalvo[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadAcervo = useCallback(async (muni: string) => {
@@ -141,11 +149,11 @@ export function WarRoomCopilotoRelatorioView() {
 
       if (!demRes.ok) throw new Error('Falha ao carregar obras')
       const demJson = await demRes.json().catch(() => null)
-      setObrasAll(
-        demandasToObrasMapa(
-          Array.isArray(demJson) ? (demJson as CampoDemandaObraRow[]) : [],
-        ),
-      )
+      const demandas = Array.isArray(demJson)
+        ? (demJson as CampoDemandaObraRow[])
+        : []
+      setDemandasAll(demandas)
+      setObrasAll(demandasToObrasMapa(demandas))
 
       if (driveRes.ok) {
         const driveJson = (await driveRes.json()) as { links?: PlanoDriveRow[] }
@@ -205,6 +213,20 @@ export function WarRoomCopilotoRelatorioView() {
     }
   }
 
+  const exportarCsv = () => {
+    if (exportingCsv || loading) return
+    setExportingCsv(true)
+    try {
+      exportRelatorioEmendasDemandasCsv({
+        emendas: emendasAll,
+        demandas: demandasAll,
+        municipios,
+      })
+    } finally {
+      setExportingCsv(false)
+    }
+  }
+
   return (
     <div className="wr-relatorio-exec wr-copiloto-reveal">
       <header
@@ -235,6 +257,25 @@ export function WarRoomCopilotoRelatorioView() {
               <IconFileTypePdf className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
             )}
             PDF
+          </button>
+          <button
+            type="button"
+            className="wr-copiloto-redes__ghost-btn"
+            disabled={
+              loading ||
+              exportingCsv ||
+              (emendasAll.length === 0 && demandasAll.length === 0)
+            }
+            onClick={exportarCsv}
+            aria-label="Exportar CSV único de emendas e demandas de todas as cidades"
+            title="CSV · emendas e demandas por expectativa"
+          >
+            {exportingCsv ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+            ) : (
+              <IconFileTypeCsv className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
+            )}
+            CSV
           </button>
           <button
             type="button"

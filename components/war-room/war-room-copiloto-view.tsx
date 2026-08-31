@@ -157,7 +157,7 @@ export function WarRoomCopilotoView() {
         ) : tab === 'emendas' ? (
           <WarRoomCopilotoEmendasView />
         ) : tab === 'relatorio' ? (
-          <WarRoomCopilotoRelatorioView />
+          <WarRoomCopilotoRelatorioView municipios={municipios} />
         ) : tab === 'redes' ? (
           <WarRoomCopilotoRedesView />
         ) : tab === 'panorama' ? (
