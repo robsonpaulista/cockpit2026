@@ -26,6 +26,25 @@ const STALE_COLLECT_MS = 16 * 60 * 1000
 
 let collectInProgress = false
 
+/** execFile embute stdout/stderr no message — evita devolver dump enorme à UI. */
+function sanitizeCollectErrorMessage(raw: string): string {
+  const text = raw.replace(/\s+/g, ' ').trim()
+  if (!text) return 'Erro na coleta Meta Ads'
+  if (/Chromium|playwright install/i.test(text)) {
+    return 'Chromium do Playwright não instalado. Rode: npx playwright install chromium'
+  }
+  const jsonMatch = text.match(/\{[^{}]*"ok"\s*:\s*false[^{}]*"error"\s*:\s*"([^"]+)"/)
+    ?? text.match(/\{[^{}]*"error"\s*:\s*"([^"]+)"[^{}]*"ok"\s*:\s*false/)
+    ?? text.match(/"error"\s*:\s*"([^"]{8,200})"/)
+  if (jsonMatch?.[1]) return jsonMatch[1]
+  if (/Command failed:/i.test(text)) {
+    const lastMeta = [...text.matchAll(/\[meta-ads\][^\[]{0,160}/g)].at(-1)?.[0]?.trim()
+    if (lastMeta) return `Coleta Meta Ads interrompida. ${lastMeta}`
+    return 'Coleta Meta Ads falhou (script Node saiu com erro).'
+  }
+  return text.length > 280 ? `${text.slice(0, 280)}…` : text
+}
+
 function tableMissingMessage(): string {
   return 'Tabela meta_ads_collect_log ausente. Execute database/create-meta-ads-radar-tables.sql no Supabase.'
 }
@@ -140,7 +159,10 @@ export async function getMetaAdsCollectStatus(supabase: SupabaseClient): Promise
   }
 }
 
-async function assertDailyCollectAllowed(supabase: SupabaseClient): Promise<void> {
+async function assertDailyCollectAllowed(
+  supabase: SupabaseClient,
+  options?: { skipDailyLimit?: boolean },
+): Promise<void> {
   await closeStaleCollectLogs(supabase)
 
   if (!isMetaAdsRunnerAvailable()) {
@@ -155,7 +177,12 @@ async function assertDailyCollectAllowed(supabase: SupabaseClient): Promise<void
   if (status.collectInProgress) {
     throw new Error('Coleta Meta Ads já em andamento. Aguarde a conclusão.')
   }
-  if (status.dailyLimitEnabled && !status.canCollect && status.nextCollectAt) {
+  if (
+    !options?.skipDailyLimit &&
+    status.dailyLimitEnabled &&
+    !status.canCollect &&
+    status.nextCollectAt
+  ) {
     const when = new Date(status.nextCollectAt).toLocaleString('pt-BR', {
       day: '2-digit',
       month: 'short',
@@ -170,6 +197,8 @@ async function assertDailyCollectAllowed(supabase: SupabaseClient): Promise<void
 
 export async function collectMetaAds(options?: {
   politicoSlug?: string
+  /** Só captura localização dos anúncios já salvos (não relista a biblioteca). */
+  geoOnly?: boolean
 }): Promise<MetaAdsCollectScriptResult> {
   const { createClient } = await import('@supabase/supabase-js')
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -180,7 +209,8 @@ export async function collectMetaAds(options?: {
 
   const admin = createClient(url, key, { auth: { persistSession: false } })
   await closeStaleCollectLogs(admin)
-  await assertDailyCollectAllowed(admin)
+  // geo-only não conta no limite diário da listagem completa
+  await assertDailyCollectAllowed(admin, { skipDailyLimit: Boolean(options?.geoOnly) })
   collectInProgress = true
 
   const { data: logRow, error: logErr } = await admin
@@ -201,7 +231,9 @@ export async function collectMetaAds(options?: {
   const progressStartedAt = new Date().toISOString()
   const initialProgress: MetaAdsCollectProgress = {
     phase: 'starting',
-    message: 'Preparando coleta de anúncios…',
+    message: options?.geoOnly
+      ? 'Preparando captura de localização…'
+      : 'Preparando coleta de anúncios…',
     percent: 0,
     startedAt: progressStartedAt,
     updatedAt: progressStartedAt,
@@ -215,6 +247,7 @@ export async function collectMetaAds(options?: {
     const scriptPath = path.join(process.cwd(), 'scripts', 'collect-meta-ads.mjs')
     const args = [scriptPath]
     if (options?.politicoSlug) args.push('--slug', options.politicoSlug)
+    if (options?.geoOnly) args.push('--geo-only')
 
     const { stdout, stderr } = await execFileAsync(process.execPath, args, {
       cwd: process.cwd(),
@@ -275,7 +308,8 @@ export async function collectMetaAds(options?: {
 
     return parsed
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro na coleta Meta Ads'
+    const raw = e instanceof Error ? e.message : 'Erro na coleta Meta Ads'
+    const msg = sanitizeCollectErrorMessage(raw)
     await admin
       .from('meta_ads_collect_log')
       .update({
@@ -291,7 +325,7 @@ export async function collectMetaAds(options?: {
         } satisfies MetaAdsCollectProgress,
       })
       .eq('id', logId)
-    throw e
+    throw new Error(msg)
   } finally {
     collectInProgress = false
   }

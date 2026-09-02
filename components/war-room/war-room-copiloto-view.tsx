@@ -14,6 +14,7 @@ import { WarRoomCopilotoComparativoView } from '@/components/war-room/war-room-c
 import { WarRoomCopilotoObrasView } from '@/components/war-room/war-room-copiloto-obras-view'
 import { WarRoomCopilotoEmendasView } from '@/components/war-room/war-room-copiloto-emendas-view'
 import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
+import { WarRoomCopilotoAnunciosView } from '@/components/war-room/war-room-copiloto-anuncios-view'
 import { WarRoomCopilotoRelatorioView } from '@/components/war-room/war-room-copiloto-relatorio-view'
 import { WarRoomCopilotoCoberturaView } from '@/components/war-room/war-room-copiloto-cobertura-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
@@ -25,12 +26,13 @@ type CopilotoTab =
   | 'obras'
   | 'emendas'
   | 'redes'
+  | 'anuncios'
   | 'panorama'
   | 'comparativo'
   | 'relatorio'
 
 /**
- * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes, Comparativo, Radar e Relatório.
+ * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes, Anúncios, Comparativo, Radar e Relatório.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
@@ -120,6 +122,17 @@ export function WarRoomCopilotoView() {
           type="button"
           className={cn(
             'wr-copiloto-tabs__btn wr-copiloto-press',
+            tab === 'anuncios' && 'wr-copiloto-tabs__btn--active',
+          )}
+          aria-pressed={tab === 'anuncios'}
+          onClick={() => setTab('anuncios')}
+        >
+          Anúncios
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'wr-copiloto-tabs__btn wr-copiloto-press',
             tab === 'comparativo' && 'wr-copiloto-tabs__btn--active',
           )}
           aria-pressed={tab === 'comparativo'}
@@ -160,6 +173,8 @@ export function WarRoomCopilotoView() {
           <WarRoomCopilotoRelatorioView municipios={municipios} />
         ) : tab === 'redes' ? (
           <WarRoomCopilotoRedesView />
+        ) : tab === 'anuncios' ? (
+          <WarRoomCopilotoAnunciosView />
         ) : tab === 'panorama' ? (
           <WarRoomCopilotoPanoramaView />
         ) : tab === 'comparativo' ? (

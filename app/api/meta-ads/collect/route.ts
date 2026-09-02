@@ -9,6 +9,7 @@ export const maxDuration = 900
 
 const bodySchema = z.object({
   politicoSlug: z.string().trim().optional(),
+  geoOnly: z.boolean().optional(),
 })
 
 export async function POST(request: Request) {
@@ -17,7 +18,10 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response
 
     const body = bodySchema.parse(await request.json().catch(() => ({})))
-    const parsed = await collectMetaAds({ politicoSlug: body.politicoSlug })
+    const parsed = await collectMetaAds({
+      politicoSlug: body.politicoSlug,
+      geoOnly: body.geoOnly,
+    })
 
     return NextResponse.json({
       ok: true,

@@ -9171,6 +9171,445 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   font-size: 13px;
 }
 
+/* —— Copiloto · Anúncios Meta —— */
+.wr-copiloto-anuncios {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wr-copiloto-anuncios__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex: 0 0 auto;
+  padding: 6px 12px 8px;
+}
+
+.wr-copiloto-anuncios__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.wr-copiloto-anuncios__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+  overflow: auto;
+}
+
+.wr-copiloto-anuncios__hint,
+.wr-copiloto-anuncios__error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+
+.wr-copiloto-anuncios__error {
+  background: color-mix(in srgb, var(--wr-accent, #f04b23) 10%, #fff);
+  color: var(--wr-petrol, #022b3a);
+  max-height: 4.5rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wr-anuncios-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.wr-anuncios-hud__split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wr-anuncios-section {
+  border: 1px solid color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.025),
+    0 6px 18px rgba(0, 0, 0, 0.018);
+  min-width: 0;
+}
+
+.wr-anuncios-section__head {
+  padding: 14px 16px 0;
+}
+
+.wr-anuncios-section__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-section__sub {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-section__body {
+  padding: 12px 16px 16px;
+}
+
+.wr-anuncios-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+}
+
+.wr-anuncios-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 0 10px;
+  min-width: 0;
+}
+
+.wr-anuncios-kpi + .wr-anuncios-kpi {
+  border-left: 1px solid color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+}
+
+.wr-anuncios-kpi__ico {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--palette-petrol, #022b3a);
+  color: #fff;
+}
+
+.wr-anuncios-kpi__label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-kpi__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wr-anuncios-kpi__val {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  color: var(--palette-petrol, #022b3a);
+  line-height: 1.1;
+}
+
+.wr-anuncios-kpi__val--sm {
+  font-size: 14px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.wr-anuncios-kpi__foot {
+  margin: 0;
+  font-size: 11px;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-kpi__foot--ok { color: #16a05d; }
+.wr-anuncios-kpi__foot--down { color: #e64a45; }
+
+.wr-anuncios-dots {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+
+.wr-anuncios-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #e6e7e8;
+}
+
+.wr-anuncios-dots i.on {
+  background: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wr-anuncios-rank__item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+}
+
+.wr-anuncios-rank__item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.wr-anuncios-rank__num {
+  font-size: 11px;
+  font-weight: 650;
+  color: #94a3b8;
+  padding-top: 2px;
+}
+
+.wr-anuncios-rank__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wr-anuncios-rank__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wr-anuncios-rank__name {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-rank__metric {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.wr-anuncios-rank__bar {
+  display: block;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: #e8e8e6;
+  overflow: hidden;
+}
+
+.wr-anuncios-rank__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-rank__sub {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.wr-anuncios-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid color-mix(in srgb, var(--palette-inst, #005b8f) 20%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--palette-inst, #005b8f) 8%, #fff),
+    #fff 60%
+  );
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(2, 43, 58, 0.05);
+}
+
+.wr-anuncios-card--top {
+  border-color: color-mix(in srgb, var(--palette-inst, #005b8f) 35%, transparent);
+}
+
+.wr-anuncios-card__rank {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.wr-anuncios-card__ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--palette-petrol, #022b3a);
+  color: #fff;
+}
+
+.wr-anuncios-card__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wr-anuncios-card__meta,
+.wr-anuncios-card__metric {
+  margin: 0;
+  font-size: 10px;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-wins {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wr-anuncios-win {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--palette-petrol, #022b3a) 2%, #fff);
+  min-width: 0;
+}
+
+.wr-anuncios-win__ico {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #f2d06b;
+  color: #2b2d31;
+}
+
+.wr-anuncios-win__title {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-win__val {
+  font-style: normal;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-anuncios-win__sub {
+  font-size: 10px;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-anuncios-lista {
+  border: 1px solid color-mix(in srgb, var(--palette-petrol, #022b3a) 7%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+  max-height: min(480px, 55vh);
+  overflow-y: auto;
+}
+
+.wr-anuncios-lista .wr-copiloto-list-card__row-inner {
+  grid-template-columns: 36px minmax(0, 1fr) minmax(7rem, 9rem);
+}
+
+@media (max-width: 1100px) {
+  .wr-anuncios-hud__split {
+    grid-template-columns: 1fr;
+  }
+
+  .wr-anuncios-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .wr-anuncios-kpi {
+    border-left: 0 !important;
+    padding: 0;
+  }
+
+  .wr-anuncios-wins {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .wr-anuncios-kpis,
+  .wr-anuncios-wins {
+    grid-template-columns: 1fr;
+  }
+
+  .wr-anuncios-lista .wr-copiloto-list-card__row-inner {
+    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .wr-anuncios-lista .wr-copiloto-list-card__metrics {
+    grid-column: 1 / -1;
+  }
+}
+
 /* —— Copiloto · Obras / Emendas —— */
 .wr-copiloto-obras,
 .wr-copiloto-emendas {
@@ -16035,6 +16474,38 @@ body[data-war-room-clean] .wr-copiloto-comparativo {
   border-radius: var(--wr-radius-xl);
   background: transparent;
   overflow: hidden;
+}
+
+body[data-war-room-clean] .wr-copiloto-anuncios {
+  border: 1px solid var(--wr-glass-border);
+  border-radius: var(--wr-radius-xl);
+  background: transparent;
+  overflow: hidden;
+}
+
+body[data-war-room-clean] .wr-copiloto-anuncios__toolbar {
+  margin: 8px 12px 0 !important;
+  padding: 6px 10px !important;
+  border: 1px solid var(--wr-glass-border) !important;
+  border-radius: var(--wr-radius-lg) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
+  min-height: 0 !important;
+  gap: 8px 12px !important;
+}
+
+body[data-war-room-clean] .wr-copiloto-anuncios__body {
+  padding: 10px 12px 12px !important;
+}
+
+body[data-war-room-clean] .wr-anuncios-section {
+  border-color: var(--wr-glass-border) !important;
+  background: var(--wr-glass) !important;
+  backdrop-filter: var(--wr-glass-blur) !important;
+  -webkit-backdrop-filter: var(--wr-glass-blur) !important;
+  box-shadow: var(--wr-shadow-glass) !important;
 }
 
 body[data-war-room-clean] .wr-copiloto-comparativo__toolbar {

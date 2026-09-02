@@ -6,6 +6,7 @@
  * Uso:
  *   node scripts/collect-meta-ads.mjs
  *   node scripts/collect-meta-ads.mjs --slug jadyel-alencar
+ *   node scripts/collect-meta-ads.mjs --slug jadyel-alencar --geo-only
  *   node scripts/collect-meta-ads.mjs --purge-only
  */
 
@@ -86,7 +87,7 @@ function getActiveStatusFilter() {
   return 'all'
 }
 
-function isGeoCollectionEnabled() {
+function isGeoCollectionEnabledFromEnv() {
   const enable = process.env.META_ADS_GEO_DETAILS?.trim().toLowerCase()
   if (enable === '1' || enable === 'true' || enable === 'yes') return true
   if (process.env.META_ADS_SKIP_DETAILS === '1' || process.env.META_ADS_SKIP_DETAILS === 'true') {
@@ -95,9 +96,27 @@ function isGeoCollectionEnabled() {
   return false
 }
 
-const ENABLE_GEO_DETAILS = isGeoCollectionEnabled()
-const MAX_AD_DETAILS = Number(process.env.META_ADS_MAX_DETAILS ?? 30)
-const SKIP_GEO_DETAILS = !ENABLE_GEO_DETAILS
+/** Configurado em main() após parseArgs — geo automático para jadyel-alencar. */
+const collectConfig = {
+  skipGeo: true,
+  geoOnly: false,
+  geoForce: false,
+  maxAdDetails: 30,
+}
+
+function resolveCollectConfig({ politicoSlug, geoFlag, geoOnly, geoForce }) {
+  const envSkip =
+    process.env.META_ADS_SKIP_DETAILS === '1' || process.env.META_ADS_SKIP_DETAILS === 'true'
+  const jadyelRun = politicoSlug === 'jadyel-alencar'
+  const geoEnabled =
+    !envSkip && (geoFlag || geoOnly || jadyelRun || isGeoCollectionEnabledFromEnv())
+  const maxRaw = Number(process.env.META_ADS_MAX_DETAILS ?? (jadyelRun ? 120 : 30))
+  collectConfig.skipGeo = !geoEnabled
+  collectConfig.geoOnly = geoOnly
+  collectConfig.geoForce = geoForce
+  collectConfig.maxAdDetails =
+    Number.isFinite(maxRaw) && maxRaw > 0 ? Math.min(250, Math.floor(maxRaw)) : 30
+}
 
 function logProgress(message) {
   console.error(`[meta-ads] ${message}`)
@@ -110,12 +129,12 @@ function calcCollectPercent(input) {
 
   let step = 0.02
   if (phase === 'browser') step = 0.06
-  else if (phase === 'listing') step = SKIP_GEO_DETAILS ? 0.55 : 0.22
+  else if (phase === 'listing') step = collectConfig.skipGeo ? 0.55 : 0.22
   else if (phase === 'geo') {
     const adTotal = Math.max(1, input.adTotal ?? 1)
     const adIndex = Math.max(0, input.adIndex ?? 0)
     step = 0.22 + (adIndex / adTotal) * 0.68
-  } else if (phase === 'upsert') step = SKIP_GEO_DETAILS ? 0.85 : 0.94
+  } else if (phase === 'upsert') step = collectConfig.skipGeo ? 0.85 : 0.94
   else if (phase === 'done') return 100
 
   const base = (actorIndex - 1) / actorTotal
@@ -177,11 +196,17 @@ function parseArgs() {
   const args = process.argv.slice(2)
   let politicoSlug = null
   let purgeOnly = false
+  let geoFlag = false
+  let geoOnly = false
+  let geoForce = false
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--slug' && args[i + 1]) politicoSlug = args[++i]
     else if (args[i] === '--purge-only') purgeOnly = true
+    else if (args[i] === '--geo') geoFlag = true
+    else if (args[i] === '--geo-only') geoOnly = true
+    else if (args[i] === '--geo-force') geoForce = true
   }
-  return { politicoSlug, purgeOnly }
+  return { politicoSlug, purgeOnly, geoFlag, geoOnly, geoForce }
 }
 
 function buildSearchUrl(searchTerm, opts = {}) {
@@ -232,7 +257,7 @@ function mapGraphqlAdNode(node, root = null) {
   // Quando o item já é um collated_result, NÃO puxar de novo o [0] do grupo (bug que colapsava N anúncios em 1).
   const base = node
   const libraryAdId = String(base.ad_archive_id ?? root?.ad_archive_id ?? '').trim()
-  if (!libraryAdId || !/^\d+$/.test(libraryAdId)) return null
+  if (!libraryAdId || !/^\d{13,16}$/.test(libraryAdId)) return null
 
   const snap = base.snapshot ?? root?.snapshot ?? base
   const bodyText =
@@ -403,15 +428,137 @@ function ingestGraphqlRawText(text, adsById) {
   return added
 }
 
+function pushGraphqlGeoLocation(bucket, name, excluded, adIdHint) {
+  if (!name || typeof name !== 'string') return
+  const normalized = cleanGeoLocationName(name)
+  if (!isLikelyCityOrState(normalized)) return
+  if (!bucket.locations) bucket.locations = []
+  const key = `${excluded ? '!' : ''}${normalized.toLowerCase()}`
+  if (bucket.seen.has(key)) return
+  bucket.seen.add(key)
+  bucket.locations.push({ name: normalized, excluded })
+  if (adIdHint && !bucket.adId) bucket.adId = adIdHint
+}
+
+function ingestGraphqlGeoNode(obj, bucket, adIdHint = null) {
+  if (!obj || typeof obj !== 'object') return
+  const currentAdId =
+    String(obj.ad_archive_id ?? obj.adArchiveId ?? obj.library_id ?? adIdHint ?? '').trim() || adIdHint
+
+  for (const field of [
+    'target_locations',
+    'targeted_locations',
+    'included_locations',
+    'location_targets',
+    'locations',
+  ]) {
+    const arr = obj[field]
+    if (!Array.isArray(arr)) continue
+    for (const item of arr) {
+      if (typeof item === 'string') {
+        pushGraphqlGeoLocation(bucket, item, false, currentAdId)
+        continue
+      }
+      if (!item || typeof item !== 'object') continue
+      const name =
+        item.name ??
+        item.location ??
+        item.location_name ??
+        item.locationName ??
+        item.city ??
+        item.region ??
+        item.label
+      const excluded =
+        item.excluded === true ||
+        item.is_excluded === true ||
+        /exclu|EXCLUDED/i.test(String(item.inclusion ?? item.included_or_excluded ?? item.status ?? ''))
+      if (name) pushGraphqlGeoLocation(bucket, String(name), excluded, currentAdId)
+    }
+  }
+
+  const rowName =
+    obj.location_name ??
+    obj.locationName ??
+    obj.location ??
+    (obj.city && obj.state ? `${obj.city}, ${obj.state}` : null)
+  if (rowName) {
+    const excluded =
+      obj.excluded === true ||
+      /exclu|EXCLUDED/i.test(
+        String(obj.inclusion ?? obj.included_or_excluded ?? obj.included_or_excluded_status ?? ''),
+      )
+    pushGraphqlGeoLocation(bucket, String(rowName), excluded, currentAdId)
+  }
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) ingestGraphqlGeoNode(item, bucket, currentAdId)
+    return
+  }
+
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === 'object') ingestGraphqlGeoNode(value, bucket, currentAdId)
+  }
+}
+
+function ingestGraphqlGeoRawText(text, bucket, adIdHint) {
+  if (!text || typeof text !== 'string') return
+  const tryParse = (chunk) => {
+    const trimmed = chunk.replace(/^\s*for\s*\(\s*;;\s*\)\s*;\s*/, '').trim()
+    if (!trimmed.startsWith('{')) return
+    try {
+      ingestGraphqlGeoNode(JSON.parse(trimmed), bucket, adIdHint)
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const line of text.split('\n')) tryParse(line)
+  tryParse(text)
+}
+
+function createGraphqlGeoCollector() {
+  const bucket = { seen: new Set(), locations: [], adId: null }
+
+  function createHandler(libraryAdId) {
+    return async (response) => {
+      if (!response.url().includes('/api/graphql/')) return
+      try {
+        const text = await response.text()
+        ingestGraphqlGeoRawText(text, bucket, libraryAdId)
+      } catch {
+        /* stream indisponível */
+      }
+    }
+  }
+
+  function getGeo() {
+    if (bucket.locations.length === 0) {
+      return { targetLocations: [], targetLocationsText: null, deliveryByRegion: [], deliveryByRegionText: null }
+    }
+    const targetLocations = [...bucket.locations]
+    return {
+      targetLocations,
+      targetLocationsText: targetLocations
+        .map((loc) => (loc.excluded ? `exc. ${loc.name}` : loc.name))
+        .join(' · '),
+      deliveryByRegion: [],
+      deliveryByRegionText: null,
+    }
+  }
+
+  return { createHandler, getGeo }
+}
+
 function createGraphqlAdCollector() {
   const adsById = new Map()
   let attached = false
+  let paused = false
 
   function attachToPage(page) {
     if (attached) return
     attached = true
 
     page.on('response', async (response) => {
+      if (paused) return
       const url = response.url()
       if (!url.includes('/api/graphql/')) return
       try {
@@ -430,6 +577,9 @@ function createGraphqlAdCollector() {
 
   return {
     attachToPage,
+    setPaused: (value) => {
+      paused = value === true
+    },
     clear: () => adsById.clear(),
     size: () => adsById.size,
     getAds: () => [...adsById.values()],
@@ -518,19 +668,31 @@ const SECTION_STOP_RE =
   /^(Demograf|Distribui|Impress|Valor gasto|Amount spent|Plataform|Platform|Categor|Patrocinado|Sponsored|Ativo|Inativo|Active|Inactive|Identifica|Library ID|Ver detalhes|See ad details|Tamanho estimado|Estimated audience|Idade|Age|Gênero|Gender)/i
 
 const GEO_NOISE =
-  /^(male|female|homem|mulher|unknown|desconhecido|brasil|brazil|todos|all|women|men|masculino|feminino|idade|gender|gênero|genero)$/i
+  /^(male|female|homem|mulher|unknown|desconhecido|brasil|brazil|todos|all|women|men|masculino|feminino|idade|gender|gênero|genero|região|region|código postal ou cidade|tipo de filtro|tudo tipos de localização|filtro de inclusão|filtro de inclusão\/exclusão|localização|location|tipo de localização|location type|incluiu ou excluiu|included or excluded|incluída|excluída|included|excluded|city|cidade|country|país|pais|estado|state)$/i
+
+function isGeoUiNoise(name) {
+  const n = cleanGeoLocationName(name).toLowerCase()
+  if (!n) return true
+  if (GEO_NOISE.test(n)) return true
+  if (/tipo de filtro|filtro de inclus|tudo tipos|postal ou cidade|location type|inclusion\/exclusion/i.test(n)) {
+    return true
+  }
+  if (/^(anunciantes podem|advertisers can|fornecemos inform)/i.test(n)) return true
+  return false
+}
 
 function cleanGeoLocationName(name) {
   return normalizeText(name)
     .replace(/,\s*brasil\s*$/i, '')
     .replace(/,\s*brazil\s*$/i, '')
+    .replace(/[.,;:]+$/g, '')
     .trim()
 }
 
 function isLikelyCityOrState(name) {
   const n = cleanGeoLocationName(name)
   if (n.length < 2 || n.length > 48) return false
-  if (GEO_NOISE.test(n)) return false
+  if (isGeoUiNoise(n)) return false
   if (/^\d+([.,]\d+)?\s*%?$/.test(n)) return false
   if (/^\d+\s*[-–]\s*\d+/.test(n)) return false
   return true
@@ -572,7 +734,7 @@ function parseAudienceLocationTable(bodyText) {
     const type = lines[i + 1]
     const incl = lines[i + 2]
     if (!LOCATION_TYPE_RE.test(type) || !INCLUSION_RE.test(incl)) continue
-    if (/^(localização|location|tipo de localização|location type|incluiu ou excluiu|included or excluded)$/i.test(loc)) {
+    if (/^(localização|location|tipo de localização|location type|incluiu ou excluiu|included or excluded|estado|state|city|cidade)$/i.test(loc)) {
       continue
     }
     pushLocation(loc, /exclu/i.test(incl))
@@ -651,13 +813,13 @@ function parseTargetLocations(bodyText) {
   }
 
   for (const match of bodyText.matchAll(
-    /(?:Localiza(?:ç|c)[õo]es?\s+inclu[íi]das?|Included locations?|Inclu[íi]do[s]?)\s*:?\s*([^\n]+)/gi
+    /(?:Localiza(?:ç|c)[õo]es?\s+inclu[íi]das?|Included locations?)\s*:?\s*([^\n]+)/gi
   )) {
     for (const name of splitLocationNames(match[1])) pushLocation(name, false)
   }
 
   for (const match of bodyText.matchAll(
-    /(?:Localiza(?:ç|c)[õo]es?\s+exclu[íi]das?|Excluded locations?|Exclu[íi]do[s]?)\s*:?\s*([^\n]+)/gi
+    /(?:Localiza(?:ç|c)[õo]es?\s+exclu[íi]das?|Excluded locations?)\s*:?\s*([^\n]+)/gi
   )) {
     for (const name of splitLocationNames(match[1])) pushLocation(name, true)
   }
@@ -665,8 +827,6 @@ function parseTargetLocations(bodyText) {
   const includedSection = extractMultilineSection(bodyText, [
     'Localizações incluídas',
     'Included locations',
-    'Incluído',
-    'Included',
   ])
   for (const line of includedSection) {
     if (/^exclu[íi]do|^excluded/i.test(line)) break
@@ -676,22 +836,9 @@ function parseTargetLocations(bodyText) {
   const excludedSection = extractMultilineSection(bodyText, [
     'Localizações excluídas',
     'Excluded locations',
-    'Excluído',
-    'Excluded',
   ])
   for (const line of excludedSection) {
     for (const name of splitLocationNames(line)) pushLocation(name, true)
-  }
-
-  const genericSection = extractMultilineSection(bodyText, [
-    'Segmentação de localização',
-    'Localização',
-    'Location targeting',
-    'Target locations',
-    'Localizações',
-  ])
-  for (const line of genericSection) {
-    for (const name of splitLocationNames(line)) pushLocation(name, false)
   }
 
   const targetLocationsText =
@@ -1028,6 +1175,7 @@ async function extractAdsFromDom(page) {
     let match
     while ((match = idRe.exec(bodyText)) !== null) {
       const id = match[1]
+      if (!/^\d{13,16}$/.test(id)) continue
       const idx = match.index ?? 0
       const window = bodyText.slice(Math.max(0, idx - 450), idx + 550)
       pushFromCard(id, window)
@@ -1212,6 +1360,9 @@ async function dismissCookieBanner(page) {
 }
 
 function adNeedsGeoDetail(ad) {
+  if (collectConfig.geoForce) return true
+  const included = (ad.targetLocations ?? []).filter((loc) => !loc.excluded)
+  if (included.length > 0) return false
   return !(ad.targetLocations?.length || ad.deliveryByRegion?.length)
 }
 
@@ -1238,18 +1389,74 @@ async function expandAdDetailSections(page) {
     /See ad details/i,
     /Detalhes do anúncio/i,
     /Ad details/i,
-    /Público do anúncio/i,
-    /Ad audience/i,
-    /Veiculação do anúncio/i,
-    /Ad delivery/i,
-    /Transparência por localização/i,
-    /Transparency by location/i,
     /Ver resumo/i,
     /See summary/i,
   ]
   for (const pattern of patterns) {
     await clickIfVisible(page, pattern)
   }
+  await expandLocationTransparency(page)
+}
+
+async function expandLocationTransparency(page) {
+  await page.evaluate(() => {
+    function scrollToMatch(re) {
+      for (const el of document.querySelectorAll(
+        'div, span, h2, h3, h4, button, [role="button"], [aria-expanded]',
+      )) {
+        const t = (el.textContent || '').replace(/\s+/g, ' ').trim()
+        if (!t || t.length > 96) continue
+        if (!re.test(t)) continue
+        el.scrollIntoView({ block: 'center', behavior: 'instant' })
+        return el
+      }
+      return null
+    }
+
+    function clickExpandable(el) {
+      if (!el || !(el instanceof HTMLElement)) return
+      const clickable =
+        el.closest('[role="button"], button, [aria-expanded]') ??
+        el.querySelector('[role="button"], button, [aria-expanded="false"]')
+      if (clickable instanceof HTMLElement) {
+        clickable.click()
+        return
+      }
+      el.click()
+    }
+
+    for (const re of [
+      /transparência por localização/i,
+      /transparency by location/i,
+      /público do anúncio/i,
+      /ad audience/i,
+      /^localização$/i,
+      /^location$/i,
+    ]) {
+      clickExpandable(scrollToMatch(re))
+    }
+  })
+  await page.waitForTimeout(1400)
+
+  const collapsed = page.locator('[aria-expanded="false"]').filter({
+    hasText: /localização|location|público|audience|transparência|transparency/i,
+  })
+  const collapsedCount = await collapsed.count()
+  for (let i = 0; i < Math.min(collapsedCount, 8); i++) {
+    await collapsed.nth(i).click({ timeout: 2500 }).catch(() => {})
+    await page.waitForTimeout(450)
+  }
+
+  for (const pattern of [
+    /Transparência por localização/i,
+    /Transparency by location/i,
+    /Público do anúncio/i,
+    /Ad audience/i,
+  ]) {
+    await clickIfVisible(page, pattern)
+  }
+
+  await page.waitForTimeout(900)
 }
 
 async function extractGeoFromDom(page) {
@@ -1261,44 +1468,96 @@ async function extractGeoFromDom(page) {
       return norm(raw)
         .replace(/,\s*brasil\s*$/i, '')
         .replace(/,\s*brazil\s*$/i, '')
+        .replace(/[.,;:]+$/g, '')
         .trim()
     }
 
     const TYPE_RE =
       /^(estado|cidade|state|city|região|regiao|region|país|pais|country|condado|county|bairro|neighborhood|dma)$/i
     const INCL_RE = /^(inclu[íi]da?|exclu[íi]da?|included|excluded)$/i
+    const HEADER_RE =
+      /^(localização|location|tipo de localização|location type|incluiu ou excluiu|included or excluded)$/i
+    const NOISE_RE =
+      /^(male|female|homem|mulher|brasil|brazil|todos|all|região|region|código postal ou cidade|tipo de filtro|tudo tipos de localização|filtro de inclusão|filtro de inclusão\/exclusão|localização|location|tipo de localização|location type|incluiu ou excluiu|included or excluded|incluída|excluída|included|excluded|city|cidade|country|país|pais|estado|state)$/i
+
+    function isNoise(name) {
+      const n = cleanLoc(name).toLowerCase()
+      if (!n || n.length > 48) return true
+      if (NOISE_RE.test(n)) return true
+      if (/tipo de filtro|filtro de inclus|tudo tipos|postal ou cidade|location type/i.test(n)) return true
+      return false
+    }
+
     const targetLocations = []
     const seen = new Set()
 
     function push(name, excluded) {
       const cleaned = cleanLoc(name)
-      if (cleaned.length < 2) return
+      if (cleaned.length < 2 || HEADER_RE.test(cleaned) || isNoise(cleaned)) return
       const key = `${excluded ? '!' : ''}${cleaned.toLowerCase()}`
       if (seen.has(key)) return
       seen.add(key)
       targetLocations.push({ name: cleaned, excluded })
     }
 
+    function parseRowCells(cells) {
+      if (cells.length < 3) return
+      const loc = cells[0]
+      const type = cells[1]
+      const incl = cells[2]
+      if (!loc || HEADER_RE.test(loc)) return
+      if (!TYPE_RE.test(type) || !INCL_RE.test(incl)) return
+      push(loc, /exclu/i.test(incl))
+    }
+
     for (const table of document.querySelectorAll('table')) {
       for (const row of table.querySelectorAll('tr')) {
-        const cells = [...row.querySelectorAll('td')].map((cell) => norm(cell.innerText))
-        if (cells.length < 3) continue
-        if (!TYPE_RE.test(cells[1]) || !INCL_RE.test(cells[2])) continue
-        push(cells[0], /exclu/i.test(cells[2]))
+        const cells = [...row.querySelectorAll('th, td')].map((cell) => norm(cell.innerText))
+        parseRowCells(cells)
       }
     }
 
     for (const row of document.querySelectorAll('[role="row"]')) {
-      const cells = [...row.querySelectorAll('[role="cell"], [role="gridcell"], td, th')]
+      const cells = [...row.querySelectorAll('[role="cell"], [role="gridcell"], [role="columnheader"], td, th')]
         .map((cell) => norm(cell.innerText))
         .filter(Boolean)
-      if (cells.length < 3) continue
-      if (!TYPE_RE.test(cells[1]) || !INCL_RE.test(cells[2])) continue
-      push(cells[0], /exclu/i.test(cells[2]))
+      parseRowCells(cells)
+    }
+
+    for (const inclCell of document.querySelectorAll('td, [role="cell"], [role="gridcell"], div, span')) {
+      const inclText = norm(inclCell.textContent || '')
+      if (!INCL_RE.test(inclText)) continue
+      const row =
+        inclCell.closest('tr, [role="row"]') ??
+        inclCell.parentElement?.closest('tr, [role="row"]')
+      if (!row) continue
+      const cells = [...row.querySelectorAll('td, [role="cell"], [role="gridcell"], div, span')]
+        .map((cell) => norm(cell.innerText))
+        .filter((t) => t && !HEADER_RE.test(t))
+      if (cells.length < 2) continue
+      const loc = cells[0]
+      const type = cells.find((t) => TYPE_RE.test(t)) ?? cells[1]
+      if (loc && TYPE_RE.test(type)) {
+        push(loc, /exclu/i.test(inclText))
+      }
+    }
+
+    const lines = (document.body?.innerText ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+    for (let i = 0; i < lines.length - 2; i++) {
+      const loc = lines[i]
+      const type = lines[i + 1]
+      const incl = lines[i + 2]
+      if (HEADER_RE.test(loc)) continue
+      if (!TYPE_RE.test(type) || !INCL_RE.test(incl)) continue
+      push(loc, /exclu/i.test(incl))
     }
 
     return { targetLocations, deliveryByRegion: [] }
   })
+}
+
+function sanitizeTargetLocations(locations) {
+  return (locations ?? []).filter((loc) => isLikelyCityOrState(loc.name))
 }
 
 function mergeGeoResults(...sources) {
@@ -1308,17 +1567,19 @@ function mergeGeoResults(...sources) {
   const seenDel = new Set()
 
   for (const source of sources) {
-    for (const loc of source.targetLocations ?? []) {
-      const key = `${loc.excluded ? '!' : ''}${loc.name.toLowerCase()}`
+    for (const loc of sanitizeTargetLocations(source.targetLocations)) {
+      const key = `${loc.excluded ? '!' : ''}${cleanGeoLocationName(loc.name).toLowerCase()}`
       if (seenLoc.has(key)) continue
       seenLoc.add(key)
-      targetLocations.push(loc)
+      targetLocations.push({ ...loc, name: cleanGeoLocationName(loc.name) })
     }
     for (const region of source.deliveryByRegion ?? []) {
-      const key = region.region.toLowerCase()
+      const name = cleanGeoLocationName(region.region)
+      if (!isLikelyCityOrState(name)) continue
+      const key = name.toLowerCase()
       if (seenDel.has(key)) continue
       seenDel.add(key)
-      deliveryByRegion.push(region)
+      deliveryByRegion.push({ ...region, region: name })
     }
   }
 
@@ -1336,31 +1597,177 @@ function mergeGeoResults(...sources) {
   return { targetLocations, targetLocationsText, deliveryByRegion, deliveryByRegionText }
 }
 
-async function scrapeAdDetail(page, libraryAdId) {
-  const url = `https://www.facebook.com/ads/library/?id=${libraryAdId}`
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: DETAIL_TIMEOUT_MS })
-  await dismissCookieBanner(page)
-  await page.waitForTimeout(2500)
-  await expandAdDetailSections(page)
-  await page.waitForTimeout(1200)
-  await expandAdDetailSections(page)
-
-  const domGeo = await extractGeoFromDom(page)
-  const bodyText = await page.evaluate(() => document.body.innerText)
-  const textGeo = parseAdDetailFromBodyText(bodyText)
-  return mergeGeoResults(domGeo, textGeo)
+function isValidLibraryAdId(id) {
+  const s = String(id ?? '').trim()
+  return /^\d{13,16}$/.test(s)
 }
 
-async function enrichAdsWithDetails(page, ads, actorName, ctx) {
-  if (SKIP_GEO_DETAILS) {
+function emptyGeoResult() {
+  return {
+    targetLocations: [],
+    targetLocationsText: null,
+    deliveryByRegion: [],
+    deliveryByRegionText: null,
+  }
+}
+
+async function pageShowsAdDetail(page, libraryAdId) {
+  return page.evaluate((adId) => {
+    const text = document.body?.innerText ?? ''
+    if (!text.includes(adId)) return false
+
+    const hasLibraryIdForAd = new RegExp(
+      `(?:Identifica(?:ç|c)ão da biblioteca|Library ID)[^\\d]{0,48}${adId}`,
+      'i',
+    ).test(text)
+    const hasTransparency = /Transparência por localização|Transparency by location/i.test(text)
+    const onSearchShell =
+      /Pesquisar por palavra-chave ou anunciante|Search by keyword or advertiser/i.test(text)
+
+    if (onSearchShell && !hasLibraryIdForAd) return false
+    return hasLibraryIdForAd && (hasTransparency || /Veiculação do anúncio|Ad delivery/i.test(text))
+  }, libraryAdId)
+}
+
+async function clickAdDetailNearLibraryId(page, libraryAdId) {
+  return page.evaluate((adId) => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) {
+      const nodeText = walker.currentNode?.textContent ?? ''
+      if (!nodeText.includes(adId)) continue
+      let el = walker.currentNode.parentElement
+      for (let depth = 0; depth < 18 && el; depth++) {
+        const clickable = [...el.querySelectorAll('a, button, [role="button"]')].find((node) =>
+          /ver detalhes do anúncio|see ad details|ver resumo|see summary/i.test(
+            node.textContent ?? '',
+          ),
+        )
+        if (clickable instanceof HTMLElement) {
+          clickable.click()
+          return true
+        }
+        el = el.parentElement
+      }
+    }
+    return false
+  }, libraryAdId)
+}
+
+async function openAdDetailViaSearch(page, libraryAdId) {
+  const url = buildSearchUrl(libraryAdId, {
+    searchType: 'keyword_unordered',
+    activeStatus: 'all',
+  })
+  logProgress(`geo ad ${libraryAdId}: abrindo via busca na biblioteca`)
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: DETAIL_TIMEOUT_MS })
+  await dismissCookieBanner(page)
+  await page.waitForTimeout(3200)
+
+  await page
+    .waitForFunction(
+      (adId) => (document.body?.innerText ?? '').includes(adId),
+      libraryAdId,
+      { timeout: 12_000 },
+    )
+    .catch(() => {})
+
+  const directLink = page.locator(`a[href*="id=${libraryAdId}"]`).first()
+  if (await directLink.count()) {
+    await directLink.click({ timeout: 5000 }).catch(() => {})
+    await page.waitForTimeout(2800)
+    if (await pageShowsAdDetail(page, libraryAdId)) return true
+  }
+
+  if (await clickAdDetailNearLibraryId(page, libraryAdId)) {
+    await page.waitForTimeout(2800)
+    if (await pageShowsAdDetail(page, libraryAdId)) return true
+  }
+
+  for (const pattern of [/Ver detalhes do anúncio/i, /See ad details/i]) {
+    const btn = page.getByRole('button', { name: pattern })
+    if (await btn.count()) {
+      await btn.first().click({ timeout: 5000 }).catch(() => {})
+      await page.waitForTimeout(2800)
+      if (await pageShowsAdDetail(page, libraryAdId)) return true
+    }
+    const link = page.getByRole('link', { name: pattern })
+    if (await link.count()) {
+      await link.first().click({ timeout: 5000 }).catch(() => {})
+      await page.waitForTimeout(2800)
+      if (await pageShowsAdDetail(page, libraryAdId)) return true
+    }
+  }
+
+  return pageShowsAdDetail(page, libraryAdId)
+}
+
+async function openAdDetailPage(page, libraryAdId) {
+  return openAdDetailViaSearch(page, libraryAdId)
+}
+
+async function scrapeAdDetail(page, libraryAdId, graphqlCollector = null) {
+  if (!isValidLibraryAdId(libraryAdId)) {
+    logProgress(`geo ad ${libraryAdId} — ID inválido (ignorado)`)
+    return emptyGeoResult()
+  }
+
+  const geoCollector = createGraphqlGeoCollector()
+  const geoHandler = geoCollector.createHandler(libraryAdId)
+  page.on('response', geoHandler)
+  if (graphqlCollector?.setPaused) graphqlCollector.setPaused(true)
+
+  try {
+    const opened = await openAdDetailPage(page, libraryAdId)
+    if (!opened) {
+      logProgress(`geo ad ${libraryAdId} — não abriu detalhe (ficou na listagem)`)
+      return emptyGeoResult()
+    }
+
+    for (const pattern of [/Ver detalhes do anúncio/i, /See ad details/i, /Ver resumo/i, /See summary/i]) {
+      await clickIfVisible(page, pattern)
+    }
+    await page.waitForTimeout(1200)
+
+    await expandAdDetailSections(page)
+    await page.waitForTimeout(1400)
+    await expandLocationTransparency(page)
+    await page.waitForTimeout(1200)
+
+    const domGeo = await extractGeoFromDom(page)
+    const bodyText = await page.evaluate(() => document.body.innerText)
+    const textGeo = parseAdDetailFromBodyText(bodyText)
+    const gqlGeo = geoCollector.getGeo()
+    const merged = mergeGeoResults(domGeo, textGeo, gqlGeo)
+
+    if (
+      process.env.META_ADS_GEO_DEBUG === '1' &&
+      !(merged.targetLocations?.length || merged.deliveryByRegion?.length)
+    ) {
+      const snippet =
+        bodyText.match(/transpar[eê]ncia[\s\S]{0,600}/i)?.[0] ??
+        bodyText.match(/localiza[cç][aã]o[\s\S]{0,400}/i)?.[0] ??
+        bodyText.slice(0, 400)
+      logProgress(`DEBUG geo ${libraryAdId}: ${String(snippet).replace(/\s+/g, ' ').slice(0, 320)}`)
+    }
+
+    return merged
+  } finally {
+    page.off('response', geoHandler)
+    if (graphqlCollector?.setPaused) graphqlCollector.setPaused(false)
+  }
+}
+
+async function enrichAdsWithDetails(page, ads, actorName, ctx, graphqlCollector = null) {
+  if (collectConfig.skipGeo) {
     logProgress(`${actorName}: detalhes geográficos desativados (META_ADS_SKIP_DETAILS)`)
     return ads
   }
 
   const pending = [...ads]
     .sort((a, b) => Number(b.isActive) - Number(a.isActive))
+    .filter((ad) => isValidLibraryAdId(ad.libraryAdId))
     .filter(adNeedsGeoDetail)
-    .slice(0, MAX_AD_DETAILS)
+    .slice(0, collectConfig.maxAdDetails)
 
   if (pending.length === 0) {
     logProgress(`${actorName}: segmentação/alcançe já extraídos da listagem`)
@@ -1384,7 +1791,7 @@ async function enrichAdsWithDetails(page, ads, actorName, ctx) {
       adTotal: pending.length,
     })
     try {
-      const detail = await scrapeAdDetail(page, ad.libraryAdId)
+      const detail = await scrapeAdDetail(page, ad.libraryAdId, graphqlCollector)
       const merged = mergeGeoResults(
         {
           targetLocations: ad.targetLocations ?? [],
@@ -1400,8 +1807,12 @@ async function enrichAdsWithDetails(page, ads, actorName, ctx) {
       ad.deliveryByRegionText = merged.deliveryByRegionText
 
       if (merged.targetLocations?.length || merged.deliveryByRegion?.length) {
+        const included = (merged.targetLocations ?? [])
+          .filter((loc) => !loc.excluded)
+          .map((loc) => loc.name)
+          .join(' · ')
         logProgress(
-          `${actorName}: geo ad ${ad.libraryAdId} — ${merged.targetLocationsText || merged.deliveryByRegionText}`
+          `${actorName}: geo ad ${ad.libraryAdId} — ${included || merged.targetLocationsText || merged.deliveryByRegionText}`,
         )
       } else {
         logProgress(`${actorName}: geo ad ${ad.libraryAdId} — sem localização na página de detalhes`)
@@ -1472,8 +1883,8 @@ async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
     )
   }
 
-  if (SKIP_GEO_DETAILS) return ads
-  return enrichAdsWithDetails(page, ads, searchTerm, ctx)
+  if (collectConfig.skipGeo) return ads
+  return enrichAdsWithDetails(page, ads, searchTerm, ctx, graphqlCollector)
 }
 
 function buildPageSearchUrl(pageId, opts = {}) {
@@ -1527,6 +1938,39 @@ async function runPageListingSearch(page, pageId, ctx, graphqlCollector, opts = 
   )
 
   return ads
+}
+
+async function loadExistingAdsFromDb(supabase, politicoId) {
+  const { data, error } = await supabase
+    .from('meta_ads_mentions')
+    .select(
+      'library_ad_id, page_name, page_id, payer_name, ad_body, library_url, is_active, started_running_at, ended_running_at, spend_text, spend_min_brl, spend_max_brl, impressions_text, audience_size_text, ads_in_group, target_locations, target_locations_text, delivery_by_region, delivery_by_region_text',
+    )
+    .eq('politico_id', politicoId)
+    .order('is_active', { ascending: false })
+  if (error) throw new Error(error.message)
+
+  return (data ?? []).map((row) => ({
+    libraryAdId: String(row.library_ad_id),
+    pageName: row.page_name,
+    pageId: row.page_id,
+    payerName: row.payer_name,
+    adBody: row.ad_body,
+    libraryUrl: row.library_url,
+    isActive: row.is_active,
+    startedRunningAt: row.started_running_at,
+    endedRunningAt: row.ended_running_at,
+    spendText: row.spend_text,
+    spendMinBrl: row.spend_min_brl,
+    spendMaxBrl: row.spend_max_brl,
+    impressionsText: row.impressions_text,
+    audienceSizeText: row.audience_size_text,
+    adsInGroup: row.ads_in_group,
+    targetLocations: Array.isArray(row.target_locations) ? row.target_locations : [],
+    targetLocationsText: row.target_locations_text,
+    deliveryByRegion: Array.isArray(row.delivery_by_region) ? row.delivery_by_region : [],
+    deliveryByRegionText: row.delivery_by_region_text,
+  }))
 }
 
 async function loadKnownPageIds(supabase, politicoId) {
@@ -1688,7 +2132,8 @@ async function upsertAds(supabase, politicoId, searchTerm, ads) {
 
 async function main() {
   loadEnvLocal()
-  const { politicoSlug, purgeOnly } = parseArgs()
+  const { politicoSlug, purgeOnly, geoFlag, geoOnly, geoForce } = parseArgs()
+  resolveCollectConfig({ politicoSlug, geoFlag, geoOnly, geoForce })
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -1748,10 +2193,20 @@ async function main() {
     return
   }
 
-  const estSecPerActor = SKIP_GEO_DETAILS ? 18 : 90
+  const estSecPerActor = collectConfig.geoOnly
+    ? 60
+    : collectConfig.skipGeo
+      ? 18
+      : 90
   logProgress(
-    `${actors.length} candidato(s) ativo(s) · modo ${SKIP_GEO_DETAILS ? 'rápido (sem geo)' : 'com detalhes geo'} · ` +
-      `estimativa ~${Math.max(1, Math.ceil((actors.length * estSecPerActor) / 60))} min`
+    `${actors.length} candidato(s) ativo(s) · modo ${
+      collectConfig.geoOnly
+        ? 'geo-only (localização)'
+        : collectConfig.skipGeo
+          ? 'rápido (sem geo)'
+          : 'com detalhes geo'
+    } · estimativa ~${Math.max(1, Math.ceil((actors.length * estSecPerActor) / 60))} min` +
+      (collectConfig.skipGeo ? '' : ` · até ${collectConfig.maxAdDetails} anúncio(s)/candidato`),
   )
 
   const results = []
@@ -1761,9 +2216,11 @@ async function main() {
   try {
     await report({
       phase: 'browser',
-      message: SKIP_GEO_DETAILS
-        ? 'Abrindo biblioteca da Meta (modo rápido, sem localização)…'
-        : 'Abrindo navegador automatizado (Playwright)…',
+      message: collectConfig.geoOnly
+        ? 'Atualizando localização dos anúncios já salvos…'
+        : collectConfig.skipGeo
+          ? 'Abrindo biblioteca da Meta (modo rápido, sem localização)…'
+          : 'Abrindo navegador automatizado (Playwright)…',
       actorTotal: actors.length,
     })
     browser = await chromium.launch({
@@ -1806,6 +2263,45 @@ async function main() {
       try {
         const actorStarted = Date.now()
         logProgress(`Candidato ${i + 1}/${actors.length}: ${actor.name}`)
+
+        if (collectConfig.geoOnly) {
+          const stored = await loadExistingAdsFromDb(supabase, actor.id)
+          const pending = stored
+            .filter((ad) => isValidLibraryAdId(ad.libraryAdId))
+            .filter((ad) => collectConfig.geoForce || adNeedsGeoDetail(ad))
+            .slice(0, collectConfig.maxAdDetails)
+          result.adsFound = pending.length
+          logProgress(
+            `${actor.name}: geo-only — ${pending.length} anúncio(s) para capturar localização`,
+          )
+          await ctx.report({
+            phase: 'geo',
+            message: `${actor.name}: capturando localização de ${pending.length} anúncio(s)`,
+            adTotal: pending.length,
+          })
+          await enrichAdsWithDetails(page, pending, actor.name, ctx, graphqlCollector)
+          await ctx.report({
+            phase: 'upsert',
+            message: `${actor.name}: salvando localização de ${pending.length} anúncio(s)…`,
+            adsFound: pending.length,
+          })
+          const { inserted, updated } = await upsertAds(
+            supabase,
+            actor.id,
+            actor.name,
+            pending,
+          )
+          result.adsInserted = inserted
+          result.adsUpdated = updated
+          logProgress(
+            `${actor.name}: geo-only concluído em ${formatElapsed(Date.now() - actorStarted)} — ` +
+              `${pending.length} anúncio(s) (${updated} atualizados)`,
+          )
+          results.push(result)
+          if (i < actors.length - 1) await sleep(PAUSE_BETWEEN_ACTORS_MS)
+          continue
+        }
+
         await ctx.report({
           phase: 'listing',
           message: `Candidato ${i + 1}/${actors.length}: ${actor.name}`,
