@@ -41,6 +41,11 @@ export function todayKeyInTz(timeZone: string = WAR_ROOM_REDES_TZ): string {
   return calendarDateInTz(new Date(), timeZone)
 }
 
+/** Dia civil anterior (America/Sao_Paulo por padrão) — janela consolidada. */
+export function yesterdayKeyInTz(timeZone: string = WAR_ROOM_REDES_TZ): string {
+  return cutoffKeyDaysAgo(2, timeZone)
+}
+
 export function formatDataCurta(iso: string, timeZone: string = WAR_ROOM_REDES_TZ): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
@@ -78,9 +83,17 @@ export function cutoffKeyDaysAgo(days: number, timeZone: string = WAR_ROOM_REDES
   return calendarDateInTz(cutoff, timeZone)
 }
 
-export function listDayKeys(days: number, timeZone: string = WAR_ROOM_REDES_TZ): string[] {
-  const today = todayKeyInTz(timeZone)
-  const [y, m, d] = today.split('-').map((p) => Number.parseInt(p, 10))
+/**
+ * Lista de dias civis. Por padrão termina em `hoje`.
+ * Com `throughYesterday: true`, exclui o dia atual (ainda não consolidado).
+ */
+export function listDayKeys(
+  days: number,
+  timeZone: string = WAR_ROOM_REDES_TZ,
+  opts?: { throughYesterday?: boolean },
+): string[] {
+  const end = opts?.throughYesterday ? yesterdayKeyInTz(timeZone) : todayKeyInTz(timeZone)
+  const [y, m, d] = end.split('-').map((p) => Number.parseInt(p, 10))
   if (!y || !m || !d) return []
   const base = new Date(Date.UTC(y, m - 1, d))
   const out: string[] = []
@@ -167,8 +180,9 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
     a.snapshot_date.localeCompare(b.snapshot_date),
   )
 
-  const dayKeys = listDayKeys(days)
-  const cutoff = cutoffKeyDaysAgo(days)
+  const dayKeys = listDayKeys(days, WAR_ROOM_REDES_TZ, { throughYesterday: true })
+  const cutoff = dayKeys[0] ?? cutoffKeyDaysAgo(days + 1)
+  const endKey = dayKeys[dayKeys.length - 1] ?? yesterdayKeyInTz()
 
   const seriesHasSignal = (series: Array<{ value: number }>) =>
     series.some((p) => Number.isFinite(p.value) && p.value !== 0)
@@ -223,8 +237,13 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
     return ((last - first) / Math.abs(first)) * 100
   }
 
-  const first = rows[0]
-  const last = rows[rows.length - 1]
+  const first = rows.find((r) => r.snapshot_date >= cutoff) ?? rows[0]
+  const last =
+    [...rows].reverse().find((r) => r.snapshot_date <= endKey) ??
+    rows[rows.length - 1]
+  const periodRows = rows.filter(
+    (r) => r.snapshot_date >= cutoff && r.snapshot_date <= endKey,
+  )
   const viewsFromApi = seriesFromDaily(metrics?.insights?.dailyViews)
   const viewsFromHistory = (() => {
     const byDate = new Map(rows.map((r) => [r.snapshot_date, r.impressions || 0] as const))
@@ -246,6 +265,7 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
     : seriesHasSignal(viewsFromHistory)
       ? 'Snapshots diários'
       : 'Soma das views das postagens no dia'
+
   const likesSeries = seriesFromPosts((p) => p.metrics.likes || 0)
   const commentsSeries = seriesFromPosts((p) => p.metrics.comments || 0)
   const sharesSeries = seriesFromPosts((p) => p.metrics.shares || 0)
@@ -259,22 +279,25 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
     value: manualVisitsByDate[date] ?? historyViewsByDate.get(date) ?? 0,
   }))
   const visitsTotal = totalOf(visitsSeries)
-  const followersSeries = rows.map((row, i) => {
-    const prev = i > 0 ? rows[i - 1]?.followers_count || 0 : row.followers_count || 0
-    const curr = row.followers_count || 0
-    return {
-      date: row.snapshot_date,
-      label: formatDataCurta(`${row.snapshot_date}T12:00:00`),
-      value: i === 0 ? 0 : curr - prev,
-    }
-  })
+  const followersByDate = new Map(
+    rows.map((row, i) => {
+      const prev = i > 0 ? rows[i - 1]?.followers_count || 0 : row.followers_count || 0
+      const curr = row.followers_count || 0
+      return [row.snapshot_date, i === 0 ? 0 : curr - prev] as const
+    }),
+  )
+  const followersSeries = dayKeys.map((date) => ({
+    date,
+    label: formatDataCurta(`${date}T12:00:00`),
+    value: followersByDate.get(date) ?? 0,
+  }))
   const followersNet =
     first && last ? (last.followers_count || 0) - (first.followers_count || 0) : 0
   let followersDeltaPct: number | null = null
-  if (rows.length >= 4 && first && last) {
-    const mid = Math.floor(rows.length / 2)
-    const midRow = rows[mid]
-    const midPrev = rows[mid - 1]
+  if (periodRows.length >= 4 && first && last) {
+    const mid = Math.floor(periodRows.length / 2)
+    const midRow = periodRows[mid]
+    const midPrev = periodRows[mid - 1]
     if (midRow && midPrev) {
       const firstHalf = (midPrev.followers_count || 0) - (first.followers_count || 0)
       const secondHalf = (last.followers_count || 0) - (midRow.followers_count || 0)
@@ -288,15 +311,19 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
     }
   }
 
+  const rawStories = metrics?.insights?.dailyStoryViews
+  const storySeries =
+    rawStories && rawStories.length > 0
+      ? seriesFromDaily(rawStories)
+      : dayKeys.map((date) => ({
+          date,
+          label: formatDataCurta(`${date}T12:00:00`),
+          value: 0,
+        }))
+  const storiesTotal = totalOf(storySeries)
+
+  /** Menu interno: sempre na mesma ordem, mesmo com zero. */
   return [
-    {
-      id: 'engagement',
-      label: 'Engajamento',
-      total: totalOf(engagementSeries),
-      deltaPct: deltaOf(engagementSeries),
-      series: engagementSeries,
-      legend: 'Soma das postagens no dia',
-    },
     {
       id: 'views',
       label: 'Visualizações',
@@ -314,41 +341,36 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
       legend: viewsLegend,
     },
     {
+      id: 'story-views',
+      label: 'Vis. Stories',
+      total: storiesTotal,
+      deltaPct: deltaOf(storySeries),
+      series: storySeries,
+      legend: 'Visualizações de Stories no período',
+    },
+    {
       id: 'visits',
-      label: 'Visitas no perfil',
+      label: 'Visitas ao perfil',
       total: visitsTotal,
       deltaPct: deltaOf(visitsSeries),
       series: visitsSeries,
       legend: 'Perfil · lançamento manual quando houver',
     },
-    (() => {
-      const raw = metrics?.insights?.dailyStoryViews
-      const storySeries =
-        raw && raw.length > 0
-          ? raw.map((p) => ({
-              date: p.date,
-              label: formatDataCurta(`${p.date}T12:00:00`),
-              value: p.value,
-            }))
-          : []
-      const storiesTotal =
-        metrics?.insights?.periodMetrics?.storiesViews ?? totalOf(storySeries)
-      return {
-        id: 'story-views',
-        label: 'Visualizações nos Stories',
-        total: storiesTotal,
-        deltaPct: deltaOf(storySeries),
-        series: storySeries,
-        legend: 'Graph · breakdown STORY',
-      }
-    })(),
     {
       id: 'followers',
       label: 'Seguidores',
       total: followersNet,
       deltaPct: followersDeltaPct,
       series: followersSeries,
-      legend: 'Ganho líquido no período',
+      legend: 'Ganho líquido diário no período',
+    },
+    {
+      id: 'engagement',
+      label: 'Engajamento',
+      total: totalOf(engagementSeries),
+      deltaPct: deltaOf(engagementSeries),
+      series: engagementSeries,
+      legend: 'Curtidas + comentários + compartilhamentos',
     },
     {
       id: 'likes',
@@ -374,10 +396,5 @@ export function buildWarRoomRedesDesempenhoKpis(opts: {
       series: sharesSeries,
       legend: 'Soma das postagens no dia',
     },
-  ].filter(
-    (kpi) =>
-      kpi.id === 'visits' ||
-      kpi.total !== 0 ||
-      kpi.series.some((p) => p.value !== 0),
-  )
+  ]
 }
