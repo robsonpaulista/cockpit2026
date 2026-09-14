@@ -36,11 +36,17 @@ type CopilotoTab =
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
-  const { setViewMode } = useWarRoomViewMode()
+  const { setViewMode, copilotoTabHint, clearCopilotoTabHint } = useWarRoomViewMode()
   const [tab, setTab] = useState<CopilotoTab>('cidades')
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
+
+  useEffect(() => {
+    if (!copilotoTabHint) return
+    setTab(copilotoTabHint)
+    clearCopilotoTabHint()
+  }, [copilotoTabHint, clearCopilotoTabHint])
 
   const loadAgendaProximos = useCallback(async () => {
     try {

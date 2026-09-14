@@ -701,29 +701,35 @@ export function gerarPlanoAmostragemPublico(input: GerarPlanoAmostragemInput): P
 
   const tipoLabel = input.tipoPesquisa === 'eleitoral' ? 'eleitoral' : 'de opinião pública'
   const margemAprox =
-    amostraTotal >= 1500
-      ? '±2,5 p.p.'
-      : amostraTotal >= 1400
-        ? '±2,6 p.p.'
-        : amostraTotal >= 1300
-          ? '±2,7 p.p.'
-          : amostraTotal >= 1200
-            ? '±2,8 p.p.'
-            : amostraTotal >= 1100
-              ? '±3,0 p.p.'
-              : amostraTotal >= 1000
-                ? '±3,1 p.p.'
-                : amostraTotal >= 900
-                  ? '±3,3 p.p.'
-                  : amostraTotal >= 800
-                    ? '±3,5 p.p.'
-                    : amostraTotal >= 700
-                      ? '±3,7 p.p.'
-                      : amostraTotal >= 600
-                        ? '±4 p.p.'
-                        : amostraTotal >= 500
-                          ? '±4,4 p.p.'
-                          : '±4,9 p.p.'
+    amostraTotal >= 2000
+      ? '±2,2 p.p.'
+      : amostraTotal >= 1800
+        ? '±2,3 p.p.'
+        : amostraTotal >= 1600
+          ? '±2,4 p.p.'
+          : amostraTotal >= 1500
+            ? '±2,5 p.p.'
+            : amostraTotal >= 1400
+              ? '±2,6 p.p.'
+              : amostraTotal >= 1300
+                ? '±2,7 p.p.'
+                : amostraTotal >= 1200
+                  ? '±2,8 p.p.'
+                  : amostraTotal >= 1100
+                    ? '±3,0 p.p.'
+                    : amostraTotal >= 1000
+                      ? '±3,1 p.p.'
+                      : amostraTotal >= 900
+                        ? '±3,3 p.p.'
+                        : amostraTotal >= 800
+                          ? '±3,5 p.p.'
+                          : amostraTotal >= 700
+                            ? '±3,7 p.p.'
+                            : amostraTotal >= 600
+                              ? '±4 p.p.'
+                              : amostraTotal >= 500
+                                ? '±4,4 p.p.'
+                                : '±4,9 p.p.'
 
   const splitLabel = usaSplitSetor
     ? 'população por setor IBGE 2022'

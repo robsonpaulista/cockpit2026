@@ -39,6 +39,11 @@ interface TerritorioInfo {
   motivo: string
   expectativaVotos?: number
   visitas?: number
+  ultimaVisitaRelativa?: string
+  deltaVisitas?: number | null
+  regiaoLabel?: string
+  coberturaLabel?: string
+  proximaAgendaLabel?: string
 }
 
 export interface PrioridadeCampoMapaRow {
@@ -78,6 +83,8 @@ interface MapaPresencaProps {
   territoriosQuentes?: TerritorioInfo[]
   territoriosMornos?: TerritorioInfo[]
   territoriosFrios?: TerritorioInfo[]
+  /** Foco regional controlado (War Room · Presença). */
+  focusRegiao?: string | null
 }
 
 interface DemografiaMunicipioRow {
@@ -184,6 +191,7 @@ export function MapaPresenca({
   territoriosMornos = [],
   territoriosFrios = [],
   prioridadeCampoLista = [],
+  focusRegiao = null,
 }: MapaPresencaProps) {
   const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
@@ -200,6 +208,11 @@ export function MapaPresenca({
   useEffect(() => {
     setClientReady(true)
   }, [])
+
+  useEffect(() => {
+    if (focusRegiao == null) return
+    setFiltroRegiao(focusRegiao === '' ? 'todas' : focusRegiao)
+  }, [focusRegiao])
 
   // Fullscreen: só reage se ESTE mapa estiver dentro do elemento em tela cheia
   useEffect(() => {
@@ -1074,14 +1087,6 @@ export function MapaPresenca({
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-full" style={{ background: '#f2d06b' }} />
               <span>Com meta</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 animate-pulse rounded-full" style={{ background: '#2b2d31' }} />
-              <span className="font-medium" style={{ color: '#2b2d31' }}>Oportunidade</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full opacity-80" style={{ background: '#686865' }} />
-              <span>Sem meta</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-2 w-4 rounded border" style={{ background: 'rgba(242,208,107,0.25)', borderColor: 'rgba(43,45,49,0.2)' }} />

@@ -14794,14 +14794,20 @@ body[data-war-room-clean] .wr-page-canvas .wr-heatmap-cell-val--on-light {
 
 .wr-cobertura:fullscreen .wr-cobertura__body,
 .wr-cobertura:-webkit-full-screen .wr-cobertura__body,
-.wr-cobertura--fs .wr-cobertura__body {
+.wr-cobertura--fs .wr-cobertura__body,
+.wr-cobertura:fullscreen .wr-territorio__workspace,
+.wr-cobertura:-webkit-full-screen .wr-territorio__workspace,
+.wr-cobertura--fs .wr-territorio__workspace {
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .wr-cobertura:fullscreen .wr-cobertura__map > *,
 .wr-cobertura:-webkit-full-screen .wr-cobertura__map > *,
-.wr-cobertura--fs .wr-cobertura__map > * {
+.wr-cobertura--fs .wr-cobertura__map > *,
+.wr-cobertura:fullscreen .wr-territorio__map-shell,
+.wr-cobertura:-webkit-full-screen .wr-territorio__map-shell,
+.wr-cobertura--fs .wr-territorio__map-shell {
   min-height: 0;
   height: 100%;
 }
@@ -15106,6 +15112,895 @@ body[data-war-room-clean] .wr-page-canvas .wr-heatmap-cell-val--on-light {
   .wr-cobertura__body { grid-template-columns: 1fr; }
   .wr-cobertura__map > * { min-height: 360px; }
   .wr-cobertura__side { max-height: 360px; }
+}
+
+/* ========== Presença no Território (evolução Cobertura) ========== */
+.wr-territorio {
+  gap: 10px;
+}
+
+.wr-territorio__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.wr-territorio__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wr-territorio--home {
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  background: #fff;
+}
+
+.wr-territorio--home .wr-territorio__head--home {
+  align-items: center;
+  margin: 0;
+  gap: 8px;
+}
+
+.wr-territorio--home .wr-territorio__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-territorio--home .wr-territorio__title-icon {
+  color: var(--wr-text-primary, #2b2d31);
+  flex-shrink: 0;
+}
+
+.wr-territorio--home .wr-territorio__title-info {
+  color: var(--wr-text-secondary, #70737a);
+  flex-shrink: 0;
+}
+
+.wr-territorio--home .wr-territorio__period {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wr-text-secondary, #70737a);
+  background: color-mix(in srgb, var(--wr-mist, #f5f6f8) 80%, #fff);
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #2b2d31) 8%, transparent);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.wr-territorio--home .wr-territorio__workspace,
+.wr-territorio--home .wr-territorio__workspace--home {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 8px;
+}
+
+.wr-territorio--home .wr-territorio__stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 8px;
+}
+
+.wr-territorio--home .wr-territorio__modes {
+  position: static;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.wr-territorio--home .wr-territorio__map-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  border-radius: 12px;
+}
+
+.wr-territorio--home .wr-territorio__legend--home {
+  position: static;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.wr-territorio--home .wr-territorio__home-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wr-mist, #f5f6f8) 70%, #fff);
+}
+
+.wr-territorio--home .wr-territorio__home-kpi {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--wr-text-secondary, #70737a);
+}
+
+.wr-territorio--home .wr-territorio__home-kpi strong {
+  font-weight: 750;
+  color: var(--wr-text-primary, #2b2d31);
+}
+
+.wr-territorio--home .wr-territorio__home-kpi--up {
+  color: #15803d;
+}
+
+.wr-territorio--home .wr-territorio__home-kpi--up strong {
+  color: #15803d;
+}
+
+.wr-territorio--home .wr-territorio__home-kpi--alert {
+  color: #b45309;
+}
+
+.wr-territorio--home .wr-territorio__home-kpi--alert strong {
+  color: #b45309;
+}
+
+.wr-territorio__title {
+  margin: 0;
+  font-family: var(--wr-font);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--wr-aux, #6b7280);
+}
+
+/* KPIs — faixa executiva compacta */
+.wr-territorio__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wr-territorio__kpi {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  background: #fff;
+  min-width: 0;
+}
+
+.wr-territorio__kpi--alert {
+  border-color: color-mix(in srgb, #b42318 18%, transparent);
+}
+
+.wr-territorio__kpi-val {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__kpi-val small {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.wr-territorio__kpi-val--up { color: #1f7a4d; }
+.wr-territorio__kpi-val--down { color: #b42318; }
+
+.wr-territorio__kpi-label {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+/* Workspace: mapa ~72% | regiões ~28% */
+.wr-territorio__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(260px, 320px);
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-territorio__stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wr-territorio__map-shell {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 520px;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 0;
+  background: #fff;
+}
+
+.wr-territorio__map-shell > *:first-child {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0 !important;
+}
+
+/* HUD flutuante no mapa (modos + legenda) */
+.wr-territorio__hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 24px));
+  pointer-events: none;
+}
+
+.wr-territorio__hud > * {
+  pointer-events: auto;
+}
+
+/* Zoom do Leaflet: canto inferior esquerdo — não sobrepõe o HUD */
+.wr-territorio__map-shell .leaflet-top.leaflet-left {
+  top: auto;
+  bottom: 12px;
+  left: 12px;
+}
+
+.wr-territorio__map-shell .leaflet-control-zoom {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 10%, transparent) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(43, 45, 49, 0.08);
+}
+
+.wr-territorio__map-shell .mapa-marker-foguete-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.wr-territorio__modes {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  width: max-content;
+  max-width: none;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 10%, transparent);
+  box-shadow: 0 6px 20px rgba(43, 45, 49, 0.08);
+  box-sizing: border-box;
+}
+
+.wr-territorio__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wr-aux, #6b7280);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.wr-territorio__mode--on {
+  background: #2b2d31;
+  color: #f2d06b;
+}
+
+.wr-territorio__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 10%, transparent);
+  box-shadow: 0 6px 20px rgba(43, 45, 49, 0.08);
+}
+
+.wr-territorio__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.wr-territorio__legend-dot--strong {
+  width: 14px;
+  height: 18px;
+  border-radius: 0;
+  background: transparent center / contain no-repeat url('/foguete.png');
+  box-shadow: none;
+}
+
+.wr-territorio__legend-dot--mid {
+  background: #f2d06b;
+  opacity: 0.7;
+}
+
+.wr-territorio__legend-dot--soft {
+  background: #686865;
+}
+
+.wr-territorio__legend-dot--alert {
+  background: #2b2d31;
+  box-shadow: 0 0 0 3px rgba(43, 45, 49, 0.12);
+}
+
+/* Painel regional — só regiões, coluna única */
+.wr-territorio__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  background: #fff;
+  overflow: auto;
+}
+
+.wr-territorio__panel-label {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+  flex-shrink: 0;
+}
+
+.wr-territorio__regions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wr-territorio__region {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 12px 12px 11px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.wr-territorio__region:hover {
+  background: #fff;
+  border-color: color-mix(in srgb, #2b2d31 22%, transparent);
+  box-shadow: 0 4px 14px rgba(43, 45, 49, 0.06);
+}
+
+.wr-territorio__region-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wr-territorio__region-top strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__region-tone {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wr-aux, #6b7280) 12%, #fff);
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__region--forte .wr-territorio__region-tone {
+  background: color-mix(in srgb, #1f7a4d 14%, #fff);
+  color: #1f7a4d;
+}
+
+.wr-territorio__region--expansao .wr-territorio__region-tone {
+  background: color-mix(in srgb, #8a6a12 14%, #fff);
+  color: #8a6a12;
+}
+
+.wr-territorio__region--atencao .wr-territorio__region-tone,
+.wr-territorio__region--critico .wr-territorio__region-tone {
+  background: color-mix(in srgb, #b42318 12%, #fff);
+  color: #b42318;
+}
+
+.wr-territorio__region-mid {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wr-territorio__region-pct {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--wr-text-primary, #20201f);
+  line-height: 1;
+}
+
+.wr-territorio__region-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.wr-territorio__region-delta em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--wr-aux, #6b7280);
+  margin-left: 2px;
+}
+
+.wr-territorio__region-meta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__region-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  overflow: hidden;
+}
+
+.wr-territorio__region-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #f2d06b;
+  transition: width 280ms ease;
+}
+
+.wr-territorio__region-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.wr-territorio__region-badge--hot { color: #8a6a12; }
+.wr-territorio__region-badge--warn { color: #b42318; }
+
+.wr-territorio__focus {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.wr-territorio__focus-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wr-territorio__focus-head strong {
+  display: block;
+  font-size: 14px;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__focus-head span {
+  font-size: 11px;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__focus-back {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 12%, transparent);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wr-territorio__focus-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wr-territorio__mini-list > p {
+  margin: 0 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__mini-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wr-territorio__mini-list button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #f5f5f3;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wr-text-primary, #20201f);
+  cursor: pointer;
+  text-align: left;
+}
+
+.wr-territorio__mini-list button:hover {
+  background: color-mix(in srgb, #f2d06b 30%, #fff);
+}
+
+.wr-territorio__mini-list span {
+  font-size: 11px;
+  color: var(--wr-aux, #6b7280);
+}
+
+/* Base: movimento + oportunidade lado a lado */
+.wr-territorio__intel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.9fr);
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.wr-territorio__intel:not(:has(.wr-territorio__opportunity)) {
+  grid-template-columns: 1fr;
+}
+
+.wr-territorio__intel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__movement {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+  background: #fff;
+}
+
+.wr-territorio__movement-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wr-territorio__movement-grid strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__movement-grid span {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio__opportunity {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #2b2d31 16%, transparent);
+  background: color-mix(in srgb, #f2d06b 28%, #fff);
+}
+
+.wr-territorio__opportunity .wr-territorio__intel-title {
+  color: #2b2d31;
+}
+
+.wr-territorio__opportunity-text {
+  margin: 0;
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio__opportunity-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  align-self: flex-start;
+  margin-top: 12px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #2b2d31;
+  color: #f2d06b;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wr-territorio__opportunity-btn:hover {
+  filter: brightness(1.06);
+}
+
+/* Drawer da cidade */
+.wr-territorio-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wr-territorio-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(43, 45, 49, 0.28);
+  cursor: pointer;
+}
+
+.wr-territorio-drawer__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 100%);
+  height: 100%;
+  background: #fff;
+  box-shadow: -12px 0 40px rgba(43, 45, 49, 0.14);
+  animation: wr-territorio-drawer-in 240ms ease;
+}
+
+@keyframes wr-territorio-drawer-in {
+  from { transform: translateX(16px); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.wr-territorio-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 8%, transparent);
+}
+
+.wr-territorio-drawer__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio-drawer__title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--wr-text-primary, #20201f) 12%, transparent);
+  background: #fff;
+  cursor: pointer;
+}
+
+.wr-territorio-drawer__body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wr-territorio-drawer__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio-drawer__hero {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio-drawer__hero span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio-drawer__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.wr-territorio-drawer__delta--up { color: #1f7a4d; }
+.wr-territorio-drawer__delta--down { color: #b42318; }
+
+.wr-territorio-drawer__value {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-territorio-drawer__muted {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-territorio-drawer__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.wr-territorio-drawer__cta {
+  margin-top: auto;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: #2b2d31;
+  color: #f2d06b;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wr-territorio:fullscreen .wr-territorio__workspace,
+.wr-territorio:-webkit-full-screen .wr-territorio__workspace,
+.wr-territorio.wr-cobertura--fs .wr-territorio__workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wr-territorio:fullscreen .wr-territorio__map-shell,
+.wr-territorio:-webkit-full-screen .wr-territorio__map-shell,
+.wr-territorio.wr-cobertura--fs .wr-territorio__map-shell {
+  min-height: 0;
+}
+
+@media (max-width: 1100px) {
+  .wr-territorio__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wr-territorio__workspace { grid-template-columns: 1fr; }
+  .wr-territorio__map-shell { min-height: 400px; }
+  .wr-territorio__panel { max-height: 420px; }
+  .wr-territorio__intel { grid-template-columns: 1fr; }
+  .wr-territorio__movement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .wr-territorio__kpis { grid-template-columns: 1fr 1fr; }
+  .wr-territorio__movement-grid { grid-template-columns: 1fr; }
+  .wr-territorio-drawer__panel { width: 100%; }
 }
 
 @keyframes wr-copiloto-panel-in {

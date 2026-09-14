@@ -11,13 +11,27 @@ import {
 
 export type WarRoomViewMode = 'padrao' | 'desempenho' | 'copiloto'
 
+export type WarRoomCopilotoTabHint =
+  | 'cidades'
+  | 'cobertura'
+  | 'obras'
+  | 'emendas'
+  | 'redes'
+  | 'anuncios'
+  | 'panorama'
+  | 'comparativo'
+  | 'relatorio'
+
 type WarRoomViewModeContextValue = {
   viewMode: WarRoomViewMode
   isDesempenho: boolean
   isCopiloto: boolean
+  copilotoTabHint: WarRoomCopilotoTabHint | null
   setViewMode: (mode: WarRoomViewMode) => void
   toggleDesempenho: () => void
   toggleCopiloto: () => void
+  openCopilotoTab: (tab: WarRoomCopilotoTabHint) => void
+  clearCopilotoTabHint: () => void
 }
 
 const WarRoomViewModeContext = createContext<WarRoomViewModeContextValue | null>(
@@ -26,6 +40,9 @@ const WarRoomViewModeContext = createContext<WarRoomViewModeContextValue | null>
 
 export function WarRoomViewModeProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewModeState] = useState<WarRoomViewMode>('padrao')
+  const [copilotoTabHint, setCopilotoTabHint] = useState<WarRoomCopilotoTabHint | null>(
+    null,
+  )
 
   const setViewMode = useCallback((mode: WarRoomViewMode) => {
     setViewModeState((prev) => (prev === mode ? prev : mode))
@@ -39,16 +56,36 @@ export function WarRoomViewModeProvider({ children }: { children: ReactNode }) {
     setViewModeState((prev) => (prev === 'copiloto' ? 'padrao' : 'copiloto'))
   }, [])
 
+  const openCopilotoTab = useCallback((tab: WarRoomCopilotoTabHint) => {
+    setCopilotoTabHint(tab)
+    setViewModeState('copiloto')
+  }, [])
+
+  const clearCopilotoTabHint = useCallback(() => {
+    setCopilotoTabHint(null)
+  }, [])
+
   const value = useMemo(
     () => ({
       viewMode,
       isDesempenho: viewMode === 'desempenho',
       isCopiloto: viewMode === 'copiloto',
+      copilotoTabHint,
       setViewMode,
       toggleDesempenho,
       toggleCopiloto,
+      openCopilotoTab,
+      clearCopilotoTabHint,
     }),
-    [viewMode, setViewMode, toggleDesempenho, toggleCopiloto],
+    [
+      viewMode,
+      copilotoTabHint,
+      setViewMode,
+      toggleDesempenho,
+      toggleCopiloto,
+      openCopilotoTab,
+      clearCopilotoTabHint,
+    ],
   )
 
   return (

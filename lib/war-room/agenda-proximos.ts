@@ -226,6 +226,17 @@ export function proximaAgendaDoMunicipio(
   return best
 }
 
+/** Texto compacto para chip permanente do mapa (ex.: `15/09`). */
+export function formatProximaAgendaPopupLabel(
+  itens: WarRoomAgendaProximoItem[] | undefined,
+): string | null {
+  const prox = proximaAgendaDoMunicipio(itens)
+  if (!prox) return null
+  const [, m, d] = prox.dataKey.split('-')
+  if (d && m) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}`
+  return prox.dataLabel
+}
+
 /**
  * Cidades da tabela War Room com agenda na janela.
  * Mesma regra do ícone no ranking Copiloto: município IPT + ≥1 item em agendaPorMunicipio.

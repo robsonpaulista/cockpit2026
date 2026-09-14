@@ -22,7 +22,10 @@ import {
 const execFileAsync = promisify(execFile)
 
 /** Coletas sem finished_at após esse prazo são consideradas travadas. */
-const STALE_COLLECT_MS = 16 * 60 * 1000
+const STALE_COLLECT_MS = 50 * 60 * 1000
+
+/** Tempo máximo do script Playwright (listagem multi-candidato + geo). */
+const COLLECT_EXEC_TIMEOUT_MS = 45 * 60 * 1000
 
 let collectInProgress = false
 
@@ -30,6 +33,9 @@ let collectInProgress = false
 function sanitizeCollectErrorMessage(raw: string): string {
   const text = raw.replace(/\s+/g, ' ').trim()
   if (!text) return 'Erro na coleta Meta Ads'
+  if (/ETIMEDOUT|timed? ?out|TIMEOUT/i.test(text)) {
+    return 'Coleta Meta Ads excedeu o tempo limite. Tente de novo ou use “Capturar localização” só para geo.'
+  }
   if (/Chromium|playwright install/i.test(text)) {
     return 'Chromium do Playwright não instalado. Rode: npx playwright install chromium'
   }
@@ -251,7 +257,7 @@ export async function collectMetaAds(options?: {
 
     const { stdout, stderr } = await execFileAsync(process.execPath, args, {
       cwd: process.cwd(),
-      timeout: 900_000,
+      timeout: COLLECT_EXEC_TIMEOUT_MS,
       maxBuffer: 8 * 1024 * 1024,
       env: {
         ...process.env,
@@ -308,8 +314,15 @@ export async function collectMetaAds(options?: {
 
     return parsed
   } catch (e) {
-    const raw = e instanceof Error ? e.message : 'Erro na coleta Meta Ads'
-    const msg = sanitizeCollectErrorMessage(raw)
+    const err = e as Error & { killed?: boolean; signal?: string; code?: string | number | null }
+    const raw = err instanceof Error ? err.message : 'Erro na coleta Meta Ads'
+    const timedOut =
+      err?.killed === true ||
+      err?.code === 'ETIMEDOUT' ||
+      /ETIMEDOUT|timed? ?out/i.test(raw)
+    const msg = timedOut
+      ? 'Coleta Meta Ads excedeu o tempo limite (45 min). Os anúncios já salvos permanecem; rode de novo ou use “Capturar localização”.'
+      : sanitizeCollectErrorMessage(raw)
     await admin
       .from('meta_ads_collect_log')
       .update({

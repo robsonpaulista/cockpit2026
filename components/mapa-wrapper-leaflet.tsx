@@ -26,6 +26,13 @@ interface TerritorioInfo {
   motivo: string
   expectativaVotos?: number
   visitas?: number
+  /** Briefing territorial (War Room) */
+  ultimaVisitaRelativa?: string
+  deltaVisitas?: number | null
+  regiaoLabel?: string
+  coberturaLabel?: string
+  /** Próxima visita agendada (War Room) */
+  proximaAgendaLabel?: string
 }
 
 export interface MapStats {
@@ -125,11 +132,22 @@ function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
-/** Evita crash Leaflet `_leaflet_pos` ao remover mapa no meio de zoom animado. */
+/** Evita crash Leaflet `_leaflet_pos` / `classList` ao remover mapa no meio de pan/zoom. */
 function safeRemoveLeafletMap(map: L.Map | null | undefined): void {
   if (!map) return
   try {
     map.stop()
+  } catch {
+    // ignore
+  }
+  try {
+    // Cancela viscosidade/limites que ainda podem disparar pan residual
+    map.setMaxBounds(null as unknown as L.LatLngBounds)
+  } catch {
+    // ignore
+  }
+  try {
+    map.off()
   } catch {
     // ignore
   }
@@ -148,6 +166,136 @@ function isLeafletMapUsable(map: L.Map | null | undefined): map is L.Map {
   } catch {
     return false
   }
+}
+
+/** War Room: mantém o popup dentro da área visível (HUD + maxBounds do PI). */
+function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
+  let restoreTimer: number | null = null
+  let savedBounds: L.LatLngBounds | null = null
+  let savedViscosity: number | undefined
+
+  const clearRestoreTimer = () => {
+    if (restoreTimer != null) {
+      window.clearTimeout(restoreTimer)
+      restoreTimer = null
+    }
+  }
+
+  const restoreBounds = () => {
+    clearRestoreTimer()
+    if (!isLeafletMapUsable(map)) return
+    try {
+      if (savedBounds) map.setMaxBounds(savedBounds)
+      if (savedViscosity != null) map.options.maxBoundsViscosity = savedViscosity
+    } catch {
+      // ignore
+    }
+    savedBounds = null
+    savedViscosity = undefined
+  }
+
+  marker.on('popupopen', () => {
+    clearRestoreTimer()
+    const popup = marker.getPopup()
+    if (!popup || !isLeafletMapUsable(map)) return
+
+    popup.options.offset = L.point(0, 7)
+    popup.getElement()?.classList.remove('mapa-wr-popup--below')
+
+    try {
+      const mb = map.options.maxBounds
+      if (mb instanceof L.LatLngBounds) {
+        savedBounds = L.latLngBounds(mb.getSouthWest(), mb.getNorthEast())
+      } else if (mb) {
+        savedBounds = L.latLngBounds(mb as [L.LatLngExpression, L.LatLngExpression])
+      } else {
+        savedBounds = null
+      }
+      savedViscosity = map.options.maxBoundsViscosity
+      // Afrouxa só o suficiente para o auto-pan / panInside caber o card
+      if (savedBounds) map.setMaxBounds(savedBounds.pad(0.35))
+      map.options.maxBoundsViscosity = 0.2
+    } catch {
+      // ignore
+    }
+
+    const fit = () => {
+      if (!isLeafletMapUsable(map)) return
+      const el = popup.getElement()
+      if (!el) return
+
+      const h = Math.max(el.offsetHeight, 120)
+      const w = Math.max(el.offsetWidth, 196)
+      try {
+        map.panInside(marker.getLatLng(), {
+          paddingTopLeft: L.point(Math.round(w / 2) + 20, h + 64),
+          paddingBottomRight: L.point(Math.round(w / 2) + 20, 28),
+          animate: true,
+          duration: 0.22,
+        })
+      } catch {
+        // ignore
+      }
+
+      window.setTimeout(() => {
+        if (!isLeafletMapUsable(map)) return
+        const popupEl = popup.getElement()
+        if (!popupEl) return
+        const mapRect = map.getContainer().getBoundingClientRect()
+        const popupRect = popupEl.getBoundingClientRect()
+        const padTop = 56
+        const pad = 10
+
+        // Ainda cortado no topo (canto extremo) → abre abaixo do pin
+        if (popupRect.top < mapRect.top + padTop - 2) {
+          const height = popupEl.offsetHeight
+          popup.options.offset = L.point(0, height + 20)
+          popupEl.classList.add('mapa-wr-popup--below')
+          try {
+            popup.update()
+          } catch {
+            // ignore
+          }
+          window.setTimeout(() => {
+            if (!isLeafletMapUsable(map)) return
+            try {
+              map.panInside(marker.getLatLng(), {
+                paddingTopLeft: L.point(24, 56),
+                paddingBottomRight: L.point(24, height + 28),
+                animate: true,
+                duration: 0.18,
+              })
+            } catch {
+              // ignore
+            }
+          }, 30)
+          return
+        }
+
+        let panX = 0
+        let panY = 0
+        if (popupRect.left < mapRect.left + pad) panX = popupRect.left - (mapRect.left + pad)
+        if (popupRect.right > mapRect.right - pad) panX = popupRect.right - (mapRect.right - pad)
+        if (popupRect.bottom > mapRect.bottom - pad) panY = popupRect.bottom - (mapRect.bottom - pad)
+        if (panX !== 0 || panY !== 0) {
+          try {
+            map.panBy([panX, panY], { animate: true, duration: 0.15 })
+          } catch {
+            // ignore
+          }
+        }
+      }, 240)
+    }
+
+    requestAnimationFrame(() => requestAnimationFrame(fit))
+  })
+
+  marker.on('popupclose', () => {
+    const popup = marker.getPopup()
+    popup?.getElement()?.classList.remove('mapa-wr-popup--below')
+    if (popup) popup.options.offset = L.point(0, 7)
+    restoreTimer = window.setTimeout(restoreBounds, 280)
+  })
 }
 
 function safeIptFitView(map: L.Map, pts: Array<[number, number]>): void {
@@ -226,6 +374,7 @@ const POPUP_ICON = {
   alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   spark: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
 } as const
 
 function popupIconWell(svg: string, bg: string): string {
@@ -241,8 +390,16 @@ function popupMetricRow(opts: {
   labelColor: string
   border: string
   last?: boolean
+  compact?: boolean
 }): string {
   const border = opts.last ? 'none' : `1px solid ${opts.border}`
+  if (opts.compact) {
+    return `<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:${border};">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:${opts.iconBg};flex-shrink:0;">${opts.icon}</span>
+    <span style="flex:1;min-width:0;font-size:10px;font-weight:500;letter-spacing:0.01em;color:${opts.labelColor};">${opts.label}</span>
+    <span style="font-size:11px;font-weight:650;letter-spacing:-0.01em;color:${opts.valueColor};font-variant-numeric:tabular-nums;text-align:right;max-width:48%;">${opts.value}</span>
+  </div>`
+  }
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:${border};">
     ${popupIconWell(opts.icon, opts.iconBg)}
     <span style="flex:1;min-width:0;font-size:11px;font-weight:500;letter-spacing:0.02em;color:${opts.labelColor};">${opts.label}</span>
@@ -261,6 +418,11 @@ function createTooltipHTML(
     motivo?: string | null
     expectativaVotos?: number
     visitas?: number
+    ultimaVisitaRelativa?: string | null
+    deltaVisitas?: number | null
+    regiaoLabel?: string | null
+    coberturaLabel?: string | null
+    proximaAgendaLabel?: string | null
   },
   options?: { markerTheme?: MapMarkerTheme; expectativaLabel?: string },
 ): string {
@@ -278,6 +440,11 @@ function createTooltipHTML(
       expectativaVotos,
       visitas,
       metaLabel,
+      ultimaVisitaRelativa: config.ultimaVisitaRelativa,
+      deltaVisitas: config.deltaVisitas,
+      regiaoLabel: config.regiaoLabel,
+      coberturaLabel: config.coberturaLabel,
+      proximaAgendaLabel: config.proximaAgendaLabel,
     })
   }
 
@@ -397,7 +564,7 @@ function createTooltipHTML(
   </div>`
 }
 
-/** Popup War Room — amarelo / preto / cinza, ícones SVG premium. */
+/** Popup War Room — compacto (amarelo / preto / cinza). */
 function createWarRoomTooltipHTML(config: {
   nome: string
   tipo: 'visitada' | 'com-presenca' | 'sem-presenca' | 'oportunidade'
@@ -406,8 +573,26 @@ function createWarRoomTooltipHTML(config: {
   expectativaVotos?: number
   visitas?: number
   metaLabel: string
+  ultimaVisitaRelativa?: string | null
+  deltaVisitas?: number | null
+  regiaoLabel?: string | null
+  coberturaLabel?: string | null
+  proximaAgendaLabel?: string | null
 }): string {
-  const { nome, tipo, eleitorado, motivo, expectativaVotos, visitas, metaLabel } = config
+  const {
+    nome,
+    tipo,
+    eleitorado,
+    motivo,
+    expectativaVotos,
+    visitas,
+    metaLabel,
+    ultimaVisitaRelativa,
+    deltaVisitas,
+    regiaoLabel,
+    coberturaLabel,
+    proximaAgendaLabel,
+  } = config
   const ink = WR_MARKER.black
   const muted = WR_MARKER.gray
   const soft = '#f3f3f1'
@@ -417,111 +602,130 @@ function createWarRoomTooltipHTML(config: {
 
   const statusMeta: Record<
     string,
-    { label: string; pillBg: string; pillFg: string; icon: string; wellBg: string }
+    { label: string; pillBg: string; pillFg: string; icon: string }
   > = {
     visitada: {
-      label: 'Visitada',
+      label: coberturaLabel || 'Visitada',
       pillBg: yellow,
       pillFg: ink,
       icon: POPUP_ICON.check,
-      wellBg: yellow,
     },
     'com-presenca': {
-      label: 'Com meta',
+      label: coberturaLabel || 'Com meta',
       pillBg: yellow,
       pillFg: ink,
       icon: POPUP_ICON.target,
-      wellBg: yellowSoft,
     },
     'sem-presenca': {
       label: 'Sem meta',
       pillBg: WR_MARKER.gray,
       pillFg: '#fff',
       icon: POPUP_ICON.alert,
-      wellBg: soft,
     },
     oportunidade: {
       label: 'Oportunidade',
       pillBg: ink,
       pillFg: yellow,
       icon: POPUP_ICON.spark,
-      wellBg: soft,
     },
   }
   const st = statusMeta[tipo]
 
   const hasVisitas = !!(visitas && visitas > 0)
   const hasMeta = !!(expectativaVotos && expectativaVotos > 0)
+  const hasUltima = !!(ultimaVisitaRelativa && ultimaVisitaRelativa.trim())
+  const hasDelta = deltaVisitas != null && deltaVisitas !== 0
+  const hasAgenda = !!(proximaAgendaLabel && proximaAgendaLabel.trim())
+
+  const row = (opts: Omit<Parameters<typeof popupMetricRow>[0], 'compact' | 'border'> & { last?: boolean }) =>
+    popupMetricRow({ ...opts, border, compact: true })
 
   let rows = ''
-  rows += popupMetricRow({
-    icon: popupSvgIcon(st.icon, ink),
-    iconBg: st.wellBg,
-    label: 'Status',
-    value: st.label,
-    valueColor: ink,
-    labelColor: muted,
-    border,
-  })
-  rows += popupMetricRow({
-    icon: popupSvgIcon(POPUP_ICON.users, ink),
-    iconBg: soft,
-    label: 'Eleitores',
-    value: eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D',
-    valueColor: ink,
-    labelColor: muted,
-    border,
-    last: !hasVisitas && !hasMeta,
-  })
+  if (hasAgenda) {
+    rows += row({
+      icon: popupSvgIcon(POPUP_ICON.calendar, ink, 11),
+      iconBg: yellowSoft,
+      label: 'Próxima visita',
+      value: proximaAgendaLabel!,
+      valueColor: ink,
+      labelColor: muted,
+    })
+  }
+  if (hasUltima) {
+    rows += row({
+      icon: popupSvgIcon(POPUP_ICON.navigation, ink, 11),
+      iconBg: yellowSoft,
+      label: 'Última visita',
+      value: ultimaVisitaRelativa!,
+      valueColor: ink,
+      labelColor: muted,
+    })
+  }
   if (hasVisitas) {
-    rows += popupMetricRow({
-      icon: popupSvgIcon(POPUP_ICON.navigation, ink),
+    rows += row({
+      icon: popupSvgIcon(POPUP_ICON.check, ink, 11),
       iconBg: soft,
       label: 'Visitas',
       value: String(visitas),
       valueColor: ink,
       labelColor: muted,
-      border,
-      last: !hasMeta,
+    })
+  }
+  if (hasDelta) {
+    const sign = deltaVisitas! > 0 ? '↑ +' : '↓ '
+    rows += row({
+      icon: popupSvgIcon(POPUP_ICON.spark, ink, 11),
+      iconBg: soft,
+      label: 'vs. anterior',
+      value: `${sign}${Math.abs(deltaVisitas!)}`,
+      valueColor: ink,
+      labelColor: muted,
     })
   }
   if (hasMeta) {
-    rows += popupMetricRow({
-      icon: popupSvgIcon(POPUP_ICON.target, ink),
+    rows += row({
+      icon: popupSvgIcon(POPUP_ICON.target, ink, 11),
       iconBg: yellowSoft,
       label: metaLabel,
       value: expectativaVotos!.toLocaleString('pt-BR'),
       valueColor: ink,
       labelColor: muted,
-      border,
-      last: true,
     })
   }
+  rows += row({
+    icon: popupSvgIcon(POPUP_ICON.users, ink, 11),
+    iconBg: soft,
+    label: 'Eleitores',
+    value: eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D',
+    valueColor: ink,
+    labelColor: muted,
+    last: true,
+  })
 
   let extras = ''
-  if (motivo) {
-    extras += `<div style="margin-top:10px;padding:10px 12px;background:${soft};border-radius:10px;border:1px solid ${border};font-size:11px;color:${muted};line-height:1.45;display:flex;gap:8px;align-items:flex-start;">
-      <span style="flex-shrink:0;margin-top:1px;">${popupSvgIcon(POPUP_ICON.info, muted, 13)}</span>
+  if (motivo && !hasUltima && !hasVisitas) {
+    extras += `<div style="margin-top:6px;padding:6px 8px;background:${soft};border-radius:7px;border:1px solid ${border};font-size:10px;color:${muted};line-height:1.35;display:flex;gap:6px;align-items:flex-start;">
+      <span style="flex-shrink:0;margin-top:1px;">${popupSvgIcon(POPUP_ICON.info, muted, 11)}</span>
       <span style="color:${ink};">${motivo}</span>
     </div>`
   }
   if (tipo === 'oportunidade') {
-    extras += `<div style="margin-top:10px;padding:9px 12px;background:${ink};border-radius:10px;font-size:11px;font-weight:650;color:${yellow};text-align:center;letter-spacing:0.01em;">Alto potencial de crescimento</div>`
+    extras += `<div style="margin-top:6px;padding:6px 8px;background:${ink};border-radius:7px;font-size:10px;font-weight:650;color:${yellow};text-align:center;">Alto potencial</div>`
   }
 
-  return `<div class="mapa-wr-popup" style="font-family:${APP_FONT_STACK_CSS};min-width:248px;max-width:300px;background:#fff;">
-    <div style="height:3px;background:${yellow};"></div>
-    <div style="padding:14px 40px 12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+  return `<div class="mapa-wr-popup" style="font-family:${APP_FONT_STACK_CSS};min-width:196px;max-width:232px;background:#fff;">
+    <div style="height:2px;background:${yellow};"></div>
+    <div style="padding:8px 28px 6px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
       <div style="min-width:0;">
-        <p style="margin:0;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${muted};">Município</p>
-        <strong style="display:block;margin-top:2px;color:${ink};font-size:16px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;">${nome}</strong>
+        <p style="margin:0;font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${muted};line-height:1.2;">${regiaoLabel || 'Município'}</p>
+        <strong style="display:block;margin-top:1px;color:${ink};font-size:13px;font-weight:700;letter-spacing:-0.02em;line-height:1.15;">${nome}</strong>
       </div>
-      <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:${st.pillBg};color:${st.pillFg};font-size:10px;font-weight:700;letter-spacing:0.02em;">
-        ${popupSvgIcon(st.icon, st.pillFg, 11)}
+      <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:999px;background:${st.pillBg};color:${st.pillFg};font-size:9px;font-weight:700;letter-spacing:0.01em;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        ${popupSvgIcon(st.icon, st.pillFg, 10)}
         ${st.label}
       </span>
     </div>
-    <div style="padding:0 16px 14px;">
+    <div style="padding:0 10px 8px;">
       ${rows}
       ${extras}
     </div>
@@ -581,30 +785,80 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
   .leaflet-popup-tip {
     box-shadow: 0 3px 10px rgba(0,0,0,0.1) !important;
   }
+  .mapa-leaflet-host--wr .leaflet-container {
+    background: #ffffff !important;
+  }
   .mapa-leaflet-host--wr .leaflet-popup-content-wrapper {
-    border-radius: 14px !important;
+    border-radius: 10px !important;
     border: 1px solid rgba(43,45,49,0.08) !important;
-    box-shadow: 0 18px 48px rgba(43,45,49,0.18), 0 2px 10px rgba(43,45,49,0.06) !important;
+    box-shadow: 0 10px 28px rgba(43,45,49,0.14), 0 1px 4px rgba(43,45,49,0.05) !important;
+  }
+  .mapa-leaflet-host--wr .leaflet-popup-content {
+    margin: 0 !important;
+    line-height: 1.25 !important;
   }
   .mapa-leaflet-host--wr .leaflet-popup-tip {
     background: #fff !important;
   }
   .mapa-leaflet-host--wr .leaflet-popup-close-button {
-    top: 10px !important;
-    right: 10px !important;
-    width: 22px !important;
-    height: 22px !important;
+    top: 6px !important;
+    right: 6px !important;
+    width: 18px !important;
+    height: 18px !important;
     padding: 0 !important;
-    border-radius: 6px !important;
+    border-radius: 5px !important;
     color: #686865 !important;
-    font-size: 18px !important;
+    font-size: 14px !important;
     font-weight: 400 !important;
-    line-height: 20px !important;
+    line-height: 16px !important;
     background: #f3f3f1 !important;
   }
   .mapa-leaflet-host--wr .leaflet-popup-close-button:hover {
     color: #2b2d31 !important;
     background: #f2d06b !important;
+  }
+  /* Popup abaixo do pin (cidades no topo do mapa) */
+  .mapa-leaflet-host--wr .leaflet-popup.mapa-wr-popup--below .leaflet-popup-tip-container {
+    top: 0;
+    bottom: auto;
+    margin-top: -10px;
+    transform: scaleY(-1);
+  }
+  .mapa-leaflet-host--wr .leaflet-popup.mapa-wr-popup--below .leaflet-popup-content-wrapper {
+    margin-top: 10px;
+  }
+  /* Chip permanente de próxima visita agendada */
+  .mapa-leaflet-host--wr .mapa-wr-agenda-tooltip {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .mapa-leaflet-host--wr .mapa-wr-agenda-tooltip::before {
+    display: none !important;
+  }
+  .mapa-wr-agenda-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 32px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ${APP_FONT_STACK_CSS};
+    font-size: 6px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: #2b2d31;
+    background: #f2d06b;
+    border: 0;
+    border-radius: 2px;
+    padding: 0 1.5px;
+    box-shadow: 0 1px 1px rgba(43,45,49,0.08);
+    pointer-events: none;
+    transform: scale(0.92);
+    transform-origin: center bottom;
   }
 
   @keyframes mapa-marker-enter {
@@ -728,14 +982,39 @@ export function MapWrapperLeaflet({
   onIptMunicipioToggleFiltroRef.current = onIptMunicipioToggleFiltro
   onIptInsightSavedRef.current = onIptInsightSaved
 
+  type ClassifEntry = {
+    tipo: string
+    motivo: string
+    expectativaVotos?: number
+    visitas?: number
+    ultimaVisitaRelativa?: string
+    deltaVisitas?: number | null
+    regiaoLabel?: string
+    coberturaLabel?: string
+    proximaAgendaLabel?: string
+  }
+
   // Build territory classification lookup
-  const classificacaoMapRef = useRef(new Map<string, { tipo: string; motivo: string; expectativaVotos?: number; visitas?: number }>())
+  const classificacaoMapRef = useRef(new Map<string, ClassifEntry>())
 
   useEffect(() => {
-    const classMap = new Map<string, { tipo: string; motivo: string; expectativaVotos?: number; visitas?: number }>()
-    territoriosQuentes.forEach(t => classMap.set(normalizeName(t.cidade), { tipo: 'quente', motivo: t.motivo, expectativaVotos: t.expectativaVotos, visitas: t.visitas }))
-    territoriosMornos.forEach(t => classMap.set(normalizeName(t.cidade), { tipo: 'morno', motivo: t.motivo, expectativaVotos: t.expectativaVotos, visitas: t.visitas }))
-    territoriosFrios.forEach(t => classMap.set(normalizeName(t.cidade), { tipo: 'frio', motivo: t.motivo, expectativaVotos: t.expectativaVotos, visitas: t.visitas }))
+    const classMap = new Map<string, ClassifEntry>()
+    const put = (t: TerritorioInfo, tipo: string) => {
+      classMap.set(normalizeName(t.cidade), {
+        tipo,
+        motivo: t.motivo,
+        expectativaVotos: t.expectativaVotos,
+        visitas: t.visitas,
+        ultimaVisitaRelativa: t.ultimaVisitaRelativa,
+        deltaVisitas: t.deltaVisitas,
+        regiaoLabel: t.regiaoLabel,
+        coberturaLabel: t.coberturaLabel,
+        proximaAgendaLabel: t.proximaAgendaLabel,
+      })
+    }
+    territoriosQuentes.forEach((t) => put(t, 'quente'))
+    territoriosMornos.forEach((t) => put(t, 'morno'))
+    territoriosFrios.forEach((t) => put(t, 'frio'))
     classificacaoMapRef.current = classMap
   }, [territoriosQuentes, territoriosMornos, territoriosFrios])
 
@@ -748,6 +1027,7 @@ export function MapWrapperLeaflet({
     const map = L.map(mapRef.current, {
       zoomControl: true,
       attributionControl: false,
+      zoomSnap: markerTheme === 'war-room' ? 0.25 : 1,
     }).setView([-6.5, -43.0], 7)
     mapInstanceRef.current = map
 
@@ -755,6 +1035,14 @@ export function MapWrapperLeaflet({
     map.createPane('heatmapPane')
     const heatPane = map.getPane('heatmapPane')
     if (heatPane) { heatPane.style.zIndex = '250'; heatPane.style.pointerEvents = 'none' }
+
+    // Máscara fora do PI (War Room): acima do heat, abaixo dos marcadores
+    map.createPane('piMaskOutside')
+    const maskPane = map.getPane('piMaskOutside')
+    if (maskPane) {
+      maskPane.style.zIndex = '350'
+      maskPane.style.pointerEvents = 'none'
+    }
 
     map.createPane('markersPane')
     const markersPane = map.getPane('markersPane')
@@ -780,6 +1068,11 @@ export function MapWrapperLeaflet({
       motivo: string | null
       expectativaVotos?: number
       visitas?: number
+      ultimaVisitaRelativa?: string
+      deltaVisitas?: number | null
+      regiaoLabel?: string
+      coberturaLabel?: string
+      proximaAgendaLabel?: string
     }
 
     const cidades: CidadeClassificada[] = []
@@ -1059,6 +1352,11 @@ export function MapWrapperLeaflet({
         motivo: classif?.motivo || null,
         expectativaVotos: classif?.expectativaVotos,
         visitas: classif?.visitas,
+        ultimaVisitaRelativa: classif?.ultimaVisitaRelativa,
+        deltaVisitas: classif?.deltaVisitas,
+        regiaoLabel: classif?.regiaoLabel,
+        coberturaLabel: classif?.coberturaLabel,
+        proximaAgendaLabel: classif?.proximaAgendaLabel,
       })
     })
 
@@ -1163,9 +1461,61 @@ export function MapWrapperLeaflet({
     const drawOrder: Record<string, number> = { 'sem-presenca': 0, 'oportunidade': 1, 'com-presenca': 2, 'visitada': 3 }
     const sortedCidades = [...cidades].sort((a, b) => (drawOrder[a.tipo] || 0) - (drawOrder[b.tipo] || 0))
     const isWarRoom = markerTheme === 'war-room'
+    const popupOpts: L.PopupOptions = isWarRoom
+      ? {
+          maxWidth: 236,
+          autoPan: true,
+          keepInView: true,
+          autoPanPaddingTopLeft: L.point(20, 64),
+          autoPanPaddingBottomRight: L.point(20, 24),
+        }
+      : { maxWidth: 300 }
+
+    const bindCityPopup = (
+      marker: L.Marker,
+      html: string,
+      agendaChip?: { label: string; offsetY?: number },
+    ) => {
+      marker.bindPopup(html, popupOpts)
+      if (isWarRoom) {
+        attachWarRoomPopupKeepInView(map, marker)
+        const label = agendaChip?.label?.trim()
+        if (label) {
+          const safe = label
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+          marker.bindTooltip(
+            `<span class="mapa-wr-agenda-chip" title="${safe}">${safe}</span>`,
+            {
+              permanent: true,
+              direction: 'top',
+              offset: L.point(0, agendaChip?.offsetY ?? -8),
+              opacity: 1,
+              className: 'mapa-wr-agenda-tooltip',
+              interactive: false,
+            },
+          )
+        }
+      }
+    }
 
     sortedCidades.forEach(c => {
-      const { municipio, eleitorado, tipo, classificacao, motivo, expectativaVotos, visitas } = c
+      const {
+        municipio,
+        eleitorado,
+        tipo,
+        classificacao,
+        motivo,
+        expectativaVotos,
+        visitas,
+        ultimaVisitaRelativa,
+        deltaVisitas,
+        regiaoLabel,
+        coberturaLabel,
+        proximaAgendaLabel,
+      } = c
 
       // Animation delay: north-to-south sweep (0 to 1500ms)
       const normalizedLat = (municipio.lat - minLat) / latRange // 0 (south) to 1 (north)
@@ -1173,25 +1523,65 @@ export function MapWrapperLeaflet({
 
       const tooltipHTML = createTooltipHTML(
         appearance,
-        { nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas },
+        {
+          nome: municipio.nome,
+          tipo,
+          eleitorado,
+          classificacao,
+          motivo,
+          expectativaVotos,
+          visitas,
+          ultimaVisitaRelativa,
+          deltaVisitas,
+          regiaoLabel,
+          coberturaLabel,
+          proximaAgendaLabel,
+        },
         { markerTheme, expectativaLabel },
       )
 
       if (tipo === 'visitada') {
-        const size = compactMarkers ? 12 : 24
-        const checkSize = compactMarkers ? 7 : 12
-        const borderWidth = compactMarkers ? 1.5 : 2
-        const vBg = isWarRoom ? WR_MARKER.yellow : isDark ? '#0d9488' : '#2563EB'
-        const vBorder = isWarRoom ? WR_MARKER.yellow : isDark ? '#0f766e' : '#1D4ED8'
-        const vCheck = isWarRoom ? WR_MARKER.black : 'white'
-        const vShadow = isWarRoom
-          ? '0 2px 8px rgba(43,45,49,0.18)'
-          : isDark
+        if (isWarRoom) {
+          // Foguete vertical (proporção ~0.73) — âncora na base da chama
+          const w = compactMarkers ? 20 : 28
+          const h = Math.round(w * (1027 / 750))
+          const icon = L.divIcon({
+            className: 'mapa-marker-foguete-wrap',
+            html: `<div class="mapa-marker-foguete" style="
+              width:${w}px;height:${h}px;
+              animation-delay:${animDelay}ms;
+              filter:drop-shadow(0 2px 5px rgba(43,45,49,0.32));
+            ">
+              <img src="/foguete.png" alt="" width="${w}" height="${h}" draggable="false" style="
+                width:${w}px;height:${h}px;object-fit:contain;pointer-events:none;display:block;
+              " />
+            </div>`,
+            iconSize: [w, h],
+            iconAnchor: [Math.round(w / 2), h],
+            popupAnchor: [0, -h + 4],
+          })
+          const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
+          bindCityPopup(
+            marker,
+            tooltipHTML,
+            proximaAgendaLabel
+              ? { label: proximaAgendaLabel, offsetY: -(h - 2) }
+              : undefined,
+          )
+          marker.addTo(visitadasLayer)
+        } else {
+          const size = compactMarkers ? 12 : 24
+          const checkSize = compactMarkers ? 7 : 12
+          const borderWidth = compactMarkers ? 1.5 : 2
+          const vBg = isDark ? '#0d9488' : '#2563EB'
+          const vBorder = isDark ? '#0f766e' : '#1D4ED8'
+          const vCheck = 'white'
+          const vShadow = isDark
             ? '0 2px 12px rgba(45,212,191,0.45)'
             : '0 2px 8px rgba(37,99,235,0.5)'
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="width:${size}px;height:${size}px;position:relative;">
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="width:${size}px;height:${size}px;position:relative;">
             <div class="mapa-marker-dot" style="
               width:${size}px;height:${size}px;
               background:${vBg};
@@ -1205,13 +1595,20 @@ export function MapWrapperLeaflet({
               </svg>
             </div>
           </div>`,
-          iconSize: [size, size],
-          iconAnchor: [size / 2, size / 2],
-          popupAnchor: [0, -size / 2 - 4],
-        })
-        const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
-        marker.bindPopup(tooltipHTML, { maxWidth: 300 })
-        marker.addTo(visitadasLayer)
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+            popupAnchor: [0, -size / 2 - 4],
+          })
+          const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
+          bindCityPopup(
+            marker,
+            tooltipHTML,
+            proximaAgendaLabel
+              ? { label: proximaAgendaLabel, offsetY: -(size / 2 + 2) }
+              : undefined,
+          )
+          marker.addTo(visitadasLayer)
+        }
 
       } else if (tipo === 'com-presenca') {
         const size = compactMarkers ? 9 : 14
@@ -1240,16 +1637,26 @@ export function MapWrapperLeaflet({
           popupAnchor: [0, -size / 2 - 4],
         })
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
-        marker.bindPopup(tooltipHTML, { maxWidth: 300 })
+        bindCityPopup(
+          marker,
+          tooltipHTML,
+          proximaAgendaLabel
+            ? { label: proximaAgendaLabel, offsetY: -(size / 2 + 2) }
+            : undefined,
+        )
         marker.addTo(comPresencaLayer)
 
       } else if (tipo === 'oportunidade') {
+        if (isWarRoom) {
+          // War Room / Presença: não desenha marcadores de oportunidade
+          return
+        }
         const size = getMarkerSize(eleitorado, compactMarkers)
         const pulseSize = size * (compactMarkers ? 2 : 2.5)
         const container = pulseSize + (compactMarkers ? 4 : 6)
-        const oBg = isWarRoom ? WR_MARKER.black : '#F59E0B'
-        const oBorder = isWarRoom ? WR_MARKER.blackBorder : '#D97706'
-        const oPulse = isWarRoom ? 'rgba(43,45,49,0.22)' : 'rgba(245,158,11,0.25)'
+        const oBg = '#F59E0B'
+        const oBorder = '#D97706'
+        const oPulse = 'rgba(245,158,11,0.25)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">
@@ -1266,37 +1673,28 @@ export function MapWrapperLeaflet({
           popupAnchor: [0, -size / 2 - 4],
         })
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
-        marker.bindPopup(tooltipHTML, { maxWidth: 300 })
+        bindCityPopup(marker, tooltipHTML)
         marker.addTo(oportunidadesLayer)
 
+      } else if (isWarRoom) {
+        // War Room / Presença: não desenha marcadores de cidades sem meta
+        return
       } else {
         // sem-presenca
         const size = getMarkerSize(eleitorado, compactMarkers)
         const container = size + (compactMarkers ? 6 : 10)
         const isLarge = eleitorado >= 20000
         const isMedium = eleitorado >= 10000
-        const bgColor = isWarRoom
-          ? isLarge
-            ? WR_MARKER.grayStrong
-            : isMedium
-              ? WR_MARKER.grayMidSoft
-              : WR_MARKER.graySoft
-          : isLarge
-            ? 'rgba(220,38,38,0.85)'
-            : isMedium
-              ? 'rgba(239,68,68,0.7)'
-              : 'rgba(248,113,113,0.5)'
-        const borderColor = isWarRoom
-          ? isLarge
-            ? WR_MARKER.grayStrongBorder
-            : isMedium
-              ? WR_MARKER.grayMidBorder
-              : WR_MARKER.graySoftBorder
-          : isLarge
-            ? 'rgba(153,27,27,0.9)'
-            : isMedium
-              ? 'rgba(220,38,38,0.8)'
-              : 'rgba(239,68,68,0.6)'
+        const bgColor = isLarge
+          ? 'rgba(220,38,38,0.85)'
+          : isMedium
+            ? 'rgba(239,68,68,0.7)'
+            : 'rgba(248,113,113,0.5)'
+        const borderColor = isLarge
+          ? 'rgba(153,27,27,0.9)'
+          : isMedium
+            ? 'rgba(220,38,38,0.8)'
+            : 'rgba(239,68,68,0.6)'
         const borderWidth = isLarge ? 2 : 1
 
         const icon = L.divIcon({
@@ -1314,7 +1712,7 @@ export function MapWrapperLeaflet({
           popupAnchor: [0, -size / 2 - 4],
         })
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
-        marker.bindPopup(tooltipHTML, { maxWidth: 300 })
+        bindCityPopup(marker, tooltipHTML)
         marker.addTo(semPresencaLayer)
       }
     })
@@ -1356,13 +1754,133 @@ export function MapWrapperLeaflet({
     }
     Object.values(layersRef.current).forEach(layer => layer.addTo(map))
 
+    // Enquadra o Piauí (evita “mar” vazio de MA/CE ao redor)
+    const piauiPts = municipiosPiaui
+      .filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng))
+      .map((m) => [m.lat, m.lng] as [number, number])
+
+    let fitCancelled = false
+    const fitDelays: number[] = []
+    let piauiCropAbort = false
+    let piauiCropRefitTimer: number | null = null
+
+    if (piauiPts.length >= 2) {
+      const piauiBounds = L.latLngBounds(piauiPts)
+      // Aperto leve no War Room (PI alongado N–S em container wide)
+      const fitBoundsTarget = isWarRoom ? piauiBounds.pad(-0.04) : piauiBounds
+
+      const fitPiaui = () => {
+        if (fitCancelled) return
+        if (mapInstanceRef.current !== map) return
+        if (!isLeafletMapUsable(map)) return
+        try {
+          map.stop()
+          map.invalidateSize({ animate: false })
+          map.fitBounds(fitBoundsTarget, {
+            paddingTopLeft: [isWarRoom ? 24 : 36, isWarRoom ? 96 : 28],
+            paddingBottomRight: [isWarRoom ? 24 : 36, isWarRoom ? 24 : 28],
+            maxZoom: isWarRoom ? 9 : 8,
+            animate: false,
+          })
+          map.setMaxBounds(piauiBounds.pad(isWarRoom ? 0.18 : 0.35))
+          map.setMinZoom(isWarRoom ? 6.5 : 6)
+          map.options.maxBoundsViscosity = isWarRoom ? 0.9 : 0.75
+        } catch {
+          // mapa em transição / destruído
+        }
+      }
+
+      fitPiaui()
+      // Um único re-fit após o container estabilizar (evita corrida de animações)
+      fitDelays.push(window.setTimeout(fitPiaui, 120))
+    }
+
+    // War Room: máscara opaca fora do contorno IBGE do PI + re-fit no polígono
+    if (isWarRoom) {
+      void (async () => {
+        try {
+          const res = await fetch('/api/geo/malha-municipios-pi')
+          if (!res.ok || piauiCropAbort || mapInstanceRef.current !== map) return
+          const payload = (await res.json()) as { contornoUf?: GeoJSON.GeoJSON | null }
+          const geoUf = payload.contornoUf
+          if (!geoUf || piauiCropAbort || mapInstanceRef.current !== map) return
+
+          const { buildOutsidePiauiMask } = await import('@/lib/geo-piaui-mask')
+          if (piauiCropAbort || mapInstanceRef.current !== map) return
+
+          const maskFeature = buildOutsidePiauiMask(geoUf)
+          if (maskFeature && isLeafletMapUsable(map)) {
+            L.geoJSON(maskFeature as GeoJSON.GeoJSON, {
+              pane: 'piMaskOutside',
+              interactive: false,
+              style: {
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                stroke: false,
+              },
+            }).addTo(map)
+          }
+
+          // Contorno sutil do estado
+          if (isLeafletMapUsable(map)) {
+            L.geoJSON(geoUf, {
+              pane: 'piMaskOutside',
+              interactive: false,
+              style: {
+                fill: false,
+                color: '#2b2d31',
+                weight: 1.25,
+                opacity: 0.28,
+              },
+            }).addTo(map)
+          }
+
+          const ufBounds = L.geoJSON(geoUf).getBounds()
+          if (!ufBounds.isValid() || piauiCropAbort || !isLeafletMapUsable(map)) return
+
+          const fitUf = () => {
+            if (piauiCropAbort || fitCancelled) return
+            if (mapInstanceRef.current !== map || !isLeafletMapUsable(map)) return
+            try {
+              map.stop()
+              map.invalidateSize({ animate: false })
+              map.fitBounds(ufBounds.pad(0.02), {
+                paddingTopLeft: [20, 88],
+                paddingBottomRight: [20, 20],
+                maxZoom: 9.25,
+                animate: false,
+              })
+              map.setMaxBounds(ufBounds.pad(0.1))
+              map.setMinZoom(6.75)
+              map.options.maxBoundsViscosity = 1
+            } catch {
+              // mapa em transição / destruído
+            }
+          }
+
+          fitUf()
+          if (piauiCropAbort || fitCancelled) return
+          piauiCropRefitTimer = window.setTimeout(fitUf, 140)
+          if (piauiCropAbort || fitCancelled) {
+            window.clearTimeout(piauiCropRefitTimer)
+            piauiCropRefitTimer = null
+          }
+        } catch {
+          // fallback: enquadramento por pontos já aplicado
+        }
+      })()
+    }
+
     const containerEl = mapRef.current
     const scheduleInvalidateSize = () => {
+      if (fitCancelled) return
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const m = mapInstanceRef.current
-          if (!m) return
+          if (!m || m !== map || fitCancelled) return
+          if (!isLeafletMapUsable(m)) return
           try {
+            m.stop()
             m.invalidateSize({ animate: false })
           } catch {
             // mapa já removido
@@ -1383,6 +1901,10 @@ export function MapWrapperLeaflet({
 
     // Cleanup
     return () => {
+      fitCancelled = true
+      piauiCropAbort = true
+      fitDelays.forEach((id) => window.clearTimeout(id))
+      if (piauiCropRefitTimer != null) window.clearTimeout(piauiCropRefitTimer)
       invalidateDelays.forEach((id) => window.clearTimeout(id))
       resizeObserver?.disconnect()
       window.removeEventListener('resize', scheduleInvalidateSize)
@@ -1394,7 +1916,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, markerTheme, expectativaLabel, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro, iptFullscreen])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, markerTheme, expectativaLabel, territoriosQuentes, territoriosMornos, territoriosFrios, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro, iptFullscreen])
 
   // ========== Handle filter changes ==========
   useEffect(() => {

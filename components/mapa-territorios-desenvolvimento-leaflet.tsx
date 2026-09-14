@@ -14,10 +14,7 @@ import 'leaflet/dist/leaflet.css'
 import { cn } from '@/lib/utils'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 import { getLeafletBasemapLayerOptions } from '@/lib/leaflet-basemap'
-import bbox from '@turf/bbox'
-import bboxPolygon from '@turf/bbox-polygon'
-import difference from '@turf/difference'
-import { featureCollection } from '@turf/helpers'
+import { buildOutsidePiauiMask } from '@/lib/geo-piaui-mask'
 import { CORES_TERRITORIO_DESENVOLVIMENTO_PI, getCorTerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento-cores'
 import {
   getResumoPorTerritorioDesenvolvimentoPI,
@@ -1272,29 +1269,6 @@ function ajustarCaixaMapaAoViewportPiaui(
   const { w, h } = dimensoesRetanguloContido(W, H, larguraSobreAltura)
   aspectBoxEl.style.width = `${w}px`
   aspectBoxEl.style.height = `${h}px`
-}
-
-/**
- * Polígono = retângulo amplo − contorno da UF, para cobrir vizinhos e oceano com cor sólida,
- * deixando só o interior do Piauí com o mapa-base (tiles) visível.
- */
-function buildOutsidePiauiMask(geoUf: GeoJSON.GeoJSON): GeoJSON.Feature | null {
-  if (geoUf.type !== 'FeatureCollection') return null
-  const fc = geoUf as GeoJSON.FeatureCollection
-  const ufFeat = fc.features[0]
-  if (!ufFeat?.geometry) return null
-  try {
-    const bb = bbox(ufFeat)
-    const pad = 14
-    const big = bboxPolygon([bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad])
-    const diffInput = featureCollection([big, ufFeat]) as GeoJSON.FeatureCollection<
-      GeoJSON.Polygon | GeoJSON.MultiPolygon
-    >
-    const mask = difference(diffInput)
-    return mask ?? null
-  } catch {
-    return null
-  }
 }
 
 const fmtInt = new Intl.NumberFormat('pt-BR')

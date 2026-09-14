@@ -155,11 +155,10 @@ export function WarRoomCopilotoAnunciosView() {
       const res = await fetch('/api/meta-ads/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          geoOnly
-            ? { politicoSlug: OWN_CANDIDATE_SLUG, geoOnly: true }
-            : {},
-        ),
+        body: JSON.stringify({
+          politicoSlug: OWN_CANDIDATE_SLUG,
+          ...(geoOnly ? { geoOnly: true } : {}),
+        }),
       })
       const json = (await res.json()) as {
         error?: string
