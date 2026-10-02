@@ -13,6 +13,8 @@ export type ResumoCidade = {
   expectativaVotos: number
   promessaVotos: number
   expectativaLegadoVotos: number
+  /** Revisão Final (`previsto_2026`) — só preenchido na leitura do banco. */
+  previstoVotos?: number
   votacaoFinal2022: number
   liderancas: number
 }
@@ -26,6 +28,8 @@ export type LiderancaResumo = {
   projecaoAferida: number
   projecaoPromessa: number
   projecaoLegado: number
+  /** Revisão Final (`previsto_2026`) — só preenchido na leitura do banco. */
+  projecaoPrevisto?: number
   /** Coluna LIDERANCA ATUAL = EM DIÁLOGO */
   emDialogo: boolean
 }

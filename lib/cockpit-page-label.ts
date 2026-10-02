@@ -7,7 +7,6 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/resumo-eleicoes/secao')) return 'Por seção'
   if (p.startsWith('/dashboard/resumo-eleicoes/historico')) return 'Hist. federal'
   if (p.startsWith('/dashboard/territorio/ipt')) return 'Mapa Diagnóstico Campanha'
-  if (p.startsWith('/dashboard/territorio/mapa-tds')) return 'Mapa TDs'
   if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
   if (p.startsWith('/dashboard/noticias/monitoramento')) return 'Monitoramento'
   if (p.startsWith('/dashboard/radar-224')) return 'Radar 224'

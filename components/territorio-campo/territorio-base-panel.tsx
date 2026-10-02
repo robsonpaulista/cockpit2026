@@ -48,13 +48,14 @@ interface Lideranca {
   [key: string]: any
 }
 
-type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+type CenarioVotos = 'revisao_final' | 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 type SortCidadeCol = 'cidade' | 'expectativa'
 
 /** Rótulo fixo na UI — o cenário só altera a coluna de votos, não o texto exibido. */
 const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
 
 function labelCenarioDados(cenario: CenarioVotos): string {
+  if (cenario === 'revisao_final') return 'Revisão Final'
   if (cenario === 'promessa_lideranca') return 'Prometido'
   if (cenario === 'legado_anterior') return 'Expectativa'
   return 'Aferido'
@@ -87,7 +88,7 @@ export function TerritorioBasePanel() {
   const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
-  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
+  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('revisao_final')
   const [sortCol, setSortCol] = useState<SortCidadeCol>('expectativa')
   const [sortAsc, setSortAsc] = useState(false)
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
@@ -200,7 +201,12 @@ export function TerritorioBasePanel() {
       (/expectativa.*votos.*2026/i.test(h) && !/jadyel/i.test(normalized) && !/promessa/i.test(normalized) && !/aferid[oa]/i.test(normalized))
   })
 
+  const revisaoFinalCol = headers.find((h) => /revis[aã]o\s+final/i.test(h))
+
   const votosReferenciaCol = (() => {
+    if (cenarioVotos === 'revisao_final') {
+      return revisaoFinalCol || expectativaLegadoCol || expectativaJadyelCol || promessaLiderancaCol
+    }
     if (cenarioVotos === 'promessa_lideranca') {
       return promessaLiderancaCol || expectativaJadyelCol || expectativaLegadoCol
     }
@@ -214,6 +220,12 @@ export function TerritorioBasePanel() {
   const labelCenarioDadosAtivo = labelCenarioDados(cenarioVotos)
 
   useEffect(() => {
+    if (headers.length === 0) return
+    if (cenarioVotos === 'revisao_final' && !revisaoFinalCol) {
+      if (expectativaLegadoCol) setCenarioVotos('legado_anterior')
+      else if (expectativaJadyelCol) setCenarioVotos('aferido_jadyel')
+      return
+    }
     if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol) {
       if (expectativaJadyelCol) {
         setCenarioVotos('aferido_jadyel')
@@ -237,7 +249,14 @@ export function TerritorioBasePanel() {
         setCenarioVotos('promessa_lideranca')
       }
     }
-  }, [cenarioVotos, promessaLiderancaCol, expectativaJadyelCol, expectativaLegadoCol])
+  }, [
+    headers.length,
+    cenarioVotos,
+    revisaoFinalCol,
+    promessaLiderancaCol,
+    expectativaJadyelCol,
+    expectativaLegadoCol,
+  ])
 
   // Função para normalizar números
   const normalizeNumber = (value: any): number => {
@@ -558,7 +577,7 @@ export function TerritorioBasePanel() {
         ? [
             {
               id: 'expectativa-votos',
-              label: LABEL_EXPECTATIVA_2026,
+              label: 'Projetado',
               value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
               status: 'success' as const,
             },
@@ -980,13 +999,16 @@ export function TerritorioBasePanel() {
                   </div>
                 ) : null}
 
-                {expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
+                {revisaoFinalCol || expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
                   <select
                     value={cenarioVotos}
                     onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
                     className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none')}
                     aria-label="Visão de votos"
                   >
+                    {revisaoFinalCol ? (
+                      <option value="revisao_final">Revisão Final 2026</option>
+                    ) : null}
                     {expectativaJadyelCol ? (
                       <option value="aferido_jadyel">Aferido 2026</option>
                     ) : null}

@@ -57,6 +57,10 @@ export function resolveExpectativaLegadoCol(headers: string[]): string | undefin
   })
 }
 
+export function resolveRevisaoFinalCol(headers: string[]): string | undefined {
+  return headers.find((h) => /revis[aã]o\s+final/i.test(h))
+}
+
 export function resolveCidadeCol(headers: string[]): string {
   return headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || 'cidade'
 }
@@ -136,7 +140,8 @@ async function loadComparativoAnterior2026ClientUncached(): Promise<ComparativoA
 
     const headers = baseData.headers ?? []
     const records = baseData.records ?? []
-    const expectativaCol = resolveExpectativaLegadoCol(headers)
+    const revisaoFinalCol = resolveRevisaoFinalCol(headers)
+    const expectativaCol = revisaoFinalCol ?? resolveExpectativaLegadoCol(headers)
 
     if (!expectativaCol) {
       return {
@@ -173,7 +178,9 @@ async function loadComparativoAnterior2026ClientUncached(): Promise<ComparativoA
       ok: true,
       rows,
       resumo: summarizeComparativoExpectativa2022(rows),
-      cenarioLabel: labelCenarioExpectativaComparativo(CENARIO_EXPECTATIVA_ANTERIOR_2026),
+      cenarioLabel: labelCenarioExpectativaComparativo(
+        revisaoFinalCol ? CENARIO_EXPECTATIVA_ANTERIOR_2026 : 'legado',
+      ),
     }
   } catch (error: unknown) {
     return {

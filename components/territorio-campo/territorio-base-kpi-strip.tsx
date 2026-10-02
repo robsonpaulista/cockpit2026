@@ -47,7 +47,7 @@ function buildCards({
         return {
           id: kpi.id,
           icon: Target,
-          label: 'Expectativa 2026',
+          label: 'Projetado',
           value: String(kpi.value),
           hint: `Cenário ${cenarioLabel}`,
         }

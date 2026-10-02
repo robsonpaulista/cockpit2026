@@ -2848,12 +2848,6 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
   color: #E6EDF3 !important;
 }
 
-/* ── Header classes nomeadas ────────────────────────────────────────────── */
-.mapa-tds-futuristic-header-page-label { color: #E6EDF3 !important; font-weight: 600 !important; }
-.mapa-tds-futuristic-header-muted      { color: #aab4c0 !important; }
-.mapa-tds-futuristic-header-glass      { background: #121821 !important; border-color: rgba(255,255,255,0.07) !important; }
-.mapa-tds-futuristic-header-emphasis   { color: #E6EDF3 !important; font-weight: 600 !important; }
-
 /* =============================================================================
    REPUBLICANOS PREMIUM (LIGHT) — polimento visual global
    ============================================================================= */

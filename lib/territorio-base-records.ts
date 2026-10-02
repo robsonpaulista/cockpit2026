@@ -17,6 +17,7 @@ export const TERRITORIO_BASE_HEADERS = [
   'EXPECTATIVA DE VOTOS 2026',
   'EXPECTATIVA JADYEL 2026',
   'PROMESSA LIDERANÇA 2026',
+  'REVISÃO FINAL 2026',
   'VOTAÇÃO FINAL 2022',
 ] as const
 
@@ -34,6 +35,7 @@ export function mapTerritorioLiderancaToBaseRecord(row: TerritorioLiderancaRow):
     'EXPECTATIVA DE VOTOS 2026': Number(row.expectativa_votos_2026 || 0),
     'EXPECTATIVA JADYEL 2026': Number(row.expectativa_jadyel_2026 || 0),
     'PROMESSA LIDERANÇA 2026': Number(row.promessa_lideranca_2026 || 0),
+    'REVISÃO FINAL 2026': Number(row.previsto_2026 || 0),
     'VOTAÇÃO FINAL 2022': Number(row.votacao_final_2022 || 0),
   }
 }

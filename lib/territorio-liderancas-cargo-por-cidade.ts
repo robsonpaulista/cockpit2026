@@ -73,7 +73,7 @@ export interface LiderancasCargoPorCidadeResumo {
 }
 
 function expectativaLideranca(leader: LiderancaResumo): number {
-  return Math.round(leader.projecaoLegado || 0)
+  return Math.round(leader.projecaoPrevisto ?? leader.projecaoLegado ?? 0)
 }
 
 export function summarizeCargosComExpectativa(

@@ -179,7 +179,7 @@ export function ComparativoExpectativa2022Barras({
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [cenarioLabel, setCenarioLabel] = useState('Expectativa 2026')
+  const [cenarioLabel, setCenarioLabel] = useState<string>('Revisão Final 2026')
   const [rows, setRows] = useState<ComparativoExpectativa2022Row[]>([])
   const [view, setView] = useState<'tabela' | 'mapa'>('tabela')
   const [showAll, setShowAll] = useState(false)

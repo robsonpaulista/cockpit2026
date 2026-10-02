@@ -6,7 +6,11 @@ import { cn } from '@/lib/utils'
 import { resumoTrZebra } from '@/lib/resumo-eleicoes-table-styles'
 import { canonicalizeLiderancaAtual } from '@/lib/territorio-lideranca-atual'
 
-export type CenarioVotosLiderancasModal = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+export type CenarioVotosLiderancasModal =
+  | 'revisao_final'
+  | 'aferido_jadyel'
+  | 'promessa_lideranca'
+  | 'legado_anterior'
 
 export type LiderancaCrudRow = {
   id: number
@@ -77,12 +81,14 @@ function formFromPrefill(prefill: LiderancaFormPrefill): FormState {
 }
 
 function valorCenario(row: LiderancaCrudRow, cenario: CenarioVotosLiderancasModal): number {
+  if (cenario === 'revisao_final') return row.previsto ?? 0
   if (cenario === 'promessa_lideranca') return row.promessa
   if (cenario === 'aferido_jadyel') return row.expectativaAferida
   return row.expectativaLegado
 }
 
 function labelCenario(cenario: CenarioVotosLiderancasModal): string {
+  if (cenario === 'revisao_final') return 'Revisão Final 2026'
   if (cenario === 'promessa_lideranca') return 'Promessa 2026'
   if (cenario === 'aferido_jadyel') return 'Aferido 2026'
   return 'Expectativa 2026'

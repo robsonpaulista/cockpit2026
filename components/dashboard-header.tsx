@@ -1,10 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
-import { MAPA_TDS_ROUTE_PREFIX } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import {
   TERRITORIO_CAMPO_PAGE_TITLE,
@@ -27,7 +25,6 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/agenda': 'Agenda',
   '/dashboard/territorio': 'Base Eleitoral',
   '/dashboard/territorio/ipt': 'Mapa de Diagnóstico da Campanha',
-  '/dashboard/territorio/mapa-tds': 'Mapa — Territórios de desenvolvimento',
   '/dashboard/chapas': 'Chapas',
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
   '/dashboard/resumo-eleicoes': 'Painel de Atendimentos',
@@ -75,29 +72,12 @@ function getPageTitle(pathname: string, tab: string | null, _view: string | null
   return pathToTitle[pathname] ?? (pathname.replace(/^\/dashboard\/?/, '').replace(/^\//, '') || 'Visão Geral')
 }
 
-function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
-  if (aba === 'pesquisas') return 'Mapa Pesquisas'
-  return 'Mapa de Dominância Eleitoral'
-}
-
 export function DashboardHeader() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { theme, appearance, setAppearance } = useTheme()
+  const { theme, appearance } = useTheme()
   const p = pathname ?? ''
-  const mapaFuturisticShell = p.startsWith(MAPA_TDS_ROUTE_PREFIX)
-  const mapaFuturisticTituloContexto = p.startsWith(MAPA_TDS_ROUTE_PREFIX)
-    ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
-    : null
-  const pageTitle = mapaFuturisticTituloContexto ?? getPageTitle(pathname ?? '', searchParams.get('tab'), searchParams.get('view'))
-
-  /** Link compartilhado com `tema=republicanos-claro` alinha aparência global para claro. */
-  useEffect(() => {
-    if (!mapaFuturisticShell) return
-    if (searchParams.get('tema') === 'republicanos-claro' && appearance === 'dark') {
-      setAppearance('light')
-    }
-  }, [mapaFuturisticShell, searchParams, appearance, setAppearance])
+  const pageTitle = getPageTitle(p, searchParams.get('tab'), searchParams.get('view'))
 
   const showTopbar = useDashboardTopbarVisible()
   const topbarExtras = useDashboardTopbarExtras()

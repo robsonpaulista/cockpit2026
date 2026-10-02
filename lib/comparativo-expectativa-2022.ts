@@ -98,15 +98,16 @@ export function filterComparativoExpectativa2022Lista(
   }
 }
 
-export type CenarioExpectativaComparativo = 'legado' | 'aferido' | 'promessa'
+export type CenarioExpectativaComparativo = 'revisao_final' | 'legado' | 'aferido' | 'promessa'
 
-/** Mesmo cenário padrão da aba Base: «Expectativa 2026». */
-export const CENARIO_EXPECTATIVA_ANTERIOR_2026: CenarioExpectativaComparativo = 'legado'
+/** Mesmo cenário padrão da aba Base: «Revisão Final 2026». */
+export const CENARIO_EXPECTATIVA_ANTERIOR_2026: CenarioExpectativaComparativo = 'revisao_final'
 
 export interface ExpectativaPorCidadeResumo {
   expectativaVotos: number
   promessaVotos: number
   expectativaLegadoVotos: number
+  previstoVotos?: number
 }
 
 export function pickExpectativaComparativo(
@@ -118,6 +119,8 @@ export function pickExpectativaComparativo(
       return Math.round(summary.expectativaVotos || 0)
     case 'promessa':
       return Math.round(summary.promessaVotos || 0)
+    case 'revisao_final':
+      return Math.round(summary.previstoVotos || 0)
     case 'legado':
     default:
       return Math.round(summary.expectativaLegadoVotos || 0)
@@ -130,6 +133,8 @@ export function labelCenarioExpectativaComparativo(cenario: CenarioExpectativaCo
       return 'Aferido 2026'
     case 'promessa':
       return 'Prometido 2026'
+    case 'revisao_final':
+      return 'Revisão Final 2026'
     default:
       return 'Expectativa 2026'
   }

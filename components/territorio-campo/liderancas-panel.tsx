@@ -181,8 +181,10 @@ export function LiderancasPanel() {
           if (sortCol === 'cidade') {
             const byNome = compareTerritorioText(a.nome, b.nome, true)
             if (byNome !== 0) return byNome
-            return compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, false)
+            return compareTerritorioNumber(a.previsto ?? 0, b.previsto ?? 0, false)
           }
+          const byRevisao = compareTerritorioNumber(a.previsto ?? 0, b.previsto ?? 0, sortAsc)
+          if (byRevisao !== 0) return byRevisao
           const byExp = compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, sortAsc)
           if (byExp !== 0) return byExp
           return compareTerritorioText(a.nome, b.nome, true)
@@ -204,8 +206,10 @@ export function LiderancasPanel() {
         if (sortCol === 'cidade') {
           const byCidade = compareTerritorioText(a.cidade, b.cidade, sortAsc)
           if (byCidade !== 0) return byCidade
-          return compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, false)
+          return compareTerritorioNumber(a.totalPrevisto, b.totalPrevisto, false)
         }
+        const byRevisao = compareTerritorioNumber(a.totalPrevisto, b.totalPrevisto, sortAsc)
+        if (byRevisao !== 0) return byRevisao
         const byExp = compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, sortAsc)
         if (byExp !== 0) return byExp
         return compareTerritorioText(a.cidade, b.cidade, true)
@@ -549,9 +553,10 @@ export function LiderancasPanel() {
                           <th className="px-3 py-2 text-left font-medium">Situação</th>
                           <th className="px-3 py-2 text-right font-medium">Votos 2024</th>
                           <th className="px-3 py-2 text-right font-medium">Promessa 2026</th>
+                          <th className="px-3 py-2 text-right font-medium">Expectativa</th>
                           <th className="px-3 py-2 text-right font-medium">
                             <TerritorioSortableHeaderButton
-                              label="Expectativa"
+                              label="Revisão Final"
                               active={sortCol === 'expectativa'}
                               asc={sortAsc}
                               onClick={() => alternarSort('expectativa')}
@@ -560,7 +565,6 @@ export function LiderancasPanel() {
                               className="w-full"
                             />
                           </th>
-                          <th className="px-3 py-2 text-right font-medium">Revisão Final</th>
                           <th className="w-16 px-3 py-2 text-right font-medium">Ações</th>
                         </tr>
                       </thead>
@@ -934,7 +938,7 @@ export function LiderancasPanel() {
       {modal ? (
         <ResumoLiderancasCrudModal
           cidade={modal.cidade}
-          cenarioVotos="legado_anterior"
+          cenarioVotos="revisao_final"
           initialEditingId={modal.editingId}
           startCreating={modal.creating}
           onClose={() => setModal(null)}

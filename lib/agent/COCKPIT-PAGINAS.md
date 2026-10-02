@@ -127,20 +127,6 @@ Legenda de handlers:
 
 ---
 
-## Mapa dos TDs
-
-**Rota:** `/dashboard/territorio/mapa-tds`
-
-**O que é:** Mapa por Território de Desenvolvimento (12 TDs).
-
-| Handler | Exemplos |
-|---------|----------|
-| Groq/Regex | «abrir mapa dos TDs», navegação |
-
-**APIs:** mesma base do território (Sheets).
-
----
-
 ## Ficha de Atendimento
 
 **Rota:** `/dashboard/ficha-atendimento`

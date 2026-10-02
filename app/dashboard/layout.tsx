@@ -23,9 +23,8 @@ import {
 } from '@/lib/sidebar-layout'
 import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador-redirect'
 import { useSessionPresence } from '@/hooks/use-session-presence'
-import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
+import './shared/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
-import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { DashboardPageChromeProvider } from '@/contexts/dashboard-page-chrome-context'
 import { DashboardTopbarExtrasProvider } from '@/contexts/dashboard-topbar-extras-context'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
@@ -45,11 +44,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   useSessionPresence()
   const { collapsed, setCollapsed } = useSidebar()
   const pathname = usePathname() ?? ''
-  const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
-  const isHomeScene = isDashboardHomePath(pathname) && !isMapaTdsShell
+  const isHomeScene = isDashboardHomePath(pathname)
   /** Glass sidebar só fora da home hub (home não tem sidebar). */
-  const isIceSidebar =
-    isIceGlassSidebarPath(pathname) && !isMapaTdsShell && !isHomeScene
+  const isIceSidebar = isIceGlassSidebarPath(pathname) && !isHomeScene
   const columnBgClass = isHomeScene ? 'bg-black' : 'bg-bg-surface'
   const mainOffsetClass = collapsed
     ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS
@@ -87,7 +84,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           className={cn(
             'relative flex h-screen overflow-hidden',
             isHomeScene ? 'bg-black' : 'bg-bg-surface',
-            !isHomeScene && isMapaTdsShell && columnBgClass,
           )}
         >
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>

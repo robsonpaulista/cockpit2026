@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     // Body opcional (legado do cliente Sheets); expectativa vem do banco.
     await request.json().catch(() => ({}))
 
-    // 1. Expectativa de votos (padrão Legado) + lideranças via territorio_liderancas
+    // 1. Expectativa de votos (padrão Revisão Final) + lideranças via territorio_liderancas
     const expectativaPorCidade: Record<string, number> = {}
     const liderancasPorCidade: Record<string, number> = {}
     const nomeOriginalCidade: Record<string, string> = {}
@@ -59,9 +59,9 @@ export async function POST(request: Request) {
       for (const [rawKey, summary] of summaries.entries()) {
         const cidadeKey = normalizeCityName(rawKey)
         if (!cidadeKey) continue
-        const legado = Number(summary.expectativaLegadoVotos || 0)
-        if (legado > 0) {
-          expectativaPorCidade[cidadeKey] = (expectativaPorCidade[cidadeKey] || 0) + legado
+        const votos = Number(summary.previstoVotos ?? summary.expectativaLegadoVotos ?? 0)
+        if (votos > 0) {
+          expectativaPorCidade[cidadeKey] = (expectativaPorCidade[cidadeKey] || 0) + votos
         }
         const liderancas = Number(summary.liderancas || 0)
         if (liderancas > 0) {

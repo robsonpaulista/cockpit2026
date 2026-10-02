@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       fonte: 'db',
-      cenarioPadrao: 'legado_anterior',
+      cenarioPadrao: 'revisao_final',
       headers: [...TERRITORIO_BASE_HEADERS],
       records,
       total: records.length,

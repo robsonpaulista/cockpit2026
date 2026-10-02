@@ -232,10 +232,13 @@ export async function buildCitySummariesFromDb(forceRefresh = false): Promise<{
     const expectativaAferida = num(row.expectativa_jadyel_2026)
     const promessa = num(row.promessa_lideranca_2026)
     const legado = num(row.expectativa_votos_2026)
+    const temPrevisto = row.previsto_2026 !== undefined
+    const previsto = num(row.previsto_2026)
 
     current.expectativaVotos += expectativaAferida
     current.promessaVotos += promessa
     current.expectativaLegadoVotos += legado
+    if (temPrevisto) current.previstoVotos = (current.previstoVotos ?? 0) + previsto
     current.liderancas += 1
     summaries.set(cidadeKey, current)
 
@@ -268,6 +271,9 @@ export async function buildCitySummariesFromDb(forceRefresh = false): Promise<{
     leaderCurrent.projecaoAferida += expectativaAferida
     leaderCurrent.projecaoPromessa += promessa
     leaderCurrent.projecaoLegado += legado
+    if (temPrevisto) {
+      leaderCurrent.projecaoPrevisto = (leaderCurrent.projecaoPrevisto ?? 0) + previsto
+    }
     // Padrão do sistema: Legado como base de votos exibida
     leaderCurrent.projecaoVotos = leaderCurrent.projecaoLegado
     cityLeaders.set(key, leaderCurrent)

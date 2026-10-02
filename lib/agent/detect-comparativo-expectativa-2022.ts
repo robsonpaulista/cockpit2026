@@ -48,7 +48,7 @@ export function parseCenarioComparativoExpectativa2022(query: string): CenarioEx
   if (/\b(aferid[oa]|jadyel)\b/.test(q) && !/\b(anterior|legado)\b/.test(q)) return 'aferido'
   if (/\b(promessa)\b/.test(q)) return 'promessa'
   if (/\b(anterior|legado)\b/.test(q)) return 'legado'
-  return 'legado'
+  return 'revisao_final'
 }
 
 /** Lista de cidades só quando o usuário pede explicitamente; caso contrário, totais gerais. */

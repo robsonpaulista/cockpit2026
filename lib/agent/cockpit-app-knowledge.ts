@@ -57,10 +57,6 @@ Hub com abas **Panorama**, **Base** (lideranças/planilha) e **Visitas** (Campo 
 - Groq: consultar_agendas.
 - Claude: não substitui lista de compromissos.
 
-### Mapa dos TDs · /dashboard/territorio/mapa-tds
-- Visualização por Território de Desenvolvimento (TD).
-- IA Cockpit: navegação («abrir mapa dos TDs»). Sem API dedicada ao agente.
-
 ### Ficha de Atendimento · /dashboard/ficha-atendimento
 - Tetos MAC/PAP (SUAS), emendas por município, dados eleitorais locais.
 - API: /api/limites-tetos, /api/emendas-suas, /api/consultar-tetos

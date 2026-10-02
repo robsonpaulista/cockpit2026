@@ -35,7 +35,7 @@ export function PanoramaExpectativaVisitasQuadrantesCard({ mapa }: { mapa: Terri
   return (
     <TerritorioDataPanel {...territorioPanoramaQuadrantLayout}>
       <TerritorioPanelHeader
-        title="Expectativa 2026 × Visitas de campo"
+        title="Revisão Final 2026 × Visitas de campo"
         description="Priorize municípios com alto potencial eleitoral e baixa cobertura de visitas registradas."
       />
 
