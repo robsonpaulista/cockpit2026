@@ -1,11 +1,8 @@
 'use client'
 
-import { FileText, MapPin, Target, Users } from 'lucide-react'
-import {
-  QuickAccessKpiStrip,
-  type QuickAccessKpiCardModel,
-} from '@/components/monitoramento/quick-access-kpi-card'
+import { FileText, MapPin, Target, Users, type LucideIcon } from 'lucide-react'
 import type { KPI } from '@/types'
+import { cn } from '@/lib/utils'
 
 interface TerritorioBaseKpiStripProps {
   kpis: KPI[]
@@ -14,103 +11,60 @@ interface TerritorioBaseKpiStripProps {
   cidadesUnicasCount: number
 }
 
+type CxKpi = {
+  id: string
+  icon: LucideIcon
+  label: string
+  value: string
+  hint?: string
+}
+
 function buildCards({
   kpis,
   totalRegistros,
   cenarioLabel,
   cidadesUnicasCount,
-}: TerritorioBaseKpiStripProps): QuickAccessKpiCardModel[] {
+}: TerritorioBaseKpiStripProps): CxKpi[] {
   return kpis.map((kpi) => {
     switch (kpi.id) {
       case 'liderancas':
         return {
           id: kpi.id,
           icon: Users,
-          title: 'Lideranças atuais',
-          metricLabel: 'BASE · FILTRADA',
-          insights: [
-            {
-              badge: 'leader',
-              badgeLabel: 'Ativas',
-              text: `${kpi.value} lideranças na seleção atual`,
-            },
-            {
-              badge: 'growth',
-              badgeLabel: 'Total',
-              text: `de ${totalRegistros} registros totais`,
-            },
-          ],
+          label: 'Lideranças',
+          value: String(kpi.value),
+          hint: `de ${totalRegistros} registros`,
         }
       case 'total':
         return {
           id: kpi.id,
           icon: FileText,
-          title: 'Total de registros',
-          metricLabel: 'BASE · BANCO',
-          insights: [
-            {
-              badge: 'leader',
-              badgeLabel: 'Volume',
-              text: `${kpi.value} registros na base`,
-            },
-            {
-              badge: 'growth',
-              badgeLabel: 'Origem',
-              text: 'territorio_liderancas no cockpit',
-            },
-          ],
+          label: 'Registros',
+          value: String(kpi.value),
+          hint: 'territorio_liderancas',
         }
       case 'expectativa-votos':
         return {
           id: kpi.id,
           icon: Target,
-          title: 'Expectativa 2026',
-          metricLabel: 'BASE · VOTOS',
-          insights: [
-            {
-              badge: 'leader',
-              badgeLabel: 'Projeção',
-              text: `${kpi.value} votos no cenário ativo`,
-            },
-            {
-              badge: 'growth',
-              badgeLabel: 'Cenário',
-              text: `Cenário ${cenarioLabel} (base territorial)`,
-            },
-          ],
+          label: 'Expectativa 2026',
+          value: String(kpi.value),
+          hint: `Cenário ${cenarioLabel}`,
         }
       case 'cidades':
         return {
           id: kpi.id,
           icon: MapPin,
-          title: 'Cidades únicas',
-          metricLabel: 'BASE · COBERTURA',
-          insights: [
-            {
-              badge: 'leader',
-              badgeLabel: 'Municípios',
-              text: `${kpi.value} cidades na base filtrada`,
-            },
-            {
-              badge: 'growth',
-              badgeLabel: 'Alcance',
-              text: `${cidadesUnicasCount} municípios distintos`,
-            },
-          ],
+          label: 'Cidades',
+          value: String(kpi.value),
+          hint: `${cidadesUnicasCount} municípios`,
         }
       default:
         return {
           id: kpi.id,
           icon: FileText,
-          title: kpi.label,
-          metricLabel: 'BASE · INDICADOR',
-          insights: [
-            {
-              badge: 'leader',
-              badgeLabel: 'Valor',
-              text: String(kpi.value),
-            },
-          ],
+          label: kpi.label,
+          value: String(kpi.value),
         }
     }
   })
@@ -118,18 +72,38 @@ function buildCards({
 
 export function TerritorioBaseKpiStrip(props: TerritorioBaseKpiStripProps) {
   const cards = buildCards(props)
-  const colCount = cards.length
+  if (cards.length === 0) return null
 
   return (
-    <QuickAccessKpiStrip
-      cards={cards}
-      gridClassName={
-        colCount <= 2
-          ? 'grid-cols-2 sm:grid-cols-2 xl:grid-cols-2'
-          : colCount === 3
-            ? 'grid-cols-2 min-[480px]:grid-cols-3 xl:grid-cols-3'
-            : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-4'
-      }
-    />
+    <div
+      className={cn(
+        'territorio-cx-kpi-strip grid min-w-0 gap-2',
+        cards.length <= 2
+          ? 'grid-cols-2'
+          : cards.length === 3
+            ? 'grid-cols-2 min-[480px]:grid-cols-3'
+            : 'grid-cols-2 md:grid-cols-4',
+      )}
+    >
+      {cards.map((card) => {
+        const Icon = card.icon
+        return (
+          <div key={card.id} className="territorio-cx-kpi relative overflow-hidden">
+            <div className="mb-2 flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 text-[#969692]" aria-hidden />
+              <p className="territorio-cx-kpi__label">{card.label}</p>
+            </div>
+            <p className="territorio-cx-kpi__value">{card.value}</p>
+            {card.hint ? (
+              <p className="mt-1 truncate text-[11px] text-[#969692]">{card.hint}</p>
+            ) : null}
+            <span
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-[#e8a825]"
+              aria-hidden
+            />
+          </div>
+        )
+      })}
+    </div>
   )
 }

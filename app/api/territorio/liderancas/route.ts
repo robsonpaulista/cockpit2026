@@ -8,9 +8,11 @@ import {
 } from '@/lib/territorio-lideranca-atual'
 import {
   invalidateTerritorioLiderancasDbCache,
+  isMissingPrevistoColumnError,
   listAllTerritorioLiderancas,
   listTerritorioLiderancasByCidade,
   normalizeTerritorioExpectativaCityKey,
+  PREVISTO_COLUMN,
 } from '@/lib/territorio-liderancas-db'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +27,7 @@ const upsertSchema = z.object({
   expectativa_votos_2026: z.coerce.number().optional().nullable(),
   expectativa_jadyel_2026: z.coerce.number().optional().nullable(),
   promessa_lideranca_2026: z.coerce.number().optional().nullable(),
+  previsto_2026: z.coerce.number().optional().nullable(),
   votacao_final_2022: z.coerce.number().optional().nullable(),
 })
 
@@ -43,6 +46,7 @@ function mapRow(row: Record<string, unknown>) {
     expectativaLegado: Number(row.expectativa_votos_2026 || 0),
     expectativaAferida: Number(row.expectativa_jadyel_2026 || 0),
     promessa: Number(row.promessa_lideranca_2026 || 0),
+    previsto: Number(row.previsto_2026 || 0),
     votos2024: Number(row.votos_2024 || 0),
     votacaoFinal2022: Number(row.votacao_final_2022 || 0),
   }
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
     const liderancaAtual = canonicalizeLiderancaAtual(body.lideranca_atual)
     const admin = createAdminClient()
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       municipio,
       municipio_normalizado: municipioNormalizado,
       lideranca: body.lideranca.trim(),
@@ -101,13 +105,25 @@ export async function POST(request: NextRequest) {
       imported_at: new Date().toISOString(),
     }
 
-    const { data, error } = await admin.from('territorio_liderancas').insert(payload).select('*').single()
+    if (body.previsto_2026 != null) payload[PREVISTO_COLUMN] = body.previsto_2026
+
+    const insert = (values: Record<string, unknown>) =>
+      admin.from('territorio_liderancas').insert(values).select('*').single()
+
+    let { data, error } = await insert(payload)
+    let warning: string | undefined
+    if (error && PREVISTO_COLUMN in payload && isMissingPrevistoColumnError(error)) {
+      const { [PREVISTO_COLUMN]: _ignored, ...semPrevisto } = payload
+      ;({ data, error } = await insert(semPrevisto))
+      warning =
+        'Coluna "Revisão Final" ainda não existe no banco. Rode database/add-territorio-liderancas-previsto.sql no Supabase.'
+    }
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     invalidateTerritorioLiderancasDbCache()
-    return NextResponse.json({ ok: true, row: mapRow(data as Record<string, unknown>) })
+    return NextResponse.json({ ok: true, row: mapRow(data as Record<string, unknown>), warning })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Dados inválidos', details: error.flatten() }, { status: 400 })

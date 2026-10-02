@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import {
+  Bell,
   Instagram,
   LayoutGrid,
   LineChart,
@@ -9,7 +10,6 @@ import {
   Newspaper,
   Flame,
   Users,
-  Video,
   Youtube,
 } from 'lucide-react'
 import {
@@ -34,8 +34,8 @@ export type MonitoramentoTab =
   | 'youtube'
   | 'trends'
   | 'viral'
+  | 'google-alerts'
   | 'google-news'
-  | 'google-videos'
   | 'meta-ads'
   | 'instagram'
   | 'lideres'
@@ -43,8 +43,8 @@ export type MonitoramentoTab =
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'geral', label: 'Panorama', icon: LayoutGrid },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
+  { id: 'google-alerts', label: 'Alertas', icon: Bell },
   { id: 'google-news', label: 'Notícias', icon: Newspaper },
-  { id: 'google-videos', label: 'Google Vídeos', icon: Video },
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'meta-ads', label: 'Anúncios', icon: Megaphone },
   { id: 'trends', label: 'Buscas', icon: LineChart },

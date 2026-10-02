@@ -202,17 +202,19 @@ export function QuickAccessKpiStrip({
   cards,
   animationEpoch = 0,
   gridClassName,
+  className,
 }: {
   title?: string
   lead?: string
   cards: QuickAccessKpiCardModel[]
   animationEpoch?: number
   gridClassName?: string
+  className?: string
 }) {
   if (cards.length === 0) return null
 
   return (
-    <section>
+    <section className={className}>
       {title ? (
         <div className="mb-3">
           <h3 className={typographySectionLabelClass}>{title}</h3>

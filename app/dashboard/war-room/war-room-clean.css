@@ -909,13 +909,16 @@ body[data-war-room-clean] .wr-page-canvas--scroll {
 
 body[data-war-room-clean] aside[data-sidebar-shell],
 body[data-war-room-clean] aside.sidebar-apify-shell,
-body[data-war-room-clean] aside.sidebar-cockpit-shell {
-  background: #f7f7f6 !important;
+body[data-war-room-clean] aside.sidebar-cockpit-shell,
+body[data-war-room-clean] aside.sidebar-cockpit-x {
+  --cx-sidebar-ink: #0a0a0c;
+  --cx-sidebar-amber: #e8a825;
+  background: var(--cx-sidebar-ink) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-color: #e8e8e6 !important;
-  color: #20201f;
-  box-shadow: none !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.82);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04) !important;
   font-family: var(--wr-font);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
@@ -923,7 +926,7 @@ body[data-war-room-clean] aside.sidebar-cockpit-shell {
 
 body[data-war-room-clean] aside.sidebar-apify-shell > div > div:first-child,
 body[data-war-room-clean] aside.sidebar-cockpit-shell > div > div:first-child {
-  background: #f7f7f6 !important;
+  background: var(--cx-sidebar-ink, #0a0a0c) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .h-\[7rem\],
@@ -934,12 +937,32 @@ body[data-war-room-clean] aside[data-sidebar-shell] .max-h-\[7rem\] {
   max-height: 4rem !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  background: #f7f7f6 !important;
-  border-color: #e8e8e6 !important;
-  box-shadow: inset 0 -1px 0 #eeeeec;
+  background: var(--cx-sidebar-ink, #0a0a0c) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Logomarca = mesmo tamanho do título do header (18px) */
+/* Logomarca COCKPIT X — Michroma + âmbar */
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] > span:first-of-type,
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] .font-\[family-name\:var\(--font-michroma\)\] {
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 17px !important;
+  font-weight: 400 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.04em !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] > span:first-of-type > span:first-child,
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] span > span:first-child {
+  color: #ffffff !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] > span:first-of-type > span:last-child,
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] span > span:last-child {
+  color: var(--cx-sidebar-amber, #e8a825) !important;
+}
+
+/* Fallback wordmark legado (font-sans.font-bold) */
 body[data-war-room-clean] aside[data-sidebar-shell] .h-\[7rem\] [class*='text-[1.55rem]'],
 body[data-war-room-clean] aside[data-sidebar-shell] .min-h-\[7rem\] .font-sans.font-bold,
 body[data-war-room-clean] aside[data-sidebar-shell] .font-sans.font-bold,
@@ -947,24 +970,23 @@ body[data-war-room-clean] aside[data-sidebar-shell] .font-sans.font-bold [class*
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='text-[17px]'],
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='text-[18px]'],
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='sm:text-[18px]'] {
-  font-family: var(--wr-font) !important;
-  font-size: 18px !important;
-  font-weight: 500 !important;
-  line-height: 1.25 !important;
-  letter-spacing: -0.01em !important;
+  font-family: var(--font-michroma), var(--wr-font) !important;
+  font-size: 17px !important;
+  font-weight: 400 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.04em !important;
 }
 
-/* Wordmark — COCKPIT #20201F · 2026 brand #F04A2C somente aqui */
 body[data-war-room-clean] aside[data-sidebar-shell] .font-sans.font-bold > span:first-child {
-  color: #20201f !important;
-  font-weight: 500 !important;
-  font-size: 18px !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+  font-size: 17px !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .font-sans.font-bold > span:last-child {
-  color: var(--wr-brand, #f04a2c) !important;
-  font-weight: 500 !important;
-  font-size: 18px !important;
+  color: var(--cx-sidebar-amber, #e8a825) !important;
+  font-weight: 400 !important;
+  font-size: 17px !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .h-\[7rem\] [class*='tracking-[0.12em]'],
@@ -984,8 +1006,8 @@ body[data-war-room-clean] .wr-page-chrome-compact {
 body[data-war-room-clean] aside[data-sidebar-shell] > div,
 body[data-war-room-clean] aside[data-sidebar-shell] > div > div:first-child,
 body[data-war-room-clean] aside[data-sidebar-shell] > div > div:last-child {
-  background: #f7f7f6 !important;
-  border-color: #e8e8e6 !important;
+  background: var(--cx-sidebar-ink, #0a0a0c) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a,
@@ -994,7 +1016,7 @@ body[data-war-room-clean] aside[data-sidebar-shell] button {
   font-size: 13px;
   font-weight: 400;
   letter-spacing: 0;
-  color: #20201f !important;
+  color: rgba(255, 255, 255, 0.78) !important;
   text-decoration: none;
   border-radius: 10px !important;
   border: 1px solid transparent !important;
@@ -1004,8 +1026,8 @@ body[data-war-room-clean] aside[data-sidebar-shell] button {
 
 body[data-war-room-clean] aside[data-sidebar-shell] a:hover,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover {
-  color: #20201f !important;
-  background-color: #f4f4f2 !important;
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
   box-shadow: none !important;
 }
 
@@ -1017,17 +1039,17 @@ body[data-war-room-clean] aside[data-sidebar-shell] .text-\[\#f04b23\],
 body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon.text-\[\#f04b23\],
 body[data-war-room-clean] aside[data-sidebar-shell] .text-\[\#f04a2c\],
 body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon.text-\[\#f04a2c\] {
-  color: #969692 !important;
+  color: var(--cx-sidebar-amber, #e8a825) !important;
 }
 
-/* Ativo — amarelo vivo sólido (mesmo do War Room) */
+/* Ativo — âmbar Cockpit X */
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\] {
-  background-color: #f2d06b !important;
-  color: #2b2d31 !important;
-  border: 1px solid #f2d06b !important;
-  border-left: 1px solid #f2d06b !important;
+  background-color: rgba(232, 168, 37, 0.92) !important;
+  color: #0a0a0c !important;
+  border: 1px solid #e8a825 !important;
+  border-left: 1px solid #e8a825 !important;
   box-shadow: none !important;
   font-weight: 600 !important;
 }
@@ -1036,21 +1058,21 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockp
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a[class*='bg-[linear-gradient'] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button[class*='bg-[linear-gradient'] .cockpit-icon {
-  color: #2b2d31 !important;
+  color: #0a0a0c !important;
   opacity: 1;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a:focus-visible,
 body[data-war-room-clean] aside[data-sidebar-shell] button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #e8e8e6;
+  box-shadow: 0 0 0 2px rgba(232, 168, 37, 0.35);
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-\[linear-gradient\(135deg\,\#243443_0\%\,\#2f4353_52\%\,\#3b5466_100\%\)\] {
   background-image: none !important;
-  background-color: #f2d06b !important;
-  border: 1px solid #f2d06b !important;
-  color: #2b2d31 !important;
+  background-color: rgba(232, 168, 37, 0.92) !important;
+  border: 1px solid #e8a825 !important;
+  color: #0a0a0c !important;
   box-shadow: none !important;
 }
 
@@ -1060,35 +1082,35 @@ body[data-war-room-clean] aside[data-sidebar-shell] .text-white\/70,
 body[data-war-room-clean] aside[data-sidebar-shell] .text-white\/72,
 body[data-war-room-clean] aside[data-sidebar-shell] .text-white\/90,
 body[data-war-room-clean] aside[data-sidebar-shell] .text-white {
-  color: #20201f !important;
+  color: rgba(255, 255, 255, 0.82) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\].text-white,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\].text-white,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .text-white,
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\] .text-white {
-  color: #2b2d31 !important;
+  color: #0a0a0c !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .group:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon {
-  color: #686865 !important;
+  color: var(--cx-sidebar-amber, #e8a825) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .border-white\/10,
 body[data-war-room-clean] aside[data-sidebar-shell] .border-white\/12,
 body[data-war-room-clean] aside[data-sidebar-shell] .\!border-white\/10 {
-  border-color: #e8e8e6 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Ícones sidebar — contraste reduzido */
+/* Ícones sidebar — contraste em dark */
 body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon {
   width: 18px !important;
   height: 18px !important;
   stroke-width: 1.5;
-  color: #969692 !important;
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.55) !important;
+  opacity: 0.9;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
@@ -1096,12 +1118,17 @@ body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon {
-  color: #2b2d31 !important;
+  color: #0a0a0c !important;
   opacity: 1;
 }
 
+body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
+body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon {
+  color: var(--cx-sidebar-amber, #e8a825) !important;
+}
+
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='uppercase'][class*='tracking'] {
-  color: #969692 !important;
+  color: rgba(255, 255, 255, 0.42) !important;
   letter-spacing: 0.06em !important;
   font-weight: 500 !important;
   font-size: 10px !important;
@@ -14721,8 +14748,8 @@ body[data-war-room-clean] nav[aria-label='Seções'] > button:hover {
 }
 
 body[data-war-room-clean] nav[aria-label='Seções'] > button[aria-current='page'] {
-  color: #20201f !important;
-  font-weight: 500 !important;
+  color: #2b2d31 !important;
+  font-weight: 600 !important;
   border-color: transparent !important;
 }
 
@@ -14734,12 +14761,12 @@ body[data-war-room-clean] nav[aria-label='Seções'] > button[aria-current='page
   bottom: 0;
   height: 2px;
   border-radius: 1px;
-  background: #f2d06b;
+  background: #e8a825;
   opacity: 1;
 }
 
 body[data-war-room-clean] nav[aria-label='Seções'] > button[aria-current='page'] svg {
-  color: #f2d06b !important;
+  color: #2b2d31 !important;
   opacity: 1;
 }
 
@@ -16394,15 +16421,15 @@ body[data-war-room-clean] .wr-page-canvas--scroll {
   box-shadow: var(--wr-shadow-2) !important;
 }
 
-/* --- Sidebar frosted (dock executivo) --------------------------------- */
+/* --- Sidebar Cockpit X (dark ink) ------------------------------------- */
 body[data-war-room-clean] aside[data-sidebar-shell],
 body[data-war-room-clean] aside.sidebar-apify-shell,
 body[data-war-room-clean] aside.sidebar-cockpit-shell {
-  background: var(--wr-glass-sidebar) !important;
-  backdrop-filter: blur(28px) saturate(135%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(135%) !important;
-  border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(0, 0, 0, 0.05) !important;
+  background: #0a0a0c !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
 
@@ -16415,7 +16442,7 @@ body[data-war-room-clean] aside[data-sidebar-shell] .h-\[7rem\],
 body[data-war-room-clean] aside[data-sidebar-shell] .min-h-\[7rem\],
 body[data-war-room-clean] aside[data-sidebar-shell] .max-h-\[7rem\] {
   background: transparent !important;
-  border-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
 
@@ -16423,13 +16450,13 @@ body[data-war-room-clean] aside[data-sidebar-shell] nav .my-2,
 body[data-war-room-clean] aside[data-sidebar-shell] nav hr,
 body[data-war-room-clean] aside[data-sidebar-shell] .border-t,
 body[data-war-room-clean] aside[data-sidebar-shell] [class*='border-t'] {
-  border-color: transparent !important;
-  opacity: 0.35;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  opacity: 0.55;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a,
 body[data-war-room-clean] aside[data-sidebar-shell] button {
-  color: var(--wr-text-secondary) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
   border-radius: 12px !important;
   border: 1px solid transparent !important;
   transition:
@@ -16442,14 +16469,14 @@ body[data-war-room-clean] aside[data-sidebar-shell] button {
 
 body[data-war-room-clean] aside[data-sidebar-shell] a:hover,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover {
-  color: var(--wr-text-primary) !important;
-  background-color: rgba(255, 255, 255, 0.45) !important;
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
   box-shadow: none !important;
   transform: translateY(-1px);
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon {
-  color: var(--wr-icon) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
   opacity: 1;
 }
 
@@ -16457,10 +16484,10 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-white\/\[0\.06\],
 body[data-war-room-clean] aside[data-sidebar-shell] .bg-\[linear-gradient\(135deg\,\#243443_0\%\,\#2f4353_52\%\,\#3b5466_100\%\)\] {
-  background: #f2d06b !important;
+  background: rgba(232, 168, 37, 0.92) !important;
   background-image: none !important;
-  color: #2b2d31 !important;
-  border: 1px solid #f2d06b !important;
+  color: #0a0a0c !important;
+  border: 1px solid #e8a825 !important;
   border-radius: 12px !important;
   box-shadow: none !important;
   font-weight: 600 !important;
@@ -16474,7 +16501,7 @@ body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\]::
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/\[0\.06\] .cockpit-icon {
-  color: #2b2d31 !important;
+  color: #0a0a0c !important;
   opacity: 1;
 }
 
@@ -17549,44 +17576,46 @@ body[data-war-room-clean] main .bg-bg-app {
 }
 
 /* ==========================================================================
-   Sidebar clean — vence petróleo/azul de IPT, globals e páginas legacy
+   Sidebar Cockpit X — dark ink (vence IPT, globals e legado claro)
    ========================================================================== */
 
 body[data-war-room-clean] aside[data-sidebar-shell],
 body[data-war-room-clean] aside.sidebar-apify-shell,
 body[data-war-room-clean] aside.sidebar-cockpit-shell,
+body[data-war-room-clean] aside.sidebar-cockpit-x,
 body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell],
 body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell,
 body[data-war-room-clean][data-ipt-operacional] aside.sidebar-cockpit-shell,
 body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell],
 body[data-war-room-clean][data-ipt-refine] aside.sidebar-apify-shell,
 body[data-war-room-clean][data-ipt-palette] aside[data-sidebar-shell],
-body[data-war-room-clean][data-ipt-palette] aside.sidebar-apify-shell {
-  background: #f7f7f6 !important;
-  background-color: #f7f7f6 !important;
-  background-image: none !important;
+body[data-war-room-clean][data-ipt-palette] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell],
+body[data-war-room-clean][data-home-glass] aside.sidebar-apify-shell,
+body[data-war-room-clean][data-home-glass] aside.sidebar-home-glass {
+  /* Material Obsidian — delegado a sidebar-obsidian-glass.css; não forçar flat */
+  background-color: #070709 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-right: 1px solid #e8e8e6 !important;
-  border-color: #e8e8e6 !important;
-  color: #20201e !important;
-  box-shadow: none !important;
 }
 
-/* Tooltip sidebar recolhida — mesmo cinza da sidebar + fonte padrão */
+/* Tooltip sidebar recolhida */
 body[data-war-room-clean] .sidebar-nav-tooltip,
 body[data-war-room-clean] aside[data-sidebar-shell] [role='tooltip'],
 body[data-war-room-clean] aside.sidebar-apify-shell [role='tooltip'] {
-  background: #f7f7f6 !important;
-  background-color: #f7f7f6 !important;
-  color: #20201e !important;
-  border: 1px solid #e8e8e6 !important;
+  background: #141416 !important;
+  background-color: #141416 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 8px !important;
   font-family: var(--wr-font) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
   line-height: 1.35 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] > div,
@@ -17596,11 +17625,14 @@ body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div,
 body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:first-child,
 body[data-war-room-clean][data-ipt-operacional] aside[data-sidebar-shell] > div > div:last-child,
 body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell] > div,
-body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell] > div > div:first-child {
-  background: #f7f7f6 !important;
-  background-color: #f7f7f6 !important;
+body[data-war-room-clean][data-ipt-refine] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div:first-child,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div:last-child {
+  background: transparent !important;
+  background-color: transparent !important;
   background-image: none !important;
-  border-color: #e8e8e6 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
 
@@ -17608,30 +17640,56 @@ body[data-war-room-clean] aside.sidebar-apify-shell a,
 body[data-war-room-clean] aside[data-sidebar-shell] a,
 body[data-war-room-clean] aside[data-sidebar-shell] button,
 body[data-war-room-clean][data-ipt-operacional] aside.sidebar-apify-shell a,
-body[data-war-room-clean][data-ipt-refine] aside.sidebar-apify-shell a {
-  color: #52524f !important;
+body[data-war-room-clean][data-ipt-refine] aside.sidebar-apify-shell a,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button {
+  color: rgba(255, 255, 255, 0.78) !important;
 }
 
 body[data-war-room-clean] aside.sidebar-apify-shell a:hover,
 body[data-war-room-clean] aside[data-sidebar-shell] a:hover,
-body[data-war-room-clean] aside[data-sidebar-shell] button:hover {
-  color: #20201e !important;
-  background-color: #ececea !important;
+body[data-war-room-clean] aside[data-sidebar-shell] button:hover,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] nav svg,
-body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access svg {
-  color: #6f6f6b !important;
+body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access svg,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .cockpit-icon {
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a:hover .cockpit-icon,
 body[data-war-room-clean] aside[data-sidebar-shell] button:hover .cockpit-icon,
-body[data-war-room-clean] aside.sidebar-apify-shell .group:hover .cockpit-icon {
-  color: #20201e !important;
+body[data-war-room-clean] aside.sidebar-apify-shell .group:hover .cockpit-icon,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover .cockpit-icon {
+  color: #e8a825 !important;
 }
 
-/* Item ativo — amarelo vivo sólido (links + botões de submenu) */
+/* Wordmark COCKPIT X — Michroma + âmbar (vence overrides claros) */
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] {
+  color: #ffffff !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+  color: #ffffff !important;
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+body[data-war-room-clean] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+  color: #e8a825 !important;
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+/* Item ativo — âmbar Cockpit X */
 body[data-war-room-clean] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\],
 body[data-war-room-clean] aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\],
 body[data-war-room-clean] aside[data-sidebar-shell] a[aria-current='page'],
@@ -17644,14 +17702,16 @@ body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\],
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/60,
-body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/60 {
-  background: #f2d06b !important;
-  background-color: #f2d06b !important;
+body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/60,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.wr-nav-active,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-white\/\[0\.06\] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
   background-image: none !important;
-  color: #2b2d31 !important;
-  border-left-color: #f2d06b !important;
-  border-color: #f2d06b !important;
-  box-shadow: none !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 2px solid #e8a825 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   font-weight: 600 !important;
 }
 
@@ -17664,10 +17724,10 @@ body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\]:hover
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70:hover,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70:hover,
 body[data-war-room-clean] aside[data-sidebar-shell] a[aria-current='page']:hover {
-  background: #f2d06b !important;
-  background-color: #f2d06b !important;
-  color: #2b2d31 !important;
-  border-color: #f2d06b !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  color: #ffffff !important;
+  border-color: #e8a825 !important;
 }
 
 body[data-war-room-clean] aside[data-sidebar-shell] a.wr-nav-active .cockpit-icon,
@@ -17684,7 +17744,7 @@ body[data-war-room-clean] aside[data-sidebar-shell] a.bg-\[\#f2d06b\] svg,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] svg,
 body[data-war-room-clean] aside[data-sidebar-shell] a.bg-white\/70 svg,
 body[data-war-room-clean] aside[data-sidebar-shell] button.bg-white\/70 svg {
-  color: #2b2d31 !important;
+  color: #e8a825 !important;
   opacity: 1 !important;
 }
 
@@ -18101,4 +18161,609 @@ body[data-war-room-clean] .wr-mapa-obras-embedded .wr-copiloto-filtros select:fo
   border-color: rgba(0, 0, 0, 0.12) !important;
   box-shadow: var(--wr-shadow-1) !important;
   outline: none !important;
+}
+
+/* —— Cobertura de Visitas por TD (aba Cobertura) —— */
+.wr-copiloto-view__panel:has(.wr-cob-td) {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.wr-cob-td {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 4px 2px 48px;
+  color: #2b2d31;
+  animation: wr-copiloto-panel-in 0.34s ease-out both;
+}
+
+.wr-cob-td__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wr-cob-td__eyebrow {
+  margin: 0;
+  font-size: var(--wr-fs-thead, 11px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-cob-td__title {
+  margin: 0;
+  font-size: var(--wr-type-headline-sm-size, 20px);
+  font-weight: 700;
+  line-height: var(--wr-type-headline-sm-lh, 1.35);
+  color: #2b2d31;
+}
+
+.wr-cob-td__sub {
+  margin: 0;
+  max-width: 52rem;
+  font-size: var(--wr-fs-meta, 12px);
+  line-height: 1.45;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-cob-td__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wr-cob-td__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  padding: 10px 12px 12px;
+  background: #fff;
+  border: 1px solid #e8e8e6;
+  border-radius: 12px;
+}
+
+.wr-cob-td__kpi::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #e8a825;
+}
+
+.wr-cob-td__kpi--ok,
+.wr-cob-td__kpi--warn,
+.wr-cob-td__kpi--bad {
+  border-left: 1px solid #e8e8e6;
+}
+
+.wr-cob-td__kpi-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-cob-td__kpi-val {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--wr-text-primary, #20201f);
+}
+
+.wr-cob-td__kpi-hint {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--wr-aux, #6b7280);
+}
+
+.wr-cob-td__weight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--palette-card, #fff);
+  border: 1px solid var(--palette-divider, #e5e7eb);
+  border-radius: 12px;
+}
+
+.wr-cob-td__weight-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.wr-cob-td__weight-bar {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--palette-chart-bg, #e6eaf0);
+}
+
+.wr-cob-td__weight-seg--ok {
+  background: #e8a825;
+}
+
+.wr-cob-td__weight-seg--warn {
+  background: #14161a;
+}
+
+.wr-cob-td__weight-seg--bad {
+  background: #c4c4c0;
+}
+
+.wr-cob-td__weight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.82rem;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-cob-td__weight-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wr-cob-td__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.wr-cob-td__dot--ok {
+  background: #e8a825;
+}
+
+.wr-cob-td__dot--warn {
+  background: #14161a;
+}
+
+.wr-cob-td__dot--bad {
+  background: #c4c4c0;
+}
+
+.wr-cob-td__note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__section-title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.wr-cob-td__table-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-cob-td__table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--palette-divider, #e5e7eb);
+  border-radius: 12px;
+  background: var(--palette-card, #fff);
+}
+
+.wr-cob-td__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.wr-cob-td__table th,
+.wr-cob-td__table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--palette-divider, #e5e7eb);
+  white-space: nowrap;
+}
+
+.wr-cob-td__table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #686865;
+  background: transparent;
+}
+
+.wr-cob-td__table tbody tr:hover {
+  background: rgba(232, 168, 37, 0.08);
+}
+
+.wr-cob-td__table tfoot td {
+  font-weight: 650;
+  background: #f7f7f6;
+  border-bottom: none;
+}
+
+.wr-cob-td__td-link {
+  color: #14161a;
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.wr-cob-td__td-link:hover {
+  color: #e8a825;
+  text-decoration: underline;
+}
+
+.wr-cob-td__subtabs-wrap {
+  margin: 0 -2px;
+}
+
+.wr-cob-td__subtabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 3px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wr-text-primary, #2b2d31) 6%, #fff);
+  scrollbar-width: thin;
+}
+
+.wr-cob-td__subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wr-text-secondary, #686865);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wr-cob-td__subtab:hover {
+  color: var(--palette-petrol, #022b3a);
+  background: color-mix(in srgb, #fff 70%, transparent);
+}
+
+.wr-cob-td__subtab--on {
+  background: #14161a;
+  color: #fff;
+}
+
+.wr-cob-td__subtab--on:hover {
+  background: #0a0a0c;
+  color: #fff;
+}
+
+.wr-cob-td__subtab-rank {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  font-weight: 650;
+}
+
+.wr-cob-td__subtab--on .wr-cob-td__subtab-rank {
+  opacity: 0.9;
+}
+
+.wr-cob-td__subtab-name {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wr-cob-td__num--ok,
+.wr-cob-td__num--warn,
+.wr-cob-td__num--bad {
+  color: #2b2d31;
+  font-weight: 650;
+}
+
+.wr-cob-td__details {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.wr-cob-td__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 8px 8px 20px;
+  scroll-margin-top: 88px;
+}
+
+.wr-cob-td__detail-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__detail-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 750;
+  color: #2b2d31;
+}
+
+.wr-cob-td__detail-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.wr-cob-td__detail-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+}
+
+.wr-cob-td__detail-kpi strong {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--palette-petrol, #022b3a);
+}
+
+.wr-cob-td__detail-kpi span {
+  font-size: 0.72rem;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__detail-kpi--ok strong,
+.wr-cob-td__detail-kpi--warn strong,
+.wr-cob-td__detail-kpi--bad strong {
+  color: #2b2d31;
+}
+
+.wr-cob-td__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.wr-cob-td__group-head {
+  border-bottom: 1px solid #e8e8e6;
+  padding-bottom: 6px;
+}
+
+.wr-cob-td__group-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #2b2d31;
+}
+
+.wr-cob-td__group--sem .wr-cob-td__group-title,
+.wr-cob-td__group--agendada .wr-cob-td__group-title,
+.wr-cob-td__group--visitada .wr-cob-td__group-title {
+  color: #2b2d31;
+}
+
+.wr-cob-td__group-count {
+  margin-left: 0.45em;
+  font-weight: 500;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__city-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 42rem;
+}
+
+.wr-cob-td__city-list-head,
+.wr-cob-td__city {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 4.5rem 4rem minmax(7rem, 1fr);
+  gap: 8px 12px;
+  align-items: baseline;
+  padding: 7px 0 7px 12px;
+  border-left: 2px solid transparent;
+}
+
+.wr-cob-td__city-list-head {
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-left-color: transparent;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__city + .wr-cob-td__city {
+  border-top: 1px solid #eeeef0;
+}
+
+.wr-cob-td__city--sem {
+  border-left-color: #c4c4c0;
+}
+
+.wr-cob-td__city--agendada {
+  border-left-color: #14161a;
+}
+
+.wr-cob-td__city--visitada {
+  border-left-color: #e8a825;
+}
+
+.wr-cob-td__city-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: #14161a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-cob-td__city-peso {
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #14161a;
+  text-align: right;
+}
+
+.wr-cob-td__city-visitas {
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #14161a;
+  text-align: right;
+}
+
+.wr-cob-td__city-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--palette-aux, #6b7280);
+  min-width: 0;
+}
+
+.wr-cob-td__anexo-sub {
+  margin: -4px 0 12px;
+  font-size: 0.85rem;
+  color: var(--palette-aux, #6b7280);
+}
+
+.wr-cob-td__anexo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 4px;
+}
+
+.wr-cob-td__anexo-head .wr-cob-td__section-title {
+  margin-bottom: 4px;
+}
+
+.wr-cob-td__anexo-head .wr-cob-td__anexo-sub {
+  margin: 0;
+}
+
+.wr-cob-td__pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 9px 14px;
+  border: 1px solid #e8e8e6;
+  border-radius: 999px;
+  background: #14161a;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.wr-cob-td__pdf-btn:hover:not(:disabled) {
+  background: #1c1e24;
+  border-color: #e8a825;
+}
+
+.wr-cob-td__pdf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .wr-cob-td__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wr-cob-td__detail-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .wr-cob-td__kpis,
+  .wr-cob-td__detail-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .wr-cob-td__city-list {
+    max-width: none;
+  }
+
+  .wr-cob-td__city-list-head,
+  .wr-cob-td__city {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'name peso visitas'
+      'status status status';
+  }
+
+  .wr-cob-td__city-list-head span:nth-child(4),
+  .wr-cob-td__city-list-head {
+    display: none;
+  }
+
+  .wr-cob-td__city-name {
+    grid-area: name;
+  }
+
+  .wr-cob-td__city-peso {
+    grid-area: peso;
+  }
+
+  .wr-cob-td__city-visitas {
+    grid-area: visitas;
+  }
+
+  .wr-cob-td__city-status {
+    grid-area: status;
+  }
 }

@@ -1,0 +1,314 @@
+/**
+ * Sidebar Cockpit X — Obsidian Glass
+ * Rail premium: profundidade em camadas + âmbar como luz (não tinta).
+ */
+
+aside.sidebar-cockpit-x,
+aside.sidebar-apify-shell.sidebar-cockpit-x,
+aside[data-sidebar-shell].sidebar-cockpit-x {
+  --cx-sidebar-ink: #070709;
+  --cx-sidebar-ink-mid: #0e1116;
+  --cx-sidebar-ink-lift: #141a22;
+  --cx-sidebar-amber: #e8a825;
+  --cx-sidebar-amber-glow: rgba(232, 168, 37, 0.28);
+  --cx-sidebar-hairline: rgba(255, 255, 255, 0.1);
+  --cx-sidebar-text: rgba(255, 255, 255, 0.78);
+  --cx-sidebar-text-strong: #ffffff;
+  --cx-sidebar-muted: rgba(255, 255, 255, 0.42);
+
+  background-color: var(--cx-sidebar-ink) !important;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045) 0%,
+      transparent 18%,
+      transparent 72%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    radial-gradient(
+      120% 80% at 0% 0%,
+      rgba(232, 168, 37, 0.07) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      165deg,
+      var(--cx-sidebar-ink-lift) 0%,
+      var(--cx-sidebar-ink-mid) 42%,
+      var(--cx-sidebar-ink) 100%
+    ) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  border-right: 1px solid var(--cx-sidebar-hairline) !important;
+  border-color: var(--cx-sidebar-hairline) !important;
+  color: var(--cx-sidebar-text) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    12px 0 40px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Camadas internas transparentes — o material vive no <aside> */
+aside.sidebar-cockpit-x > div,
+aside.sidebar-cockpit-x > div > div:first-child,
+aside.sidebar-cockpit-x > div > div:last-child,
+aside.sidebar-cockpit-x .h-\[7rem\],
+aside.sidebar-cockpit-x .min-h-\[7rem\],
+aside.sidebar-cockpit-x .max-h-\[7rem\] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+aside.sidebar-cockpit-x > div > div:first-child {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Wordmark */
+aside.sidebar-cockpit-x [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+  color: #ffffff !important;
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.04em !important;
+}
+
+aside.sidebar-cockpit-x [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+  color: var(--cx-sidebar-amber) !important;
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  text-shadow: 0 0 18px var(--cx-sidebar-amber-glow);
+}
+
+aside.sidebar-cockpit-x [data-brand-wordmark='cockpit-x'] > span + span,
+aside.sidebar-cockpit-x [aria-label='Cockpit X'] + span {
+  color: var(--cx-sidebar-muted) !important;
+}
+
+/* Nav */
+aside.sidebar-cockpit-x a,
+aside.sidebar-cockpit-x button {
+  color: var(--cx-sidebar-text) !important;
+  border-radius: 10px !important;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+aside.sidebar-cockpit-x a:hover,
+aside.sidebar-cockpit-x button:hover {
+  color: var(--cx-sidebar-text-strong) !important;
+  background-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+aside.sidebar-cockpit-x .cockpit-icon,
+aside.sidebar-cockpit-x nav svg,
+aside.sidebar-cockpit-x .sidebar-quick-access svg {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+  transition: color 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
+}
+
+aside.sidebar-cockpit-x a:hover .cockpit-icon,
+aside.sidebar-cockpit-x button:hover .cockpit-icon,
+aside.sidebar-cockpit-x .group:hover .cockpit-icon,
+aside.sidebar-cockpit-x a:hover svg,
+aside.sidebar-cockpit-x button:hover svg {
+  color: var(--cx-sidebar-amber) !important;
+  filter: drop-shadow(0 0 6px var(--cx-sidebar-amber-glow));
+}
+
+/* Ativo — barra âmbar + fill suave (não bloco sólido) */
+aside.sidebar-cockpit-x a.wr-nav-active,
+aside.sidebar-cockpit-x button.wr-nav-active,
+aside.sidebar-cockpit-x a[aria-current='page'],
+aside.sidebar-cockpit-x a.bg-white\/\[0\.06\],
+aside.sidebar-cockpit-x button.bg-white\/\[0\.06\],
+aside.sidebar-cockpit-x a.bg-\[\#f2d06b\],
+aside.sidebar-cockpit-x button.bg-\[\#f2d06b\],
+aside.sidebar-cockpit-x a.bg-\[\#e8a825\],
+aside.sidebar-cockpit-x button.bg-\[\#e8a825\],
+aside.sidebar-cockpit-x a.bg-white\/70,
+aside.sidebar-cockpit-x button.bg-white\/70,
+aside.sidebar-cockpit-x a.bg-white\/60,
+aside.sidebar-cockpit-x button.bg-white\/60,
+aside.sidebar-cockpit-x nav a.border-l-\[\#c99a2e\],
+aside.sidebar-cockpit-x nav a.border-l-\[\#e8a825\],
+aside.sidebar-cockpit-x .sidebar-quick-access a.border-l-\[\#e8a825\] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  background-image: none !important;
+  color: var(--cx-sidebar-text-strong) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 2px solid var(--cx-sidebar-amber) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(232, 168, 37, 0.06) !important;
+  font-weight: 600 !important;
+}
+
+aside.sidebar-cockpit-x a.wr-nav-active:hover,
+aside.sidebar-cockpit-x button.wr-nav-active:hover,
+aside.sidebar-cockpit-x a[aria-current='page']:hover,
+aside.sidebar-cockpit-x a.bg-white\/\[0\.06\]:hover,
+aside.sidebar-cockpit-x button.bg-white\/\[0\.06\]:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  color: var(--cx-sidebar-text-strong) !important;
+  border-left-color: var(--cx-sidebar-amber) !important;
+}
+
+aside.sidebar-cockpit-x a.wr-nav-active .cockpit-icon,
+aside.sidebar-cockpit-x button.wr-nav-active .cockpit-icon,
+aside.sidebar-cockpit-x a[aria-current='page'] .cockpit-icon,
+aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] .cockpit-icon,
+aside.sidebar-cockpit-x button.bg-white\/\[0\.06\] .cockpit-icon,
+aside.sidebar-cockpit-x a.wr-nav-active svg,
+aside.sidebar-cockpit-x button.wr-nav-active svg,
+aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] svg,
+aside.sidebar-cockpit-x button.bg-white\/\[0\.06\] svg {
+  color: var(--cx-sidebar-amber) !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px var(--cx-sidebar-amber-glow));
+}
+
+aside.sidebar-cockpit-x a.wr-nav-active span,
+aside.sidebar-cockpit-x button.wr-nav-active span,
+aside.sidebar-cockpit-x a[aria-current='page'] span,
+aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] span,
+aside.sidebar-cockpit-x button.bg-white\/\[0\.06\] span {
+  color: var(--cx-sidebar-text-strong) !important;
+}
+
+/* Seções / divisores */
+aside.sidebar-cockpit-x [class*='tracking-[0.18em]'],
+aside.sidebar-cockpit-x .uppercase.tracking-\[0\.18em\] {
+  color: var(--cx-sidebar-muted) !important;
+  letter-spacing: 0.16em !important;
+}
+
+aside.sidebar-cockpit-x .border-t,
+aside.sidebar-cockpit-x [class*='border-t'],
+aside.sidebar-cockpit-x nav hr {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Tooltip */
+.sidebar-nav-tooltip {
+  background: #12151a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(232, 168, 37, 0.08) !important;
+}
+
+/* Avatar / ações do rodapé */
+aside.sidebar-cockpit-x .user-avatar-patch {
+  background-color: var(--cx-sidebar-amber) !important;
+  color: #0a0a0c !important;
+}
+
+aside.sidebar-cockpit-x .text-white\/50,
+aside.sidebar-cockpit-x .text-white\/45,
+aside.sidebar-cockpit-x .text-white\/60,
+aside.sidebar-cockpit-x .text-white\/70,
+aside.sidebar-cockpit-x .text-white\/75,
+aside.sidebar-cockpit-x .text-white\/85,
+aside.sidebar-cockpit-x .text-white\/90 {
+  color: inherit;
+  opacity: 1 !important;
+}
+
+/* War Room / home-glass — mesma especificidade dos overrides legados */
+body[data-war-room-clean] aside.sidebar-cockpit-x,
+body[data-war-room-clean] aside[data-sidebar-shell].sidebar-cockpit-x,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell].sidebar-cockpit-x,
+body[data-war-room-clean][data-ipt-operacional] aside.sidebar-cockpit-x,
+body[data-war-room-clean][data-ipt-refine] aside.sidebar-cockpit-x,
+body[data-war-room-clean][data-ipt-palette] aside.sidebar-cockpit-x {
+  --cx-sidebar-ink: #070709;
+  --cx-sidebar-ink-mid: #0e1116;
+  --cx-sidebar-ink-lift: #141a22;
+  --cx-sidebar-amber: #e8a825;
+  background-color: var(--cx-sidebar-ink) !important;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.045) 0%,
+      transparent 18%,
+      transparent 72%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    radial-gradient(
+      120% 80% at 0% 0%,
+      rgba(232, 168, 37, 0.07) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      165deg,
+      var(--cx-sidebar-ink-lift) 0%,
+      var(--cx-sidebar-ink-mid) 42%,
+      var(--cx-sidebar-ink) 100%
+    ) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    12px 0 40px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-war-room-clean] aside.sidebar-cockpit-x > div,
+body[data-war-room-clean] aside.sidebar-cockpit-x > div > div:first-child,
+body[data-war-room-clean] aside.sidebar-cockpit-x > div > div:last-child,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x > div,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x > div > div:first-child,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x > div > div:last-child {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+body[data-war-room-clean] aside.sidebar-cockpit-x a.wr-nav-active,
+body[data-war-room-clean] aside.sidebar-cockpit-x button.wr-nav-active,
+body[data-war-room-clean] aside.sidebar-cockpit-x a[aria-current='page'],
+body[data-war-room-clean] aside.sidebar-cockpit-x a.bg-white\/\[0\.06\],
+body[data-war-room-clean] aside.sidebar-cockpit-x button.bg-white\/\[0\.06\],
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x a.wr-nav-active,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] {
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 2px solid #e8a825 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(232, 168, 37, 0.06) !important;
+  font-weight: 600 !important;
+}
+
+body[data-war-room-clean] aside.sidebar-cockpit-x a.wr-nav-active .cockpit-icon,
+body[data-war-room-clean] aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] .cockpit-icon,
+body[data-war-room-clean] aside.sidebar-cockpit-x a.wr-nav-active svg,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x a.wr-nav-active .cockpit-icon {
+  color: #e8a825 !important;
+  opacity: 1 !important;
+}
+
+body[data-war-room-clean] aside.sidebar-cockpit-x a.wr-nav-active span,
+body[data-war-room-clean] aside.sidebar-cockpit-x a.bg-white\/\[0\.06\] span,
+body[data-war-room-clean][data-home-glass] aside.sidebar-cockpit-x a.wr-nav-active span {
+  color: #ffffff !important;
+}

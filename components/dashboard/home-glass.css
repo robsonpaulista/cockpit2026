@@ -38,21 +38,17 @@ body[data-war-room-clean][data-home-glass] .relative.flex.flex-1.flex-col.overfl
   background-color: #e5e6e8 !important;
 }
 
-/* ——— Sidebar: glass gelo ——— */
+/* ——— Sidebar: Cockpit X dark (mesmo ink da home) ——— */
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell],
 body[data-war-room-clean][data-home-glass] aside.sidebar-apify-shell,
 body[data-war-room-clean][data-home-glass] aside.sidebar-home-glass {
-  background: rgba(255, 255, 255, 0.55) !important;
-  background-color: rgba(255, 255, 255, 0.55) !important;
-  background-image: none !important;
-  backdrop-filter: blur(28px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(140%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.7) !important;
-  border-color: rgba(226, 232, 240, 0.85) !important;
-  color: #2b2d31 !important;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    8px 0 28px rgba(43, 45, 49, 0.08) !important;
+  /* Material Obsidian Glass — ver app/sidebar-obsidian-glass.css */
+  background-color: #070709 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div,
@@ -61,42 +57,51 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
-  border-color: rgba(43, 45, 49, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: none !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .h-\[7rem\],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .min-h-\[7rem\],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .max-h-\[7rem\] {
-  background: transparent !important;
-  border-color: rgba(43, 45, 49, 0.08) !important;
-  box-shadow: inset 0 -1px 0 rgba(43, 45, 49, 0.08) !important;
+  background: #0a0a0c !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
-/* Wordmark: negrito igual ao modal · 2026 amarelo (vence coral/weight 500 do tema clean) */
+/* Wordmark COCKPIT X — Michroma + âmbar */
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit X'],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit 2026'],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .font-sans.font-bold {
-  font-weight: 700 !important;
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
 }
 
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-cx-mark='cockpit'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit X'] span:first-child,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit 2026'] span:first-child,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .font-sans.font-bold > span:first-child {
-  color: #2b2d31 !important;
-  font-weight: 700 !important;
-  font-size: 18px !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+  font-size: 17px !important;
 }
 
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-cx-mark='x'],
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit X'] span:last-child,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit 2026'] span:last-child,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .font-sans.font-bold > span:last-child,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .font-sans.font-bold > span:last-child.text-\[\#f2d06b\],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [class*='text-[#f2d06b]'],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [class*='text-[var(--palette-accent'] {
-  color: #f2d06b !important;
-  font-weight: 700 !important;
-  font-size: 18px !important;
+  color: #e8a825 !important;
+  font-weight: 400 !important;
+  font-size: 17px !important;
 }
 
-/* Slogan sob a logo — visível (tema clean esconde tracking/text-[7px]) */
+/* Slogan sob a logo */
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [data-brand-wordmark='cockpit-x'] > span + span,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit X'] + span,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [aria-label='Cockpit 2026'] + span,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .font-sans.font-bold + span,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [class*='tracking-[0.12em]'],
@@ -105,7 +110,7 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [class*='tr
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .h-\[7rem\] [class*='tracking-[0.12em]'],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .min-h-\[7rem\] [class*='tracking-[0.12em]'] {
   display: block !important;
-  color: rgba(43, 45, 49, 0.55) !important;
+  color: rgba(255, 255, 255, 0.48) !important;
   font-size: 8px !important;
   font-weight: 600 !important;
   line-height: 1.35 !important;
@@ -124,7 +129,7 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a span,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button span {
-  color: #2b2d31 !important;
+  color: rgba(255, 255, 255, 0.82) !important;
   font-size: 13px !important;
   line-height: 17px !important;
   font-weight: 500 !important;
@@ -136,12 +141,12 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hover,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover span,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hover span {
-  color: #2b2d31 !important;
+  color: #ffffff !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover:not(.wr-nav-active),
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hover:not(.wr-nav-active) {
-  background-color: rgba(255, 255, 255, 0.55) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .cockpit-icon,
@@ -149,8 +154,8 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] nav svg,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .sidebar-quick-access svg,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a svg,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button svg {
-  color: #2b2d31 !important;
-  opacity: 0.72 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  opacity: 0.9 !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover .cockpit-icon,
@@ -158,7 +163,7 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hove
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .group:hover .cockpit-icon,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a:hover svg,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button:hover svg {
-  color: #2b2d31 !important;
+  color: #e8a825 !important;
   opacity: 1 !important;
 }
 
@@ -173,12 +178,13 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-white\
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.bg-white\/70,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-\[\#f2d06b\],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] {
-  background: #f2d06b !important;
-  background-color: #f2d06b !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
   background-image: none !important;
-  color: #2b2d31 !important;
-  border: 1px solid #f2d06b !important;
-  box-shadow: none !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 2px solid #e8a825 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   font-weight: 600 !important;
 }
 
@@ -187,10 +193,10 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.wr-n
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a[aria-current='page']:hover,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-\[\#f2d06b\]:hover,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.bg-\[\#f2d06b\]:hover {
-  background: #f2d06b !important;
-  background-color: #f2d06b !important;
-  color: #2b2d31 !important;
-  border-color: #f2d06b !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  color: #ffffff !important;
+  border-left-color: #e8a825 !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.wr-nav-active span,
@@ -206,24 +212,30 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-\[\#f2
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] .cockpit-icon,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.bg-\[\#f2d06b\] svg,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.bg-\[\#f2d06b\] svg {
-  color: #2b2d31 !important;
+  color: #e8a825 !important;
   opacity: 1 !important;
+}
+
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a.wr-nav-active span,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] button.wr-nav-active span,
+body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] a[aria-current='page'] span {
+  color: #ffffff !important;
 }
 
 /* Rótulos de seção (Acesso rápido etc.) — um degrau mais suave, ainda legível */
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .uppercase.tracking-\[0\.18em\],
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [class*='tracking-[0.18em]'] {
-  color: rgba(43, 45, 49, 0.5) !important;
+  color: rgba(255, 255, 255, 0.42) !important;
   font-weight: 600 !important;
 }
 
 body[data-war-room-clean][data-home-glass] .sidebar-nav-tooltip,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] [role='tooltip'] {
-  background: rgba(255, 255, 255, 0.95) !important;
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  color: #2b2d31 !important;
-  border: 1px solid rgba(43, 45, 49, 0.1) !important;
-  box-shadow: 0 8px 24px rgba(43, 45, 49, 0.12) !important;
+  background: #141416 !important;
+  background-color: #141416 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
 }
 
 /* Footer / labels */
@@ -236,31 +248,31 @@ body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .text-white
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .text-white\/90,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .text-secondary,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .text-text-secondary {
-  color: #2b2d31 !important;
+  color: rgba(255, 255, 255, 0.7) !important;
   opacity: 1 !important;
 }
 
 /* Rodapé: usuário + tela de descanso — contraste pleno (sem branco translúcido) */
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .user-avatar-patch {
-  background-color: #f2d06b !important;
-  color: #2b2d31 !important;
+  background-color: #e8a825 !important;
+  color: #0a0a0c !important;
   opacity: 1 !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] .user-avatar-patch span {
-  color: #2b2d31 !important;
+  color: #0a0a0c !important;
   opacity: 1 !important;
   font-weight: 700 !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div:last-child button,
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div:last-child button span {
-  color: #2b2d31 !important;
+  color: rgba(255, 255, 255, 0.78) !important;
   opacity: 1 !important;
 }
 
 body[data-war-room-clean][data-home-glass] aside[data-sidebar-shell] > div > div:last-child button svg {
-  color: #2b2d31 !important;
+  color: rgba(255, 255, 255, 0.7) !important;
   opacity: 1 !important;
 }
 

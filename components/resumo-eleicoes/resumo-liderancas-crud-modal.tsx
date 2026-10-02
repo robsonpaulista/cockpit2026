@@ -20,6 +20,7 @@ export type LiderancaCrudRow = {
   expectativaLegado: number
   expectativaAferida: number
   promessa: number
+  previsto?: number
   votos2024?: number
   votacaoFinal2022: number
 }
@@ -33,6 +34,7 @@ type FormState = {
   expectativaLegado: string
   expectativaAferida: string
   promessa: string
+  previsto: string
 }
 
 export type LiderancaFormPrefill = {
@@ -44,6 +46,7 @@ export type LiderancaFormPrefill = {
   expectativaLegado?: number
   expectativaAferida?: number
   promessa?: number
+  previsto?: number
 }
 
 const EMPTY_FORM: FormState = {
@@ -56,6 +59,7 @@ const EMPTY_FORM: FormState = {
   expectativaLegado: '0',
   expectativaAferida: '0',
   promessa: '0',
+  previsto: '0',
 }
 
 function formFromPrefill(prefill: LiderancaFormPrefill): FormState {
@@ -68,6 +72,7 @@ function formFromPrefill(prefill: LiderancaFormPrefill): FormState {
     expectativaLegado: String(prefill.expectativaLegado ?? 0),
     expectativaAferida: String(prefill.expectativaAferida ?? 0),
     promessa: String(prefill.promessa ?? 0),
+    previsto: String(prefill.previsto ?? 0),
   }
 }
 
@@ -169,6 +174,7 @@ export function ResumoLiderancasCrudModal({
         expectativaLegado: String(row.expectativaLegado || 0),
         expectativaAferida: String(row.expectativaAferida || 0),
         promessa: String(row.promessa || 0),
+        previsto: String(row.previsto || 0),
       })
       return
     }
@@ -212,6 +218,7 @@ export function ResumoLiderancasCrudModal({
       expectativaLegado: String(row.expectativaLegado || 0),
       expectativaAferida: String(row.expectativaAferida || 0),
       promessa: String(row.promessa || 0),
+      previsto: String(row.previsto || 0),
     })
     setError(null)
   }
@@ -241,6 +248,7 @@ export function ResumoLiderancasCrudModal({
       expectativa_votos_2026: parseNum(form.expectativaLegado),
       expectativa_jadyel_2026: parseNum(form.expectativaAferida),
       promessa_lideranca_2026: parseNum(form.promessa),
+      previsto_2026: parseNum(form.previsto),
     }
 
     try {
@@ -385,6 +393,14 @@ export function ResumoLiderancasCrudModal({
                 <input
                   value={form.promessa}
                   onChange={(e) => setForm((prev) => ({ ...prev, promessa: e.target.value }))}
+                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
+                />
+              </label>
+              <label className="text-xs text-text-secondary">
+                Revisão Final
+                <input
+                  value={form.previsto}
+                  onChange={(e) => setForm((prev) => ({ ...prev, previsto: e.target.value }))}
                   className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
                 />
               </label>

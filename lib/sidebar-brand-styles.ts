@@ -1,25 +1,25 @@
 import { cn } from '@/lib/utils'
 
 /**
- * Marca — paleta oficial Copiloto (`docs/paleta-copiloto.md`).
- * Accent coral para ênfase; azul institucional para UI recorrente.
+ * Marca Cockpit X — tipografia Michroma + âmbar da cena home/login.
+ * UI recorrente continua com azul institucional onde aplicável.
  */
-export const SIDEBAR_BRAND_AMBER = '#f04b23'
+export const SIDEBAR_BRAND_AMBER = '#e8a825'
 export const SIDEBAR_BRAND_INST = '#005b8f'
-export const SIDEBAR_BRAND_PETROL = '#022b3a'
+export const SIDEBAR_BRAND_PETROL = '#0a0a0c'
 
 /** Slogan institucional — igual splash / login. */
 export const APP_BRAND_TAGLINE = 'Comando Dep Fed Jadyel Alencar'
 
-/** Wordmark tipográfico COCKPIT 2026 — sans bold, alinhado à splash. */
+/** Wordmark tipográfico COCKPIT X — Michroma, alinhado à home. */
 export const brandWordmarkClass =
-  'font-sans font-bold uppercase leading-none tracking-[-0.01em]'
+  'font-[family-name:var(--font-michroma)] uppercase leading-none tracking-[0.04em]'
 
 export const brandWordmarkTaglineClass =
   'font-sans text-[length:var(--text-2xs)] font-medium uppercase leading-snug tracking-[0.14em] text-white/50'
 
 export const sidebarBrandLogoMarkClass =
-  'flex h-6 w-6 shrink-0 items-center justify-center font-sans text-[11px] font-extrabold leading-none tracking-tighter'
+  'flex h-6 w-6 shrink-0 items-center justify-center font-[family-name:var(--font-michroma)] text-[11px] leading-none tracking-tighter'
 
 /** Nome do produto na sidebar — contraste sobre fundo escuro. */
 export const sidebarBrandNameClass =
@@ -40,23 +40,23 @@ export const sidebarBrandSectionLabelClass = cn(
   'px-[14px] text-[length:var(--text-2xs)] font-semibold uppercase tracking-[0.18em] text-white/45'
 )
 
-/** Borda e foco do item ativo na sidebar */
-export const sidebarActiveBorderClass = 'border-l-[#f04b23]'
+/** Borda e foco do item ativo na sidebar — âmbar Cockpit X */
+export const sidebarActiveBorderClass = 'border-l-[#e8a825]'
 
 export const sidebarActiveFocusRingClass =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f04b23]/30 focus-visible:ring-offset-1 focus-visible:ring-offset-[#022b3a]'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8a825]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-[#070709]'
 
 /** Divider entre seções */
 export const sidebarBrandDividerClass = 'mx-[14px] h-px bg-white/10'
 
-/** Abas horizontais das páginas (DashboardHubTabBar). */
+/** Abas horizontais — Cockpit X (underline âmbar). */
 export const dashboardHubTabBaseClass =
-  'inline-flex items-center gap-1.5 rounded-none border-b-2 px-0.5 pb-3 pt-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005b8f]/25 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-app'
+  'inline-flex items-center gap-1.5 rounded-none border-b-2 px-0.5 pb-3 pt-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8a825]/30 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-app'
 
-export const dashboardHubTabActiveClass = 'border-[#005b8f] text-text-primary'
+export const dashboardHubTabActiveClass = 'border-[#e8a825] font-semibold text-[#2b2d31]'
 
 export const dashboardHubTabIdleClass =
-  'border-transparent text-text-muted hover:text-text-primary'
+  'border-transparent text-[#969692] hover:text-[#2b2d31]'
 
 /** Ícone / destaque — accent oficial. */
 export const brandAmberIconClass = 'text-[#f04b23]'

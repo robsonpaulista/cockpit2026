@@ -1,16 +1,16 @@
 {
   "id": "/",
-  "name": "Cockpit 2026 — Gestão de Campanha",
-  "short_name": "Cockpit 2026",
-  "description": "Sistema operacional de gestão de campanha eleitoral",
+  "name": "Cockpit X",
+  "short_name": "Cockpit X",
+  "description": "Comando de campanha — cobertura, território e inteligência em tempo real",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f8fafc",
-  "theme_color": "#0E74BC",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
   "icons": [
     {
       "src": "/icons/192",

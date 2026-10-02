@@ -111,20 +111,20 @@ const EMPTY_TERRITORIO_ARRAY: TerritorioInfo[] = []
 const EMPTY_ELEITORES: Record<string, number> = {}
 const EMPTY_IPT_BOUNDS: IptMunicipio[] = []
 
-/** War Room clean — amarelo logo / preto / cinza. */
+/** War Room / Cockpit X — âmbar da cena (#e8a825), ink e cinza. */
 const WR_MARKER = {
-  yellow: '#f2d06b',
-  yellowBorder: '#d4b45a',
-  black: '#2b2d31',
-  blackBorder: '#20201f',
+  yellow: '#e8a825',
+  yellowBorder: '#c9921a',
+  black: '#14161a',
+  blackBorder: '#0a0a0c',
   gray: '#686865',
   grayMid: '#969692',
   graySoft: 'rgba(104,104,101,0.55)',
   graySoftBorder: 'rgba(104,104,101,0.75)',
   grayMidSoft: 'rgba(150,150,146,0.7)',
   grayMidBorder: 'rgba(104,104,101,0.85)',
-  grayStrong: 'rgba(43,45,49,0.85)',
-  grayStrongBorder: 'rgba(32,32,31,0.9)',
+  grayStrong: 'rgba(20,22,26,0.85)',
+  grayStrongBorder: 'rgba(10,10,12,0.9)',
 } as const
 
 // ========== Helper Functions ==========
@@ -137,6 +137,12 @@ function safeRemoveLeafletMap(map: L.Map | null | undefined): void {
   if (!map) return
   try {
     map.stop()
+  } catch {
+    // ignore
+  }
+  try {
+    const panAnim = (map as L.Map & { _panAnim?: { stop?: () => void } })._panAnim
+    panAnim?.stop?.()
   } catch {
     // ignore
   }
@@ -158,11 +164,50 @@ function safeRemoveLeafletMap(map: L.Map | null | undefined): void {
   }
 }
 
+/**
+ * Leaflet chama removeClass(this._mapPane) no fim do pan animado.
+ * Se o mapa já foi destruído (ou o pane sumiu), isso explode em classList.
+ */
+function hardenLeafletPanEnd(map: L.Map): void {
+  type MapWithPanEnd = L.Map & {
+    _mapPane?: HTMLElement | null
+    _onPanTransitionEnd?: (this: L.Map) => void
+  }
+  const m = map as MapWithPanEnd
+  const original = m._onPanTransitionEnd
+  if (typeof original !== 'function') return
+  m._onPanTransitionEnd = function (this: L.Map) {
+    const self = this as MapWithPanEnd
+    if (!self._mapPane) {
+      try {
+        this.fire('moveend')
+      } catch {
+        // ignore
+      }
+      return
+    }
+    try {
+      original.call(this)
+    } catch {
+      try {
+        this.fire('moveend')
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
 function isLeafletMapUsable(map: L.Map | null | undefined): map is L.Map {
   if (!map) return false
   try {
     const container = map.getContainer()
-    return Boolean(container?.isConnected && (map as L.Map & { _loaded?: boolean })._loaded)
+    const pane = (map as L.Map & { _mapPane?: HTMLElement | null })._mapPane
+    return Boolean(
+      container?.isConnected &&
+        pane &&
+        (map as L.Map & { _loaded?: boolean })._loaded,
+    )
   } catch {
     return false
   }
@@ -173,18 +218,29 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
   let restoreTimer: number | null = null
   let savedBounds: L.LatLngBounds | null = null
   let savedViscosity: number | undefined
+  let fitTimer: number | null = null
+  let belowTimer: number | null = null
 
-  const clearRestoreTimer = () => {
+  const clearTimers = () => {
     if (restoreTimer != null) {
       window.clearTimeout(restoreTimer)
       restoreTimer = null
     }
+    if (fitTimer != null) {
+      window.clearTimeout(fitTimer)
+      fitTimer = null
+    }
+    if (belowTimer != null) {
+      window.clearTimeout(belowTimer)
+      belowTimer = null
+    }
   }
 
   const restoreBounds = () => {
-    clearRestoreTimer()
+    clearTimers()
     if (!isLeafletMapUsable(map)) return
     try {
+      map.stop()
       if (savedBounds) map.setMaxBounds(savedBounds)
       if (savedViscosity != null) map.options.maxBoundsViscosity = savedViscosity
     } catch {
@@ -194,8 +250,35 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
     savedViscosity = undefined
   }
 
+  const safePanInside = (
+    paddingTopLeft: L.PointExpression,
+    paddingBottomRight: L.PointExpression,
+  ) => {
+    if (!isLeafletMapUsable(map)) return
+    try {
+      map.stop()
+      map.panInside(marker.getLatLng(), {
+        paddingTopLeft,
+        paddingBottomRight,
+        animate: false,
+      })
+    } catch {
+      // ignore
+    }
+  }
+
+  const safePanBy = (x: number, y: number) => {
+    if (!isLeafletMapUsable(map) || (x === 0 && y === 0)) return
+    try {
+      map.stop()
+      map.panBy([x, y], { animate: false })
+    } catch {
+      // ignore
+    }
+  }
+
   marker.on('popupopen', () => {
-    clearRestoreTimer()
+    clearTimers()
     const popup = marker.getPopup()
     if (!popup || !isLeafletMapUsable(map)) return
 
@@ -212,6 +295,7 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
         savedBounds = null
       }
       savedViscosity = map.options.maxBoundsViscosity
+      map.stop()
       // Afrouxa só o suficiente para o auto-pan / panInside caber o card
       if (savedBounds) map.setMaxBounds(savedBounds.pad(0.35))
       map.options.maxBoundsViscosity = 0.2
@@ -226,18 +310,12 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
 
       const h = Math.max(el.offsetHeight, 120)
       const w = Math.max(el.offsetWidth, 196)
-      try {
-        map.panInside(marker.getLatLng(), {
-          paddingTopLeft: L.point(Math.round(w / 2) + 20, h + 64),
-          paddingBottomRight: L.point(Math.round(w / 2) + 20, 28),
-          animate: true,
-          duration: 0.22,
-        })
-      } catch {
-        // ignore
-      }
+      safePanInside(
+        L.point(Math.round(w / 2) + 20, h + 64),
+        L.point(Math.round(w / 2) + 20, 28),
+      )
 
-      window.setTimeout(() => {
+      fitTimer = window.setTimeout(() => {
         if (!isLeafletMapUsable(map)) return
         const popupEl = popup.getElement()
         if (!popupEl) return
@@ -256,18 +334,8 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
           } catch {
             // ignore
           }
-          window.setTimeout(() => {
-            if (!isLeafletMapUsable(map)) return
-            try {
-              map.panInside(marker.getLatLng(), {
-                paddingTopLeft: L.point(24, 56),
-                paddingBottomRight: L.point(24, height + 28),
-                animate: true,
-                duration: 0.18,
-              })
-            } catch {
-              // ignore
-            }
+          belowTimer = window.setTimeout(() => {
+            safePanInside(L.point(24, 56), L.point(24, height + 28))
           }, 30)
           return
         }
@@ -277,20 +345,15 @@ function attachWarRoomPopupKeepInView(map: L.Map, marker: L.Marker): void {
         if (popupRect.left < mapRect.left + pad) panX = popupRect.left - (mapRect.left + pad)
         if (popupRect.right > mapRect.right - pad) panX = popupRect.right - (mapRect.right - pad)
         if (popupRect.bottom > mapRect.bottom - pad) panY = popupRect.bottom - (mapRect.bottom - pad)
-        if (panX !== 0 || panY !== 0) {
-          try {
-            map.panBy([panX, panY], { animate: true, duration: 0.15 })
-          } catch {
-            // ignore
-          }
-        }
-      }, 240)
+        safePanBy(panX, panY)
+      }, 80)
     }
 
     requestAnimationFrame(() => requestAnimationFrame(fit))
   })
 
   marker.on('popupclose', () => {
+    clearTimers()
     const popup = marker.getPopup()
     popup?.getElement()?.classList.remove('mapa-wr-popup--below')
     if (popup) popup.options.offset = L.point(0, 7)
@@ -598,7 +661,7 @@ function createWarRoomTooltipHTML(config: {
   const soft = '#f3f3f1'
   const border = 'rgba(43,45,49,0.08)'
   const yellow = WR_MARKER.yellow
-  const yellowSoft = 'rgba(242,208,107,0.35)'
+  const yellowSoft = 'rgba(232,168,37,0.35)'
 
   const statusMeta: Record<
     string,
@@ -815,7 +878,7 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
   }
   .mapa-leaflet-host--wr .leaflet-popup-close-button:hover {
     color: #2b2d31 !important;
-    background: #f2d06b !important;
+    background: #e8a825 !important;
   }
   /* Popup abaixo do pin (cidades no topo do mapa) */
   .mapa-leaflet-host--wr .leaflet-popup.mapa-wr-popup--below .leaflet-popup-tip-container {
@@ -851,7 +914,7 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
     letter-spacing: -0.04em;
     line-height: 1;
     color: #2b2d31;
-    background: #f2d06b;
+    background: #e8a825;
     border: 0;
     border-radius: 2px;
     padding: 0 1.5px;
@@ -1028,8 +1091,13 @@ export function MapWrapperLeaflet({
       zoomControl: true,
       attributionControl: false,
       zoomSnap: markerTheme === 'war-room' ? 0.25 : 1,
-    }).setView([-6.5, -43.0], 7)
+      // Evita PosAnimation residual → crash classList no _onPanTransitionEnd
+      fadeAnimation: false,
+      zoomAnimation: markerTheme !== 'war-room',
+      markerZoomAnimation: markerTheme !== 'war-room',
+    }).setView([-6.5, -43.0], 7, { animate: false })
     mapInstanceRef.current = map
+    hardenLeafletPanEnd(map)
 
     // Custom panes for z-ordering
     map.createPane('heatmapPane')
@@ -1464,10 +1532,10 @@ export function MapWrapperLeaflet({
     const popupOpts: L.PopupOptions = isWarRoom
       ? {
           maxWidth: 236,
-          autoPan: true,
-          keepInView: true,
-          autoPanPaddingTopLeft: L.point(20, 64),
-          autoPanPaddingBottomRight: L.point(20, 24),
+          // autoPan animado do Leaflet dispara _onPanTransitionEnd → crash classList;
+          // o pan fica a cargo de attachWarRoomPopupKeepInView (animate: false).
+          autoPan: false,
+          keepInView: false,
         }
       : { maxWidth: 300 }
 

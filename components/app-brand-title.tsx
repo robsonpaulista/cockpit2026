@@ -26,7 +26,7 @@ const WORDMARK_SIZE: Record<
     tag: 'mt-1 text-[10px] tracking-[0.14em]',
   },
   sidebar: {
-    main: 'text-[1.55rem] leading-[0.95] tracking-[-0.01em]',
+    main: 'text-[1.35rem] leading-[0.95] tracking-[0.04em]',
     tag: 'mt-2 text-[7px] leading-snug tracking-[0.12em]',
   },
 }
@@ -45,27 +45,7 @@ function wordmarkTone({
   return 'default'
 }
 
-function wordmarkColors(tone: WordmarkTone) {
-  // Padrão oficial Copiloto: COCKPIT branco · 2026 accent coral
-  if (tone === 'onGradient') {
-    /* Home glass gelo: COCKPIT petróleo · 2026 amarelo */
-    return { cockpit: 'text-[#2b2d31]', year: 'text-[#f2d06b]' }
-  }
-  if (tone === 'onAmber') {
-    // Topbar clara (desktop): petróleo + accent. Mobile âmbar/escura: branco + accent.
-    return {
-      cockpit: 'text-[var(--palette-petrol,#2b2d31)] max-lg:text-white',
-      year: 'text-[var(--palette-accent,#f04b23)] max-lg:text-[var(--palette-accent,#f04b23)]',
-    }
-  }
-  // Sidebar escura / superfícies escuras
-  return {
-    cockpit: 'text-white',
-    year: 'text-[var(--palette-accent,#f04b23)]',
-  }
-}
-
-/** Wordmark COCK + PIT — tipografia bold, duas cores, sem ícone. */
+/** Wordmark COCKPIT X — Michroma, branco + âmbar. */
 export function AppBrandWordmark({
   size = 'sm',
   showTagline = false,
@@ -79,27 +59,41 @@ export function AppBrandWordmark({
   showTagline?: boolean
   lightOnGradient?: boolean
   lightOnAmber?: boolean
-  /** Monograma CP para sidebar recolhida. */
+  /** Monograma CX para sidebar recolhida. */
   compact?: boolean
   /** Ocupa toda a largura do container (sidebar expandida). */
   fullWidth?: boolean
   className?: string
 }) {
   const tone = wordmarkTone({ lightOnGradient, lightOnAmber })
-  const colors = wordmarkColors(tone)
   const sizes = WORDMARK_SIZE[size]
 
   if (compact) {
     return (
       <span
         className={cn(sidebarBrandLogoMarkClass, className)}
-        aria-label="Cockpit 2026"
+        aria-label="Cockpit X"
+        data-brand-wordmark="cockpit-x"
+        style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
       >
-        <span className={colors.cockpit}>C</span>
-        <span className={colors.year}>P</span>
+        <span data-cx-mark="cockpit" style={{ color: tone === 'onGradient' ? '#2b2d31' : '#ffffff' }}>
+          C
+        </span>
+        <span data-cx-mark="x" style={{ color: '#e8a825' }}>
+          X
+        </span>
       </span>
     )
   }
+
+  const cockpitColor =
+    tone === 'onGradient' || tone === 'onAmber' ? undefined : '#ffffff'
+  const cockpitClass =
+    tone === 'onGradient'
+      ? 'text-[#2b2d31]'
+      : tone === 'onAmber'
+        ? 'text-[var(--palette-petrol,#2b2d31)] max-lg:text-white'
+        : undefined
 
   return (
     <span
@@ -108,6 +102,7 @@ export function AppBrandWordmark({
         fullWidth ? 'flex w-full' : 'inline-flex',
         className,
       )}
+      data-brand-wordmark="cockpit-x"
     >
       <span
         className={cn(
@@ -115,10 +110,23 @@ export function AppBrandWordmark({
           sizes.main,
           fullWidth ? 'block w-full whitespace-nowrap text-center' : 'truncate whitespace-nowrap',
         )}
-        aria-label="Cockpit 2026"
+        aria-label="Cockpit X"
+        style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
       >
-        <span className={colors.cockpit}>COCKPIT</span>
-        <span className={cn(colors.year, 'font-bold')}> 2026</span>
+        <span
+          data-cx-mark="cockpit"
+          className={cockpitClass}
+          style={cockpitColor ? { color: cockpitColor } : undefined}
+        >
+          COCKPIT
+        </span>
+        <span
+          data-cx-mark="x"
+          className="ml-[0.28em]"
+          style={{ color: '#e8a825' }}
+        >
+          X
+        </span>
       </span>
       {showTagline ? (
         <span

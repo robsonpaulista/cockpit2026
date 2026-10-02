@@ -118,7 +118,7 @@ export function MultiCheckFilterSelect({
   const marcarTodos = () => onChange(new Set(options.map((o) => o.id)))
 
   const checkboxClass =
-    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
+    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#e8a825] focus:ring-2 focus:ring-[color-mix(in_srgb,#e8a825_35%,transparent)]'
 
   const menu =
     open && menuPos && typeof document !== 'undefined'

@@ -12,6 +12,10 @@ import type {
 } from '@/lib/google-news-types'
 import { fetchGoogleWebSearch, isGoogleWebSearchConfigured } from '@/lib/google-web-search'
 import { isGoogleVideosRunnerAvailable } from '@/lib/serverless-runtime'
+import {
+  filterOutExcludedPoliticalActors,
+  isExcludedPoliticalActorSlug,
+} from '@/lib/political-actors-exclude'
 import type { PoliticalActor } from '@/lib/youtube-radar-types'
 
 const PAUSE_BETWEEN_ACTORS_MS = 2_500
@@ -41,7 +45,7 @@ async function loadActiveActors(supabase: SupabaseClient): Promise<PoliticalActo
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as PoliticalActor[]
+  return filterOutExcludedPoliticalActors((data ?? []) as PoliticalActor[])
 }
 
 async function upsertArticles(
@@ -184,6 +188,11 @@ export async function collectGoogleNewsForActor(
   actor: PoliticalActor
 ): Promise<GoogleNewsCollectResult> {
   const result = emptyCollectResult(actor)
+
+  if (isExcludedPoliticalActorSlug(actor.slug)) {
+    result.errors.push(`Ator excluído das coletas: ${actor.slug}`)
+    return result
+  }
 
   try {
     const rssQueries = resolveGoogleNewsSearchQueriesForActor(actor)

@@ -14,6 +14,10 @@ export const HOME_SCENE_ICE = '#e5e6e8'
 export const HOME_SCENE_GREY_SOFT = '#b3b6bb'
 export const HOME_SCENE_GREY = '#70737a'
 export const HOME_SCENE_VIDEO = '/videohome-bandeiras.mp4'
+/** Hero estático para teste (substitui o vídeo da home/login). */
+export const HOME_SCENE_IMAGE = '/splash/novaversao.png'
+/** `image` = PNG novaversao · `video` = cena animada antiga. */
+export const HOME_SCENE_MEDIA: 'image' | 'video' = 'image'
 /** Fallback se metadata ainda não carregou (home-scene-backdrop usa duração real do vídeo). */
 export const HOME_SCENE_VIDEO_END_SEC = 8.3
 

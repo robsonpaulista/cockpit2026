@@ -193,7 +193,7 @@ export function LiderancasCargoPorCidadeCard({
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="shrink-0 text-left text-[12px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+              className="shrink-0 text-left text-[12px] font-medium text-[#e8a825] hover:underline"
             >
               {showAll ? 'Mostrar menos cargos' : `Ver todos os cargos (${cargos.length}) ›`}
             </button>
@@ -248,10 +248,10 @@ export function LiderancasCargoPorCidadeCard({
                         onClick={() => onCargoSelecionado(selected ? null : item.cargo)}
                         className={cn(
                           'flex w-full min-h-[2rem] items-center gap-2 border-b border-[rgb(var(--color-border-secondary)/0.3)] bg-bg-surface px-2 py-1 text-left transition-colors hover:bg-bg-app/55',
-                          selected && 'border-l-2 border-l-[#f2d06b] bg-[#f2d06b]/10 pl-[6px]'
+                          selected && 'border-l-2 border-l-[#e8a825] bg-[rgba(232,168,37,0.08)] pl-[6px]'
                         )}
                       >
-                        <Briefcase className="h-3.5 w-3.5 shrink-0 text-[#f2d06b]/80" aria-hidden />
+                        <Briefcase className="h-3.5 w-3.5 shrink-0 text-[#e8a825]/80" aria-hidden />
                         <span
                           className={cn(
                             'min-w-0 flex-1 truncate text-[12px] text-text-primary',

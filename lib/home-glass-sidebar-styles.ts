@@ -1,38 +1,38 @@
-/** Sidebar / página home — glass gelo + amarelo do carro. */
+/** Sidebar Cockpit X — Obsidian Glass (dark ink + âmbar). */
 
 export const HOME_GLASS_ACTIVE_ITEM =
-  'wr-nav-active border border-[#f2d06b] bg-[#f2d06b] !text-[#2b2d31] shadow-none font-semibold'
+  'wr-nav-active border border-white/[0.08] border-l-2 border-l-[#e8a825] bg-white/[0.07] !text-white shadow-none font-semibold'
 
 export const HOME_GLASS_ACTIVE_CHILD =
-  'wr-nav-active border border-[#f2d06b] bg-[#f2d06b] !text-[#2b2d31] shadow-none font-semibold'
+  'wr-nav-active border border-white/[0.08] border-l-2 border-l-[#e8a825] bg-white/[0.07] !text-white shadow-none font-semibold'
 
 export const HOME_GLASS_HOVER =
-  'hover:bg-white/55 hover:text-[#2b2d31]'
+  'hover:bg-white/[0.055] hover:text-white'
 
 export const HOME_GLASS_IDLE_ITEM =
   'border border-transparent bg-transparent'
 
 export const HOME_GLASS_TEXT =
-  'text-[#2b2d31] group-hover:text-[#2b2d31]'
+  'text-white/80 group-hover:text-white'
 
-export const HOME_GLASS_TEXT_ACTIVE = '!text-[#2b2d31]'
+export const HOME_GLASS_TEXT_ACTIVE = '!text-white'
 
 export const HOME_GLASS_ICON =
-  'text-[#2b2d31]/70 group-hover:text-[#2b2d31]'
+  'text-white/55 group-hover:text-[#e8a825]'
 
-export const HOME_GLASS_ICON_ACTIVE = '!text-[#2b2d31]'
+export const HOME_GLASS_ICON_ACTIVE = '!text-[#e8a825]'
 
 export const HOME_GLASS_SUBMENU =
-  'border border-[rgba(43, 45, 49,0.08)] bg-white/40 text-[rgba(43, 45, 49,0.78)]'
+  'border border-white/10 bg-white/[0.04] text-white/70'
 
 export const HOME_GLASS_SUBMENU_LINK =
-  'text-[rgba(43, 45, 49,0.7)] hover:bg-white/55 hover:text-[#2b2d31]'
+  'text-white/70 hover:bg-white/[0.055] hover:text-white'
 
-export const HOME_GLASS_SECTION = 'text-[rgba(43, 45, 49,0.45)]'
+export const HOME_GLASS_SECTION = 'text-white/42'
 
-export const HOME_GLASS_DIVIDER = 'bg-[rgba(240,192,0,0.45)]'
+export const HOME_GLASS_DIVIDER = 'bg-white/10'
 
 export const HOME_GLASS_FOCUS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(240,192,0,0.45)] focus-visible:ring-offset-1 focus-visible:ring-offset-white/40'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8a825]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-[#070709]'
 
-export const HOME_GLASS_SHELL_CLASS = 'sidebar-home-glass'
+export const HOME_GLASS_SHELL_CLASS = 'sidebar-cockpit-x'

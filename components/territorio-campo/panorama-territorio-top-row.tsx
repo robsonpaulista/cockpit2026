@@ -72,13 +72,13 @@ export function PanoramaTerritorioTopRow() {
       </div>
 
       {insight ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-[rgb(var(--color-border-secondary)/0.45)] bg-bg-app/60 px-4 py-2.5">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#f2d06b]" aria-hidden />
+        <div className="territorio-cx-insight flex items-start gap-2.5 px-4 py-2.5">
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#e8a825]" aria-hidden />
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Insight rápido</p>
-            <p className={cn('mt-0.5 leading-snug text-text-secondary', typographyBodyClass)}>{insight}</p>
+            <p className="territorio-cx-kpi__label">Insight rápido</p>
+            <p className={cn('mt-0.5 leading-snug text-[#686865]', typographyBodyClass)}>{insight}</p>
             {comparativoResumo && baseResumo ? (
-              <p className="mt-1 text-[11px] text-text-muted">
+              <p className="mt-1 text-[11px] text-[#969692]">
                 {comparativoResumo.municipiosComDados} municípios · {baseResumo.totalLiderancas} lideranças ·{' '}
                 {baseResumo.totalExpectativaVotos.toLocaleString('pt-BR')} votos de expectativa na base
               </p>

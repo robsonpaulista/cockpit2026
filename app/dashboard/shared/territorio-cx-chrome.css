@@ -1,0 +1,242 @@
+/**
+ * Territorio — Campo Command (Cockpit X)
+ * Canvas claro + chrome refinado; âmbar #e8a825 como luz.
+ */
+
+body[data-territorio-cx] {
+  --territorio-cx-amber: #e8a825;
+  --territorio-cx-amber-soft: rgba(232, 168, 37, 0.16);
+  --territorio-cx-ink: #14161a;
+  --territorio-cx-hairline: #e8e8e6;
+  --territorio-cx-muted: #686865;
+  --territorio-cx-strip: #f7f7f6;
+
+  /* Neutraliza laranja WR (#f5a000) e amarelo legado (#f2d06b) no hub Território */
+  --wr-brand: #e8a825;
+  --wr-attention: #e8a825;
+  --wr-attention-soft: rgba(232, 168, 37, 0.14);
+  --wr-accent-soft: rgba(232, 168, 37, 0.14);
+  --accent-gold: 232 168 37;
+  --accent-gold-soft: 247 247 246;
+  --accent-gold-dark: 20 22 26;
+}
+
+body[data-territorio-cx] main {
+  --color-primary: 20 22 26; /* ink #14161a — não laranja WR */
+  --color-primary-hover: 10 10 12;
+  --color-primary-tint: 247 247 246;
+  --accent-gold: 232 168 37;
+  --accent-gold-soft: 247 247 246;
+  --accent-gold-dark: 20 22 26;
+  --bg-app: 247 247 246;
+  --bg-surface: 255 255 255;
+  --color-border-secondary: 232 232 230;
+  --color-border-tertiary: 232 232 230;
+  --text-primary: 43 45 49;
+  --text-secondary: 104 104 101;
+  --text-muted: 150 150 146;
+}
+
+/* Painéis */
+body[data-territorio-cx] .territorio-cx-panel,
+body[data-territorio-cx] section.territorio-cx-panel {
+  border-radius: 12px !important;
+  border: 1px solid var(--territorio-cx-hairline) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-territorio-cx] .territorio-cx-panel-header {
+  border-bottom: 1px solid var(--territorio-cx-hairline) !important;
+  background: #ffffff !important;
+}
+
+body[data-territorio-cx] .territorio-cx-toolbar {
+  border-bottom: 1px solid var(--territorio-cx-hairline) !important;
+  background: var(--territorio-cx-strip) !important;
+}
+
+/* Filter / action strip */
+body[data-territorio-cx] .territorio-cx-filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--territorio-cx-hairline);
+  border-radius: 12px;
+  background: var(--territorio-cx-strip);
+}
+
+body[data-territorio-cx] .territorio-cx-field-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #969692;
+}
+
+body[data-territorio-cx] .territorio-cx-select,
+body[data-territorio-cx] .territorio-cx-input {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--territorio-cx-hairline);
+  background: #ffffff;
+  padding: 0 12px;
+  font-size: 13px;
+  color: #2b2d31;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body[data-territorio-cx] .territorio-cx-select:focus,
+body[data-territorio-cx] .territorio-cx-input:focus {
+  border-color: color-mix(in srgb, var(--territorio-cx-amber) 55%, #e8e8e6);
+  box-shadow: 0 0 0 3px rgba(232, 168, 37, 0.18);
+}
+
+body[data-territorio-cx] .territorio-cx-btn-primary {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--territorio-cx-ink);
+  background: var(--territorio-cx-ink);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+body[data-territorio-cx] .territorio-cx-btn-primary:hover:not(:disabled) {
+  background: #0a0a0c;
+}
+
+body[data-territorio-cx] .territorio-cx-btn-primary:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+body[data-territorio-cx] .territorio-cx-btn-ghost {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--territorio-cx-hairline);
+  background: #ffffff;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #52524f;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+body[data-territorio-cx] .territorio-cx-btn-ghost:hover:not(:disabled) {
+  background: var(--territorio-cx-strip);
+  color: #2b2d31;
+}
+
+body[data-territorio-cx] .territorio-cx-btn-ghost:disabled {
+  opacity: 0.45;
+}
+
+/* KPI */
+body[data-territorio-cx] .territorio-cx-kpi {
+  border-radius: 12px;
+  border: 1px solid var(--territorio-cx-hairline);
+  background: #ffffff;
+  box-shadow: none;
+  padding: 12px;
+}
+
+body[data-territorio-cx] .territorio-cx-kpi__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #969692;
+}
+
+body[data-territorio-cx] .territorio-cx-kpi__value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #2b2d31;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress thin — âmbar X */
+body[data-territorio-cx] .territorio-cx-progress-fill {
+  background: var(--territorio-cx-amber) !important;
+}
+
+/* City group cards (Lideranças / Demandas) */
+body[data-territorio-cx] .territorio-cx-city-group {
+  overflow: hidden;
+  border-radius: 12px !important;
+  border: 1px solid var(--territorio-cx-hairline) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body[data-territorio-cx] .territorio-cx-city-group > div:first-child {
+  border-bottom: 1px solid var(--territorio-cx-hairline) !important;
+  background: var(--territorio-cx-strip) !important;
+}
+
+/* Table headers — no amber fill */
+body[data-territorio-cx] table thead th {
+  background: transparent !important;
+  color: #686865 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid var(--territorio-cx-hairline) !important;
+}
+
+body[data-territorio-cx] table input[type='checkbox'] {
+  accent-color: var(--territorio-cx-amber);
+}
+
+/* Chips ativos — outline âmbar, sem bloco amarelo */
+body[data-territorio-cx] .territorio-cx-chip-active {
+  border-color: var(--territorio-cx-amber) !important;
+  background: var(--territorio-cx-amber-soft) !important;
+  color: #2b2d31 !important;
+}
+
+/* KPI strip (QuickAccess) — quiet + barra âmbar */
+body[data-territorio-cx] .territorio-cx-kpi-strip article,
+body[data-territorio-cx] [data-territorio-kpi-strip] article {
+  border-color: var(--territorio-cx-hairline) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  position: relative;
+  overflow: hidden;
+}
+
+body[data-territorio-cx] .territorio-cx-kpi-strip article::after,
+body[data-territorio-cx] [data-territorio-kpi-strip] article::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--territorio-cx-amber);
+}
+
+/* Insight faixa Panorama */
+body[data-territorio-cx] .territorio-cx-insight {
+  border: 1px solid var(--territorio-cx-hairline);
+  border-radius: 12px;
+  background: var(--territorio-cx-strip);
+}

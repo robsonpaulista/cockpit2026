@@ -29,7 +29,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'noticias-monitoramento': 'Panorama, Google Alerts, YouTube, Trends e Instagram',
   'radar-224': 'Top 50 municípios e catálogo de fontes noticiosas',
   noticias: 'Mídia, crises e notícias em destaque',
-  'mobilizacao-menu': 'Ativação de base e coordenação',
+  'mobilizacao-menu': 'Ativação de base e Arena de Apoiadores',
   whatsapp: 'Disparos e comunicação direta',
   operacao: 'Coordenadores e operação interna',
   juridico: 'Processos, prazos e comunicações',

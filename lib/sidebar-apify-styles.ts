@@ -34,7 +34,7 @@ export const sidebarApifyNavItemClass = (active: boolean) =>
 export const sidebarApifyNavIconClass = (active: boolean) =>
   cn(
     'cockpit-icon shrink-0 transition-colors',
-    active ? 'text-[#f04b23]' : 'text-white/55 group-hover:text-[#f04b23]',
+    active ? 'text-[#e8a825]' : 'text-white/55 group-hover:text-[#e8a825]',
   )
 
 /** Ícones decorativos no conteúdo — mesma cor dos ícones da sidebar. */
@@ -58,10 +58,10 @@ export const sidebarApifyChildItemClass = (active: boolean) =>
   )
 
 export const sidebarApifyIconButtonClass =
-  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f04b23]/30'
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8a825]/30'
 
 export const sidebarApifyFooterActionClass = cn(
-  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-white/72 transition-colors hover:bg-white/[0.05] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f04b23]/30',
+  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-white/72 transition-colors hover:bg-white/[0.05] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8a825]/30',
   typographyBodyMediumClass
 )
 

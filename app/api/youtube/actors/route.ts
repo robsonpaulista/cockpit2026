@@ -6,6 +6,7 @@ import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isYoutubeApiConfigured } from '@/lib/youtube-data-api'
 import { parseTermsInput, slugFromPoliticalName } from '@/lib/youtube-radar-slug'
 import { normalizeInstagramUsername } from '@/lib/instagram-radar-username'
+import { filterOutExcludedPoliticalActors } from '@/lib/political-actors-exclude'
 import type { PoliticalActorType } from '@/lib/youtube-radar-types'
 
 export const dynamic = 'force-dynamic'
@@ -79,7 +80,7 @@ export async function GET() {
 
     return NextResponse.json({
       configured: isYoutubeApiConfigured(),
-      actors: data ?? [],
+      actors: filterOutExcludedPoliticalActors(data ?? []),
       setupRequired: false,
     })
   } catch (e) {

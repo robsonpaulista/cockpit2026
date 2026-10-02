@@ -39,10 +39,11 @@ import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
+import { EXCLUDED_POLITICAL_ACTOR_SLUGS } from '@/lib/political-actors-exclude'
 
 const NOTICIAS_LOOKBACK_DAYS = 7
 const NOTICIAS_FETCH_LIMIT = 500
-const HIDDEN_NOTICIAS_SLUGS = new Set(['instagram-causa-animal'])
+const HIDDEN_NOTICIAS_SLUGS = new Set<string>(EXCLUDED_POLITICAL_ACTOR_SLUGS)
 
 const CATEGORIA_BADGE_LABEL: Record<string, string> = {
   'Visita agendada': 'Viagens',

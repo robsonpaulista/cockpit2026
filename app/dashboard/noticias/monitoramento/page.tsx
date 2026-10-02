@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { NoticiasUnificadasPanel } from '@/components/monitoramento/noticias-unificadas-panel'
-import { GoogleVideosRadarPanel } from '@/components/monitoramento/google-videos-radar-panel'
+import { GoogleAlertsPanel } from '@/components/monitoramento/google-alerts-panel'
+import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
 import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
 import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
@@ -35,16 +35,14 @@ const LideresEngajamentoPanel = dynamic(
   }
 )
 
-/** Legado: aba Alertas unificada em Notícias. */
-const TAB_ALERTAS_LEGACY = 'google-alerts'
-
 function parseTab(value: string | null): MonitoramentoTab {
-  if (value === TAB_ALERTAS_LEGACY) return 'google-news'
   if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
   if (value === 'viral') return 'viral'
+  if (value === 'google-alerts') return 'google-alerts'
+  // Legado: aba Google Vídeos removida
+  if (value === 'google-videos') return 'google-news'
   if (value === 'google-news') return 'google-news'
-  if (value === 'google-videos') return 'google-videos'
   if (value === 'meta-ads') return 'meta-ads'
   if (value === 'instagram') return 'instagram'
   if (value === MONITORAMENTO_TAB_LIDERES) return 'lideres'
@@ -60,13 +58,6 @@ export default function MonitoramentoPage() {
   useEffect(() => {
     setActiveTab(urlTab)
   }, [urlTab])
-
-  useEffect(() => {
-    if (searchParams.get('tab') !== TAB_ALERTAS_LEGACY) return
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', 'google-news')
-    router.replace(`/dashboard/noticias/monitoramento?${params.toString()}`)
-  }, [router, searchParams])
 
   const [panoramaMeta, setPanoramaMeta] = useState<MonitoramentoPanoramaMeta | null>(null)
 
@@ -104,10 +95,10 @@ export default function MonitoramentoPage() {
         return <TrendsRadarPanel />
       case 'viral':
         return <ViralTrendsPanel />
+      case 'google-alerts':
+        return <GoogleAlertsPanel />
       case 'google-news':
-        return <NoticiasUnificadasPanel />
-      case 'google-videos':
-        return <GoogleVideosRadarPanel />
+        return <GoogleNewsRadarPanel />
       case 'meta-ads':
         return <MetaAdsRadarPanel />
       case 'instagram':

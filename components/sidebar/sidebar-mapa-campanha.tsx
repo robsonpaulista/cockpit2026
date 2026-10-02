@@ -16,10 +16,6 @@ import { JARVIS_SIDEBAR_DIVIDER } from '@/lib/jarvis-sidebar-styles'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
 import {
-  RESUMO_ELEICOES_TAB_ATENDIMENTO,
-  resumoEleicoesHubHref,
-} from '@/lib/resumo-eleicoes-hub-route'
-import {
   TERRITORIO_CAMPO_TAB_PANORAMA,
   territorioCampoHref,
 } from '@/lib/territorio-campo-route'
@@ -28,38 +24,32 @@ type CampanhaLink = {
   id: string
   href: string
   label: string
-  icon: 'Activity' | 'MapPin' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3' | 'Calendar'
+  icon: 'MapPin' | 'Radar' | 'MessageSquare' | 'BarChart3'
   pageKey: string
 }
 
+/** Atalhos de campanha (sem os do Acesso rápido) — ordem alfabética. */
 const CAMPANHA_LINKS: CampanhaLink[] = [
   {
-    id: 'war-room',
-    href: '/dashboard/war-room',
-    label: 'War Room',
-    icon: 'Activity',
-    pageKey: 'war-room',
-  },
-  {
-    id: 'diagnostico',
-    href: '/dashboard/territorio/ipt',
-    label: 'Diagnóstico Operacional',
-    icon: 'MapPin',
-    pageKey: 'ipt',
+    id: 'instagram-pessoal',
+    href: '/dashboard/conteudo/redes',
+    label: 'Instagram',
+    icon: 'MessageSquare',
+    pageKey: 'conteudo',
   },
   {
     id: 'base-eleitoral',
     href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
-    label: 'Base Eleitoral',
+    label: 'Lideranças',
     icon: 'MapPin',
     pageKey: 'territorio',
   },
   {
-    id: 'agenda',
-    href: '/dashboard/agenda',
-    label: 'Agenda',
-    icon: 'Calendar',
-    pageKey: 'agenda',
+    id: 'radar-eleitoral',
+    href: '/dashboard/noticias/monitoramento',
+    label: 'Mídias',
+    icon: 'Radar',
+    pageKey: 'noticias',
   },
   {
     id: 'pesquisas-opiniao',
@@ -68,46 +58,9 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
     icon: 'BarChart3',
     pageKey: 'pesquisa',
   },
-  {
-    id: 'radar-eleitoral',
-    href: '/dashboard/noticias/monitoramento',
-    label: 'Radar Eleitoral',
-    icon: 'Radar',
-    pageKey: 'noticias',
-  },
-  {
-    id: 'atendimentos',
-    href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO),
-    label: 'Atendimentos',
-    icon: 'ClipboardList',
-    pageKey: 'resumo-eleicoes',
-  },
-  {
-    id: 'instagram-pessoal',
-    href: '/dashboard/conteudo/redes',
-    label: 'Instagram Pessoal',
-    icon: 'MessageSquare',
-    pageKey: 'conteudo',
-  },
-  {
-    id: 'gestao-material',
-    href: '/dashboard/material-campanha',
-    label: 'Gestão de Material',
-    icon: 'Package',
-    pageKey: 'material-campanha',
-  },
 ]
 
-function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: string): boolean {
-  if (link.id === 'war-room') {
-    return pathname.startsWith('/dashboard/war-room')
-  }
-  if (link.id === 'diagnostico') {
-    return pathname.startsWith('/dashboard/territorio/ipt')
-  }
-  if (link.id === 'agenda') {
-    return pathname.startsWith('/dashboard/agenda')
-  }
+function isCampanhaLinkActive(link: CampanhaLink, pathname: string, _search: string): boolean {
   if (link.id === 'base-eleitoral') {
     return (
       pathname.startsWith('/dashboard/territorio') &&
@@ -120,16 +73,8 @@ function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: stri
   if (link.id === 'radar-eleitoral') {
     return pathname.startsWith('/dashboard/noticias')
   }
-  if (link.id === 'atendimentos') {
-    if (!pathname.startsWith('/dashboard/resumo-eleicoes')) return false
-    const tab = new URLSearchParams(search).get('tab')
-    return !tab || tab === RESUMO_ELEICOES_TAB_ATENDIMENTO
-  }
   if (link.id === 'instagram-pessoal') {
     return pathname.startsWith('/dashboard/conteudo/redes')
-  }
-  if (link.id === 'gestao-material') {
-    return pathname.startsWith('/dashboard/material-campanha')
   }
   return pathname.startsWith(link.href)
 }
@@ -142,7 +87,7 @@ type Props = {
   onNavigate: (href: string) => void
 }
 
-/** Bloco superior: atalhos principais da campanha — acima de Acesso rápido. */
+/** Atalhos de campanha — abaixo do Acesso rápido. */
 export function SidebarMapaCampanhaBlock({
   collapsed,
   mobileOpen,

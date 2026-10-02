@@ -36,7 +36,7 @@ type CopilotoTab =
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
-  const { setViewMode, copilotoTabHint, clearCopilotoTabHint } = useWarRoomViewMode()
+  const { copilotoTabHint, clearCopilotoTabHint } = useWarRoomViewMode()
   const [tab, setTab] = useState<CopilotoTab>('cidades')
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
@@ -209,7 +209,7 @@ export function WarRoomCopilotoView() {
             municipios={municipios}
             obras={obras}
             agendaPorMunicipio={agendaPorMunicipio}
-            onClose={() => setViewMode('padrao')}
+            onClose={() => undefined}
           />
         )}
       </div>

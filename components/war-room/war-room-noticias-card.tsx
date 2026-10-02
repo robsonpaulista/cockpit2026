@@ -19,12 +19,13 @@ import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
 import { buildNoticiasDesempenhoRows } from '@/lib/war-room/noticias-desempenho'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
+import { EXCLUDED_POLITICAL_ACTOR_SLUGS } from '@/lib/political-actors-exclude'
 
 /** Radar Eleitoral usa 30 dias; na War Room limitamos a 7. */
 const LOOKBACK_DAYS = 7
 const FETCH_LIMIT = 500
 /** Perfil temático — fora do comparativo de candidatos na War Room. */
-const HIDDEN_ACTOR_SLUGS = new Set(['instagram-causa-animal'])
+const HIDDEN_ACTOR_SLUGS = new Set<string>(EXCLUDED_POLITICAL_ACTOR_SLUGS)
 
 const ESCALA_OPCOES: Array<{
   id: HeatmapScaleMode

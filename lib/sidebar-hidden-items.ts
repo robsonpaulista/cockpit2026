@@ -8,8 +8,6 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'conteudo-menu',
   'agenda',
   'gestao-pesquisas-menu',
-  'emendas',
-  'proposicoes',
   'material-campanha',
   'war-room',
 ])

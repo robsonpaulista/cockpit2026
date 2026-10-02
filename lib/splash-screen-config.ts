@@ -100,8 +100,8 @@ export const SPLASH_READY = {
   skip: 'Pular',
 } as const
 
-/** Cena 5–6 — carro na pista noturna (imagem inteira, full-bleed = imagem única). */
-export const SPLASH_SUNRISE_ASSET = '/splash/cockpit-track-full.png'
+/** Cena 5–6 — carro / hero (nova versão para teste). */
+export const SPLASH_SUNRISE_ASSET = '/splash/novaversao.png'
 
-/** Fallback caso a imagem do carro não exista/carregue. */
-export const SPLASH_SUNRISE_FALLBACK = '/splash/cockpit-track-night.png'
+/** Fallback caso a imagem nova não exista/carregue. */
+export const SPLASH_SUNRISE_FALLBACK = '/splash/cockpit-track-full.png'

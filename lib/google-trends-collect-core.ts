@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buildInterestRowsFromTimeline } from '@/lib/google-trends-interest-date'
 import { googleTrendsInterestQueryCutoffDay } from '@/lib/google-trends-normalize-rows'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
+import { filterOutExcludedPoliticalActors } from '@/lib/political-actors-exclude'
 
 const KEYWORDS_PER_BATCH = 3
 const MAX_RELATED_PER_BUCKET = 10
@@ -290,7 +291,7 @@ export async function runGoogleTrendsCollect(options: {
   } else {
     const { data, error: actorsError } = await supabase
       .from('political_actors')
-      .select('id, name')
+      .select('id, name, slug')
       .eq('active', true)
       .order('name', { ascending: true })
 
@@ -302,7 +303,10 @@ export async function runGoogleTrendsCollect(options: {
       return { ok: false, error: msg }
     }
 
-    actors = (data ?? []) as PoliticalActorRow[]
+    actors = filterOutExcludedPoliticalActors(data ?? []).map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+    }))
   }
 
   if (!actors.length) {

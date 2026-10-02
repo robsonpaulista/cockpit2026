@@ -154,15 +154,15 @@ export function GoogleNewsCompareBoard({
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
 
   const emptyMessage = isVideos
-    ? 'Nenhum vídeo nesta janela. Rode a coleta na aba Google Vídeos (piloto castração).'
+    ? 'Nenhum vídeo nesta janela.'
     : 'Nenhuma menção nesta janela. Rode a coleta para buscar no Google Notícias e na web.'
 
   const boardEmptyMessage = isVideos
-    ? 'Configure APIFY_TOKEN e rode a coleta (piloto castração / causa animal).'
+    ? 'Coleta de vídeos desativada.'
     : 'Cadastre candidatos ativos e rode a coleta (Google Notícias + busca web).'
 
   const subtitle = isVideos
-    ? 'Vídeos indexados na aba Vídeos do Google (Playwright — piloto castração): Instagram, Facebook, YouTube…'
+    ? 'Vídeos indexados na busca do Google'
     : 'Menções no Google Notícias (RSS) e na busca web'
 
   const countLabel = isVideos ? 'Vídeos' : 'Notícias'

@@ -28,11 +28,12 @@ import {
 } from '@/lib/war-room/redes-copiloto'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
+import { EXCLUDED_POLITICAL_ACTOR_SLUGS } from '@/lib/political-actors-exclude'
 
 const IG_FETCH_LIMIT = 400
 const ADS_FETCH_LIMIT = 500
 const LIST_VISIBLE = 9
-const HIDDEN_ACTOR_SLUGS = new Set(['instagram-causa-animal'])
+const HIDDEN_ACTOR_SLUGS = new Set<string>(EXCLUDED_POLITICAL_ACTOR_SLUGS)
 
 type FiltroId = 'engajamento' | 'anuncios'
 

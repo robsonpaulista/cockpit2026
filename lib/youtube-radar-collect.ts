@@ -5,6 +5,7 @@ import {
 } from '@/lib/youtube-data-api'
 import type { PoliticalActor, YoutubeSearchTerm } from '@/lib/youtube-radar-types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { filterOutExcludedPoliticalActors } from '@/lib/political-actors-exclude'
 
 export type CollectYoutubeRadarResult = {
   politicoId: string
@@ -52,21 +53,23 @@ export async function loadActiveActorsWithTerms(
 
   if (error) throw new Error(error.message)
 
-  return (data ?? []).map((row) => {
-    const terms = (row.youtube_search_terms as YoutubeSearchTerm[] | null) ?? []
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      slug: row.slug as string,
-      actor_type: row.actor_type as PoliticalActor['actor_type'],
-      active: Boolean(row.active),
-      notes: (row.notes as string | null) ?? null,
-      instagram_username: (row.instagram_username as string | null) ?? null,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-      youtube_search_terms: terms.filter((t) => t.active).sort((a, b) => a.priority - b.priority),
-    }
-  })
+  return filterOutExcludedPoliticalActors(
+    (data ?? []).map((row) => {
+      const terms = (row.youtube_search_terms as YoutubeSearchTerm[] | null) ?? []
+      return {
+        id: row.id as string,
+        name: row.name as string,
+        slug: row.slug as string,
+        actor_type: row.actor_type as PoliticalActor['actor_type'],
+        active: Boolean(row.active),
+        notes: (row.notes as string | null) ?? null,
+        instagram_username: (row.instagram_username as string | null) ?? null,
+        created_at: row.created_at as string,
+        updated_at: row.updated_at as string,
+        youtube_search_terms: terms.filter((t) => t.active).sort((a, b) => a.priority - b.priority),
+      }
+    }),
+  )
 }
 
 export async function collectYoutubeRadarForActor(

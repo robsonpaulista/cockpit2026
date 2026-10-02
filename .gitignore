@@ -71,5 +71,17 @@ database/restore-from-backup-public-data-extracted.sql
 
 # Backups lógicos do Supabase (npm run db:backup)
 /backups/
+/database/backups/
+
+# Dados internos de campanha (repositório público — não versionar)
+/*.xlsx
+/*.pdf
+/*.csv
+/*.csv.zip
+/database/*.xlsx
+
+# Mídias soltas na raiz (as usadas pelo app ficam em public/)
+/*.mp4
+/*.png
 
 .env*

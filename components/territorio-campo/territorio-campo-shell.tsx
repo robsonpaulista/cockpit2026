@@ -24,6 +24,7 @@ import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
+import '@/app/dashboard/shared/territorio-cx-chrome.css'
 
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
@@ -56,8 +57,10 @@ export function TerritorioCampoShell({
   useEffect(() => {
     document.body.setAttribute('data-war-room-clean', '')
     document.body.setAttribute('data-wr-copiloto', '')
+    document.body.setAttribute('data-territorio-cx', '')
     return () => {
       document.body.removeAttribute('data-wr-copiloto')
+      document.body.removeAttribute('data-territorio-cx')
     }
   }, [])
 

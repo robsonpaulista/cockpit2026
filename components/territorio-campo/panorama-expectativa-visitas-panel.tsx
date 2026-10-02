@@ -283,7 +283,13 @@ function CoberturaTerritorialPanel({
   total: number
   onFiltroChange: (id: FiltroCobertura) => void
 }) {
-  const barTone = { green: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-red-500', gray: 'bg-gray-400', blue: 'bg-blue-500' }
+  const barTone = {
+    green: 'bg-[#299a55]',
+    amber: 'bg-[#e8a825]',
+    red: 'bg-[#e95b50]',
+    gray: 'bg-[#b3b6bb]',
+    blue: 'bg-[#14161a]',
+  }
   const todosActive = filtro === 'todos'
 
   return (

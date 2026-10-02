@@ -14,6 +14,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { createClient as createTrendsClient, MemoryCookieStore } from 'trendsearch'
 import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
+import { filterOutExcludedPoliticalActors } from './lib/political-actors-exclude.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -333,7 +334,7 @@ async function main() {
   } else {
     const { data, error: actorsError } = await supabase
       .from('political_actors')
-      .select('id, name')
+      .select('id, name, slug')
       .eq('active', true)
       .order('name', { ascending: true })
 
@@ -346,7 +347,10 @@ async function main() {
       emit({ ok: false, error: msg })
       process.exit(1)
     }
-    actors = data ?? []
+    actors = filterOutExcludedPoliticalActors(data ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+    }))
   }
 
   if (!actors?.length) {

@@ -33,6 +33,11 @@ import {
   isLiderancaAtualNao,
   isLiderancaAtualSim,
 } from '@/lib/territorio-lideranca-atual'
+import { VOTOS_ESPONTANEOS_2026 } from '@/lib/territorio-liderancas-espontaneos'
+import {
+  territorioCxBtnGhostClass,
+  territorioCxBtnPrimaryClass,
+} from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
 
 type FiltroLiderancaAtual = 'todos' | 'sim' | 'em_dialogo' | 'nao'
@@ -61,12 +66,14 @@ type GrupoCidade = {
   cidade: string
   rows: LiderancaCrudRow[]
   totalExpectativa: number
+  totalPrevisto: number
 }
 
 type ApiResponse = {
   rows?: LiderancaCrudRow[]
   row?: LiderancaCrudRow
   error?: string
+  warning?: string
 }
 
 type ModalState = {
@@ -84,6 +91,7 @@ type InlineForm = {
   votos2024: string
   promessa: string
   expectativaLegado: string
+  previsto: string
 }
 
 function normalizarBusca(value: string): string {
@@ -186,6 +194,10 @@ export function LiderancasPanel() {
             (total, lideranca) => total + lideranca.expectativaLegado,
             0,
           ),
+          totalPrevisto: ordenadas.reduce(
+            (total, lideranca) => total + (lideranca.previsto ?? 0),
+            0,
+          ),
         }
       })
       .sort((a, b) => {
@@ -210,6 +222,15 @@ export function LiderancasPanel() {
     () => rowsFiltradas.reduce((total, row) => total + row.expectativaLegado, 0),
     [rowsFiltradas],
   )
+  const totalPrevisto = useMemo(
+    () => rowsFiltradas.reduce((total, row) => total + (row.previsto ?? 0), 0),
+    [rowsFiltradas],
+  )
+  const incluiEspontaneos = filtroLideranca === 'todos'
+  const kpiExpectativa =
+    totalExpectativa + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.expectativa : 0)
+  const kpiRevisaoFinal =
+    totalPrevisto + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.revisaoFinal : 0)
   const todasRecolhidas =
     grupos.length > 0 && grupos.every((grupo) => cidadesRecolhidas.has(grupo.cidade))
 
@@ -243,6 +264,7 @@ export function LiderancasPanel() {
       votos2024: String(lideranca.votos2024 ?? 0),
       promessa: String(lideranca.promessa),
       expectativaLegado: String(lideranca.expectativaLegado),
+      previsto: String(lideranca.previsto ?? 0),
     })
     setError(null)
   }
@@ -273,12 +295,14 @@ export function LiderancasPanel() {
           votos_2024: parseNumero(inlineForm.votos2024),
           promessa_lideranca_2026: parseNumero(inlineForm.promessa),
           expectativa_votos_2026: parseNumero(inlineForm.expectativaLegado),
+          previsto_2026: parseNumero(inlineForm.previsto),
         }),
       })
       const data = (await response.json()) as ApiResponse
       if (!response.ok || !data.row) throw new Error(data.error || 'Erro ao salvar liderança')
       setRows((atuais) => atuais.map((row) => (row.id === id ? data.row! : row)))
       cancelarEdicaoInline()
+      if (data.warning) setError(data.warning)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar liderança')
     } finally {
@@ -315,7 +339,7 @@ export function LiderancasPanel() {
 
   return (
     <section className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Indicador
           icon={Users}
           label="Lideranças"
@@ -328,29 +352,44 @@ export function LiderancasPanel() {
         />
         <Indicador
           icon={Vote}
-          label="Expectativa de votos"
-          valor={totalExpectativa.toLocaleString('pt-BR')}
+          label="Expectativa"
+          valor={kpiExpectativa.toLocaleString('pt-BR')}
+          detalhe={
+            incluiEspontaneos
+              ? `Inclui ${VOTOS_ESPONTANEOS_2026.expectativa.toLocaleString('pt-BR')} espontâneos`
+              : undefined
+          }
+        />
+        <Indicador
+          icon={Vote}
+          label="Revisão Final"
+          valor={kpiRevisaoFinal.toLocaleString('pt-BR')}
+          detalhe={
+            incluiEspontaneos
+              ? `Inclui ${VOTOS_ESPONTANEOS_2026.revisaoFinal.toLocaleString('pt-BR')} espontâneos`
+              : undefined
+          }
         />
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-card bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="territorio-cx-filter-strip !mb-0 sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <label className="relative min-w-0 flex-1 sm:max-w-md">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#969692]"
               aria-hidden
             />
             <input
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
               placeholder="Buscar cidade, liderança ou cargo"
-              className="h-9 w-full rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] pl-9 pr-9 text-sm text-text-primary outline-none focus:border-[#f2d06b]"
+              className="territorio-cx-input h-10 w-full !bg-white pl-9 pr-9"
             />
             {busca ? (
               <button
                 type="button"
                 onClick={() => setBusca('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-secondary hover:text-text-primary"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#969692] hover:text-[#2b2d31]"
                 aria-label="Limpar busca"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
@@ -359,7 +398,7 @@ export function LiderancasPanel() {
           </label>
 
           <div
-            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] p-0.5"
+            className="inline-flex h-10 shrink-0 items-center rounded-[10px] border border-[#e8e8e6] bg-white p-0.5"
             role="group"
             aria-label="Filtrar por liderança atual"
           >
@@ -374,8 +413,8 @@ export function LiderancasPanel() {
                   className={cn(
                     'h-8 rounded-md px-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
                     ativo
-                      ? 'bg-[#f2d06b] text-[#2b2d31]'
-                      : 'text-text-secondary hover:text-text-primary',
+                      ? 'territorio-cx-chip-active border border-[#e8a825] bg-[rgba(232,168,37,0.14)] text-[#2b2d31]'
+                      : 'text-[#686865] hover:text-[#2b2d31]',
                   )}
                 >
                   {opcao.label}
@@ -385,12 +424,12 @@ export function LiderancasPanel() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={alternarTodas}
             disabled={grupos.length === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className={territorioCxBtnGhostClass}
           >
             {todasRecolhidas ? (
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
@@ -403,7 +442,7 @@ export function LiderancasPanel() {
             type="button"
             onClick={() => void carregar()}
             disabled={loading}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className={territorioCxBtnGhostClass}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} aria-hidden />
             Atualizar
@@ -411,7 +450,7 @@ export function LiderancasPanel() {
           <button
             type="button"
             onClick={() => setSelecionandoCidade(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#f2d06b] px-3 text-xs font-semibold text-[#2b2d31]"
+            className={territorioCxBtnPrimaryClass}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Nova liderança
@@ -449,7 +488,7 @@ export function LiderancasPanel() {
             return (
               <article
                 key={grupo.cidade}
-                className="overflow-hidden rounded-xl border border-[#e8e8e6] bg-[#f7f7f6] shadow-sm"
+                className="territorio-cx-city-group overflow-hidden rounded-xl border border-[#e8e8e6] bg-white shadow-none"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e6] bg-[#f7f7f6] px-4 py-3">
                   <button
@@ -463,7 +502,7 @@ export function LiderancasPanel() {
                     ) : (
                       <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                     )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#f2d06b]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#e8a825]" aria-hidden />
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {grupo.cidade}
                     </span>
@@ -477,6 +516,12 @@ export function LiderancasPanel() {
                       Expectativa:{' '}
                       <strong className="tabular-nums text-text-primary">
                         {grupo.totalExpectativa.toLocaleString('pt-BR')} votos
+                      </strong>
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      Revisão Final:{' '}
+                      <strong className="tabular-nums text-text-primary">
+                        {grupo.totalPrevisto.toLocaleString('pt-BR')} votos
                       </strong>
                     </span>
                     <button
@@ -494,7 +539,7 @@ export function LiderancasPanel() {
 
                 {!recolhida ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[960px] text-xs">
+                    <table className="w-full min-w-[1060px] text-xs">
                       <thead>
                         <tr className="text-text-secondary">
                           <th className="px-4 py-2 text-left font-medium">Liderança</th>
@@ -506,7 +551,7 @@ export function LiderancasPanel() {
                           <th className="px-3 py-2 text-right font-medium">Promessa 2026</th>
                           <th className="px-3 py-2 text-right font-medium">
                             <TerritorioSortableHeaderButton
-                              label="Expectativa de votos"
+                              label="Expectativa"
                               active={sortCol === 'expectativa'}
                               asc={sortAsc}
                               onClick={() => alternarSort('expectativa')}
@@ -515,6 +560,7 @@ export function LiderancasPanel() {
                               className="w-full"
                             />
                           </th>
+                          <th className="px-3 py-2 text-right font-medium">Revisão Final</th>
                           <th className="w-16 px-3 py-2 text-right font-medium">Ações</th>
                         </tr>
                       </thead>
@@ -528,7 +574,7 @@ export function LiderancasPanel() {
                               className={cn(
                                 'border-t border-card text-text-primary',
                                 index % 2 === 1 && 'bg-background/30',
-                                editando && 'bg-[#f2d06b]/5',
+                                editando && 'bg-[#e8a825]/5',
                               )}
                             >
                               <td
@@ -724,7 +770,7 @@ export function LiderancasPanel() {
                                           form && { ...form, expectativaLegado: value },
                                       )
                                     }
-                                    ariaLabel="Expectativa de votos"
+                                    ariaLabel="Expectativa"
                                     numeric
                                     autoFocus={focusField === 'expectativaLegado'}
                                     onSave={() => void salvarEdicaoInline(lideranca.id)}
@@ -732,6 +778,29 @@ export function LiderancasPanel() {
                                   />
                                 ) : (
                                   lideranca.expectativaLegado.toLocaleString('pt-BR')
+                                )}
+                              </td>
+                              <td
+                                className="cursor-pointer px-2 py-1.5 text-right font-semibold tabular-nums"
+                                onClick={() => {
+                                  if (!editando) iniciarEdicaoInline(lideranca, 'previsto')
+                                }}
+                                title={editando ? undefined : 'Clique para editar'}
+                              >
+                                {editando ? (
+                                  <InlineInput
+                                    value={inlineForm.previsto}
+                                    onChange={(value) =>
+                                      setInlineForm((form) => form && { ...form, previsto: value })
+                                    }
+                                    ariaLabel="Revisão Final"
+                                    numeric
+                                    autoFocus={focusField === 'previsto'}
+                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
+                                    onCancel={cancelarEdicaoInline}
+                                  />
+                                ) : (
+                                  (lideranca.previsto ?? 0).toLocaleString('pt-BR')
                                 )}
                               </td>
                               <td className="px-2 py-1.5 text-right">
@@ -853,7 +922,7 @@ export function LiderancasPanel() {
                 type="button"
                 onClick={abrirNovaLideranca}
                 disabled={!novaCidade.trim()}
-                className="h-8 rounded-lg bg-[#f2d06b] px-3 text-xs font-semibold text-[#2b2d31] disabled:opacity-50"
+                className={cn(territorioCxBtnPrimaryClass, 'h-8 disabled:opacity-50')}
               >
                 Continuar
               </button>
@@ -877,7 +946,7 @@ export function LiderancasPanel() {
 }
 
 const inlineFieldClass =
-  'h-7 w-full min-w-[88px] rounded border border-[#f2d06b]/50 bg-surface px-1.5 text-xs text-text-primary outline-none focus:border-[#f2d06b] focus:ring-1 focus:ring-[#f2d06b]/25'
+  'h-7 w-full min-w-[88px] rounded border border-[#e8a825]/50 bg-surface px-1.5 text-xs text-text-primary outline-none focus:border-[#e8a825] focus:ring-1 focus:ring-[#e8a825]/25'
 
 type InlineInputProps = {
   value: string
@@ -919,16 +988,22 @@ type IndicadorProps = {
   icon: typeof Users
   label: string
   valor: string
+  detalhe?: string
 }
 
-function Indicador({ icon: Icon, label, valor }: IndicadorProps) {
+function Indicador({ icon: Icon, label, valor, detalhe }: IndicadorProps) {
   return (
-    <div className="rounded-xl border border-card bg-surface p-3 shadow-sm">
-      <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg bg-[#f2d06b]/15 text-[#f2d06b]">
-        <Icon className="h-4 w-4" aria-hidden />
+    <div className="territorio-cx-kpi relative overflow-hidden">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-[#969692]" aria-hidden />
+        <p className="territorio-cx-kpi__label">{label}</p>
       </div>
-      <p className="text-[10px] uppercase tracking-wide text-text-secondary">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold tabular-nums text-text-primary">{valor}</p>
+      <p className="territorio-cx-kpi__value">{valor}</p>
+      {detalhe ? <p className="mt-1 text-[10px] text-[#969692]">{detalhe}</p> : null}
+      <span
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-[#e8a825]"
+        aria-hidden
+      />
     </div>
   )
 }

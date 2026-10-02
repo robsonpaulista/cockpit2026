@@ -4,6 +4,7 @@
 
 @import './design-tokens-copiloto.css';
 @import './theme.css';
+@import './sidebar-obsidian-glass.css';
 
 /* Tipografia base — Source Sans 3 + Inter (fallback) via next/font */
 html {
@@ -2857,25 +2858,16 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
    REPUBLICANOS PREMIUM (LIGHT) — polimento visual global
    ============================================================================= */
 
-/* Sidebar — tom petróleo da paleta oficial (fora do tema clean cinza) */
-body:not([data-war-room-clean]) .sidebar-apify-shell {
-  background: var(--palette-petrol) !important;
-  border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--palette-card) 6%, transparent) !important;
-  color: color-mix(in srgb, var(--palette-card) 82%, transparent);
-}
-
+/* Sidebar Cockpit X — material Obsidian (ver sidebar-obsidian-glass.css) */
 body:not([data-war-room-clean]) .sidebar-apify-shell > div {
   background: transparent !important;
 }
 
-/* Zona do título (logo) — mesma cor do restante da sidebar. */
 body:not([data-war-room-clean]) .sidebar-apify-shell > div > div:first-child {
-  background: var(--palette-petrol) !important;
-  border-color: color-mix(in srgb, var(--palette-card) 10%, transparent) !important;
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Links da sidebar — cor clara explícita (vence a regra global de `a:hover`). */
 body:not([data-war-room-clean]) .sidebar-apify-shell a {
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
@@ -2886,25 +2878,53 @@ body:not([data-war-room-clean]) .sidebar-apify-shell a:hover {
   text-decoration: none;
 }
 
-/* Ícone ativo / hover — accent coral oficial */
 body:not([data-war-room-clean]) .sidebar-apify-shell .group:hover .cockpit-icon,
 body:not([data-war-room-clean]) .sidebar-apify-shell a:hover .cockpit-icon,
 body:not([data-war-room-clean]) .sidebar-apify-shell button:hover .cockpit-icon {
-  color: var(--palette-accent, #f04b23);
+  color: #e8a825;
 }
 
-/* Atendimentos — linha de destaque (Federal/Vereador) = fundo da sidebar */
+/* Atendimentos — destaque sem fill (só barra âmbar) */
 .resumo-tr-destaque-petrol,
 .resumo-tr-destaque-petrol:hover {
-  background-color: var(--palette-petrol) !important;
-  border-bottom-color: var(--palette-petrol) !important;
-  color: #ffffff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-bottom-color: #e8e8e6 !important;
+  box-shadow: inset 2px 0 0 #e8a825;
+  color: #2b2d31 !important;
 }
 
 .resumo-tr-destaque-petrol td,
 .resumo-tr-destaque-petrol td.text-text-secondary,
 .resumo-tr-destaque-petrol .text-text-secondary {
-  color: #ffffff !important;
+  color: #2b2d31 !important;
+  background: transparent !important;
+}
+
+.resumo-tr-destaque-petrol input[type='checkbox'] {
+  accent-color: #e8a825;
+}
+
+.resumo-tr-destaque-forte,
+.resumo-tr-destaque-forte:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #2b2d31 !important;
+  box-shadow: inset 2px 0 0 #e8a825;
+}
+
+.resumo-tr-destaque-forte td,
+.resumo-tr-destaque-forte td.text-text-secondary,
+.resumo-tr-destaque-forte .text-text-secondary {
+  color: #2b2d31 !important;
+  background: transparent !important;
+}
+
+.resumo-tr-selecionado,
+.resumo-tr-selecionado:hover {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {

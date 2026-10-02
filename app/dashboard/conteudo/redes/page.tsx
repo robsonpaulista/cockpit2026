@@ -146,8 +146,14 @@ const mockPosts = [
   },
 ]
 
-// Temas padrão da outra aplicação
-const defaultThemes = [
+function sortThemesAlphabetically(themes: string[]): string[] {
+  return [...themes].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR', { sensitivity: 'base', numeric: true }),
+  )
+}
+
+// Temas padrão da classificação (sempre em ordem alfabética pt-BR)
+const defaultThemes = sortThemesAlphabetically([
   'Atendimentos',
   'Autismo',
   'Campanha',
@@ -161,13 +167,13 @@ const defaultThemes = [
   'Hospital do Amor',
   'Informativo',
   'Obras',
+  'Outros',
   "PL'S",
   'Pesquisas',
   'Promoção',
   'Saúde',
   'Segurança',
-  'Outros'
-]
+])
 
 type PostClassification = {
   theme?: string
@@ -265,7 +271,7 @@ export default function ConteudoPage() {
         try {
           const themes = JSON.parse(saved)
           setCustomThemes(themes)
-          setAvailableThemes([...defaultThemes, ...themes])
+          setAvailableThemes(sortThemesAlphabetically([...defaultThemes, ...themes]))
         } catch (e) {
           // Erro silencioso
         }
@@ -291,7 +297,7 @@ export default function ConteudoPage() {
     if (themeName && !availableThemes.includes(themeName)) {
       const updatedCustomThemes = [...customThemes, themeName]
       setCustomThemes(updatedCustomThemes)
-      setAvailableThemes([...defaultThemes, ...updatedCustomThemes])
+      setAvailableThemes(sortThemesAlphabetically([...defaultThemes, ...updatedCustomThemes]))
       
       // Salvar no localStorage
       if (typeof window !== 'undefined') {

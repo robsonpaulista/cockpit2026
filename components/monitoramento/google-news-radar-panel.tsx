@@ -162,8 +162,7 @@ export function GoogleNewsRadarPanel() {
         <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
           Busca web (Google.com + Instagram indexado) desativada. Configure{' '}
           <code className="rounded bg-white/80 px-1">GOOGLE_CSE_API_KEY</code> e{' '}
-          <code className="rounded bg-white/80 px-1">GOOGLE_CSE_ID</code> no ambiente. Vídeos (Playwright) estão
-          na aba <strong>Google Vídeos</strong>.
+          <code className="rounded bg-white/80 px-1">GOOGLE_CSE_ID</code> no ambiente.
         </div>
       ) : null}
 

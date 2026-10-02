@@ -4,6 +4,7 @@ import { promisify } from 'util'
 /** Força o NFT da Vercel a copiar semver — sharp exige `semver/functions/coerce`. */
 import 'semver/functions/coerce'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { isExcludedPoliticalActorSlug } from '@/lib/political-actors-exclude'
 import { getInstagramRadarBudgetSummary } from '@/lib/instagram-radar-aggregate'
 import {
   isInstagramRadarCooldownEnabled,
@@ -128,12 +129,15 @@ async function hasApifyTargets(
   supabase: SupabaseClient,
   politicoSlug?: string
 ): Promise<boolean> {
+  if (politicoSlug && isExcludedPoliticalActorSlug(politicoSlug)) return false
+
   let query = supabase
     .from('political_actors')
     .select('id', { count: 'exact', head: true })
     .eq('active', true)
     .neq('actor_type', 'own_candidate')
     .not('instagram_username', 'is', null)
+    .neq('slug', 'instagram-causa-animal')
 
   if (politicoSlug) query = query.eq('slug', politicoSlug)
 

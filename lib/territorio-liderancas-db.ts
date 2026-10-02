@@ -35,8 +35,61 @@ export type TerritorioLiderancaRow = {
   expectativa_jadyel_2026: number | null
   votacao_final_2022: number | null
   expectativa_votos_2026: number | null
+  previsto_2026?: number | null
   em_dialogo: boolean | null
   ativo: boolean | null
+}
+
+const LIDERANCAS_BASE_COLUMNS = [
+  'id',
+  'municipio',
+  'municipio_normalizado',
+  'lideranca',
+  'senador_1',
+  'senador_2',
+  'dep_estadual',
+  'governador',
+  'lideranca_atual',
+  'cargo_2020',
+  'cargo_2024',
+  'votos_2020',
+  'votos_2024',
+  'promessa_lideranca_2026',
+  'expectativa_jadyel_2026',
+  'votacao_final_2022',
+  'expectativa_votos_2026',
+  'em_dialogo',
+  'ativo',
+]
+
+/** Coluna opcional até `database/add-territorio-liderancas-previsto.sql` ser aplicado. */
+export const PREVISTO_COLUMN = 'previsto_2026'
+
+const PREVISTO_RECHECK_MS = 60 * 1000
+let previstoMissingAt: number | null = null
+
+function previstoColumnLikelyAvailable(): boolean {
+  return previstoMissingAt == null || Date.now() - previstoMissingAt > PREVISTO_RECHECK_MS
+}
+
+function markPrevistoColumnMissing(): void {
+  previstoMissingAt = Date.now()
+}
+
+export function isMissingPrevistoColumnError(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    String(error.message || '').includes(PREVISTO_COLUMN)
+  )
+}
+
+function liderancasSelect(): string {
+  return (previstoColumnLikelyAvailable()
+    ? [...LIDERANCAS_BASE_COLUMNS, PREVISTO_COLUMN]
+    : LIDERANCAS_BASE_COLUMNS
+  ).join(', ')
 }
 
 type CitySummaryCache = {
@@ -68,34 +121,16 @@ async function fetchAllLiderancasRows(): Promise<TerritorioLiderancaRow[]> {
   for (;;) {
     const { data, error } = await admin
       .from('territorio_liderancas')
-      .select(
-        [
-          'id',
-          'municipio',
-          'municipio_normalizado',
-          'lideranca',
-          'senador_1',
-          'senador_2',
-          'dep_estadual',
-          'governador',
-          'lideranca_atual',
-          'cargo_2020',
-          'cargo_2024',
-          'votos_2020',
-          'votos_2024',
-          'promessa_lideranca_2026',
-          'expectativa_jadyel_2026',
-          'votacao_final_2022',
-          'expectativa_votos_2026',
-          'em_dialogo',
-          'ativo',
-        ].join(', '),
-      )
+      .select(liderancasSelect())
       .eq('ativo', true)
       .order('id', { ascending: true })
       .range(from, from + page - 1)
 
     if (error) {
+      if (previstoColumnLikelyAvailable() && isMissingPrevistoColumnError(error)) {
+        markPrevistoColumnMissing()
+        continue
+      }
       throw new Error(`Erro ao ler territorio_liderancas: ${error.message}`)
     }
     if (!data || data.length === 0) break
@@ -135,35 +170,20 @@ export async function listTerritorioLiderancasByCidade(cidade: string): Promise<
   const key = normalizeTerritorioExpectativaCityKey(cidade)
   if (!key) return []
 
-  const { data, error } = await admin
-    .from('territorio_liderancas')
-    .select(
-      [
-        'id',
-        'municipio',
-        'municipio_normalizado',
-        'lideranca',
-        'senador_1',
-        'senador_2',
-        'dep_estadual',
-        'governador',
-        'lideranca_atual',
-        'cargo_2020',
-        'cargo_2024',
-        'votos_2020',
-        'votos_2024',
-        'promessa_lideranca_2026',
-        'expectativa_jadyel_2026',
-        'votacao_final_2022',
-        'expectativa_votos_2026',
-        'em_dialogo',
-        'ativo',
-      ].join(', '),
-    )
-    .eq('ativo', true)
-    .eq('municipio_normalizado', key)
-    .order('expectativa_votos_2026', { ascending: false })
-    .order('lideranca', { ascending: true })
+  const query = () =>
+    admin
+      .from('territorio_liderancas')
+      .select(liderancasSelect())
+      .eq('ativo', true)
+      .eq('municipio_normalizado', key)
+      .order('expectativa_votos_2026', { ascending: false })
+      .order('lideranca', { ascending: true })
+
+  let { data, error } = await query()
+  if (error && previstoColumnLikelyAvailable() && isMissingPrevistoColumnError(error)) {
+    markPrevistoColumnMissing()
+    ;({ data, error } = await query())
+  }
 
   if (error) {
     throw new Error(`Erro ao listar lideranças: ${error.message}`)

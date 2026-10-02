@@ -11,26 +11,28 @@ export function resumoWrCardGlassClass(...extra: Array<string | false | null | u
   return cn('resumo-wr-card--glass', ...extra)
 }
 
-/** Seleção de linha — accent coral (padrão Copiloto / sidebar). */
+/** Seleção de linha — sem fill; só borda âmbar discreta. */
 export function resumoTrSelecionado(): string {
-  return 'bg-[#f04b23]/12 ring-1 ring-inset ring-[#f04b23]'
+  return 'resumo-tr-selecionado bg-transparent ring-1 ring-inset ring-[rgba(232,168,37,0.45)]'
 }
 
-/** Destaque forte (ex.: partido filtrado) — linha coral sólida, texto branco. */
+/** Destaque forte (ex.: partido filtrado) — sem fill; tipografia + borda. */
 export function resumoTrDestaqueForte(): string {
   return cn(
-    'border-b border-[#f04b23] !bg-[#f04b23] font-semibold !text-white hover:!bg-[#f04b23]',
-    '[&_button]:!text-white [&_button]:decoration-white/50',
-    '[&_a]:!text-white',
+    'resumo-tr-destaque-forte border-b border-[#e8e8e6] !bg-transparent font-semibold !text-[#2b2d31] hover:!bg-transparent',
+    'shadow-[inset_2px_0_0_#e8a825]',
+    '[&_button]:!text-[#2b2d31]',
+    '[&_a]:!text-[#2b2d31]',
   )
 }
 
-/** Destaque de candidato principal (Federal / Vereador) — mesmo azul da sidebar. */
+/** Destaque candidato principal — sem fill; barra âmbar + peso tipográfico. */
 export function resumoTrDestaquePetrol(): string {
   return cn(
-    'resumo-tr-destaque-petrol font-semibold !text-white',
-    '[&_button]:!text-white [&_button]:decoration-white/50',
-    '[&_a]:!text-white',
+    'resumo-tr-destaque-petrol !bg-transparent font-semibold !text-[#2b2d31]',
+    'shadow-[inset_2px_0_0_#e8a825]',
+    '[&_button]:!text-[#2b2d31] [&_button]:decoration-[#2b2d31]/40',
+    '[&_a]:!text-[#2b2d31]',
   )
 }
 
@@ -41,16 +43,16 @@ export function resumoTrZebra(_rowIndex: number): string {
 
 export const RESUMO_TABLE_CLASS = 'w-full text-xs'
 
-export const RESUMO_TH_CLASS = 'bg-background px-1 py-1 text-xs text-text-secondary'
+export const RESUMO_TH_CLASS = 'resumo-cx-th px-1 py-1.5 text-xs'
 
 export const RESUMO_TD_CLASS = 'px-1 py-1'
 
 export function resumoSortAccentClass(): string {
-  return 'text-[#f04b23]'
+  return 'text-[#e8a825]'
 }
 
 export function resumoAccentTextClass(): string {
-  return 'text-[#f04b23]'
+  return 'text-[#e8a825]'
 }
 
 export const RESUMO_ACCENT_AMBER = SIDEBAR_BRAND_AMBER
@@ -77,23 +79,23 @@ export function resumoLinhaTabela(
 }
 
 export function resumoKpiValueClass(): string {
-  return 'text-center text-xl font-bold leading-none tracking-tight tabular-nums text-[var(--wr-text-primary,#2b2d31)]'
+  return 'text-center text-[22px] font-semibold leading-none tracking-tight tabular-nums text-[#2b2d31]'
 }
 
 export function resumoKpiLabelClass(): string {
-  return 'text-xs font-semibold leading-none tracking-tight text-[var(--wr-text-primary,#2b2d31)]'
+  return 'text-[10px] font-semibold uppercase leading-none tracking-[0.14em] text-[#969692]'
 }
 
 export function resumoKpiMetaClass(): string {
-  return 'mt-1 text-center text-[11px] leading-tight text-[var(--wr-text-secondary,#686865)]'
+  return 'mt-1.5 text-center text-[11px] leading-tight text-[#686865]'
 }
 
 export function resumoKpiLinkClass(): string {
-  return 'text-[11px] font-semibold text-[var(--wr-text-primary,#2b2d31)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40'
+  return 'text-[11px] font-semibold text-[#2b2d31] underline-offset-2 hover:text-[#e8a825] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
 }
 
 export function resumoKpiCardClass(): string {
-  return 'resumo-wr-card--kpi flex min-w-0 flex-col items-center px-2.5 py-2.5 text-center'
+  return 'resumo-wr-card--kpi flex min-w-0 flex-col items-center px-3 py-3 text-center'
 }
 
 export function resumoKpiHeaderClass(): string {

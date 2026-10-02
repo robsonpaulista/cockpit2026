@@ -1,17 +1,26 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
+import { Michroma } from 'next/font/google'
 import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
-/** Paleta splash /login — coral institucional. */
-const GOLD = '#f04b23'
-const GOLD_HOVER = '#c43d1c'
-/** Paleta da prévia home — amarelo da carroceria + petróleo. */
-const HOME_CAR = '#f2d06b'
-const HOME_CAR_HOVER = '#e0bc4f'
-const HOME_PETROL = '#2b2d31'
-const CAR_IMAGE = '/splash/cockpit-track-full.png'
+/** Teste tipográfico do wordmark no modal de login. */
+const michroma = Michroma({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+/**
+ * Paleta da cena home (novaversao.png) — âmbar dos holofotes / “X”.
+ * Wordmark: COCKPIT (branco) + X (âmbar).
+ */
+const SCENE_AMBER = '#e8a825'
+const SCENE_AMBER_HOVER = '#d4961c'
+const SCENE_AMBER_RGB = '232, 168, 37'
+const SCENE_INK = '#1a1a1c'
+const CAR_IMAGE = '/splash/novaversao.png'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
 const SAVED_LOGIN_STORAGE_KEY = 'cockpit_saved_login_v1'
@@ -65,10 +74,11 @@ export function LoginForm({
   const emailId = useId()
   const passwordId = useId()
   const isFloating = variant === 'floating'
-  const accent = isFloating ? HOME_CAR : GOLD
-  const accentHover = isFloating ? HOME_CAR_HOVER : GOLD_HOVER
-  const accentRgb = isFloating ? '240, 192, 0' : '240, 75, 35'
-  const btnText = isFloating ? HOME_PETROL : '#ffffff'
+  /** Alinhado ao hero: X e CTA no âmbar da cena. */
+  const accent = SCENE_AMBER
+  const accentHover = SCENE_AMBER_HOVER
+  const accentRgb = SCENE_AMBER_RGB
+  const btnText = SCENE_INK
   const btnRadius = isFloating ? '10px' : '999px'
 
   useEffect(() => {
@@ -161,35 +171,49 @@ export function LoginForm({
     <div className={isFloating ? 'mb-6 text-center' : 'mb-10 text-center'}>
       <h1
         id={titleId}
+        className={michroma.className}
         style={{
-          fontFamily: APP_FONT_STACK_CSS,
-          fontSize: isFloating ? 'clamp(1.35rem, 3vw, 1.75rem)' : 'clamp(1.9rem, 6vw, 2.6rem)',
-          fontWeight: 500,
+          fontSize: isFloating ? 'clamp(1.35rem, 3vw, 1.75rem)' : 'clamp(1.75rem, 5.5vw, 2.4rem)',
+          fontWeight: 400,
           color: 'white',
-          lineHeight: 1.1,
-          letterSpacing: '-0.01em',
-          textShadow: '0 2px 20px rgba(0,0,0,0.6)',
-          marginBottom: isFloating ? '8px' : '12px',
+          lineHeight: 1.05,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          textShadow: '0 2px 24px rgba(0,0,0,0.55)',
+          marginBottom: isFloating ? '10px' : '12px',
         }}
       >
-        {isFloating ? (
-          <>
-            <span style={{ fontWeight: 700, color: '#ffffff' }}>COCKPIT</span>
-            <span style={{ fontWeight: 700, marginLeft: '0.28em', color: accent }}>2026</span>
-          </>
-        ) : (
-          <>
-            <span style={{ fontWeight: 700, color: GOLD }}>COCKPIT</span> 2026
-          </>
-        )}
+        <span style={{ color: '#ffffff' }}>COCKPIT</span>
+        <span
+          style={{
+            marginLeft: '0.28em',
+            color: accent,
+            textShadow: `0 0 18px rgba(${accentRgb},0.55)`,
+          }}
+        >
+          X
+        </span>
       </h1>
       <p
         style={{
           fontFamily: APP_FONT_STACK_CSS,
-          fontSize: isFloating ? '0.62rem' : '0.7rem',
+          fontSize: isFloating ? '0.78rem' : '0.88rem',
           fontWeight: 500,
-          color: 'rgba(255,255,255,0.5)',
-          letterSpacing: '0.18em',
+          color: 'rgba(255,255,255,0.78)',
+          letterSpacing: '0.01em',
+          textShadow: '0 1px 14px rgba(0,0,0,0.6)',
+          marginBottom: isFloating ? '6px' : '8px',
+        }}
+      >
+        Assuma o controle do seu mandato!
+      </p>
+      <p
+        style={{
+          fontFamily: APP_FONT_STACK_CSS,
+          fontSize: isFloating ? '0.58rem' : '0.65rem',
+          fontWeight: 500,
+          color: 'rgba(255,255,255,0.48)',
+          letterSpacing: '0.14em',
           textTransform: 'uppercase',
           textShadow: '0 1px 14px rgba(0,0,0,0.6)',
         }}
@@ -334,13 +358,13 @@ export function LoginForm({
             cursor: loading ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease',
             opacity: loading ? 0.8 : 1,
-            boxShadow: loading ? 'none' : `0 8px 26px rgba(${accentRgb},0.35)`,
+            boxShadow: loading ? 'none' : `0 8px 26px rgba(${accentRgb},0.4)`,
           }}
           onMouseEnter={(e) => {
             if (!loading) {
               e.currentTarget.style.background = accentHover
               e.currentTarget.style.transform = 'translateY(-1px)'
-              e.currentTarget.style.boxShadow = `0 12px 40px rgba(${accentRgb},0.45)`
+              e.currentTarget.style.boxShadow = `0 12px 40px rgba(${accentRgb},0.5)`
             }
           }}
           onMouseLeave={(e) => {
@@ -348,7 +372,7 @@ export function LoginForm({
             e.currentTarget.style.transform = 'translateY(0)'
             e.currentTarget.style.boxShadow = loading
               ? 'none'
-              : `0 8px 26px rgba(${accentRgb},0.35)`
+              : `0 8px 26px rgba(${accentRgb},0.4)`
           }}
         >
           {loading ? 'Entrando...' : 'Entrar no Cockpit'}

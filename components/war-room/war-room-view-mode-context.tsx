@@ -39,21 +39,27 @@ const WarRoomViewModeContext = createContext<WarRoomViewModeContextValue | null>
 )
 
 export function WarRoomViewModeProvider({ children }: { children: ReactNode }) {
-  const [viewMode, setViewModeState] = useState<WarRoomViewMode>('padrao')
+  // War Room = Copiloto direto (sem home legada / Acionar–Sair).
+  const [viewMode, setViewModeState] = useState<WarRoomViewMode>('copiloto')
   const [copilotoTabHint, setCopilotoTabHint] = useState<WarRoomCopilotoTabHint | null>(
     null,
   )
 
   const setViewMode = useCallback((mode: WarRoomViewMode) => {
+    // Mantém sempre no Copiloto; 'padrao' não restaura a home antiga.
+    if (mode === 'padrao') {
+      setViewModeState((prev) => (prev === 'copiloto' ? prev : 'copiloto'))
+      return
+    }
     setViewModeState((prev) => (prev === mode ? prev : mode))
   }, [])
 
   const toggleDesempenho = useCallback(() => {
-    setViewModeState((prev) => (prev === 'desempenho' ? 'padrao' : 'desempenho'))
+    setViewModeState((prev) => (prev === 'desempenho' ? 'copiloto' : 'desempenho'))
   }, [])
 
   const toggleCopiloto = useCallback(() => {
-    setViewModeState((prev) => (prev === 'copiloto' ? 'padrao' : 'copiloto'))
+    setViewModeState('copiloto')
   }, [])
 
   const openCopilotoTab = useCallback((tab: WarRoomCopilotoTabHint) => {

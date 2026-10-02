@@ -1,6 +1,7 @@
-import { redirect } from 'next/navigation'
+'use client'
 
-export default function DashboardMobilizacaoRedirectPage() {
-  redirect('/dashboard/mobilizacao/config')
+import { ArenaDashboardView } from '@/components/arena/arena-dashboard-view'
+
+export default function ArenaDashboardPage() {
+  return <ArenaDashboardView />
 }
-

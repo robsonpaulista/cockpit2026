@@ -2069,30 +2069,6 @@ export function ResumoEleicoesAtendimentoPanel() {
     eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
       ? (votosCenarioAtivo / eleitoresMunicipioAtivo) * 100
       : null
-  const votosProporcionaisPesquisaRecente =
-    pesquisaRecenteCidade && eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
-      ? Math.round((pesquisaRecenteCidade.intencao / 100) * eleitoresMunicipioAtivo)
-      : null
-  const diferencaPesquisaVsCenario =
-    votosProporcionaisPesquisaRecente !== null ? votosProporcionaisPesquisaRecente - votosCenarioAtivo : null
-  const percentualPesquisaVsCenario =
-    diferencaPesquisaVsCenario !== null && votosCenarioAtivo > 0
-      ? (diferencaPesquisaVsCenario / votosCenarioAtivo) * 100
-      : null
-  const statusPesquisaCurto =
-    percentualPesquisaVsCenario === null
-      ? 'Sem base'
-      : percentualPesquisaVsCenario > 0
-        ? `Acima (+${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
-        : percentualPesquisaVsCenario < 0
-          ? `Abaixo (${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
-          : 'No alvo (0,0%)'
-  const metaPesquisaCurta =
-    pesquisaRecenteCidade
-      ? `${pesquisaRecenteCidade.data} · ${statusPesquisaCurto}`
-      : candidatoPadraoPesquisa
-        ? 'Sem pesquisa'
-        : 'Sem candidato padrão'
   const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
 
   const resumoAgentActionsRef = useRef({
@@ -2233,10 +2209,9 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   return (
     <div className="w-full min-w-0">
-        <div className={cn(sectionShellClass, 'mb-4')}>
-          <div className="flex flex-col md:flex-row md:items-end gap-3">
-            <div className="flex-1">
-              <label className="text-xs font-medium text-text-secondary block mb-1">Cidade</label>
+        <div className="resumo-cx-filter-strip mb-4">
+          <div className="min-w-0 flex-1">
+            <label className="resumo-cx-field-label">Cidade</label>
               <select
                 value={cidade}
                 onChange={(e) => {
@@ -2247,7 +2222,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                   syncCidadeHub(next)
                 }}
                 disabled={loadingCidades}
-                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
+                className="resumo-cx-select"
               >
                 <option value="">
                   {loadingCidades ? 'Carregando municípios...' : 'Selecione um município...'}
@@ -2261,11 +2236,11 @@ export function ResumoEleicoesAtendimentoPanel() {
               </select>
             </div>
             <div className="w-full md:w-[300px]">
-              <label className="text-xs font-medium text-text-secondary block mb-1">Visão de Votos 2026</label>
+              <label className="resumo-cx-field-label">Visão de Votos 2026</label>
               <select
                 value={cenarioVotos}
                 onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
+                className="resumo-cx-select"
               >
                 <option value="legado_anterior">Anterior / Legado (Expectativa de Votos 2026)</option>
                 <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
@@ -2276,10 +2251,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               type="button"
               onClick={buscarDados}
               disabled={!cidade || loadingDados}
-              className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'h-10')}
+              className="resumo-cx-btn-primary"
             >
               <RefreshCw
-                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin', isCockpit ? 'text-white' : 'text-[#f04b23]')}
+                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin')}
                 aria-hidden
               />
               Buscar
@@ -2288,28 +2263,27 @@ export function ResumoEleicoesAtendimentoPanel() {
               type="button"
               onClick={prepararFiltroDemandas}
               disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
-              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background disabled:opacity-50"
+              className="resumo-cx-btn-ghost"
             >
               <FileText className="h-4 w-4 shrink-0" aria-hidden />
               Demandas
             </button>
             <Link
               href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
-              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
+              className="resumo-cx-btn-ghost"
             >
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4" aria-hidden />
               Histórico
             </Link>
             <Link
               href={resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
                 cidade: cidade && !visaoTodasCidades ? cidade : undefined,
               })}
-              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
+              className="resumo-cx-btn-ghost"
             >
-              <MapPinned className="h-4 w-4" />
+              <MapPinned className="h-4 w-4" aria-hidden />
               Por seção
             </Link>
-          </div>
         </div>
 
         {error && (
@@ -2337,7 +2311,7 @@ export function ResumoEleicoesAtendimentoPanel() {
         {dados.length > 0 && (
           <>
           {resumoCidade && (
-            <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+            <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4">
               <div className={summaryCardBaseClass}>
                 <div className={kpiHeaderClass}>
                   <span className={kpiIconWrapClass}>
@@ -2459,25 +2433,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <p className={kpiMetaClass}>Total cadastrado</p>
                 )}
               </div>
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <span className={kpiIconWrapClass}>
-                    <BarChart3 className={kpiIconClass} aria-hidden />
-                  </span>
-                  <p className={kpiLabelClass}>Pesquisas</p>
-                </div>
-                <p className={kpiValueClass}>
-                  {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '—'}
-                </p>
-                <p className={kpiMetaClass}>{metaPesquisaCurta}</p>
-                <button
-                  type="button"
-                  onClick={abrirDetalhesPesquisasDoCard}
-                  className={cn(kpiLinkClass, 'mt-0.5')}
-                >
-                  Detalhes
-                </button>
-              </div>
             </div>
           )}
           {visaoTodasCidades && buscaIniciada && dados.length > 0 ? (
@@ -2495,15 +2450,16 @@ export function ResumoEleicoesAtendimentoPanel() {
               {feedbackMarcacao}
             </div>
           )}
-          <div className={cn(resumoWrCardClass(), 'mb-3 flex items-center justify-between p-2 text-xs')}>
-            <span className="text-text-secondary">
-              Simulação de vereadores: <strong className="text-text-primary">{vereadoresMapeadosCount}</strong> de{' '}
-              <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados
+          <div className="resumo-cx-sim-toolbar">
+            <span className="resumo-cx-sim-toolbar__meta">
+              Simulação de vereadores:{' '}
+              <strong>{vereadoresMapeadosCount}</strong> de{' '}
+              <strong>{vereador2024Completo.length}</strong> mapeados
             </span>
-            <div className="flex items-center gap-2">
+            <div className="resumo-cx-sim-toolbar__actions">
               <Link
                 href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
-                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
+                className="resumo-cx-btn-ghost-sm"
               >
                 Histórico
               </Link>
@@ -2512,7 +2468,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                   cidade: cidade && !visaoTodasCidades ? cidade : undefined,
                   cargo: cidade && !visaoTodasCidades ? 'Prefeito' : undefined,
                 })}
-                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
+                className="resumo-cx-btn-ghost-sm"
               >
                 Por seção
               </Link>
@@ -2520,7 +2476,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                 type="button"
                 onClick={() => setShowSimulacaoModal(true)}
                 disabled={visaoTodasCidades}
-                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+                className="resumo-cx-btn-cta-sm"
               >
                 Abrir simulador
               </button>
@@ -2535,10 +2491,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
-                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
-                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
+                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
+                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2550,7 +2506,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#f04b23]/6',
+                          'border-b border-card text-text-primary transition-colors',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2568,7 +2524,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#f04b23]"
+                            className="h-3.5 w-3.5 accent-[#e8a825]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2628,10 +2584,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
-                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
-                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
+                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
+                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2644,7 +2600,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
+                          'border-b border-card transition-colors',
                           isJadyel && resumoTrDestaquePetrol(),
                           !isJadyel && isSelected && resumoTrSelecionado(),
                           !isJadyel && !isSelected && resumoTrZebra(rowIndex),
@@ -2665,7 +2621,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#f04b23]"
+                            className="h-3.5 w-3.5 accent-[#e8a825]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2725,10 +2681,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
-                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
-                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
+                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
+                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2740,7 +2696,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#f04b23]/6',
+                          'border-b border-card text-text-primary transition-colors',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2758,7 +2714,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#f04b23]"
+                            className="h-3.5 w-3.5 accent-[#e8a825]"
                           />
                         </td>
                         <td className="min-w-0 py-1 px-1">
@@ -2818,11 +2774,11 @@ export function ResumoEleicoesAtendimentoPanel() {
               <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
-                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="w-[3.75rem] bg-background px-0.5 py-1 text-left text-text-secondary">Partido</th>
-                    <th className="w-12 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
-                    <th className="w-[4.5rem] bg-background px-0.5 py-1 text-center text-text-secondary">Situação</th>
+                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
+                    <th className="w-[3.75rem] resumo-cx-th px-0.5 py-1.5 text-left">Partido</th>
+                    <th className="w-12 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
+                    <th className="w-[4.5rem] resumo-cx-th px-0.5 py-1.5 text-center">Situação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2839,7 +2795,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
                         title="Dê duplo clique para definir como Presidente da Câmara"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
+                          'border-b border-card transition-colors',
                           isPresidente && 'select-none',
                           isPresidente && resumoTrDestaquePetrol(),
                           !isPresidente &&
@@ -2863,7 +2819,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               })
                             }
                             title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#f04b23]"
+                            className="h-3.5 w-3.5 accent-[#e8a825]"
                           />
                         </td>
                         <td className="min-w-0 px-1 py-1">
@@ -2894,10 +2850,10 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className={cn(
                               'inline-flex max-w-full truncate rounded-full px-1.5 py-0.5 text-[10px]',
                               isPresidente &&
-                                'border border-white/40 bg-white/15 font-medium text-white',
+                                'border border-[#e8a825]/50 bg-[rgba(232,168,37,0.12)] font-medium text-[#8a6410]',
                               !isPresidente &&
                                 isEleito &&
-                                'bg-[#f04b23]/12 font-medium text-[#f04b23]',
+                                'bg-[rgba(232,168,37,0.18)] font-medium text-[#8a6410]',
                               !isPresidente &&
                                 !isEleito &&
                                 'bg-background text-text-secondary',
@@ -2951,10 +2907,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Eleitos</th>
+                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-left">Partido</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-right">Votos</th>
+                    <th className="resumo-cx-th px-1 py-1.5 text-right">Eleitos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2967,7 +2923,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         key={item.partido}
                         title="Dê duplo clique no partido para filtrar as demais tabelas"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#f04b23]/6',
+                          'border-b border-card transition-colors',
                           isPartidoAtivo && resumoTrDestaqueForte(),
                           !isPartidoAtivo && isSelected && resumoTrSelecionado(),
                           !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),
@@ -2979,7 +2935,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('partido_2024', rowId, item.votos)}
-                            className="h-3.5 w-3.5 accent-[#f04b23]"
+                            className="h-3.5 w-3.5 accent-[#e8a825]"
                           />
                         </td>
                         <td
@@ -3074,19 +3030,19 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                        <th className="resumo-cx-th px-2 py-2 text-left">
                           Vereador 2024
                         </th>
-                        <th className="bg-background px-2 py-2 text-right text-text-secondary">
+                        <th className="resumo-cx-th px-2 py-2 text-right">
                           Votos
                         </th>
-                        <th className="bg-background px-2 py-2 text-right text-text-secondary">
+                        <th className="resumo-cx-th px-2 py-2 text-right">
                           Expec. 2026
                         </th>
-                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                        <th className="resumo-cx-th px-2 py-2 text-left">
                           Federal
                         </th>
-                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                        <th className="resumo-cx-th px-2 py-2 text-left">
                           Dep. Estadual
                         </th>
                       </tr>
@@ -3172,9 +3128,9 @@ export function ResumoEleicoesAtendimentoPanel() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr>
-                          <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal</th>
-                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Vereadores</th>
-                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos estimados</th>
+                          <th className="resumo-cx-th px-2 py-2 text-left">Federal</th>
+                          <th className="resumo-cx-th px-2 py-2 text-right">Vereadores</th>
+                          <th className="resumo-cx-th px-2 py-2 text-right">Votos estimados</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3272,7 +3228,7 @@ export function ResumoEleicoesAtendimentoPanel() {
               type="button"
               role="menuitem"
               onClick={confirmarIncluirComoLideranca}
-              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[#f04b23]/10"
+              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[rgba(232,168,37,0.1)]"
             >
               Incluir como liderança
             </button>
@@ -3350,7 +3306,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleLiderancaDemanda(nome)}
-                          className="h-3.5 w-3.5 accent-[#f04b23]"
+                          className="h-3.5 w-3.5 accent-[#e8a825]"
                         />
                         <span className="text-sm text-text-primary">{nome}</span>
                       </label>

@@ -21,6 +21,10 @@ import {
   filterAdsBelongingToActor,
   foldMetaAdsMatchText,
 } from './lib/meta-ads-actor-match.mjs'
+import {
+  filterOutExcludedPoliticalActors,
+  isExcludedPoliticalActorSlug,
+} from './lib/political-actors-exclude.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -2044,6 +2048,10 @@ async function purgeUnrelatedAds(supabase, actor) {
 }
 
 async function loadActiveActors(supabase, politicoSlug) {
+  if (politicoSlug && isExcludedPoliticalActorSlug(politicoSlug)) {
+    return []
+  }
+
   let query = supabase
     .from('political_actors')
     .select('id, name, slug, actor_type, active, instagram_username')
@@ -2054,7 +2062,7 @@ async function loadActiveActors(supabase, politicoSlug) {
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data ?? []
+  return filterOutExcludedPoliticalActors(data ?? [])
 }
 
 async function upsertAds(supabase, politicoId, searchTerm, ads) {

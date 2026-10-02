@@ -39,7 +39,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Campanha',
     hint: 'Atalhos do menu esquerdo. Páginas com abas podem ser liberadas por seção.',
     pages: [
-      { key: 'war-room', label: 'War Room', path: '/dashboard/war-room' },
+      { key: 'war-room', label: 'Termômetro', path: '/dashboard/war-room' },
       { key: 'ipt', label: 'Diagnóstico Operacional', path: '/dashboard/territorio/ipt' },
       {
         key: 'territorio',
@@ -72,8 +72,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         tabs: tabs('noticias', [
           { id: 'geral', label: 'Panorama' },
           { id: 'youtube', label: 'YouTube' },
+          { id: 'google-alerts', label: 'Alertas' },
           { id: 'google-news', label: 'Notícias' },
-          { id: 'google-videos', label: 'Google Vídeos' },
           { id: 'instagram', label: 'Instagram' },
           { id: 'meta-ads', label: 'Anúncios' },
           { id: 'trends', label: 'Buscas' },
@@ -113,7 +113,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'resumo-operacional', label: 'Resumo Operacional', path: '/dashboard/resumo-operacional' },
       { key: 'narrativas', label: 'Estratégia', path: '/dashboard/narrativas' },
       { key: 'ficha-atendimento', label: 'Ficha de Atendimento', path: '/dashboard/ficha-atendimento' },
-      { key: 'mobilizacao', label: 'Mobilização', path: '/dashboard/mobilizacao/config' },
+      { key: 'mobilizacao', label: 'Arena de Apoiadores', path: '/dashboard/mobilizacao' },
       { key: 'whatsapp', label: 'WhatsApp', path: '/dashboard/whatsapp' },
       { key: 'operacao', label: 'Operação & Equipe', path: '/dashboard/operacao' },
       { key: 'gestao_pesquisas', label: 'Gestão de Pesquisas (campo)', path: '/dashboard/gestao-pesquisas' },

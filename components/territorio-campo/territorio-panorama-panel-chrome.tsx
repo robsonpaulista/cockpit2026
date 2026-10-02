@@ -95,7 +95,7 @@ export function TerritorioDataPanel({
   return (
     <section
       className={cn(
-        'flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[rgb(var(--color-border-secondary)/0.7)] bg-bg-surface',
+        'flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#e8e8e6] bg-white territorio-cx-panel',
         className
       )}
       style={style}
@@ -121,7 +121,7 @@ export function TerritorioPanelHeader({
   return (
     <div
       className={cn(
-        'shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-surface px-4 pb-2 pt-3',
+        'territorio-cx-panel-header shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-surface px-4 pb-2 pt-3',
         className
       )}
     >
@@ -170,7 +170,7 @@ export function TerritorioPanelToolbar({ children }: { children: React.ReactNode
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-wrap items-center gap-2 border-b border-[rgb(var(--color-border-secondary)/0.45)] px-4 py-2.5',
+        'territorio-cx-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-[rgb(var(--color-border-secondary)/0.45)] px-4 py-2.5',
         territorioMutedBgClass
       )}
     >
@@ -183,7 +183,7 @@ export function TerritorioPanelSearchBar({ children }: { children: React.ReactNo
   return (
     <div
       className={cn(
-        'shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.45)] px-4 py-2.5',
+        'territorio-cx-toolbar shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.45)] px-4 py-2.5',
         territorioMutedBgClass
       )}
     >
@@ -237,8 +237,8 @@ export function TerritorioFilterChip({
         'rounded-md border px-2.5 py-1 transition-colors',
         typographyBodyMediumClass,
         active
-          ? 'border-[rgb(var(--color-primary)/0.45)] bg-bg-surface text-[rgb(var(--color-primary))] shadow-[0_1px_2px_rgb(0_0_0/0.04)]'
-          : 'border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app/70 text-text-secondary hover:bg-bg-surface hover:text-text-primary'
+          ? 'territorio-cx-chip-active border-[#e8a825] bg-[rgba(232,168,37,0.14)] text-[#2b2d31] shadow-none'
+          : 'border-[#e8e8e6] bg-[#f7f7f6] text-[#686865] hover:bg-white hover:text-[#2b2d31]'
       )}
     >
       {children}
@@ -267,7 +267,7 @@ export function TerritorioPanelIconButton({
       className={cn(
         'inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors',
         active
-          ? 'bg-[#f2d06b]/12 text-[#f2d06b] ring-1 ring-[#f2d06b]/35'
+          ? 'bg-[rgba(232,168,37,0.14)] text-[#e8a825] ring-1 ring-[rgba(232,168,37,0.35)]'
           : 'text-text-muted hover:bg-bg-surface hover:text-text-primary'
       )}
     >
@@ -319,7 +319,7 @@ export function TerritorioSearchField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface outline-none transition-colors placeholder:text-text-muted focus:border-[#f2d06b]/55 focus:ring-2 focus:ring-[#f2d06b]/12',
+          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface outline-none transition-colors placeholder:text-text-muted focus:border-[#e8a825]/55 focus:ring-2 focus:ring-[#e8a825]/18',
           typographyBodyClass,
           compact ? 'py-1 pl-7 pr-2' : 'py-1.5 pl-8 pr-3'
         )}
@@ -373,7 +373,7 @@ export function TerritorioThinProgress({
       <div
         className={cn(
           'h-full rounded-full transition-all',
-          active ? 'bg-[#f2d06b]' : 'bg-[#f2d06b]/55'
+          active ? 'territorio-cx-progress-fill bg-[#e8a825]' : 'territorio-cx-progress-fill bg-[#e8a825]/55'
         )}
         style={{ width: `${width}%` }}
       />

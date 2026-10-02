@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoginForm } from '@/components/auth/login-form'
-import { HOME_SCENE_VIDEO } from '@/lib/rest-screen-chrome'
+import {
+  HOME_SCENE_IMAGE,
+  HOME_SCENE_MEDIA,
+  HOME_SCENE_VIDEO,
+} from '@/lib/rest-screen-chrome'
 import './preview-home.css'
 
 export type PreviewHomeScreenProps = {
@@ -39,6 +43,7 @@ export function PreviewHomeScreen({
   const [ready, setReady] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [loginOpen, setLoginOpen] = useState(showLogin && initialLoginOpen)
+  const useImage = HOME_SCENE_MEDIA === 'image' || reducedMotion
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -49,8 +54,12 @@ export function PreviewHomeScreen({
   }, [])
 
   useEffect(() => {
+    if (useImage) {
+      setReady(true)
+      return
+    }
     const video = videoRef.current
-    if (!video || reducedMotion) {
+    if (!video) {
       setReady(true)
       return
     }
@@ -64,11 +73,12 @@ export function PreviewHomeScreen({
     if (video.readyState >= 2) play()
     else video.addEventListener('loadeddata', play, { once: true })
     setReady(true)
-  }, [reducedMotion])
+  }, [useImage])
 
   useEffect(() => {
+    if (useImage) return
     const video = videoRef.current
-    if (!video || reducedMotion) return
+    if (!video) return
 
     if (showLogin && loginOpen) {
       video.pause()
@@ -79,7 +89,7 @@ export function PreviewHomeScreen({
     void video.play().catch(() => {
       /* ignore */
     })
-  }, [showLogin, loginOpen, reducedMotion])
+  }, [showLogin, loginOpen, useImage])
 
   const handleEnter = () => {
     if (isRest) {
@@ -97,6 +107,7 @@ export function PreviewHomeScreen({
 
   const rootClass = [
     'preview-home',
+    useImage ? 'preview-home--still' : '',
     isRest ? 'preview-home--rest' : '',
     isDashboard ? 'preview-home--dashboard' : '',
     ready ? 'preview-home--ready' : '',
@@ -109,7 +120,15 @@ export function PreviewHomeScreen({
   return (
     <main className={rootClass} role={isRest ? 'dialog' : undefined} aria-modal={isRest || undefined}>
       <div className="preview-home__media" aria-hidden>
-        {!reducedMotion ? (
+        {useImage ? (
+          // eslint-disable-next-line @next/next/no-img-element -- asset estático em /public para teste
+          <img
+            className="preview-home__still"
+            src={HOME_SCENE_IMAGE}
+            alt=""
+            decoding="async"
+          />
+        ) : (
           <video
             ref={videoRef}
             className="preview-home__video"
@@ -120,8 +139,6 @@ export function PreviewHomeScreen({
             playsInline
             preload="auto"
           />
-        ) : (
-          <div className="preview-home__fallback" />
         )}
         <div className="preview-home__scrim" />
       </div>

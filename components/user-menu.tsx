@@ -25,7 +25,7 @@ const USER_MENU_VIEWPORT_MARGIN = 12
 type UserMenuPlacement = 'bottom' | 'top'
 
 type UserMenuProps = {
-  variant?: 'default' | 'sidebar'
+  variant?: 'default' | 'sidebar' | 'hub'
   className?: string
   /** Sidebar recolhida — só avatar no rodapé. */
   collapsed?: boolean
@@ -51,6 +51,7 @@ export function UserMenu({
   const { user, loading, signOut } = useAuth()
   const isGradientHome = useDashboardHomeChrome()
   const isSidebar = variant === 'sidebar'
+  const isHub = variant === 'hub'
   const [open, setOpen] = useState(false)
   const [placement, setPlacement] = useState<UserMenuPlacement>('bottom')
   const [sidebarDropdownCoords, setSidebarDropdownCoords] = useState<{
@@ -216,6 +217,16 @@ export function UserMenu({
     bi: 'BI / Inteligência',
   }
 
+  const fullName = user.profile?.name?.trim() || user.email || 'Usuário'
+  const hubInitials = (() => {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return '??'
+    if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+    return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase()
+  })()
+  const hubRole =
+    (user.profile?.role && (roleLabels[user.profile.role] || user.profile.role)) || 'Usuário'
+
   return (
     <div className={cn('relative min-w-0', className)} ref={menuRef}>
       <button
@@ -227,6 +238,7 @@ export function UserMenu({
         title={isSidebar && collapsed ? welcomeName : undefined}
         className={cn(
           'group flex min-w-0 items-center gap-1.5 rounded-md transition-colors',
+          isHub && 'gap-2.5 rounded-lg px-1 py-1 hover:bg-white/6',
           isSidebar
             ? cn(
                 'w-full text-left',
@@ -236,24 +248,39 @@ export function UserMenu({
                   : sidebarActiveFocusRingClass,
                 !iceSidebar && 'hover:opacity-80',
               )
-            : cn(
-                'gap-2 rounded-lg px-3 py-2',
-                amberMobileChrome && 'max-lg:hover:bg-white/12',
-                isGradientHome
-                  ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
-                  : !amberMobileChrome && 'hover:bg-accent-gold-soft'
-              )
+            : !isHub &&
+                cn(
+                  'gap-2 rounded-lg px-3 py-2',
+                  amberMobileChrome && 'max-lg:hover:bg-white/12',
+                  isGradientHome
+                    ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
+                    : !amberMobileChrome && 'hover:bg-accent-gold-soft',
+                ),
         )}
       >
-        <UserAvatarPatch
-          name={user.profile?.name}
-          email={user.email ?? undefined}
-          avatarUrl={user.profile?.avatar_url}
-          size={isSidebar ? 'sm' : 'md'}
-          tone={iceSidebar || isGradientHome ? 'ice' : 'amber'}
-        />
+        {isHub ? (
+          <span
+            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border border-[rgba(232,168,37,0.45)] bg-white/[0.06] text-[11px] font-bold tracking-wide text-white"
+            aria-hidden
+          >
+            {hubInitials}
+          </span>
+        ) : (
+          <UserAvatarPatch
+            name={user.profile?.name}
+            email={user.email ?? undefined}
+            avatarUrl={user.profile?.avatar_url}
+            size={isSidebar ? 'sm' : 'md'}
+            tone={iceSidebar || isGradientHome ? 'ice' : 'amber'}
+          />
+        )}
 
-        {isSidebar ? (
+        {isHub ? (
+          <div className="min-w-0 text-left leading-tight">
+            <p className="truncate text-[13px] font-semibold text-white">{fullName}</p>
+            <p className="truncate text-[11px] text-white/60">{hubRole}</p>
+          </div>
+        ) : isSidebar ? (
           collapsed ? (
             <span className="sr-only">{welcomeName}</span>
           ) : (
@@ -296,7 +323,9 @@ export function UserMenu({
         <ChevronDown
           className={cn(
             'h-3.5 w-3.5 shrink-0 transition-transform',
-            isSidebar
+            isHub
+              ? 'text-white/70'
+              : isSidebar
               ? collapsed
                 ? 'hidden'
                 : iceSidebar

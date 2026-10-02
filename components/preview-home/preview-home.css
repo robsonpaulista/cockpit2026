@@ -6,9 +6,9 @@
 .preview-home {
   --ph-petrol: #2b2d31;
   --ph-inst: #005b8f;
-  --ph-accent: #f04b23;
-  /* Amarelo da carroceria no frame final do vídeo */
-  --ph-car: #f2d06b;
+  --ph-accent: #e8a825;
+  /* Âmbar da cena novaversao (X / holofotes) */
+  --ph-car: #e8a825;
   --ph-white: #ffffff;
   --ph-font: var(--font-preview-home), 'Outfit', 'Lufga', 'SF Pro Display', system-ui, sans-serif;
 
@@ -40,9 +40,43 @@
     transform 4.5s ease-out;
 }
 
-.preview-home--ready .preview-home__video {
+.preview-home__still {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  opacity: 0;
+  transform: scale(1.02);
+  transition:
+    opacity 0.9s ease,
+    transform 3.2s ease-out;
+}
+
+.preview-home--ready .preview-home__video,
+.preview-home--ready .preview-home__still {
   opacity: 1;
   transform: scale(1);
+}
+
+/* Arte nova já traz marca/copy — esconde textos duplicados, mantém CTA. */
+.preview-home--still .preview-home__brand,
+.preview-home--still .preview-home__headline,
+.preview-home--still .preview-home__lead,
+.preview-home--still .preview-home__ai-credit {
+  display: none;
+}
+
+.preview-home--still .preview-home__content {
+  justify-content: flex-end;
+  padding-bottom: clamp(2rem, 8vh, 4.5rem);
+}
+
+.preview-home--still .preview-home__scrim {
+  opacity: 0.28;
+}
+
+.preview-home--still.preview-home--login .preview-home__scrim {
+  opacity: 0.5;
 }
 
 .preview-home__fallback {
@@ -248,7 +282,7 @@ body[data-war-room-clean] .preview-home .preview-home__btn,
   border: none;
   border-radius: 10px;
   background: var(--ph-car);
-  color: var(--ph-petrol);
+  color: #1a1a1c;
   font-family: inherit;
   font-size: 0.9375rem;
   font-weight: 600;

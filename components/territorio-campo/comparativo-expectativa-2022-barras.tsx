@@ -151,9 +151,9 @@ function ComparativoBarraCell({ row }: { row: ComparativoExpectativa2022Row }) {
 
   return (
     <div className="relative mx-auto h-2 w-full min-w-[3.5rem] max-w-[5.5rem] overflow-hidden rounded-full bg-[rgb(var(--color-border-secondary)/0.45)]">
-      <div className="absolute inset-y-0 left-0 rounded-full bg-text-primary/20" style={{ width: `${pct2022}%` }} />
+      <div className="absolute inset-y-0 left-0 rounded-full bg-[#14161a]/20" style={{ width: `${pct2022}%` }} />
       <div
-        className={cn('absolute inset-y-0 left-0 rounded-full', cresceu ? 'bg-emerald-500' : 'bg-red-500')}
+        className={cn('absolute inset-y-0 left-0 rounded-full', cresceu ? 'bg-[#e8a825]' : 'bg-[#e95b50]')}
         style={{ width: `${pct2026}%` }}
       />
     </div>
@@ -436,7 +436,7 @@ export function ComparativoExpectativa2022Barras({
                         className={cn(
                           territorioTdClass,
                           'w-14 border-b-0 py-1.5 text-right tabular-nums font-bold',
-                          totais.delta > 0 ? 'text-emerald-700' : totais.delta < 0 ? 'text-red-700' : 'text-text-primary'
+                          totais.delta > 0 ? 'text-[#1b6b3a]' : totais.delta < 0 ? 'text-[#b42318]' : 'text-text-primary'
                         )}
                       >
                         {formatVotos(totais.totalExpectativa2026)}
@@ -445,7 +445,7 @@ export function ComparativoExpectativa2022Barras({
                         <span
                           className={cn(
                             'inline-flex items-center justify-end gap-0.5 tabular-nums text-[11px] font-bold',
-                            totais.delta > 0 ? 'text-emerald-600' : totais.delta < 0 ? 'text-red-600' : 'text-text-muted'
+                            totais.delta > 0 ? 'text-[#299a55]' : totais.delta < 0 ? 'text-[#e95b50]' : 'text-text-muted'
                           )}
                         >
                           {totais.delta > 0 ? (
@@ -471,7 +471,7 @@ export function ComparativoExpectativa2022Barras({
               <button
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
-                className="shrink-0 text-left text-[12px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+                className="shrink-0 text-left text-[12px] font-medium text-[#e8a825] hover:underline"
               >
                 {showAll
                   ? 'Mostrar menos municípios'
@@ -556,7 +556,7 @@ export function ComparativoExpectativa2022Barras({
                         className={cn(
                           territorioTdClass,
                           'text-right tabular-nums font-medium',
-                          cresceu ? 'text-emerald-700' : caiu ? 'text-red-700' : 'text-text-secondary'
+                          cresceu ? 'text-[#1b6b3a]' : caiu ? 'text-[#b42318]' : 'text-text-secondary'
                         )}
                       >
                         {formatVotos(row.expectativa2026)}
@@ -565,7 +565,7 @@ export function ComparativoExpectativa2022Barras({
                         <span
                           className={cn(
                             'inline-flex items-center justify-end gap-0.5 tabular-nums text-[11px] font-semibold',
-                            cresceu ? 'text-emerald-600' : caiu ? 'text-red-600' : 'text-text-muted'
+                            cresceu ? 'text-[#299a55]' : caiu ? 'text-[#e95b50]' : 'text-text-muted'
                           )}
                         >
                           {cresceu ? (

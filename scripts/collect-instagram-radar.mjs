@@ -39,6 +39,10 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
 import { persistInstagramAvatarFromUrl } from './lib/instagram-avatar-storage.mjs'
+import {
+  filterOutExcludedPoliticalActors,
+  isExcludedPoliticalActorSlug,
+} from './lib/political-actors-exclude.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -749,6 +753,25 @@ async function main() {
   const supabase = createSupabase(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
   const { slug } = parseArgs()
 
+  if (slug && isExcludedPoliticalActorSlug(slug)) {
+    console.log(
+      JSON.stringify({
+        results: [],
+        totals: {
+          actorsProcessed: 0,
+          postsFound: 0,
+          postsInserted: 0,
+          postsUpdated: 0,
+          estimatedCostUsd: 0,
+          apifyRunId: null,
+          ownCandidateSynced: 0,
+          errors: [`Ator excluído das coletas: "${slug}"`],
+        },
+      }),
+    )
+    return
+  }
+
   let query = supabase
     .from('political_actors')
     .select('id, name, slug, instagram_username, active, actor_type')
@@ -769,7 +792,7 @@ async function main() {
     throw new Error(actorsErr.message)
   }
 
-  const prepared = (actors ?? [])
+  const prepared = filterOutExcludedPoliticalActors(actors ?? [])
     .map((a) => ({
       ...a,
       username: normalizeUsername(a.instagram_username),

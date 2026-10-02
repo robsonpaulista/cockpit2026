@@ -168,14 +168,9 @@ function matchesLocalRelevance(item) {
   return LOCAL_MARKERS.test(text)
 }
 
-function actorHasVideoTheme(actor) {
-  const slug = (actor.slug ?? '').toLowerCase().replace(/-/g, ' ')
-  const name = (actor.name ?? '').toLowerCase()
-  if (slug.includes('causa animal') || name.includes('causa animal')) return true
-  if (slug.includes('instagram') && (slug.includes('causa animal') || name.includes('causa animal'))) {
-    return true
-  }
-  return slug.includes('instagram causa animal')
+function actorHasVideoTheme(_actor) {
+  // Tema causa animal removido das coletas
+  return false
 }
 
 function buildVideosSearchUrl(query, mode = 'vid') {

@@ -11,8 +11,8 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: 'Cockpit 2026 — Entrar',
-  description: 'Home cinematográfica do Cockpit 2026 (login)',
+  title: 'Entrar',
+  description: 'Cockpit X — assuma o controle do seu mandato',
   robots: { index: false, follow: false },
 }
 

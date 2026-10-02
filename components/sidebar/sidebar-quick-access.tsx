@@ -18,6 +18,7 @@ import { sidebarItemIconOnlyClass } from '@/lib/sidebar-layout'
 import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sidebar-apify-styles'
 import { JARVIS_SIDEBAR_DIVIDER, JARVIS_SIDEBAR_SECTION } from '@/lib/jarvis-sidebar-styles'
 import { usePermissions } from '@/hooks/use-permissions'
+import { canAccessPage } from '@/lib/page-access'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
 
@@ -42,7 +43,7 @@ export function SidebarQuickAccess({
 
   const items = loading
     ? []
-    : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) => canAccess(item.pageKey))
+    : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) => canAccessPage(canAccess, item.pageKey))
 
   if (items.length === 0) return null
 

@@ -604,7 +604,8 @@ export function WarRoomExpectativaRankingModal({
         setPesquisaDetalhe(null)
         return
       }
-      onClose()
+      // Variante page = War Room Copiloto: Escape não sai da visão.
+      if (!isPage) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {

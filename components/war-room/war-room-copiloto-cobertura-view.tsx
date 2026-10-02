@@ -14,6 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import type { PrioridadeCampoMapaRow } from '@/components/mapa-presenca'
+import { WarRoomCoberturaVisitasTdView } from '@/components/war-room/war-room-cobertura-visitas-td-view'
 import { TerritoryCityDrawer } from '@/components/war-room/territorio-city-drawer'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
@@ -37,6 +38,7 @@ import {
   type TerritoryPopupInfo,
 } from '@/lib/war-room/territorio-presenca'
 import { cn } from '@/lib/utils'
+import '@/app/dashboard/shared/cobertura-cx-chrome.css'
 
 const MapaPresenca = dynamic(
   () => import('@/components/mapa-presenca').then((mod) => mod.MapaPresenca),
@@ -86,16 +88,27 @@ function enrichLayersWithAgenda(
 }
 
 /**
- * Copiloto · Presença no Território
- * Layout alinhado ao modelo: mapa protagonista · regiões laterais · inteligência na base.
+ * Copiloto · Cobertura
+ * - `full` (aba Cobertura): painel de visitas por TD (45 dias)
+ * - `home` (Visão Geral): mapa de presença reduzido
  */
 export function WarRoomCopilotoCoberturaView({
   municipios,
   loading = false,
   variant = 'full',
 }: Props) {
-  const isHome = variant === 'home'
-  const mapDomId = isHome ? MAP_HOME_ID : MAP_CONTAINER_ID
+  if (variant !== 'home') {
+    return <WarRoomCoberturaVisitasTdView municipios={municipios} loading={loading} />
+  }
+  return <WarRoomCoberturaHomeMap municipios={municipios} loading={loading} />
+}
+
+function WarRoomCoberturaHomeMap({
+  municipios,
+  loading = false,
+}: Omit<Props, 'variant'>) {
+  const isHome = true
+  const mapDomId = MAP_HOME_ID
   const [isFullscreen, setIsFullscreen] = useState(false)
   const territoryMode: TerritoryMode = 'coverage'
   const [selectedRegionId, setSelectedRegionId] = useState<RegiaoPiaui | null>(null)
@@ -210,7 +223,7 @@ export function WarRoomCopilotoCoberturaView({
   if (loading && municipios.length === 0) {
     return (
       <div className="wr-copiloto-view__state">
-        <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-yellow,#f2d06b)]" strokeWidth={1.5} />
+        <Loader2 className="h-5 w-5 animate-spin text-[#e8a825]" strokeWidth={1.5} />
         <span>Carregando presença territorial…</span>
       </div>
     )

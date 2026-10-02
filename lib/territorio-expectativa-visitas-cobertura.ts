@@ -197,23 +197,23 @@ export const FAIXA_COBERTURA_STYLES: Record<
 > = {
   'sem-cobertura': {
     label: 'Sem cobertura',
-    badge: 'bg-red-100 text-red-800',
-    bar: 'bg-red-500',
+    badge: 'bg-[#fff1ef] text-[#b42318]',
+    bar: 'bg-[#e95b50]',
   },
   atencao: {
     label: 'Atenção',
-    badge: 'bg-amber-100 text-amber-900',
-    bar: 'bg-amber-500',
+    badge: 'bg-[rgba(232,168,37,0.16)] text-[#2b2d31]',
+    bar: 'bg-[#e8a825]',
   },
   'bem-cobertas': {
     label: 'Bem coberta',
-    badge: 'bg-emerald-100 text-emerald-800',
-    bar: 'bg-emerald-500',
+    badge: 'bg-[#edf7f0] text-[#1b6b3a]',
+    bar: 'bg-[#299a55]',
   },
   'baixa-densidade': {
     label: 'Baixa densidade',
-    badge: 'bg-gray-100 text-gray-700',
-    bar: 'bg-gray-400',
+    badge: 'bg-[#f7f7f6] text-[#686865]',
+    bar: 'bg-[#b3b6bb]',
   },
 }
 

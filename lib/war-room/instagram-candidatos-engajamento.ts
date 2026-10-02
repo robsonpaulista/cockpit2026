@@ -3,6 +3,7 @@ import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { formatDataCurta } from '@/lib/war-room/redes-copiloto'
+import { EXCLUDED_POLITICAL_ACTOR_SLUGS } from '@/lib/political-actors-exclude'
 
 export type CandidatoEngajamentoLine = {
   slug: string
@@ -30,7 +31,7 @@ export type CandidatosEngajamentoChartModel = {
   dayMax: number
 }
 
-const DEFAULT_HIDDEN = new Set(['instagram-causa-animal'])
+const DEFAULT_HIDDEN = new Set<string>(EXCLUDED_POLITICAL_ACTOR_SLUGS)
 
 function dayKey(iso: string): string {
   return iso.slice(0, 10)

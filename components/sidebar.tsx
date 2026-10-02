@@ -78,7 +78,6 @@ import {
   JARVIS_SIDEBAR_TEXT,
   JARVIS_SIDEBAR_TEXT_ACTIVE,
 } from '@/lib/jarvis-sidebar-styles'
-import { HOME_GLASS_SHELL_CLASS } from '@/lib/home-glass-sidebar-styles'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 
 import {
@@ -209,7 +208,10 @@ function pageKeyForItem(id: string): string {
   if (id === 'ficha-atendimento') return 'ficha-atendimento'
   if (
     id === 'mobilizacao-menu' ||
-    id === 'mobilizacao-config'
+    id === 'mobilizacao-config' ||
+    id === 'mobilizacao-membros' ||
+    id === 'mobilizacao-painel' ||
+    id === 'mobilizacao-config-legado'
   ) {
     return 'mobilizacao'
   }
@@ -711,7 +713,16 @@ export function Sidebar() {
             return canAccessSidebarItem(canAccess, item.id)
           })
 
-    return base.filter((item) => !isSidebarMenuItemHidden(item.id))
+    return base
+      .filter((item) => !isSidebarMenuItemHidden(item.id))
+      .map((item) => {
+        if (!item.children?.length) return item
+        const children = [...item.children].sort((a, b) =>
+          a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }),
+        )
+        return { ...item, children }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }))
   }, [canAccess, isAdmin, permLoading])
 
   const toggleCollapse = () => {
@@ -766,7 +777,7 @@ export function Sidebar() {
               stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
               className={cn(
                 'cockpit-icon',
-                isGradientHome ? 'text-[#2b2d31]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
+                isGradientHome ? 'text-white' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
               )}
               aria-hidden
             />
@@ -784,7 +795,7 @@ export function Sidebar() {
             stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
             className={cn(
               'cockpit-icon',
-              isGradientHome ? 'text-[#2b2d31]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
+              isGradientHome ? 'text-white' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
             )}
             aria-hidden
           />
@@ -798,9 +809,8 @@ export function Sidebar() {
         className={cn(
           'fixed left-0 top-0 h-full overflow-visible transition-all duration-300 ease-out',
           SIDEBAR_WIDTH_EXPANDED_CLASS,
-          isGradientHome && cn(HOME_GLASS_SHELL_CLASS, 'border-r border-white/25'),
-          !isGradientHome && cn('border-r border-white/10', SIDEBAR_APIFY_SHELL_CLASS),
-          isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
+          cn('border-r border-transparent', SIDEBAR_APIFY_SHELL_CLASS, 'sidebar-cockpit-x'),
+          isCockpit && 'sidebar-cockpit-shell',
           idleSplashAtivo ? 'z-[100]' : 'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'max-lg:shadow-2xl',
           'lg:translate-x-0',
@@ -824,11 +834,11 @@ export function Sidebar() {
                 : navCollapsed && !navMobileOpen
                   ? 'shrink-0'
                   : isGradientHome
-                    ? 'box-border relative flex shrink-0 min-h-0 items-center overflow-visible border-b border-[rgba(2,43,58,0.08)] bg-transparent px-3 py-3'
+                    ? 'box-border relative flex shrink-0 min-h-0 items-center overflow-visible border-b border-white/[0.08] bg-transparent px-3 py-3'
                     : isWarRoom
                       ? dashboardSidebarWarRoomExpandedHeaderClass
                       : dashboardPageHeaderZoneSidebarClass,
-              !isGradientHome && !isWarRoom && 'border-b border-white/10',
+              !isGradientHome && !isWarRoom && 'border-b border-white/[0.08]',
             )}
           >
             {(!navCollapsed || navMobileOpen) && (
@@ -838,13 +848,11 @@ export function Sidebar() {
                     <AppBrandWordmark
                       size="md"
                       showTagline={isGradientHome}
-                      lightOnGradient={isGradientHome}
                       className="min-w-0 items-center text-center"
                     />
                   ) : (
                     <AppBrandHeader
                       isCockpit={isCockpit}
-                      lightOnGradient={isGradientHome}
                       variant={filmNav ? 'page' : 'sidebar'}
                       className="min-w-0 w-full max-w-full items-center text-center"
                     />
@@ -864,7 +872,7 @@ export function Sidebar() {
                       <SidebarCollapseChevron
                         isWarRoom={isWarRoom}
                         filmNav={filmNav}
-                        className={isGradientHome ? 'text-[#2b2d31]/70' : 'text-white/70'}
+                        className={isGradientHome ? 'text-white/70' : 'text-white/70'}
                       />
                   </button>
                 )}
@@ -886,7 +894,7 @@ export function Sidebar() {
                     <SidebarCollapseChevron
                       isWarRoom={isWarRoom}
                       filmNav={filmNav}
-                      className={cn('rotate-180', isGradientHome ? 'text-[#2b2d31]/70' : 'text-text-primary')}
+                      className={cn('rotate-180', 'text-white/70')}
                     />
                   </button>
                 </div>
@@ -900,7 +908,7 @@ export function Sidebar() {
                       idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                     )}
                   >
-                    <SidebarBrandMark lightOnGradient={isGradientHome} />
+                    <SidebarBrandMark />
                     {!hasFixedPageChrome || idleCollapsedChrome ? (
                       <button
                         onClick={toggleCollapse}
@@ -937,7 +945,7 @@ export function Sidebar() {
             <div className={cn(dashboardSidebarCollapsedSubnavSpacerClass, '!bg-transparent !border-white/10')} aria-hidden />
           ) : null}
 
-          <SidebarMapaCampanhaBlock
+          <SidebarQuickAccess
             collapsed={navCollapsed}
             mobileOpen={navMobileOpen}
             isGradientHome={isGradientHome}
@@ -948,7 +956,7 @@ export function Sidebar() {
             }}
           />
 
-          <SidebarQuickAccess
+          <SidebarMapaCampanhaBlock
             collapsed={navCollapsed}
             mobileOpen={navMobileOpen}
             isGradientHome={isGradientHome}
@@ -1045,9 +1053,9 @@ export function Sidebar() {
                 className={cn(
                   'cockpit-icon shrink-0 transition-colors',
                   isGradientHome
-                    ? '!text-[#2b2d31] !opacity-100 group-hover:!text-[#2b2d31]'
-                    : 'text-white/55 group-hover:text-[#f04b23]',
-                  filmNav && !isGradientHome && 'group-hover:text-[#f04b23]',
+                    ? '!text-white/70 !opacity-100 group-hover:!text-[#e8a825]'
+                    : 'text-white/55 group-hover:text-[#e8a825]',
+                  filmNav && !isGradientHome && 'group-hover:text-[#e8a825]',
                 )}
                 aria-hidden
               />
@@ -1055,7 +1063,7 @@ export function Sidebar() {
                 <span
                   className={cn(
                     isGradientHome
-                      ? 'text-[13px] font-medium leading-[17px] !text-[#2b2d31] !opacity-100 transition-colors'
+                      ? 'text-[13px] font-medium leading-[17px] !text-white/78 !opacity-100 transition-colors'
                       : 'text-[13px] font-medium text-white/72',
                   )}
                 >

@@ -1076,7 +1076,7 @@ export function MapaPresenca({
             <div className="flex items-center gap-1.5">
               <div
                 className="flex h-4 w-4 items-center justify-center rounded-full"
-                style={{ background: '#f2d06b' }}
+                style={{ background: '#e8a825' }}
               >
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#2b2d31" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"></polyline>
@@ -1085,7 +1085,7 @@ export function MapaPresenca({
               <span>Visitada</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-full" style={{ background: '#f2d06b' }} />
+              <div className="h-3 w-3 rounded-full" style={{ background: '#e8a825' }} />
               <span>Com meta</span>
             </div>
             <div className="flex items-center gap-1.5">

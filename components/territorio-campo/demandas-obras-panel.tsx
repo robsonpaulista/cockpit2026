@@ -25,6 +25,10 @@ import {
   type CampoDemandaObraRow,
 } from '@/lib/campo-demandas-obras'
 import { normalizeIptMunicipio } from '@/lib/ipt'
+import {
+  territorioCxBtnGhostClass,
+  territorioCxBtnPrimaryClass,
+} from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
 
 export type DemandaObraRow = CampoDemandaObraRow
@@ -198,13 +202,13 @@ export function DemandasObrasPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="territorio-cx-filter-strip !mb-0 items-start justify-between sm:items-center">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
-            <ClipboardList className="h-4 w-4 text-[#f2d06b]" aria-hidden />
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#2b2d31]">
+            <ClipboardList className="h-4 w-4 text-[#e8a825]" aria-hidden />
             Obras por cidade
           </h2>
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="mt-1 text-xs text-[#686865]">
             Cadastro de Demandas (Google Sheets) · {grupos.length.toLocaleString('pt-BR')}{' '}
             {grupos.length === 1 ? 'cidade' : 'cidades'} ·{' '}
             {totalObras.toLocaleString('pt-BR')}{' '}
@@ -214,7 +218,7 @@ export function DemandasObrasPanel() {
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary"
+              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#969692]"
               aria-hidden
             />
             <input
@@ -222,7 +226,7 @@ export function DemandasObrasPanel() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar cidade, obra, status…"
-              className="h-9 w-[220px] rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] pl-8 pr-3 text-xs text-text-primary outline-none focus:border-[#f2d06b]"
+              className="territorio-cx-input h-10 w-[220px] !bg-white pl-8 pr-3 text-xs"
             />
           </label>
           <button
@@ -230,7 +234,7 @@ export function DemandasObrasPanel() {
             onClick={() => setExportModalOpen(true)}
             disabled={rowsFiltradas.length === 0}
             title="Exportar seleção filtrada (CSV, Excel ou PDF)"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className={territorioCxBtnPrimaryClass}
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
             Exportar
@@ -239,7 +243,7 @@ export function DemandasObrasPanel() {
             type="button"
             onClick={alternarTodas}
             disabled={grupos.length === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className={territorioCxBtnGhostClass}
           >
             {todasRecolhidas ? 'Expandir todas' : 'Recolher todas'}
           </button>
@@ -247,7 +251,7 @@ export function DemandasObrasPanel() {
             type="button"
             onClick={() => void carregar()}
             disabled={loading}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#e8e8e6] bg-[#f7f7f6] px-3 text-xs font-medium text-text-primary disabled:opacity-50"
+            className={territorioCxBtnGhostClass}
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} aria-hidden />
             Atualizar
@@ -292,7 +296,7 @@ export function DemandasObrasPanel() {
             return (
               <article
                 key={grupo.cidadeKey}
-                className="overflow-hidden rounded-xl border border-[#e8e8e6] bg-[#f7f7f6] shadow-sm"
+                className="territorio-cx-city-group overflow-hidden rounded-xl border border-[#e8e8e6] bg-white shadow-none"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e6] bg-[#f7f7f6] px-4 py-3">
                   <button
@@ -312,7 +316,7 @@ export function DemandasObrasPanel() {
                         aria-hidden
                       />
                     )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#f2d06b]" aria-hidden />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#e8a825]" aria-hidden />
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {grupo.cidade}
                     </span>

@@ -33,13 +33,12 @@ import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
 import { JarvisVisibilityProvider } from '@/contexts/jarvis-visibility-context'
 import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
 import {
-  DASHBOARD_HOME_SHELL_CLASS,
-  dashboardHomeShellStyle,
   isDashboardHomePath,
   isIceGlassSidebarPath,
 } from '@/lib/dashboard-home-chrome'
 import '@/components/jarvis/jarvis-neural.css'
 import '@/components/dashboard/home-glass.css'
+import '@/app/sidebar-obsidian-glass.css'
 import { DashboardCleanThemeBootstrap } from '@/components/dashboard/dashboard-clean-theme'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -48,8 +47,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   const isHomeScene = isDashboardHomePath(pathname) && !isMapaTdsShell
-  const isIceSidebar = isIceGlassSidebarPath(pathname) && !isMapaTdsShell
-  const columnBgClass = isHomeScene ? 'bg-white' : 'bg-bg-surface'
+  /** Glass sidebar só fora da home hub (home não tem sidebar). */
+  const isIceSidebar =
+    isIceGlassSidebarPath(pathname) && !isMapaTdsShell && !isHomeScene
+  const columnBgClass = isHomeScene ? 'bg-black' : 'bg-bg-surface'
   const mainOffsetClass = collapsed
     ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS
     : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS
@@ -85,28 +86,28 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             'relative flex h-screen overflow-hidden',
-            isHomeScene ? 'bg-white' : 'bg-bg-surface',
+            isHomeScene ? 'bg-black' : 'bg-bg-surface',
             !isHomeScene && isMapaTdsShell && columnBgClass,
           )}
         >
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
             <NavigationLoadingBar />
-            <Sidebar />
+            {!isHomeScene ? <Sidebar /> : null}
             <SplashScreenRestHost />
             <div
               className={cn(
                 'relative flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-                isHomeScene ? DASHBOARD_HOME_SHELL_CLASS : columnBgClass,
-                mainOffsetClass,
+                isHomeScene ? 'bg-black' : columnBgClass,
+                !isHomeScene && mainOffsetClass,
               )}
               data-home-glass-shell={isHomeScene ? '' : undefined}
-              style={isHomeScene ? dashboardHomeShellStyle : undefined}
+              style={isHomeScene ? undefined : undefined}
             >
-              <DashboardHeader />
+              {!isHomeScene ? <DashboardHeader /> : null}
               <main
                 className={cn(
                   'relative flex min-h-0 flex-1 overflow-hidden flex-col',
-                  columnBgClass
+                  isHomeScene ? 'bg-black' : columnBgClass,
                 )}
               >
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -116,7 +117,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                     </DashboardPermissionGuard>
                   </DashboardScrollRegion>
                 </div>
-                <JarvisGlobalHost />
+                {!isHomeScene ? <JarvisGlobalHost /> : null}
               </main>
             </div>
           </div>

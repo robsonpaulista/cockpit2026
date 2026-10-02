@@ -46,10 +46,18 @@ export function useVisibleSidebarItems(): {
 } {
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
-  const items = useMemo(
-    () => filterVisibleSidebarItems(permLoading, canAccess, isAdmin),
-    [canAccess, isAdmin, permLoading]
-  )
+  const items = useMemo(() => {
+    const filtered = filterVisibleSidebarItems(permLoading, canAccess, isAdmin)
+    return [...filtered]
+      .map((item) => {
+        if (!item.children?.length) return item
+        const children = [...item.children].sort((a, b) =>
+          a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }),
+        )
+        return { ...item, children }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }))
+  }, [canAccess, isAdmin, permLoading])
 
   return { items, loading: permLoading }
 }

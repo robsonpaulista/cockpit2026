@@ -62,15 +62,9 @@ function labelCenarioDados(cenario: CenarioVotos): string {
 
 export function TerritorioBasePanel() {
   const { theme } = useTheme()
-  const isCockpit = false
-  const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : territorioBaseTextClass
-  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-[#f2d06b]'
-  const sectionShellClass = isCockpit
-    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'border-card bg-surface shadow-card'
-  const innerPanelClass = isCockpit
-    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-card bg-background/50'
+  const accentTextClass = territorioBaseTextClass
+  const accentBorderClass = 'border-[#e8a825]'
+  const sectionShellClass = 'territorio-cx-panel border-[#e8e8e6] bg-white shadow-none'
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -876,9 +870,8 @@ export function TerritorioBasePanel() {
         )}
 
         {baseCarregada && liderancas.length > 0 && (
-          <div className="mb-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+          <div className="territorio-cx-filter-strip mb-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
                 <label className="relative shrink-0">
                   <IconSearch
                     className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 opacity-50"
@@ -1062,10 +1055,9 @@ export function TerritorioBasePanel() {
                   {todasExpandidas ? 'Recolher todas' : 'Expandir todas'}
                 </button>
               )}
-            </div>
 
             {hasFiltrosAtivos && (
-              <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="mt-1 flex w-full basis-full items-center justify-between gap-2">
                 <span className="text-[11px]">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''}
                 </span>
@@ -1109,7 +1101,7 @@ export function TerritorioBasePanel() {
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
                       >
                         <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-[#f2d06b]'}` : 'border-card bg-white'}`}
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} bg-[#e8a825]` : 'border-card bg-white'}`}
                         >
                           {checked ? <IconCheck className="h-2.5 w-2.5 text-white" stroke={2.5} /> : null}
                         </span>
@@ -1193,7 +1185,7 @@ export function TerritorioBasePanel() {
           )}
 
           {filtroDepEstadual.length > 0 && (
-            <div className="mb-4 rounded-xl border border-[#f2d06b]/30 bg-[#f2d06b]/10 p-3">
+            <div className="mb-4 rounded-xl border border-[#e8e8e6] bg-[#f7f7f6] px-3 py-2.5">
               {(() => {
                 const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
                 const totalVotos = votosReferenciaCol
@@ -1201,7 +1193,7 @@ export function TerritorioBasePanel() {
                   : 0
 
                 return (
-                  <p className="text-sm">
+                  <p className="text-sm text-[#2b2d31]">
                     <span className="font-semibold">
                       Voto cruzado com {filtroDepEstadual.length} deputado(s):
                     </span>{' '}

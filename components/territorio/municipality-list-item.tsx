@@ -8,10 +8,9 @@ import {
 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { cargoTierDotClass } from '@/lib/cargo-tier-color'
-import { municipalityCardClass } from '@/lib/premium-ui-classes'
 import {
-  TERRITORIO_BASE_AMBER,
   territorioBaseTextClass,
+  territorioCxBtnGhostClass,
 } from '@/lib/territorio-base-styles'
 
 interface LiderancaRow {
@@ -59,7 +58,7 @@ export function MunicipalityListItem({
   })
 
   return (
-    <div className={cn(municipalityCardClass, 'mb-1.5')}>
+    <div className="territorio-cx-city-group mb-1.5 overflow-hidden rounded-xl border border-[#e8e8e6] bg-white shadow-none">
       <div
         role="button"
         tabIndex={0}
@@ -70,32 +69,22 @@ export function MunicipalityListItem({
             onToggle()
           }
         }}
-        className="flex cursor-pointer items-center gap-2 px-3 py-3 transition-colors hover:bg-bg-app/40"
+        className="flex cursor-pointer items-center gap-2 bg-[#f7f7f6] px-3 py-3 transition-colors hover:bg-[#f0f0ee]"
       >
         <IconChevronRight
           className={cn(
-            'ml-0.5 h-[14px] w-[14px] shrink-0 text-black/50 transition-transform duration-200',
+            'ml-0.5 h-[14px] w-[14px] shrink-0 text-[#969692] transition-transform duration-200',
             isExpanded && 'rotate-90',
           )}
           stroke={1.5}
           aria-hidden
         />
 
-        <div
-          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: `${TERRITORIO_BASE_AMBER}1F` }}
-        >
-          <IconMapPin
-            className="h-4 w-4"
-            style={{ color: TERRITORIO_BASE_AMBER }}
-            stroke={1.5}
-            aria-hidden
-          />
-        </div>
+        <IconMapPin className="h-4 w-4 shrink-0 text-[#e8a825]" stroke={1.5} aria-hidden />
 
         <div className="min-w-0 flex-1">
           <p className={cn('truncate text-[13px] font-medium', territorioBaseTextClass)}>{cidade}</p>
-          <p className={cn('mt-px text-[13px] text-black/55', territorioBaseTextClass)}>
+          <p className="mt-px text-[12px] text-[#686865]">
             {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -105,7 +94,7 @@ export function MunicipalityListItem({
             <p className={cn('text-[14px] font-medium tabular-nums', territorioBaseTextClass)} data-kpi-value>
               {Math.round(totalVotos).toLocaleString('pt-BR')}
             </p>
-            <p className={cn('text-[13px] text-black/55', territorioBaseTextClass)}>{votosLabel}</p>
+            <p className="text-[11px] text-[#686865]">{votosLabel}</p>
           </div>
         ) : null}
 
@@ -113,10 +102,7 @@ export function MunicipalityListItem({
           <button
             type="button"
             onClick={onBriefing}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[13px] font-medium transition-colors hover:bg-bg-app',
-              territorioBaseTextClass,
-            )}
+            className={cn(territorioCxBtnGhostClass, 'h-8 px-2 text-[12px]')}
             aria-label={`Briefing de ${cidade}`}
           >
             <IconFileDescription className="h-[13px] w-[13px] opacity-70" stroke={1.5} aria-hidden />
@@ -125,10 +111,7 @@ export function MunicipalityListItem({
           <button
             type="button"
             onClick={onObras}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[13px] font-medium transition-colors hover:bg-bg-app',
-              territorioBaseTextClass,
-            )}
+            className={cn(territorioCxBtnGhostClass, 'h-8 px-2 text-[12px]')}
             aria-label={`Obras de ${cidade}`}
           >
             <IconBuildingCommunity className="h-[13px] w-[13px] opacity-70" stroke={1.5} aria-hidden />
@@ -138,7 +121,7 @@ export function MunicipalityListItem({
       </div>
 
       {isExpanded ? (
-        <div className="border-t border-[rgb(var(--color-border-tertiary)/0.85)] bg-[rgb(var(--color-background-tertiary))] py-1">
+        <div className="border-t border-[#e8e8e6] bg-white py-1">
           {liderancasOrdenadas.map((lider, idx) => {
             const nome = String(lider[nomeCol] || 'Sem nome')
             const cargo = cargoCol ? String(lider[cargoCol] || '').trim() : ''

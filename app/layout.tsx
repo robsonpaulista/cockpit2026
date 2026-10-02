@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Source_Sans_3 } from 'next/font/google'
+import { Inter, Michroma, Source_Sans_3 } from 'next/font/google'
 import './globals.css'
 import { RegisterPwa } from '@/components/register-pwa'
 import { DevChunkRecovery } from '@/components/dev-chunk-recovery'
@@ -18,7 +18,14 @@ const inter = Inter({
   display: 'swap',
 })
 
-const appFontVariables = `${sourceSans3.variable} ${inter.variable}`
+const michroma = Michroma({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-michroma',
+  display: 'swap',
+})
+
+const appFontVariables = `${sourceSans3.variable} ${inter.variable} ${michroma.variable}`
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -26,24 +33,28 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',
-  themeColor: '#0E74BC',
+  themeColor: '#0a0a0c',
 }
 
 export const metadata: Metadata = {
-  title: 'Cockpit 2026 - Sistema Operacional de Gestão de Campanha',
-  description: 'Dashboard integrado de gestão de campanha eleitoral',
-  applicationName: 'Cockpit 2026',
+  title: {
+    default: 'Cockpit X',
+    template: '%s · Cockpit X',
+  },
+  description: 'Comando de campanha — cobertura, território e inteligência em tempo real',
+  applicationName: 'Cockpit X',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Cockpit 2026',
+    statusBarStyle: 'black-translucent',
+    title: 'Cockpit X',
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
     icon: [
+      { url: '/icons/32', sizes: '32x32', type: 'image/png' },
       { url: '/icons/192', sizes: '192x192', type: 'image/png' },
       { url: '/icons/512', sizes: '512x512', type: 'image/png' },
     ],

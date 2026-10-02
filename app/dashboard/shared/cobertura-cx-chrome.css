@@ -1,0 +1,311 @@
+/**
+ * War Room · Cobertura — Cockpit X (força o chrome quieto)
+ * Âmbar #e8a825 = luz · Ink #14161a = CTA · Hairline #e8e8e6
+ * Sem semáforo verde/amarelo/vermelho no chrome.
+ */
+
+body[data-wr-copiloto] .wr-cob-td,
+body[data-war-room-clean] .wr-cob-td {
+  --cx-amber: #e8a825;
+  --cx-amber-soft: rgba(232, 168, 37, 0.14);
+  --cx-ink: #14161a;
+  --cx-hairline: #e8e8e6;
+  --cx-strip: #f7f7f6;
+  --cx-muted: #686865;
+  --cx-label: #969692;
+  --cx-text: #2b2d31;
+  color: var(--cx-text) !important;
+}
+
+/* —— Hero —— */
+body[data-wr-copiloto] .wr-cob-td__eyebrow,
+body[data-war-room-clean] .wr-cob-td__eyebrow {
+  color: var(--cx-label) !important;
+  letter-spacing: 0.14em !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__title,
+body[data-war-room-clean] .wr-cob-td__title,
+body[data-wr-copiloto] .wr-cob-td__section-title,
+body[data-war-room-clean] .wr-cob-td__section-title,
+body[data-wr-copiloto] .wr-cob-td__weight-title,
+body[data-war-room-clean] .wr-cob-td__weight-title,
+body[data-wr-copiloto] .wr-cob-td__detail-title,
+body[data-war-room-clean] .wr-cob-td__detail-title {
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__sub,
+body[data-war-room-clean] .wr-cob-td__sub,
+body[data-wr-copiloto] .wr-cob-td__kpi-hint,
+body[data-war-room-clean] .wr-cob-td__kpi-hint,
+body[data-wr-copiloto] .wr-cob-td__note,
+body[data-war-room-clean] .wr-cob-td__note,
+body[data-wr-copiloto] .wr-cob-td__empty,
+body[data-war-room-clean] .wr-cob-td__empty,
+body[data-wr-copiloto] .wr-cob-td__anexo-sub,
+body[data-war-room-clean] .wr-cob-td__anexo-sub,
+body[data-wr-copiloto] .wr-cob-td__city-status,
+body[data-war-room-clean] .wr-cob-td__city-status,
+body[data-wr-copiloto] .wr-cob-td__city-list-head,
+body[data-war-room-clean] .wr-cob-td__city-list-head,
+body[data-wr-copiloto] .wr-cob-td__group-count,
+body[data-war-room-clean] .wr-cob-td__group-count,
+body[data-wr-copiloto] .wr-cob-td__detail-kpi span,
+body[data-war-room-clean] .wr-cob-td__detail-kpi span {
+  color: var(--cx-muted) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__pdf-btn,
+body[data-war-room-clean] .wr-cob-td__pdf-btn {
+  background: var(--cx-ink) !important;
+  border-color: var(--cx-hairline) !important;
+  color: #ffffff !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__pdf-btn:hover:not(:disabled),
+body[data-war-room-clean] .wr-cob-td__pdf-btn:hover:not(:disabled) {
+  border-color: var(--cx-amber) !important;
+  background: #1c1e24 !important;
+}
+
+/* —— KPIs: todos iguais (barra âmbar fina) —— */
+body[data-wr-copiloto] .wr-cob-td__kpi,
+body[data-war-room-clean] .wr-cob-td__kpi,
+body[data-wr-copiloto] .wr-cob-td__kpi--ok,
+body[data-war-room-clean] .wr-cob-td__kpi--ok,
+body[data-wr-copiloto] .wr-cob-td__kpi--warn,
+body[data-war-room-clean] .wr-cob-td__kpi--warn,
+body[data-wr-copiloto] .wr-cob-td__kpi--bad,
+body[data-war-room-clean] .wr-cob-td__kpi--bad {
+  position: relative !important;
+  overflow: hidden !important;
+  border: 1px solid var(--cx-hairline) !important;
+  border-left: 1px solid var(--cx-hairline) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__kpi::after,
+body[data-war-room-clean] .wr-cob-td__kpi::after,
+body[data-wr-copiloto] .wr-cob-td__kpi--ok::after,
+body[data-war-room-clean] .wr-cob-td__kpi--ok::after,
+body[data-wr-copiloto] .wr-cob-td__kpi--warn::after,
+body[data-war-room-clean] .wr-cob-td__kpi--warn::after,
+body[data-wr-copiloto] .wr-cob-td__kpi--bad::after,
+body[data-war-room-clean] .wr-cob-td__kpi--bad::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 2px !important;
+  background: var(--cx-amber) !important;
+  opacity: 1 !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__kpi-label,
+body[data-war-room-clean] .wr-cob-td__kpi-label {
+  color: var(--cx-label) !important;
+  letter-spacing: 0.12em !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__kpi-val,
+body[data-war-room-clean] .wr-cob-td__kpi-val {
+  color: var(--cx-text) !important;
+}
+
+/* —— Peso: âmbar / ink / cinza (sem semáforo) —— */
+body[data-wr-copiloto] .wr-cob-td__weight,
+body[data-war-room-clean] .wr-cob-td__weight {
+  border: 1px solid var(--cx-hairline) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__weight-bar,
+body[data-war-room-clean] .wr-cob-td__weight-bar {
+  background: var(--cx-strip) !important;
+  height: 8px !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__weight-seg--ok,
+body[data-war-room-clean] .wr-cob-td__weight-seg--ok {
+  background: var(--cx-amber) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__weight-seg--warn,
+body[data-war-room-clean] .wr-cob-td__weight-seg--warn {
+  background: var(--cx-ink) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__weight-seg--bad,
+body[data-war-room-clean] .wr-cob-td__weight-seg--bad {
+  background: #c4c4c0 !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__dot--ok,
+body[data-war-room-clean] .wr-cob-td__dot--ok {
+  background: var(--cx-amber) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__dot--warn,
+body[data-war-room-clean] .wr-cob-td__dot--warn {
+  background: var(--cx-ink) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__dot--bad,
+body[data-war-room-clean] .wr-cob-td__dot--bad {
+  background: #c4c4c0 !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__weight-legend,
+body[data-war-room-clean] .wr-cob-td__weight-legend {
+  color: var(--cx-text) !important;
+}
+
+/* —— Subtabs —— */
+body[data-wr-copiloto] .wr-cob-td__subtabs,
+body[data-war-room-clean] .wr-cob-td__subtabs {
+  background: var(--cx-strip) !important;
+  border: 1px solid var(--cx-hairline) !important;
+  border-radius: 12px !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__subtab,
+body[data-war-room-clean] .wr-cob-td__subtab {
+  color: var(--cx-muted) !important;
+  background: transparent !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__subtab:hover,
+body[data-war-room-clean] .wr-cob-td__subtab:hover {
+  color: var(--cx-text) !important;
+  background: #ffffff !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__subtab--on,
+body[data-war-room-clean] .wr-cob-td__subtab--on,
+body[data-wr-copiloto] .wr-cob-td__subtab--on:hover,
+body[data-war-room-clean] .wr-cob-td__subtab--on:hover {
+  background: var(--cx-ink) !important;
+  color: #ffffff !important;
+}
+
+/* —— Tabela: cabeçalho transparente, números ink —— */
+body[data-wr-copiloto] .wr-cob-td__table-scroll,
+body[data-war-room-clean] .wr-cob-td__table-scroll {
+  border: 1px solid var(--cx-hairline) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__table th,
+body[data-war-room-clean] .wr-cob-td__table th {
+  background: transparent !important;
+  color: var(--cx-muted) !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid var(--cx-hairline) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__table td,
+body[data-war-room-clean] .wr-cob-td__table td {
+  border-bottom-color: var(--cx-hairline) !important;
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__table tbody tr:hover,
+body[data-war-room-clean] .wr-cob-td__table tbody tr:hover {
+  background: var(--cx-amber-soft) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__table tfoot td,
+body[data-war-room-clean] .wr-cob-td__table tfoot td {
+  background: var(--cx-strip) !important;
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__td-link,
+body[data-war-room-clean] .wr-cob-td__td-link {
+  color: var(--cx-ink) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__td-link:hover,
+body[data-war-room-clean] .wr-cob-td__td-link:hover {
+  color: var(--cx-amber) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__num--ok,
+body[data-war-room-clean] .wr-cob-td__num--ok,
+body[data-wr-copiloto] .wr-cob-td__num--warn,
+body[data-war-room-clean] .wr-cob-td__num--warn,
+body[data-wr-copiloto] .wr-cob-td__num--bad,
+body[data-war-room-clean] .wr-cob-td__num--bad {
+  color: var(--cx-text) !important;
+  font-weight: 650 !important;
+}
+
+/* —— Detalhe / grupos / cards cidade —— */
+body[data-wr-copiloto] .wr-cob-td__detail-eyebrow,
+body[data-war-room-clean] .wr-cob-td__detail-eyebrow {
+  color: var(--cx-label) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__detail-kpi strong,
+body[data-war-room-clean] .wr-cob-td__detail-kpi strong,
+body[data-wr-copiloto] .wr-cob-td__detail-kpi--ok strong,
+body[data-war-room-clean] .wr-cob-td__detail-kpi--ok strong,
+body[data-wr-copiloto] .wr-cob-td__detail-kpi--warn strong,
+body[data-war-room-clean] .wr-cob-td__detail-kpi--warn strong,
+body[data-wr-copiloto] .wr-cob-td__detail-kpi--bad strong,
+body[data-war-room-clean] .wr-cob-td__detail-kpi--bad strong {
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__group-head,
+body[data-war-room-clean] .wr-cob-td__group-head {
+  border-bottom-color: var(--cx-hairline) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__group-title,
+body[data-war-room-clean] .wr-cob-td__group-title,
+body[data-wr-copiloto] .wr-cob-td__group--sem .wr-cob-td__group-title,
+body[data-war-room-clean] .wr-cob-td__group--sem .wr-cob-td__group-title,
+body[data-wr-copiloto] .wr-cob-td__group--agendada .wr-cob-td__group-title,
+body[data-war-room-clean] .wr-cob-td__group--agendada .wr-cob-td__group-title,
+body[data-wr-copiloto] .wr-cob-td__group--visitada .wr-cob-td__group-title,
+body[data-war-room-clean] .wr-cob-td__group--visitada .wr-cob-td__group-title {
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__city--sem,
+body[data-war-room-clean] .wr-cob-td__city--sem {
+  border-left-color: #c4c4c0 !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__city--agendada,
+body[data-war-room-clean] .wr-cob-td__city--agendada {
+  border-left-color: var(--cx-ink) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__city--visitada,
+body[data-war-room-clean] .wr-cob-td__city--visitada {
+  border-left-color: var(--cx-amber) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__city-name,
+body[data-war-room-clean] .wr-cob-td__city-name,
+body[data-wr-copiloto] .wr-cob-td__city-peso,
+body[data-war-room-clean] .wr-cob-td__city-peso,
+body[data-wr-copiloto] .wr-cob-td__city-visitas,
+body[data-war-room-clean] .wr-cob-td__city-visitas {
+  color: var(--cx-text) !important;
+}
+
+body[data-wr-copiloto] .wr-cob-td__city + .wr-cob-td__city,
+body[data-war-room-clean] .wr-cob-td__city + .wr-cob-td__city {
+  border-top-color: var(--cx-hairline) !important;
+}

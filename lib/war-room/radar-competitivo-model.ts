@@ -5,6 +5,7 @@ import {
 } from '@/lib/instagram-radar-post-classify'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
+import { EXCLUDED_POLITICAL_ACTOR_SLUGS } from '@/lib/political-actors-exclude'
 import { buildTopCandidatosEngajamentoDiario } from '@/lib/war-room/instagram-candidatos-engajamento'
 
 export type RadarCommenterStatsInput = {
@@ -27,7 +28,7 @@ export const RADAR_COMPETITIVO_COLORS = [
   '#0B3344',
 ] as const
 
-const DEFAULT_HIDDEN = new Set(['instagram-causa-animal'])
+const DEFAULT_HIDDEN = new Set<string>(EXCLUDED_POLITICAL_ACTOR_SLUGS)
 
 export type RadarContentMix = {
   image: number
