@@ -79,6 +79,8 @@ database/restore-from-backup-public-data-extracted.sql
 /*.csv
 /*.csv.zip
 /database/*.xlsx
+/scripts/*.pdf
+/scripts/*.xlsx
 
 # Mídias soltas na raiz (as usadas pelo app ficam em public/)
 /*.mp4

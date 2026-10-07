@@ -1,4 +1,3 @@
-export const TERRITORIO_CAMPO_TAB_PANORAMA = 'panorama' as const
 export const TERRITORIO_CAMPO_TAB_BASE = 'base' as const
 export const TERRITORIO_CAMPO_TAB_LIDERANCAS = 'liderancas' as const
 export const TERRITORIO_CAMPO_TAB_DEMANDAS = 'demandas' as const
@@ -8,7 +7,6 @@ export const TERRITORIO_CAMPO_TAB_VISITAS = 'visitas' as const
 export const TERRITORIO_CAMPO_TAB_MAPA_OBRAS_LEGACY = 'mapa-obras' as const
 
 export type TerritorioCampoTab =
-  | typeof TERRITORIO_CAMPO_TAB_PANORAMA
   | typeof TERRITORIO_CAMPO_TAB_BASE
   | typeof TERRITORIO_CAMPO_TAB_LIDERANCAS
   | typeof TERRITORIO_CAMPO_TAB_DEMANDAS
@@ -26,18 +24,16 @@ export function territorioCampoPageTitle(tab: string | null): string {
   return TERRITORIO_CAMPO_PAGE_TITLE
 }
 
+/** Valores desconhecidos (inclui o antigo `panorama`) caem na Base. */
 export function parseTerritorioCampoTab(value: string | null | undefined): TerritorioCampoTab {
-  if (value === TERRITORIO_CAMPO_TAB_BASE) return TERRITORIO_CAMPO_TAB_BASE
   if (value === TERRITORIO_CAMPO_TAB_LIDERANCAS) return TERRITORIO_CAMPO_TAB_LIDERANCAS
   if (value === TERRITORIO_CAMPO_TAB_DEMANDAS) return TERRITORIO_CAMPO_TAB_DEMANDAS
   if (value === TERRITORIO_CAMPO_TAB_VISITAS) return TERRITORIO_CAMPO_TAB_VISITAS
-  return TERRITORIO_CAMPO_TAB_PANORAMA
+  return TERRITORIO_CAMPO_TAB_BASE
 }
 
-export function territorioCampoHref(
-  tab: TerritorioCampoTab = TERRITORIO_CAMPO_TAB_PANORAMA
-): string {
-  if (tab === TERRITORIO_CAMPO_TAB_PANORAMA) {
+export function territorioCampoHref(tab: TerritorioCampoTab = TERRITORIO_CAMPO_TAB_BASE): string {
+  if (tab === TERRITORIO_CAMPO_TAB_BASE) {
     return TERRITORIO_CAMPO_HREF
   }
   return `${TERRITORIO_CAMPO_HREF}?tab=${tab}`

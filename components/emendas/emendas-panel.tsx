@@ -1,28 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import { Columns2, Copy, FileSpreadsheet, FileText, Loader2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/use-permissions'
 import { cn, formatDateShort } from '@/lib/utils'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Loader2,
-  X,
-  Save,
-  Filter,
-  FileSpreadsheet,
-  FileText,
-  Columns2,
-  Copy,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  RefreshCw,
-} from 'lucide-react'
 import {
   EMENDAS_LIST_COLUMN_KEYS,
   EMENDAS_LIST_COLUMN_LABELS,
@@ -31,570 +13,154 @@ import {
   exportEmendasListToXlsx,
   type EmendaListColumnKey,
 } from '@/lib/emendas-list-export'
-import { MultiCheckFilterSelect } from '@/components/territorio-campo/multi-check-filter-select'
-
-interface City {
-  id: string
-  name: string
-  state?: string
-}
-
-export interface Emenda {
-  id: string
-  bloco: string | null
-  exercicio: number | null
-  emenda: string
-  municipio_beneficiario: string | null
-  funcional: string | null
-  gnd: string | null
-  valor_indicado: number | null
-  valor_empenhado: number | null
-  valor_a_empenhar: number | null
-  valor_pago: number | null
-  valor_a_ser_pago: number | null
-  empenho: string | null
-  data_empenho: string | null
-  portaria_convenio: string | null
-  numero_proposta: string | null
-  data_pagamento: string | null
-  liderancas: string | null
-  alteracao: string | null
-  objeto: string | null
-  created_at?: string
-  updated_at?: string
-}
+import { excluirEmenda, fetchEmendas, type Emenda } from '@/lib/services/emendas-client'
+import { EmendaModal, type EmendaModalModo } from '@/components/emendas/emenda-modal'
+import {
+  TseBarraRotulo,
+  TseBusca,
+  TseCarregando,
+  TseCarregarMais,
+  TseErro,
+  TseFilterBar,
+  TseMenu,
+  TsePage,
+  TsePillSelect,
+  TseSegmentado,
+  TseThOrdenavel,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseLinkAcaoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 
 export type EmendasPanelVariant = 'page' | 'copiloto'
 
-type FormState = {
-  bloco: string
-  exercicio: string
-  emenda: string
-  municipio_beneficiario: string
-  funcional: string
-  gnd: string
-  valor_indicado: string
-  valor_empenhado: string
-  valor_a_empenhar: string
-  valor_pago: string
-  valor_a_ser_pago: string
-  empenho: string
-  data_empenho: string
-  portaria_convenio: string
-  numero_proposta: string
-  data_pagamento: string
-  liderancas: string
-  alteracao: string
-  objeto: string
-}
+type FiltroStatus = 'todas' | 'pagas' | 'nao_pagas'
 
-function emptyForm(): FormState {
-  return {
-    bloco: '',
-    exercicio: '',
-    emenda: '',
-    municipio_beneficiario: '',
-    funcional: '',
-    gnd: '',
-    valor_indicado: '',
-    valor_empenhado: '',
-    valor_a_empenhar: '',
-    valor_pago: '',
-    valor_a_ser_pago: '',
-    empenho: '',
-    data_empenho: '',
-    portaria_convenio: '',
-    numero_proposta: '',
-    data_pagamento: '',
-    liderancas: '',
-    alteracao: '',
-    objeto: '',
-  }
-}
-
-function rowToForm(e: Emenda): FormState {
-  const n = (v: number | null | undefined) =>
-    v != null && !Number.isNaN(Number(v)) ? String(v) : ''
-  return {
-    bloco: e.bloco ?? '',
-    exercicio: e.exercicio != null && !Number.isNaN(Number(e.exercicio)) ? String(e.exercicio) : '',
-    emenda: e.emenda ?? '',
-    municipio_beneficiario: e.municipio_beneficiario ?? '',
-    funcional: e.funcional ?? '',
-    gnd: e.gnd ?? '',
-    valor_indicado: n(e.valor_indicado),
-    valor_empenhado: n(e.valor_empenhado),
-    valor_a_empenhar: n(e.valor_a_empenhar),
-    valor_pago: n(e.valor_pago),
-    valor_a_ser_pago: n(e.valor_a_ser_pago),
-    empenho: e.empenho ?? '',
-    data_empenho: e.data_empenho ? e.data_empenho.slice(0, 10) : '',
-    portaria_convenio: e.portaria_convenio ?? '',
-    numero_proposta: e.numero_proposta ?? '',
-    data_pagamento: e.data_pagamento ? e.data_pagamento.slice(0, 10) : '',
-    liderancas: e.liderancas ?? '',
-    alteracao: e.alteracao ?? '',
-    objeto: e.objeto ?? '',
-  }
-}
-
-function formToPayload(f: FormState): Record<string, unknown> {
-  return {
-    bloco: f.bloco,
-    exercicio: f.exercicio,
-    emenda: f.emenda,
-    municipio_beneficiario: f.municipio_beneficiario,
-    funcional: f.funcional,
-    gnd: f.gnd,
-    valor_indicado: f.valor_indicado,
-    valor_empenhado: f.valor_empenhado,
-    valor_a_empenhar: f.valor_a_empenhar,
-    valor_pago: f.valor_pago,
-    valor_a_ser_pago: f.valor_a_ser_pago,
-    empenho: f.empenho,
-    data_empenho: f.data_empenho,
-    portaria_convenio: f.portaria_convenio,
-    numero_proposta: f.numero_proposta,
-    data_pagamento: f.data_pagamento,
-    liderancas: f.liderancas,
-    alteracao: f.alteracao,
-    objeto: f.objeto,
-  }
-}
-
-function formatMoney(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(Number(n))) return '—'
-  return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function emendaListTdClass(col: EmendaListColumnKey): string {
-  const longoTexto =
-    col === 'objeto' ||
-    col === 'alteracao' ||
-    col === 'liderancas' ||
-    col === 'portaria_convenio' ||
-    col === 'empenho'
-  return cn(
-    'px-4 py-2 text-black',
-    col === 'id' && 'max-w-[120px] truncate font-mono text-xs',
-    col === 'emenda' && 'max-w-[220px] truncate font-medium',
-    col === 'municipio_beneficiario' && 'max-w-[200px] truncate',
-    longoTexto && 'max-w-[min(18rem,40vw)] truncate',
-    (col === 'exercicio' ||
-      col.startsWith('valor_') ||
-      col === 'data_empenho' ||
-      col === 'data_pagamento' ||
-      col === 'created_at' ||
-      col === 'updated_at' ||
-      col === 'gnd' ||
-      col === 'bloco' ||
-      col === 'funcional' ||
-      col === 'numero_proposta') &&
-      'whitespace-nowrap',
-  )
-}
-
-function emendaCellTitle(r: Emenda, col: EmendaListColumnKey): string | undefined {
-  const textCols: EmendaListColumnKey[] = [
-    'id',
-    'bloco',
-    'emenda',
-    'municipio_beneficiario',
-    'funcional',
-    'gnd',
-    'empenho',
-    'portaria_convenio',
-    'numero_proposta',
-    'liderancas',
-    'alteracao',
-    'objeto',
-  ]
-  if (!textCols.includes(col)) return undefined
-  const v = r[col as keyof Emenda]
-  if (v == null) return undefined
-  const s = String(v).trim()
-  return s || undefined
-}
-
-function renderEmendaListCell(r: Emenda, col: EmendaListColumnKey): ReactNode {
-  switch (col) {
-    case 'id':
-      return r.id
-    case 'bloco':
-      return r.bloco || '—'
-    case 'exercicio':
-      return r.exercicio != null ? r.exercicio : '—'
-    case 'emenda':
-      return r.emenda
-    case 'municipio_beneficiario':
-      return r.municipio_beneficiario || '—'
-    case 'funcional':
-      return r.funcional || '—'
-    case 'gnd':
-      return r.gnd || '—'
-    case 'valor_indicado':
-      return formatMoney(r.valor_indicado)
-    case 'valor_empenhado':
-      return formatMoney(r.valor_empenhado)
-    case 'valor_a_empenhar':
-      return formatMoney(r.valor_a_empenhar)
-    case 'valor_pago':
-      return formatMoney(r.valor_pago)
-    case 'valor_a_ser_pago':
-      return formatMoney(r.valor_a_ser_pago)
-    case 'empenho':
-      return r.empenho || '—'
-    case 'data_empenho':
-      return r.data_empenho ? formatDateShort(r.data_empenho) : '—'
-    case 'portaria_convenio':
-      return r.portaria_convenio || '—'
-    case 'numero_proposta':
-      return r.numero_proposta || '—'
-    case 'data_pagamento':
-      return r.data_pagamento ? formatDateShort(r.data_pagamento) : '—'
-    case 'liderancas':
-      return r.liderancas || '—'
-    case 'alteracao':
-      return r.alteracao || '—'
-    case 'objeto':
-      return r.objeto || '—'
-    case 'created_at':
-      return r.created_at ? formatDateShort(r.created_at) : '—'
-    case 'updated_at':
-      return r.updated_at ? formatDateShort(r.updated_at) : '—'
-    default:
-      return '—'
-  }
-}
-
-type FiltroStatusEmendaId = 'pagas' | 'nao_pagas'
-
-const EMENDAS_STATUS_OPTIONS: Array<{ id: FiltroStatusEmendaId; label: string }> = [
+const OPCOES_STATUS: readonly { id: FiltroStatus; label: string }[] = [
+  { id: 'todas', label: 'Todas' },
   { id: 'pagas', label: 'Pagas' },
   { id: 'nao_pagas', label: 'Não pagas' },
 ]
+
+const POR_PAGINA = 100
+
+const COLUNAS_VALOR: ReadonlySet<EmendaListColumnKey> = new Set([
+  'valor_indicado',
+  'valor_empenhado',
+  'valor_a_empenhar',
+  'valor_pago',
+  'valor_a_ser_pago',
+])
+
+const COLUNAS_DATA: ReadonlySet<EmendaListColumnKey> = new Set([
+  'data_empenho',
+  'data_pagamento',
+  'created_at',
+  'updated_at',
+])
+
+const COLUNAS_TEXTO_LONGO: ReadonlySet<EmendaListColumnKey> = new Set([
+  'objeto',
+  'alteracao',
+  'liderancas',
+  'portaria_convenio',
+  'empenho',
+])
+
+function formatarMoeda(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return '—'
+  return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatarMoedaCurta(n: number): string {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
 
 function isEmendaPaga(r: Emenda): boolean {
   const vp = Number(r.valor_pago)
   return Number.isFinite(vp) && vp > 0
 }
 
-function getEmendaSortValue(r: Emenda, col: EmendaListColumnKey): string | number {
-  switch (col) {
-    case 'exercicio':
-      return r.exercicio ?? Number.NEGATIVE_INFINITY
-    case 'valor_indicado':
-    case 'valor_empenhado':
-    case 'valor_a_empenhar':
-    case 'valor_pago':
-    case 'valor_a_ser_pago':
-      return r[col] ?? Number.NEGATIVE_INFINITY
-    case 'data_empenho':
-    case 'data_pagamento':
-    case 'created_at':
-    case 'updated_at': {
-      const d = r[col]
-      return d ? new Date(d).getTime() : Number.NEGATIVE_INFINITY
-    }
-    default: {
-      const v = r[col as keyof Emenda]
-      if (v == null) return ''
-      return String(v).toLowerCase()
-    }
+function valorOrdenacao(r: Emenda, col: EmendaListColumnKey): string | number {
+  if (col === 'exercicio') return r.exercicio ?? Number.NEGATIVE_INFINITY
+  if (COLUNAS_VALOR.has(col)) {
+    const v = r[col as keyof Emenda]
+    return typeof v === 'number' ? v : Number.NEGATIVE_INFINITY
   }
+  if (COLUNAS_DATA.has(col)) {
+    const d = r[col as keyof Emenda]
+    return d ? new Date(String(d)).getTime() : Number.NEGATIVE_INFINITY
+  }
+  const v = r[col as keyof Emenda]
+  return v == null ? '' : String(v).toLowerCase()
 }
 
-function Field({
-  label,
-  className,
-  children,
-}: {
-  label: string
-  className?: string
-  children: ReactNode
-}) {
+function textoCelula(r: Emenda, col: EmendaListColumnKey): string {
+  if (COLUNAS_VALOR.has(col)) return formatarMoeda(r[col as keyof Emenda] as number | null)
+  if (COLUNAS_DATA.has(col)) {
+    const d = r[col as keyof Emenda]
+    return d ? formatDateShort(String(d)) : '—'
+  }
+  const v = r[col as keyof Emenda]
+  if (v == null || String(v).trim() === '') return '—'
+  return String(v)
+}
+
+function BlocoTotal({ rotulo, valor, children }: { rotulo: string; valor: ReactNode; children?: ReactNode }) {
   return (
-    <label className={cn('flex flex-col gap-1.5', className)}>
-      <span className="text-xs font-medium text-text-secondary">{label}</span>
+    <div className="min-w-0 xl:px-5 xl:first:pl-0 xl:last:pr-0">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</p>
+      <p className="mt-0.5 text-[24px] font-bold leading-tight tabular-nums">{valor}</p>
       {children}
-    </label>
+    </div>
   )
 }
+
+/** Na página usa o `TsePage`; dentro do Copiloto só aplica os tokens, sem fundo nem margens próprios. */
+function Moldura({ variant, children }: { variant: EmendasPanelVariant; children: ReactNode }) {
+  if (variant === 'page') return <TsePage>{children}</TsePage>
+  return (
+    <div style={TSE_TOKENS} className="text-[var(--tse-text)]">
+      {children}
+    </div>
+  )
+}
+
+const botaoAcao = 'rounded-md p-1.5 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)] disabled:opacity-50'
+const checkboxClass = 'h-3.5 w-3.5 shrink-0 cursor-pointer accent-[var(--tse-olive)]'
 
 export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVariant }) {
   const router = useRouter()
-  const isCopiloto = variant === 'copiloto'
-  const isCockpit = false
-  const pageShellClass = isCopiloto ? 'wr-emendas-panel bg-transparent' : 'bg-white'
-  const sectionShellClass = isCopiloto
-    ? 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-[color-mix(in_srgb,#333333_8%,transparent)] bg-transparent p-4 shadow-none sm:p-5'
-    : isCockpit
-      ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-      : 'rounded-2xl bg-surface p-6 shadow-sm'
-  const innerPanelClass = isCopiloto
-    ? 'rounded-[10px] border border-[var(--wr-border,#e1e1de)] bg-[var(--wr-surface-subtle,#f3f3f1)] p-3'
-    : isCockpit
-      ? 'rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-3'
-      : 'rounded-xl border border-card bg-background/50 p-3'
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
   const [rows, setRows] = useState<Emenda[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [isDuplicating, setIsDuplicating] = useState(false)
-  const [form, setForm] = useState<FormState>(emptyForm)
-  const [saving, setSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [cities, setCities] = useState<City[]>([])
-  const [filteredCities, setFilteredCities] = useState<City[]>([])
-  const [loadingCities, setLoadingCities] = useState(false)
-  const [municipioBusca, setMunicipioBusca] = useState('')
-  const [filterExercicio, setFilterExercicio] = useState<string>('')
-  const [filterEmenda, setFilterEmenda] = useState<string>('')
-  const [filterMunicipio, setFilterMunicipio] = useState<string>('')
-  const [filterStatus, setFilterStatus] = useState<Set<FiltroStatusEmendaId>>(() => new Set())
-  /** Seleção explícita de registros (export). Vazio = exporta todas as filtradas. */
-  const [selectedEmendaIds, setSelectedEmendaIds] = useState<Set<string>>(() => new Set())
-  const selectAllRef = useRef<HTMLInputElement | null>(null)
-  const [visibleColumns, setVisibleColumns] = useState<Record<EmendaListColumnKey, boolean>>(() =>
+  const [loading, setLoading] = useState<boolean>(true)
+  const [erro, setErro] = useState<string | null>(null)
+  const [modal, setModal] = useState<EmendaModalModo | null>(null)
+  const [excluindoId, setExcluindoId] = useState<string | null>(null)
+  const [filtroExercicio, setFiltroExercicio] = useState<string>('')
+  const [filtroMunicipio, setFiltroMunicipio] = useState<string>('')
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todas')
+  const [busca, setBusca] = useState<string>('')
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set())
+  const [colunasVisiveis, setColunasVisiveis] = useState<Record<EmendaListColumnKey, boolean>>(() =>
     emendasDefaultVisibleColumnsRecord(),
   )
-  const [showColumnPicker, setShowColumnPicker] = useState(false)
-  const columnPickerRef = useRef<HTMLDivElement>(null)
-  const [sortColumn, setSortColumn] = useState<EmendaListColumnKey | null>(null)
-  const [sortAsc, setSortAsc] = useState(true)
+  const [sortCol, setSortCol] = useState<EmendaListColumnKey>('updated_at')
+  const [sortAsc, setSortAsc] = useState<boolean>(false)
+  const [limite, setLimite] = useState<number>(POR_PAGINA)
+  const selecionarTodasRef = useRef<HTMLInputElement | null>(null)
 
-  const municipiosBeneficiariosNaBase = useMemo(() => {
-    const set = new Set<string>()
-    for (const r of rows) {
-      const m = r.municipio_beneficiario?.trim()
-      if (m) set.add(m)
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [rows])
-
-  useEffect(() => {
-    if (filterMunicipio === '') return
-    if (!municipiosBeneficiariosNaBase.includes(filterMunicipio)) {
-      setFilterMunicipio('')
-    }
-  }, [municipiosBeneficiariosNaBase, filterMunicipio])
-
-  const filteredRows = useMemo(() => {
-    const ex = filterExercicio.trim()
-    const em = filterEmenda.trim().toLowerCase()
-    return rows.filter((r) => {
-      if (ex !== '') {
-        const y = parseInt(ex, 10)
-        const exSóDígitos = /^\d+$/.test(ex)
-        if (exSóDígitos && Number.isFinite(y) && y >= 1900 && y <= 2100 && ex.length === 4) {
-          if (r.exercicio !== y) return false
-        } else if (!String(r.exercicio ?? '').includes(ex)) {
-          return false
-        }
-      }
-      if (em && !r.emenda.toLowerCase().includes(em)) return false
-      if (filterMunicipio !== '' && (r.municipio_beneficiario ?? '').trim() !== filterMunicipio) {
-        return false
-      }
-      if (filterStatus.size > 0) {
-        const paga = isEmendaPaga(r)
-        const matchPaga = filterStatus.has('pagas') && paga
-        const matchNaoPaga = filterStatus.has('nao_pagas') && !paga
-        if (!matchPaga && !matchNaoPaga) return false
-      }
-      return true
-    })
-  }, [rows, filterExercicio, filterEmenda, filterMunicipio, filterStatus])
-
-  const filteredIds = useMemo(
-    () => new Set(filteredRows.map((r) => r.id)),
-    [filteredRows],
-  )
-
-  useEffect(() => {
-    setSelectedEmendaIds((prev) => {
-      if (prev.size === 0) return prev
-      let changed = false
-      const next = new Set<string>()
-      for (const id of prev) {
-        if (filteredIds.has(id)) next.add(id)
-        else changed = true
-      }
-      return changed ? next : prev
-    })
-  }, [filteredIds])
-
-  const selecionadasCount = selectedEmendaIds.size
-  const todasFiltradasSelecionadas =
-    filteredRows.length > 0 && filteredRows.every((r) => selectedEmendaIds.has(r.id))
-  const algumasFiltradasSelecionadas =
-    selecionadasCount > 0 && !todasFiltradasSelecionadas
-
-  useEffect(() => {
-    const el = selectAllRef.current
-    if (!el) return
-    el.indeterminate = algumasFiltradasSelecionadas
-  }, [algumasFiltradasSelecionadas])
-
-  const toggleEmendaSelecionada = useCallback((id: string) => {
-    setSelectedEmendaIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const toggleTodasFiltradas = useCallback(() => {
-    setSelectedEmendaIds((prev) => {
-      const todas =
-        filteredRows.length > 0 && filteredRows.every((r) => prev.has(r.id))
-      if (todas) return new Set()
-      return new Set(filteredRows.map((r) => r.id))
-    })
-  }, [filteredRows])
-
-  const limparSelecaoEmendas = useCallback(() => {
-    setSelectedEmendaIds(new Set())
-  }, [])
-
-  const toggleSort = useCallback((col: EmendaListColumnKey) => {
-    if (sortColumn === col) {
-      setSortAsc((asc) => !asc)
-    } else {
-      setSortColumn(col)
-      setSortAsc(true)
-    }
-  }, [sortColumn])
-
-  const sortedFilteredRows = useMemo(() => {
-    if (!sortColumn) return filteredRows
-    return [...filteredRows].sort((a, b) => {
-      const va = getEmendaSortValue(a, sortColumn)
-      const vb = getEmendaSortValue(b, sortColumn)
-      const cmp =
-        typeof va === 'string' && typeof vb === 'string'
-          ? va.localeCompare(vb, 'pt-BR')
-          : Number(va) - Number(vb)
-      return sortAsc ? cmp : -cmp
-    })
-  }, [filteredRows, sortColumn, sortAsc])
-
-  const filtrosAtivos =
-    filterExercicio.trim() !== '' ||
-    filterEmenda.trim() !== '' ||
-    filterMunicipio !== '' ||
-    filterStatus.size > 0
-
-  const descricaoFiltrosExport = useMemo(() => {
-    const partes: string[] = []
-    const ex = filterExercicio.trim()
-    if (ex) partes.push(`Exercício: ${ex}`)
-    const em = filterEmenda.trim()
-    if (em) partes.push(`Emenda contém: ${em}`)
-    if (filterMunicipio) partes.push(`Município/beneficiário: ${filterMunicipio}`)
-    if (filterStatus.size > 0) {
-      const labels = EMENDAS_STATUS_OPTIONS.filter((o) => filterStatus.has(o.id)).map(
-        (o) => o.label,
-      )
-      partes.push(`Status: ${labels.join(', ')}`)
-    }
-    if (selecionadasCount > 0) {
-      partes.push(`Registros selecionados: ${selecionadasCount}`)
-    }
-    return partes.length > 0
-      ? `Filtros ativos — ${partes.join(' · ')}`
-      : 'Sem filtros (lista completa carregada)'
-  }, [filterExercicio, filterEmenda, filterMunicipio, filterStatus, selecionadasCount])
-
-  const activeColumnList = useMemo(
-    () => EMENDAS_LIST_COLUMN_KEYS.filter((k) => visibleColumns[k]),
-    [visibleColumns],
-  )
-
-  const rowsParaExportar = useMemo(() => {
-    const base =
-      selectedEmendaIds.size > 0
-        ? filteredRows.filter((r) => selectedEmendaIds.has(r.id))
-        : filteredRows
-    return base.map((r) => ({
-      id: r.id,
-      bloco: r.bloco,
-      exercicio: r.exercicio,
-      emenda: r.emenda,
-      municipio_beneficiario: r.municipio_beneficiario,
-      funcional: r.funcional,
-      gnd: r.gnd,
-      valor_indicado: r.valor_indicado,
-      valor_empenhado: r.valor_empenhado,
-      valor_a_empenhar: r.valor_a_empenhar,
-      valor_pago: r.valor_pago,
-      valor_a_ser_pago: r.valor_a_ser_pago,
-      empenho: r.empenho,
-      data_empenho: r.data_empenho,
-      portaria_convenio: r.portaria_convenio,
-      numero_proposta: r.numero_proposta,
-      data_pagamento: r.data_pagamento,
-      liderancas: r.liderancas,
-      alteracao: r.alteracao,
-      objeto: r.objeto,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    }))
-  }, [filteredRows, selectedEmendaIds])
-
-  const totaisFiltrados = useMemo(() => {
-    return filteredRows.reduce(
-      (acc, r) => {
-        const indicado = Number(r.valor_indicado)
-        const empenhado = Number(r.valor_empenhado)
-        const pago = Number(r.valor_pago)
-        if (Number.isFinite(indicado)) acc.valorIndicado += indicado
-        if (Number.isFinite(empenhado)) acc.valorEmpenhado += empenhado
-        if (Number.isFinite(pago)) acc.valorPago += pago
-        return acc
-      },
-      { valorIndicado: 0, valorEmpenhado: 0, valorPago: 0 },
-    )
-  }, [filteredRows])
-
-  const toggleColumn = useCallback((col: EmendaListColumnKey) => {
-    setVisibleColumns((prev) => {
-      const next = { ...prev, [col]: !prev[col] }
-      const n = EMENDAS_LIST_COLUMN_KEYS.filter((k) => next[k]).length
-      return n === 0 ? prev : next
-    })
-  }, [])
-
-  const handleExportXlsx = useCallback(() => {
-    void exportEmendasListToXlsx(rowsParaExportar, filtrosAtivos, activeColumnList)
-  }, [rowsParaExportar, filtrosAtivos, activeColumnList])
-
-  const handleExportPdf = useCallback(() => {
-    void exportEmendasListToPdf(
-      rowsParaExportar,
-      filtrosAtivos,
-      descricaoFiltrosExport,
-      activeColumnList,
-    )
-  }, [rowsParaExportar, filtrosAtivos, descricaoFiltrosExport, activeColumnList])
-
-  const load = useCallback(async () => {
+  const carregar = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setErro(null)
     try {
-      const res = await fetch('/api/emendas')
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data.error || 'Erro ao carregar')
-        setRows([])
-        return
-      }
-      setRows(data.emendas ?? [])
+      setRows(await fetchEmendas())
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar')
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar emendas.')
       setRows([])
     } finally {
       setLoading(false)
@@ -607,1039 +173,460 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
       router.replace('/dashboard')
       return
     }
-    void load()
-  }, [permLoading, isAdmin, canAccess, router, load])
+    void carregar()
+  }, [permLoading, isAdmin, canAccess, router, carregar])
+
+  const exercicios = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.exercicio).filter((x): x is number => typeof x === 'number'))).sort(
+        (a, b) => b - a,
+      ),
+    [rows],
+  )
+
+  const municipios = useMemo(
+    () =>
+      Array.from(new Set(rows.map((r) => r.municipio_beneficiario?.trim()).filter((m): m is string => Boolean(m)))).sort(
+        (a, b) => a.localeCompare(b, 'pt-BR'),
+      ),
+    [rows],
+  )
 
   useEffect(() => {
-    if (!showColumnPicker) return
-    const onDoc = (e: MouseEvent) => {
-      const el = columnPickerRef.current
-      if (el && !el.contains(e.target as Node)) setShowColumnPicker(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [showColumnPicker])
+    if (filtroMunicipio && !municipios.includes(filtroMunicipio)) setFiltroMunicipio('')
+  }, [municipios, filtroMunicipio])
+
+  const filtradas = useMemo(() => {
+    const q = busca.trim().toLowerCase()
+    const ano = filtroExercicio ? Number(filtroExercicio) : null
+    return rows.filter((r) => {
+      if (ano !== null && r.exercicio !== ano) return false
+      if (filtroMunicipio && (r.municipio_beneficiario ?? '').trim() !== filtroMunicipio) return false
+      if (filtroStatus === 'pagas' && !isEmendaPaga(r)) return false
+      if (filtroStatus === 'nao_pagas' && isEmendaPaga(r)) return false
+      if (q && !r.emenda.toLowerCase().includes(q) && !(r.objeto ?? '').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [rows, filtroExercicio, filtroMunicipio, filtroStatus, busca])
+
+  const ordenadas = useMemo(() => {
+    const fator = sortAsc ? 1 : -1
+    return [...filtradas].sort((a, b) => {
+      const va = valorOrdenacao(a, sortCol)
+      const vb = valorOrdenacao(b, sortCol)
+      const cmp =
+        typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, 'pt-BR') : Number(va) - Number(vb)
+      return fator * cmp
+    })
+  }, [filtradas, sortCol, sortAsc])
 
   useEffect(() => {
-    if (!modalOpen) return
-    setMunicipioBusca('')
-    if (cities.length > 0) {
-      setFilteredCities(cities)
+    setLimite(POR_PAGINA)
+    const ids = new Set(filtradas.map((r) => r.id))
+    setSelecionadas((prev) => {
+      if (prev.size === 0) return prev
+      const next = new Set([...prev].filter((id) => ids.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [filtradas])
+
+  const totais = useMemo(() => {
+    let indicado = 0
+    let empenhado = 0
+    let pago = 0
+    let pagas = 0
+    for (const r of filtradas) {
+      if (Number.isFinite(Number(r.valor_indicado))) indicado += Number(r.valor_indicado)
+      if (Number.isFinite(Number(r.valor_empenhado))) empenhado += Number(r.valor_empenhado)
+      if (Number.isFinite(Number(r.valor_pago))) pago += Number(r.valor_pago)
+      if (isEmendaPaga(r)) pagas += 1
     }
-  }, [modalOpen, cities])
+    return { indicado, empenhado, pago, pagas }
+  }, [filtradas])
+
+  const filtrosAtivos = Boolean(filtroExercicio || filtroMunicipio || filtroStatus !== 'todas' || busca.trim())
+  const colunasAtivas = useMemo(() => EMENDAS_LIST_COLUMN_KEYS.filter((k) => colunasVisiveis[k]), [colunasVisiveis])
+  const todasSelecionadas = filtradas.length > 0 && filtradas.every((r) => selecionadas.has(r.id))
+  const algumasSelecionadas = selecionadas.size > 0 && !todasSelecionadas
 
   useEffect(() => {
-    if (!modalOpen) return
-    if (cities.length > 0) return
+    if (selecionarTodasRef.current) selecionarTodasRef.current.indeterminate = algumasSelecionadas
+  }, [algumasSelecionadas])
 
-    let cancelled = false
-    const run = async () => {
-      setLoadingCities(true)
-      try {
-        let res = await fetch('/api/campo/cities')
-        if (!res.ok) {
-          await fetch('/api/campo/cities/sync', { method: 'POST' })
-          res = await fetch('/api/campo/cities')
-        }
-        if (cancelled || !res.ok) return
-        const data = (await res.json()) as City[]
-        if (!Array.isArray(data) || cancelled) return
-        const sorted = [...data].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-        setCities(sorted)
-        setFilteredCities(sorted)
-      } catch (e) {
-        console.error('Emendas: erro ao carregar municípios', e)
-      } finally {
-        if (!cancelled) setLoadingCities(false)
-      }
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [modalOpen, cities.length])
-
-  const openCreate = () => {
-    setError(null)
-    setEditingId(null)
-    setIsDuplicating(false)
-    setForm(emptyForm())
-    setShowColumnPicker(false)
-    setModalOpen(true)
-  }
-
-  const openEdit = (e: Emenda) => {
-    setError(null)
-    setEditingId(e.id)
-    setIsDuplicating(false)
-    setForm(rowToForm(e))
-    setShowColumnPicker(false)
-    setModalOpen(true)
-  }
-
-  /**
-   * Abre o modal pré-preenchido com os dados da emenda informada, mas em
-   * modo de criação (sem `editingId`), de forma que ao salvar seja gerado
-   * um novo registro idêntico — sem nenhuma alteração no nome da emenda,
-   * para não atrapalhar o ganho de tempo da duplicação.
-   */
-  const openDuplicate = (e: Emenda) => {
-    setError(null)
-    setEditingId(null)
-    setIsDuplicating(true)
-    setForm(rowToForm(e))
-    setShowColumnPicker(false)
-    setModalOpen(true)
-  }
-
-  const closeModal = () => {
-    setModalOpen(false)
-    setEditingId(null)
-    setIsDuplicating(false)
-    setForm(emptyForm())
-    setShowColumnPicker(false)
-  }
-
-  const save = async () => {
-    if (!form.emenda.trim()) {
-      setError('Preencha o campo Emenda.')
+  const ordenar = (col: EmendaListColumnKey) => {
+    if (col === sortCol) {
+      setSortAsc((v) => !v)
       return
     }
-    setSaving(true)
-    setError(null)
-    try {
-      const payload = formToPayload(form)
-      const url = editingId ? `/api/emendas/${editingId}` : '/api/emendas'
-      const res = await fetch(url, {
-        method: editingId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data.error || 'Erro ao salvar')
-        return
-      }
-      closeModal()
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao salvar')
-    } finally {
-      setSaving(false)
-    }
+    setSortCol(col)
+    setSortAsc(!COLUNAS_VALOR.has(col) && !COLUNAS_DATA.has(col) && col !== 'exercicio')
   }
 
-  const remove = async (e: Emenda) => {
-    if (!window.confirm(`Excluir a emenda "${e.emenda}"?`)) return
-    setDeletingId(e.id)
-    setError(null)
+  const alternarSelecao = (id: string) =>
+    setSelecionadas((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const alternarTodas = () => setSelecionadas(todasSelecionadas ? new Set() : new Set(filtradas.map((r) => r.id)))
+
+  const alternarColuna = (col: EmendaListColumnKey) =>
+    setColunasVisiveis((prev) => {
+      const next = { ...prev, [col]: !prev[col] }
+      return EMENDAS_LIST_COLUMN_KEYS.some((k) => next[k]) ? next : prev
+    })
+
+  const limparFiltros = () => {
+    setFiltroExercicio('')
+    setFiltroMunicipio('')
+    setFiltroStatus('todas')
+    setBusca('')
+  }
+
+  const linhasExportar = useMemo(
+    () => (selecionadas.size > 0 ? ordenadas.filter((r) => selecionadas.has(r.id)) : ordenadas),
+    [ordenadas, selecionadas],
+  )
+
+  const descricaoFiltros = useMemo(() => {
+    const partes: string[] = []
+    if (filtroExercicio) partes.push(`Exercício: ${filtroExercicio}`)
+    if (busca.trim()) partes.push(`Emenda/objeto contém: ${busca.trim()}`)
+    if (filtroMunicipio) partes.push(`Município/beneficiário: ${filtroMunicipio}`)
+    if (filtroStatus !== 'todas') partes.push(`Status: ${filtroStatus === 'pagas' ? 'Pagas' : 'Não pagas'}`)
+    if (selecionadas.size > 0) partes.push(`Registros selecionados: ${selecionadas.size}`)
+    return partes.length > 0 ? `Filtros ativos — ${partes.join(' · ')}` : 'Sem filtros (lista completa carregada)'
+  }, [filtroExercicio, busca, filtroMunicipio, filtroStatus, selecionadas.size])
+
+  const exportar = (formato: 'xlsx' | 'pdf') => {
+    if (formato === 'xlsx') void exportEmendasListToXlsx(linhasExportar, filtrosAtivos, colunasAtivas)
+    else void exportEmendasListToPdf(linhasExportar, filtrosAtivos, descricaoFiltros, colunasAtivas)
+  }
+
+  const remover = async (r: Emenda) => {
+    if (!window.confirm(`Excluir a emenda "${r.emenda}"?`)) return
+    setExcluindoId(r.id)
+    setErro(null)
     try {
-      const res = await fetch(`/api/emendas/${e.id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setError(data.error || 'Erro ao excluir')
-        return
-      }
-      await load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir')
+      await excluirEmenda(r.id)
+      await carregar()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao excluir emenda.')
     } finally {
-      setDeletingId(null)
+      setExcluindoId(null)
     }
   }
 
   if (permLoading) {
     return (
-      <div className={cn('flex min-h-[40vh] flex-1 items-center justify-center', pageShellClass)}>
-        <Loader2
-          className={cn(
-            'h-8 w-8 animate-spin',
-            isCopiloto ? 'text-[var(--wr-text-secondary,#52524f)]' : 'text-accent-gold',
-          )}
-          aria-hidden
-        />
-      </div>
+      <Moldura variant={variant}>
+        <TseCarregando texto="Verificando acesso…" />
+      </Moldura>
     )
   }
 
-  const filterInputClass = isCopiloto
-    ? 'wr-copiloto-filter-select min-w-[5.5rem] max-w-[9rem]'
-    : isCockpit
-      ? 'min-w-[5.5rem] max-w-[9rem] rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs text-text-primary placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
-      : 'min-w-[5.5rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs text-text-primary placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
-
-  const filterSelectClass = isCopiloto
-    ? 'wr-copiloto-filter-select min-w-[6.5rem] max-w-[11rem]'
-    : isCockpit
-      ? 'min-w-[6.5rem] max-w-[11rem] rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
-      : 'min-w-[6.5rem] max-w-[11rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
-
-  const tableShellClass = isCopiloto
-    ? 'wr-copiloto-table-wrap flex min-h-0 flex-col overflow-hidden'
-    : isCockpit
-      ? 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]'
-      : 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-card bg-white'
-
-  const tableScrollClass = isCopiloto
-    ? 'min-h-0 max-h-[min(68vh,calc(100dvh-16rem))] flex-1 overflow-auto overscroll-contain [scrollbar-width:thin]'
-    : 'min-h-0 max-h-[min(70vh,calc(100dvh-14rem))] flex-1 overflow-auto overscroll-contain [scrollbar-width:thin]'
-
-  const fieldClass = isCopiloto
-    ? 'wr-emendas-modal__field'
-    : 'rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2'
-
-  const fieldClassWide = isCopiloto
-    ? 'wr-emendas-modal__field w-full'
-    : 'w-full rounded-xl border border-border-card bg-bg-app px-3 py-2 text-sm text-text-primary outline-none ring-accent-gold/30 focus:ring-2'
-
-  const ghostBtnClass = isCopiloto
-    ? 'wr-copiloto-redes__ghost-btn'
-    : cn(
-        'flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-        isCockpit
-          ? 'border-white/20 bg-white/5 text-text-primary hover:bg-white/10'
-          : 'border-card bg-transparent text-text-primary hover:bg-background',
-      )
-
-  const exportBtnClass = isCopiloto
-    ? 'wr-copiloto-export-btn wr-copiloto-redes__ghost-btn'
-    : ghostBtnClass
-
-  const filterFieldClass = isCopiloto ? 'wr-copiloto-filter-field' : 'flex min-w-0 shrink-0 items-center gap-1.5'
-  const filterLabelClass = isCopiloto
-    ? 'wr-copiloto-filter-field-label'
-    : 'text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap'
-  const rowCheckboxClass =
-    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
+  const rotuloExport = selecionadas.size > 0 ? ` (${selecionadas.size})` : ''
+  const pctEmpenhado = totais.indicado > 0 ? (totais.empenhado / totais.indicado) * 100 : 0
+  const pctPago = totais.indicado > 0 ? (totais.pago / totais.indicado) * 100 : 0
+  const fmtPct = (n: number) => `${n.toFixed(1).replace('.', ',')}%`
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', pageShellClass)}>
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col',
-          isCopiloto ? 'px-0 py-0' : 'px-4 py-6 lg:px-6',
-        )}
-      >
-        <div className={cn(sectionShellClass, 'flex min-h-0 flex-1 flex-col')}>
-          <div
-            className={cn(
-              'flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between',
-              isCopiloto ? 'mb-4' : 'mb-6',
-            )}
+    <Moldura variant={variant}>
+      <TseFilterBar>
+        <TsePillSelect rotulo="Exercício" value={filtroExercicio} onChange={(e) => setFiltroExercicio(e.target.value)}>
+          <option value="">Todos</option>
+          {exercicios.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </TsePillSelect>
+        <TsePillSelect
+          rotulo="Município / beneficiário"
+          value={filtroMunicipio}
+          onChange={(e) => setFiltroMunicipio(e.target.value)}
+        >
+          <option value="">Todos</option>
+          {municipios.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </TsePillSelect>
+        <div className="flex flex-col gap-1 text-[13px] font-semibold">
+          Status
+          <TseSegmentado opcoes={OPCOES_STATUS} valor={filtroStatus} onChange={setFiltroStatus} />
+        </div>
+        <TseBusca value={busca} onChange={setBusca} placeholder="Buscar emenda ou objeto…" className="w-64" />
+        {filtrosAtivos ? (
+          <button type="button" onClick={limparFiltros} className={tseLinkAcaoClass}>
+            Limpar filtros
+          </button>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <button
+            type="button"
+            onClick={() => void carregar()}
+            disabled={loading}
+            title="Recarregar emendas do banco"
+            className={tseBotaoCinzaClass}
           >
-            {!isCopiloto ? (
-              <div>
-                <h1 className="text-lg font-semibold text-text-primary sm:text-xl">Emendas</h1>
-                <p className="mt-1 text-sm text-secondary">
-                  Cadastro e acompanhamento de emendas (institucional).
-                </p>
-              </div>
-            ) : (
-              <div className="min-w-0 flex-1" />
-            )}
-            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => void load()}
-                disabled={loading}
-                title="Recarregar emendas do banco"
-                className={ghostBtnClass}
-              >
-                <RefreshCw
-                  className={cn('h-3.5 w-3.5 shrink-0', loading && 'animate-spin')}
-                  aria-hidden
-                />
-                Atualizar
-              </button>
-              <button
-                type="button"
-                onClick={handleExportXlsx}
-                disabled={loading || rowsParaExportar.length === 0}
-                title={
-                  selecionadasCount > 0
-                    ? `Exportar ${selecionadasCount} emenda(s) selecionada(s) para Excel`
-                    : 'Exportar para Excel: registros filtrados e colunas visíveis'
-                }
-                className={exportBtnClass}
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Excel
-                {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={loading || rowsParaExportar.length === 0}
-                title={
-                  selecionadasCount > 0
-                    ? `Exportar ${selecionadasCount} emenda(s) selecionada(s) para PDF`
-                    : 'Exportar para PDF: registros filtrados e colunas visíveis'
-                }
-                className={exportBtnClass}
-              >
-                <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                PDF
-                {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={openCreate}
-                className={
-                  isCopiloto
-                    ? 'wr-copiloto-redes__ghost-btn'
-                    : sidebarPrimaryCTAButtonClass(isCockpit, 'shrink-0')
-                }
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Nova emenda
-              </button>
-            </div>
-          </div>
+            <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} aria-hidden />
+            Atualizar
+          </button>
+          <button type="button" onClick={() => setModal({ tipo: 'nova' })} className={tseBotaoPrimarioClass}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Nova emenda
+          </button>
+        </div>
+      </TseFilterBar>
 
-          {error && (
-            <div
-              className="mb-4 shrink-0 rounded-xl border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
-              role="alert"
-            >
-              {error}
-            </div>
+      {erro ? (
+        <div className="mt-4">
+          <TseErro>{erro}</TseErro>
+        </div>
+      ) : null}
+
+      <section className="mt-4 rounded-2xl bg-white px-5 py-4 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]">
+          <BlocoTotal rotulo="Emendas" valor={filtradas.length.toLocaleString('pt-BR')}>
+            <p className="mt-2 text-[11px] text-[var(--tse-muted)]">
+              {filtrosAtivos ? `de ${rows.length.toLocaleString('pt-BR')} cadastradas` : 'cadastradas'} ·{' '}
+              {totais.pagas.toLocaleString('pt-BR')} com pagamento
+            </p>
+          </BlocoTotal>
+          <BlocoTotal rotulo="Valor indicado" valor={formatarMoedaCurta(totais.indicado)}>
+            <p className="mt-2 text-[11px] text-[var(--tse-muted)]">soma das emendas listadas</p>
+          </BlocoTotal>
+          <BlocoTotal rotulo="Valor empenhado" valor={formatarMoedaCurta(totais.empenhado)}>
+            {totais.indicado > 0 ? (
+              <>
+                <TseBarraRotulo pct={pctEmpenhado} rotulo={fmtPct(pctEmpenhado)} />
+                <p className="mt-1 text-[11px] text-[var(--tse-muted)]">do valor indicado</p>
+              </>
+            ) : null}
+          </BlocoTotal>
+          <BlocoTotal rotulo="Valor pago" valor={formatarMoedaCurta(totais.pago)}>
+            {totais.indicado > 0 ? (
+              <>
+                <TseBarraRotulo pct={pctPago} rotulo={fmtPct(pctPago)} />
+                <p className="mt-1 text-[11px] text-[var(--tse-muted)]">do valor indicado</p>
+              </>
+            ) : null}
+          </BlocoTotal>
+        </div>
+      </section>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-[var(--tse-muted)]">
+          {selecionadas.size > 0 ? (
+            <>
+              <strong className="text-[var(--tse-text)]">{selecionadas.size}</strong>{' '}
+              {selecionadas.size === 1 ? 'selecionada' : 'selecionadas'} para exportar ·{' '}
+              <button type="button" onClick={() => setSelecionadas(new Set())} className={tseLinkAcaoClass}>
+                Limpar seleção
+              </button>
+            </>
+          ) : (
+            'Marque linhas para exportar só as escolhidas; sem seleção, exporta toda a lista filtrada.'
           )}
-
-          <div
-            className={cn(
-              isCopiloto ? 'wr-copiloto-filtros mb-4 shrink-0' : cn(innerPanelClass, 'mb-4 shrink-0'),
-            )}
-          >
-            <div
-              className={cn(
-                'flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]',
-                isCopiloto && 'w-full flex-wrap gap-2',
-              )}
-            >
-              {!isCopiloto ? (
-                <>
-                  <Filter className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
-                  <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                </>
-              ) : null}
-
-              <label className={cn(filterFieldClass, !isCopiloto && 'flex min-w-0 shrink-0 items-center gap-1.5')}>
-                <span className={filterLabelClass}>Exercício</span>
-                <input
-                  type="number"
-                  min={1900}
-                  max={2100}
-                  step={1}
-                  inputMode="numeric"
-                  value={filterExercicio}
-                  onChange={(ev) => setFilterExercicio(ev.target.value)}
-                  placeholder="Ano"
-                  className={isCopiloto ? undefined : filterInputClass}
-                />
-              </label>
-
-              {!isCopiloto ? (
-                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-              ) : null}
-
-              <label
-                className={cn(
-                  filterFieldClass,
-                  !isCopiloto && 'flex min-w-[8rem] max-w-[14rem] flex-1 items-center gap-1.5 shrink-0',
-                )}
-              >
-                <span className={filterLabelClass}>Emenda</span>
-                <input
-                  type="search"
-                  value={filterEmenda}
-                  onChange={(ev) => setFilterEmenda(ev.target.value)}
-                  placeholder="Contém…"
-                  className={isCopiloto ? undefined : cn(filterInputClass, 'min-w-[6rem] max-w-none flex-1')}
-                  autoComplete="off"
-                />
-              </label>
-
-              {!isCopiloto ? (
-                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-              ) : null}
-
-              <label
-                className={cn(
-                  filterFieldClass,
-                  !isCopiloto && 'flex min-w-0 max-w-[min(22rem,48vw)] shrink-0 items-center gap-1.5',
-                )}
-              >
-                <span className={filterLabelClass}>Município / Benef.</span>
-                <select
-                  value={filterMunicipio}
-                  onChange={(ev) => setFilterMunicipio(ev.target.value)}
-                  title="Valores cadastrados na base — filtro exato"
-                  className={
-                    isCopiloto
-                      ? undefined
-                      : cn(filterSelectClass, 'min-w-[9rem] max-w-[min(18rem,40vw)] flex-1 truncate')
-                  }
-                >
-                  <option value="">Todos</option>
-                  {municipiosBeneficiariosNaBase.map((m) => (
-                    <option key={m} value={m} title={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {!isCopiloto ? (
-                <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-              ) : null}
-
-              <div className={cn(filterFieldClass, !isCopiloto && 'flex items-center gap-1.5 shrink-0')}>
-                <span className={filterLabelClass}>Status</span>
-                <MultiCheckFilterSelect
-                  options={EMENDAS_STATUS_OPTIONS}
-                  selected={filterStatus}
-                  onChange={(next) =>
-                    setFilterStatus(
-                      new Set(
-                        [...next].filter(
-                          (id): id is FiltroStatusEmendaId =>
-                            id === 'pagas' || id === 'nao_pagas',
-                        ),
-                      ),
-                    )
-                  }
-                  allLabel="Todos os status"
-                  title="Filtrar por um ou mais status (pagas / não pagas)"
-                  ariaLabel="Status das emendas"
-                  triggerClassName={
-                    isCopiloto
-                      ? 'wr-copiloto-filter-select max-w-[14rem]'
-                      : filterSelectClass
-                  }
-                  actionClassName={
-                    isCopiloto
-                      ? 'wr-copiloto-redes__ghost-btn h-7 px-2 text-[10px]'
-                      : 'rounded-md border border-card px-2 py-0.5 text-[10px] font-medium text-text-secondary hover:bg-background'
-                  }
-                />
-              </div>
-
-              {filtrosAtivos ? (
-                <>
-                  {!isCopiloto ? (
-                    <span className="hidden md:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilterExercicio('')
-                      setFilterEmenda('')
-                      setFilterMunicipio('')
-                      setFilterStatus(new Set())
-                    }}
-                    className={
-                      isCopiloto
-                        ? 'wr-copiloto-redes__ghost-btn shrink-0'
-                        : 'shrink-0 rounded-lg border border-card bg-transparent px-2.5 py-1.5 text-xs font-medium text-secondary hover:border-accent-gold/40 hover:text-text-primary'
-                    }
-                  >
-                    Limpar
-                  </button>
-                </>
-              ) : null}
-
-              {selecionadasCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={limparSelecaoEmendas}
-                  className={
-                    isCopiloto
-                      ? 'wr-copiloto-redes__ghost-btn shrink-0'
-                      : 'shrink-0 rounded-lg border border-card bg-transparent px-2.5 py-1.5 text-xs font-medium text-secondary hover:border-accent-gold/40 hover:text-text-primary'
-                  }
-                >
-                  Limpar seleção ({selecionadasCount})
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2 text-xs text-secondary">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>
-                {loading
-                  ? 'Carregando…'
-                  : filtrosAtivos
-                    ? `${filteredRows.length} de ${rows.length} emenda(s)`
-                    : `${rows.length} emenda(s)`}
-                {selecionadasCount > 0
-                  ? ` · ${selecionadasCount} selecionada${selecionadasCount === 1 ? '' : 's'}`
-                  : ''}
-              </span>
-              {!loading && (
-                <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
-              )}
-              {!loading && (
-                <span className="whitespace-nowrap">
-                  <strong>Indicado:</strong> {formatMoney(totaisFiltrados.valorIndicado)}
-                </span>
-              )}
-              {!loading && (
-                <span className="whitespace-nowrap">
-                  <strong>Empenhado:</strong> {formatMoney(totaisFiltrados.valorEmpenhado)}
-                </span>
-              )}
-              {!loading && (
-                <span className="whitespace-nowrap">
-                  <strong>Pago:</strong> {formatMoney(totaisFiltrados.valorPago)}
-                </span>
-              )}
-            </div>
-            <div className="relative" ref={columnPickerRef}>
-              <button
-                type="button"
-                onClick={() => setShowColumnPicker((s) => !s)}
-                className={cn(
-                  isCopiloto
-                    ? 'wr-copiloto-redes__ghost-btn'
-                    : 'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  !isCopiloto &&
-                    (isCockpit
-                      ? 'border-white/20 bg-white/5 text-text-primary hover:bg-white/10'
-                      : 'border-card bg-surface text-text-primary hover:bg-background'),
-                  showColumnPicker &&
-                    (isCopiloto
-                      ? 'border-[color-mix(in_srgb,#333_28%,transparent)]'
-                      : isCockpit
-                        ? 'ring-2 ring-accent-gold/40'
-                        : 'ring-2 ring-accent-gold/30'),
-                )}
-                aria-expanded={showColumnPicker}
-                aria-haspopup="true"
-              >
-                <Columns2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Colunas
-              </button>
-              {showColumnPicker ? (
-                <div
-                  className={cn(
-                    'absolute right-0 top-full z-30 mt-1 min-w-[min(100vw-2rem,280px)] max-w-[min(100vw-2rem,320px)] rounded-xl py-2 shadow-lg',
-                    isCockpit
-                      ? 'border border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.96)_0%,rgba(18,30,38,0.98)_100%)]'
-                      : 'border border-card bg-bg-surface',
-                  )}
-                  role="menu"
-                >
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-secondary">
-                    Todos os campos — tabela e exportação
-                  </div>
-                  <div className="max-h-[min(70vh,26rem)] overflow-y-auto overscroll-contain [scrollbar-width:thin]">
-                    {EMENDAS_LIST_COLUMN_KEYS.map((col) => (
-                      <label
-                        key={col}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-text-primary',
-                          isCockpit ? 'hover:bg-white/10' : 'hover:bg-background',
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={visibleColumns[col]}
-                          onChange={() => toggleColumn(col)}
-                          className={cn(
-                            'h-3.5 w-3.5 shrink-0 rounded border-card text-accent-gold focus:ring-accent-gold',
-                            isCockpit && 'border-white/30 bg-white/5',
-                          )}
-                        />
-                        <span className="min-w-0 leading-snug">{EMENDAS_LIST_COLUMN_LABELS[col]}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className={cn('min-h-0 flex-1', tableShellClass)}>
-            {loading ? (
-              <div className="flex min-h-[240px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-accent-gold" aria-hidden />
-              </div>
-            ) : rows.length === 0 ? (
-              <p className="p-8 text-center text-sm text-secondary">Nenhuma emenda cadastrada.</p>
-            ) : filteredRows.length === 0 ? (
-              <p className="p-8 text-center text-sm text-secondary">
-                Nenhuma emenda corresponde aos filtros. Ajuste ou use Limpar.
-              </p>
-            ) : (
-              <div className={tableScrollClass}>
-                <table
-                  className={cn(
-                    'w-full text-left text-sm',
-                    isCopiloto && 'wr-copiloto-table',
-                    activeColumnList.length > 10
-                      ? 'min-w-[1400px]'
-                      : activeColumnList.length > 6
-                        ? 'min-w-[1100px]'
-                        : activeColumnList.length >= 4
-                          ? 'min-w-[720px]'
-                          : 'min-w-[480px]',
-                  )}
-                >
-                  <thead>
-                    <tr
-                      className={cn(
-                        'sticky top-0 z-10 border-b',
-                        isCopiloto
-                          ? 'border-[var(--wr-divider,#ebebe8)] bg-transparent'
-                          : isCockpit
-                            ? 'border-white/10 bg-white/[0.06]'
-                            : 'border-card bg-white',
-                      )}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <TseMenu icone={Columns2} rotulo="Colunas" largura="w-64">
+            {() => (
+              <div>
+                <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                  Tabela e exportação
+                </p>
+                <div className="max-h-[min(60vh,24rem)] overflow-y-auto pb-1">
+                  {EMENDAS_LIST_COLUMN_KEYS.map((col) => (
+                    <label
+                      key={col}
+                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-[var(--tse-yellow-soft)]"
                     >
-                      <th className="w-10 px-3 py-2" scope="col">
-                        <input
-                          ref={selectAllRef}
-                          type="checkbox"
-                          checked={todasFiltradasSelecionadas}
-                          onChange={toggleTodasFiltradas}
-                          disabled={filteredRows.length === 0}
-                          className={rowCheckboxClass}
-                          title={
-                            todasFiltradasSelecionadas
-                              ? 'Desmarcar todas as emendas filtradas'
-                              : 'Selecionar todas as emendas filtradas'
-                          }
-                          aria-label="Selecionar todas as emendas filtradas"
-                        />
-                      </th>
-                      {activeColumnList.map((col) => {
-                        const isActive = sortColumn === col
-                        return (
-                          <th
-                            key={col}
-                            className={cn(
-                              'px-4 py-2 font-semibold',
-                              isCockpit ? 'text-text-primary' : 'text-black',
-                            )}
-                            scope="col"
-                            aria-sort={
-                              isActive ? (sortAsc ? 'ascending' : 'descending') : 'none'
-                            }
-                          >
-                            <button
-                              type="button"
-                              onClick={() => toggleSort(col)}
-                              className={cn(
-                                'flex w-full items-center gap-1 text-left transition-colors',
-                                isCockpit ? 'hover:text-accent-gold' : 'hover:text-accent-gold',
-                              )}
-                              title={`Ordenar ${EMENDAS_LIST_COLUMN_LABELS[col]} (${isActive && !sortAsc ? 'A→Z' : 'Z→A'})`}
-                            >
-                              {EMENDAS_LIST_COLUMN_LABELS[col]}
-                              {isActive ? (
-                                sortAsc ? (
-                                  <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                                ) : (
-                                  <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                                )
-                              ) : (
-                                <ArrowUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
-                              )}
-                            </button>
-                          </th>
-                        )
-                      })}
-                      <th
-                        className={cn(
-                          'w-28 px-4 py-2 text-right font-semibold',
-                          isCockpit ? 'text-text-primary' : 'text-black',
-                        )}
-                        scope="col"
-                      >
-                        Ações
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedFilteredRows.map((r) => {
-                      const selecionada = selectedEmendaIds.has(r.id)
-                      return (
-                      <tr
-                        key={r.id}
-                        className={cn(
-                          'border-b',
-                          isCopiloto
-                            ? 'border-[var(--wr-divider,#ebebe8)]'
-                            : 'hover:bg-accent-gold-soft/25',
-                          isCockpit ? 'border-white/10' : !isCopiloto && 'border-card/80',
-                          selecionada && 'bg-[color-mix(in_srgb,#f2d06b_10%,transparent)]',
-                        )}
-                      >
-                      <td className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={selecionada}
-                          onChange={() => toggleEmendaSelecionada(r.id)}
-                          className={rowCheckboxClass}
-                          aria-label={`Selecionar emenda ${r.emenda}`}
-                        />
-                      </td>
-                      {activeColumnList.map((col) => (
-                        <td key={col} className={emendaListTdClass(col)} title={emendaCellTitle(r, col)}>
-                          {renderEmendaListCell(r, col)}
-                        </td>
-                      ))}
-                      <td className="px-4 py-2 text-right">
-                        <div className="inline-flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(r)}
-                            className="rounded-lg p-2 text-accent-gold hover:bg-accent-gold-soft/70"
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDuplicate(r)}
-                            className="rounded-lg p-2 text-text-secondary hover:bg-accent-gold-soft/70 hover:text-text-primary"
-                            title="Duplicar"
-                            aria-label="Duplicar emenda"
-                          >
-                            <Copy className="h-4 w-4" aria-hidden />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void remove(r)}
-                            disabled={deletingId === r.id}
-                            className="rounded-lg p-2 text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
-                            title="Excluir"
-                          >
-                            {deletingId === r.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                            ) : (
-                              <Trash2 className="h-4 w-4" aria-hidden />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                      )
-                    })}
-                  </tbody>
-              </table>
-            </div>
+                      <input
+                        type="checkbox"
+                        checked={colunasVisiveis[col]}
+                        onChange={() => alternarColuna(col)}
+                        className={checkboxClass}
+                      />
+                      {EMENDAS_LIST_COLUMN_LABELS[col]}
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
+          </TseMenu>
+          <button
+            type="button"
+            onClick={() => exportar('xlsx')}
+            disabled={loading || linhasExportar.length === 0}
+            title="Exportar para Excel as colunas visíveis"
+            className={tseBotaoCinzaClass}
+          >
+            <FileSpreadsheet className={tseBotaoIconeClass} aria-hidden />
+            Excel{rotuloExport}
+          </button>
+          <button
+            type="button"
+            onClick={() => exportar('pdf')}
+            disabled={loading || linhasExportar.length === 0}
+            title="Exportar para PDF as colunas visíveis"
+            className={tseBotaoCinzaClass}
+          >
+            <FileText className={tseBotaoIconeClass} aria-hidden />
+            PDF{rotuloExport}
+          </button>
         </div>
       </div>
 
-      {modalOpen && typeof document !== 'undefined' && createPortal(
-        <div
-          className={cn(
-            'fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]',
-            isCopiloto && 'wr-emendas-modal',
-          )}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="emenda-modal-title"
-        >
-          <div
-            className={cn(
-              'flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border-card bg-bg-surface shadow-2xl',
-              isCopiloto && 'wr-emendas-modal__panel shadow-none bg-white',
-            )}
-          >
-            <div
-              className={cn(
-                'sticky top-0 z-[1] flex shrink-0 items-center justify-between border-b border-border-card bg-bg-surface px-5 py-4',
-                isCopiloto && 'bg-white',
-              )}
+      <div className="mt-3">
+        {loading && rows.length === 0 ? (
+          <TseCarregando texto="Carregando emendas…" className="min-h-[30vh]" />
+        ) : rows.length === 0 ? (
+          <TseVazio>
+            Nenhuma emenda cadastrada.{' '}
+            <button
+              type="button"
+              onClick={() => setModal({ tipo: 'nova' })}
+              className="font-bold text-[var(--tse-olive)] hover:underline"
             >
-              <h2 id="emenda-modal-title" className="text-base font-semibold text-text-primary">
-                {editingId ? 'Editar Emenda' : isDuplicating ? 'Duplicar Emenda' : 'Nova Emenda'}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-lg p-2 text-text-secondary hover:bg-accent-gold-soft/60 hover:text-text-primary"
-                aria-label="Fechar"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div
-              className={cn(
-                'min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5 [scrollbar-width:thin]',
-                isCopiloto && 'wr-emendas-modal__body bg-white',
-              )}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:gap-8">
-                <div className="flex min-w-0 flex-1 flex-col gap-4">
-                  <Field label="Bloco">
-                    <input
-                      className={fieldClass}
-                      value={form.bloco}
-                      onChange={(ev) => setForm((s) => ({ ...s, bloco: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Emenda">
-                    <input
-                      className={fieldClass}
-                      value={form.emenda}
-                      onChange={(ev) => setForm((s) => ({ ...s, emenda: ev.target.value }))}
-                      required
-                    />
-                  </Field>
-                  <Field label="Exercício">
-                    <input
-                      type="number"
-                      min={1900}
-                      max={2100}
-                      step={1}
-                      inputMode="numeric"
-                      className={fieldClass}
-                      value={form.exercicio}
-                      onChange={(ev) => setForm((s) => ({ ...s, exercicio: ev.target.value }))}
-                      placeholder="Ano da emenda"
-                    />
-                  </Field>
-                  <Field label="Município / Beneficiário">
-                    <p className="text-[0.7rem] leading-snug text-text-secondary">
-                      Pode ser um dos 224 municípios do Piauí ou o nome de um órgão, secretaria ou outro
-                      beneficiário.
-                    </p>
-                    <input
-                      type="text"
-                      className={fieldClassWide}
-                      value={form.municipio_beneficiario}
-                      onChange={(ev) =>
-                        setForm((s) => ({ ...s, municipio_beneficiario: ev.target.value }))
-                      }
-                      placeholder="Ex.: Teresina, SESAPI, Secretaria Municipal de Saúde…"
-                      autoComplete="off"
-                    />
-                    {loadingCities ? (
-                      <div className="flex items-center gap-2 rounded-xl border border-border-card bg-bg-app px-3 py-2.5">
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-gold" aria-hidden />
-                        <span className="text-sm text-text-secondary">Carregando municípios…</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 rounded-xl border border-border-card/80 bg-bg-app/40 p-3">
-                        <span className="text-xs font-medium text-text-secondary">
-                          Atalho: escolher município do Piauí
-                        </span>
-                        <input
-                          type="text"
-                          className={fieldClassWide}
-                          placeholder="Buscar município (ex.: Teresina, Parnaíba…)"
-                          value={municipioBusca}
-                          onChange={(ev) => {
-                            const q = ev.target.value
-                            setMunicipioBusca(q)
-                            const t = q.trim().toLowerCase()
-                            if (!t) setFilteredCities(cities)
-                            else
-                              setFilteredCities(
-                                cities.filter((c) => c.name.toLowerCase().includes(t))
-                              )
-                          }}
-                          autoComplete="off"
-                        />
-                        <select
-                          className={fieldClassWide}
-                          style={{ maxHeight: 220, overflowY: 'auto' }}
-                          value={
-                            cities.find(
-                              (c) => c.name.trim() === form.municipio_beneficiario.trim()
-                            )?.id ?? ''
-                          }
-                          onChange={(ev) => {
-                            const id = ev.target.value
-                            if (!id) return
-                            const city = cities.find((c) => c.id === id)
-                            setForm((s) => ({
-                              ...s,
-                              municipio_beneficiario: city?.name?.trim() ?? '',
-                            }))
-                          }}
-                        >
-                          <option value="">Selecione para preencher o campo acima</option>
-                          {(filteredCities.length > 0 ? filteredCities : cities).map((city) => (
-                            <option key={city.id} value={city.id}>
-                              {city.name}
-                            </option>
-                          ))}
-                        </select>
-                        {cities.length > 0 && (
-                          <p className="text-[0.65rem] leading-snug text-text-secondary">
-                            Lista com {cities.length} municípios. A escolha copia o nome para o
-                            beneficiário.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </Field>
-                  <Field label="Funcional">
-                    <input
-                      className={fieldClass}
-                      value={form.funcional}
-                      onChange={(ev) => setForm((s) => ({ ...s, funcional: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="GND">
-                    <input
-                      className={fieldClass}
-                      value={form.gnd}
-                      onChange={(ev) => setForm((s) => ({ ...s, gnd: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Valor indicado">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={fieldClass}
-                      value={form.valor_indicado}
-                      onChange={(ev) => setForm((s) => ({ ...s, valor_indicado: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Valor empenhado">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={fieldClass}
-                      value={form.valor_empenhado}
-                      onChange={(ev) => setForm((s) => ({ ...s, valor_empenhado: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Valor a empenhar">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={fieldClass}
-                      value={form.valor_a_empenhar}
-                      onChange={(ev) => setForm((s) => ({ ...s, valor_a_empenhar: ev.target.value }))}
-                    />
-                  </Field>
-                </div>
-
-                <div className="flex min-w-0 flex-1 flex-col gap-4">
-                  <Field label="Valor pago">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={fieldClass}
-                      value={form.valor_pago}
-                      onChange={(ev) => setForm((s) => ({ ...s, valor_pago: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Valor a ser pago">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={fieldClass}
-                      value={form.valor_a_ser_pago}
-                      onChange={(ev) => setForm((s) => ({ ...s, valor_a_ser_pago: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Empenho">
-                    <input
-                      className={fieldClass}
-                      value={form.empenho}
-                      onChange={(ev) => setForm((s) => ({ ...s, empenho: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Data do empenho">
-                    <input
-                      type="date"
-                      className={fieldClass}
-                      value={form.data_empenho}
-                      onChange={(ev) => setForm((s) => ({ ...s, data_empenho: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Portaria / Convênio">
-                    <input
-                      className={fieldClass}
-                      value={form.portaria_convenio}
-                      onChange={(ev) => setForm((s) => ({ ...s, portaria_convenio: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Nº da proposta">
-                    <input
-                      className={fieldClass}
-                      value={form.numero_proposta}
-                      onChange={(ev) => setForm((s) => ({ ...s, numero_proposta: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Pagamento">
-                    <input
-                      type="date"
-                      className={fieldClass}
-                      value={form.data_pagamento}
-                      onChange={(ev) => setForm((s) => ({ ...s, data_pagamento: ev.target.value }))}
-                    />
-                  </Field>
-                  <Field label="Lideranças">
-                    <input
-                      className={fieldClass}
-                      value={form.liderancas}
-                      onChange={(ev) => setForm((s) => ({ ...s, liderancas: ev.target.value }))}
-                    />
-                  </Field>
-                </div>
-              </div>
-
-              <Field label="Alteração">
-                <input
-                  className={fieldClass}
-                  value={form.alteracao}
-                  onChange={(ev) => setForm((s) => ({ ...s, alteracao: ev.target.value }))}
-                />
-              </Field>
-              <Field label="Objeto">
-                <textarea
-                  rows={4}
-                  className={cn(fieldClass, 'resize-y')}
-                  value={form.objeto}
-                  onChange={(ev) => setForm((s) => ({ ...s, objeto: ev.target.value }))}
-                />
-              </Field>
-            </div>
-
-            <div
-              className={cn(
-                'flex shrink-0 justify-end gap-2 border-t border-border-card bg-bg-surface px-5 py-4',
-                isCopiloto && 'wr-emendas-modal__footer bg-white',
-              )}
-            >
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-xl border border-border-card bg-bg-app px-4 py-2 text-sm font-medium text-text-primary hover:bg-accent-gold-soft/50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => void save()}
-                disabled={saving}
-                className={sidebarPrimaryCTAButtonClass(isCockpit, 'min-w-[120px]')}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                ) : (
-                  <Save className="h-4 w-4" aria-hidden />
+              Cadastrar a primeira
+            </button>
+          </TseVazio>
+        ) : filtradas.length === 0 ? (
+          <TseVazio>Nenhuma emenda corresponde aos filtros. Ajuste ou use «Limpar filtros».</TseVazio>
+        ) : (
+          <>
+            <div className={cn(tseTabela.container, 'max-h-[min(70vh,calc(100dvh-16rem))] overflow-auto')}>
+              <table
+                className={cn(
+                  tseTabela.table,
+                  colunasAtivas.length > 10 ? 'min-w-[1400px]' : colunasAtivas.length > 6 ? 'min-w-[1100px]' : 'min-w-[720px]',
                 )}
-                Salvar
-              </button>
+                data-tse-tabela
+              >
+                <thead className={cn(tseTabela.thead, 'sticky top-0 z-10')}>
+                  <tr>
+                    <th className={cn(tseTabela.th, 'w-10')}>
+                      <input
+                        ref={selecionarTodasRef}
+                        type="checkbox"
+                        checked={todasSelecionadas}
+                        onChange={alternarTodas}
+                        className={checkboxClass}
+                        aria-label="Selecionar todas as emendas filtradas"
+                      />
+                    </th>
+                    {colunasAtivas.map((col) => (
+                      <TseThOrdenavel
+                        key={col}
+                        col={col}
+                        sortCol={sortCol}
+                        sortAsc={sortAsc}
+                        onSort={ordenar}
+                        alinhar={COLUNAS_VALOR.has(col) ? 'right' : 'left'}
+                        className="whitespace-nowrap"
+                      >
+                        {EMENDAS_LIST_COLUMN_LABELS[col]}
+                      </TseThOrdenavel>
+                    ))}
+                    <th className={cn(tseTabela.th, 'text-right')}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordenadas.slice(0, limite).map((r) => {
+                    const sel = selecionadas.has(r.id)
+                    return (
+                      <tr
+                        key={r.id}
+                        className={cn(
+                          tseTabela.tr,
+                          'hover:bg-[var(--tse-bar)]',
+                          sel && 'bg-[var(--tse-yellow-soft)] hover:bg-[var(--tse-yellow-soft)]',
+                        )}
+                      >
+                        <td className={tseTabela.td}>
+                          <input
+                            type="checkbox"
+                            checked={sel}
+                            onChange={() => alternarSelecao(r.id)}
+                            className={checkboxClass}
+                            aria-label={`Selecionar emenda ${r.emenda}`}
+                          />
+                        </td>
+                        {colunasAtivas.map((col) => {
+                          const texto = textoCelula(r, col)
+                          return (
+                            <td
+                              key={col}
+                              title={COLUNAS_TEXTO_LONGO.has(col) || col === 'emenda' ? texto : undefined}
+                              className={cn(
+                                tseTabela.td,
+                                COLUNAS_VALOR.has(col) && 'whitespace-nowrap text-right tabular-nums',
+                                col === 'valor_pago' && isEmendaPaga(r) && 'font-bold text-[var(--tse-olive)]',
+                                col === 'valor_indicado' && 'font-bold',
+                                (COLUNAS_DATA.has(col) || col === 'exercicio') && 'whitespace-nowrap tabular-nums',
+                                col === 'emenda' && 'max-w-[220px] truncate font-semibold',
+                                col === 'municipio_beneficiario' && 'max-w-[200px] truncate',
+                                col === 'id' && 'max-w-[120px] truncate font-mono text-[11px]',
+                                COLUNAS_TEXTO_LONGO.has(col) && 'max-w-[min(18rem,40vw)] truncate text-[var(--tse-muted)]',
+                              )}
+                            >
+                              {texto}
+                            </td>
+                          )
+                        })}
+                        <td className={cn(tseTabela.td, 'py-1')}>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setModal({ tipo: 'editar', emenda: r })}
+                              title="Editar"
+                              aria-label={`Editar emenda ${r.emenda}`}
+                              className={botaoAcao}
+                            >
+                              <Pencil className="h-4 w-4 text-[var(--tse-gold-text)]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setModal({ tipo: 'duplicar', emenda: r })}
+                              title="Duplicar"
+                              aria-label={`Duplicar emenda ${r.emenda}`}
+                              className={botaoAcao}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void remover(r)}
+                              disabled={excluindoId === r.id}
+                              title="Excluir"
+                              aria-label={`Excluir emenda ${r.emenda}`}
+                              className={cn(botaoAcao, 'hover:text-red-700')}
+                            >
+                              {excluindoId === r.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
+            <TseCarregarMais restantes={ordenadas.length - limite} onClick={() => setLimite((n) => n + POR_PAGINA)} />
+          </>
+        )}
+      </div>
+
+      {modal ? <EmendaModal modo={modal} onClose={() => setModal(null)} onSalva={carregar} /> : null}
+    </Moldura>
   )
 }

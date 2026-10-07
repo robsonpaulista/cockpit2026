@@ -78,7 +78,7 @@ export function getCandidateLineColor(
 ): string {
   if (isNaoSabeOuNaoOpinaNome(nome)) return '#B4B2A9'
   if (nome === candidatoPadrao || normName(nome) === normName(candidatoPadrao)) {
-    return '#185FA5'
+    return '#6A8421'
   }
 
   const normalized = normName(nome)

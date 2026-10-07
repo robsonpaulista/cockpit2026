@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import type { Chart as ChartJsInstance, ChartEvent, TooltipItem } from 'chart.js'
-import { IconArrowsMaximize, IconPin, IconPinFilled, IconX } from '@tabler/icons-react'
+import { Maximize2, Pin, PinOff, X } from 'lucide-react'
 import {
   computeYAxisMax,
   extractInstitutosFromRow,
@@ -33,6 +33,8 @@ import {
   createPesquisaEndLineLabelsPlugin,
 } from '@/lib/pesquisa-tendencia-chart-end-labels-plugin'
 import { cn } from '@/lib/utils'
+import { TseCarregando, tseBotaoNeutroClass, tseCardClass } from '@/components/tse/tse-ui'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 
 Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip)
 
@@ -80,6 +82,9 @@ interface TendenciaTemporalPanelProps {
 }
 
 const POPUP_WIDTH = 228
+
+/** Chart.js não lê variáveis CSS: cores do canvas vêm direto dos tokens TSE. */
+const TSE = TSE_TOKENS as Record<string, string>
 
 function countSeriePoints(data: readonly PesquisaSerieRow[], nome: string): number {
   const key = serieKeyForCandidate(nome)
@@ -388,12 +393,12 @@ export function TendenciaTemporalPanel({
           tooltip: {
             enabled: !fixPopupsRef.current,
             backgroundColor: '#ffffff',
-            titleColor: '#2C2C2A',
-            bodyColor: '#5F5E5A',
-            borderColor: '#D3D1C7',
+            titleColor: TSE['--tse-text'],
+            bodyColor: TSE['--tse-muted'],
+            borderColor: TSE['--tse-border'],
             borderWidth: 1,
             padding: 10,
-            titleFont: { size: 12, weight: 500 },
+            titleFont: { size: 12, weight: 700 },
             bodyFont: { size: 11 },
             itemSort: (a: TooltipItem<'line'>, b: TooltipItem<'line'>) => {
               const av = typeof a.parsed.y === 'number' ? a.parsed.y : -Infinity
@@ -421,13 +426,13 @@ export function TendenciaTemporalPanel({
         scales: {
           x: {
             grid: { display: false },
-            border: { color: '#D3D1C7', width: 0.5 },
+            border: { color: TSE['--tse-border'], width: 0.5 },
             ticks: {
               autoSkip: chartLabels.length > 8,
               maxRotation: 0,
               minRotation: 0,
               font: { size: 11 },
-              color: '#888780',
+              color: TSE['--tse-muted'],
               padding: 12,
             },
           },
@@ -445,7 +450,7 @@ export function TendenciaTemporalPanel({
             ticks: {
               stepSize: 10,
               font: { size: 11 },
-              color: '#888780',
+              color: TSE['--tse-muted'],
               padding: 8,
               callback: (value) => `${value}%`,
             },
@@ -529,12 +534,10 @@ export function TendenciaTemporalPanel({
   const renderBody = () => {
     if (loading) {
       return (
-        <div
-          className={cn('flex items-center justify-center', fillAvailable && 'min-h-0 flex-1')}
-          style={fillAvailable ? undefined : { height: resolvedChartHeight }}
-        >
-          <p className="text-[12px] text-text-secondary">Carregando...</p>
-        </div>
+        <TseCarregando
+          texto="Carregando pesquisas…"
+          className={cn('min-h-0', fillAvailable && 'flex-1')}
+        />
       )
     }
 
@@ -547,7 +550,7 @@ export function TendenciaTemporalPanel({
           )}
           style={fillAvailable ? undefined : { height: resolvedChartHeight }}
         >
-          <p className="text-[12px] text-text-secondary">{emptyMessage}</p>
+          <p className="text-[14px] text-[var(--tse-muted)]">{emptyMessage}</p>
         </div>
       )
     }
@@ -583,13 +586,13 @@ export function TendenciaTemporalPanel({
           {pinnedPopups.map((popup) => (
             <div
               key={popup.dataIndex}
-              className="pointer-events-auto absolute z-20 max-h-[min(420px,70%)] w-[228px] overflow-y-auto rounded-[10px] border border-[#D3D1C7] bg-white p-2.5 shadow-[0_8px_24px_rgba(44,44,42,0.12)]"
+              className="pointer-events-auto absolute z-20 max-h-[min(420px,70%)] w-[228px] overflow-y-auto rounded-lg border border-[var(--tse-border)] bg-white p-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
               style={{ left: popup.left, top: popup.top }}
               role="dialog"
               aria-label={`Detalhe da pesquisa ${popup.title}`}
             >
               <div className="mb-1.5 flex items-start gap-1.5">
-                <p className="min-w-0 flex-1 text-[12px] font-medium leading-snug text-[#2C2C2A]">
+                <p className="min-w-0 flex-1 text-[12px] font-bold leading-snug text-[var(--tse-text)]">
                   {popup.title}
                 </p>
                 <button
@@ -598,15 +601,15 @@ export function TendenciaTemporalPanel({
                     e.stopPropagation()
                     setPinnedIndexes((prev) => prev.filter((idx) => idx !== popup.dataIndex))
                   }}
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[#888780] transition-colors hover:bg-[#F5F4F0] hover:text-[#2C2C2A]"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[var(--tse-muted)] transition-colors hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
                   aria-label={`Fechar popup ${popup.title}`}
                 >
-                  <IconX className="h-3.5 w-3.5" stroke={1.75} aria-hidden />
+                  <X className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
               <ul className="flex flex-col gap-1">
                 {popup.rows.map((row) => (
-                  <li key={row.nome} className="flex items-center gap-1.5 text-[11px] text-[#5F5E5A]">
+                  <li key={row.nome} className="flex items-center gap-1.5 text-[11px] text-[var(--tse-muted)]">
                     <span
                       className="h-2.5 w-2.5 shrink-0 rounded-[3px] border"
                       style={{ borderColor: row.color, backgroundColor: `${row.color}22` }}
@@ -615,7 +618,7 @@ export function TendenciaTemporalPanel({
                     <span className={cn('min-w-0 flex-1 truncate', row.isNso && 'opacity-70')}>
                       {legendDisplayName(row.nome)}
                     </span>
-                    <span className="shrink-0 tabular-nums font-medium text-[#2C2C2A]">
+                    <span className="shrink-0 font-bold tabular-nums text-[var(--tse-text)]">
                       {row.value.toFixed(1)}%
                     </span>
                   </li>
@@ -636,7 +639,7 @@ export function TendenciaTemporalPanel({
               : { maxHeight: resolvedChartHeight }
           }
         >
-          <p className="mb-0.5 border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-medium uppercase tracking-[0.05em] text-text-muted">
+          <p className="mb-0.5 border-b border-[#EEEEEE] pb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
             Variação · clique para ocultar linha
           </p>
 
@@ -645,16 +648,16 @@ export function TendenciaTemporalPanel({
             const delta = formatDeltaLegendText(entry.firstValue, entry.latestValue, entry.singleReading)
             const deltaClass =
               delta.tone === 'up'
-                ? 'text-[#3B6D11] font-medium'
+                ? 'font-bold text-[var(--tse-olive)]'
                 : delta.tone === 'down'
-                  ? 'text-[#A32D2D] font-medium'
-                  : 'text-text-muted'
+                  ? 'font-bold text-red-700'
+                  : 'text-[var(--tse-muted)]'
 
             return (
               <div key={entry.nome}>
                 {entry.isNso && index > 0 ? (
                   <div
-                    className="mb-1.5 border-t border-[rgb(var(--color-border-tertiary)/0.85)]"
+                    className="mb-1.5 border-t border-[#EEEEEE]"
                     aria-hidden
                   />
                 ) : null}
@@ -662,7 +665,10 @@ export function TendenciaTemporalPanel({
                   type="button"
                   onClick={() => toggleCandidateVisibility(entry.nome, entry.datasetIndex)}
                   className={cn(
-                    'w-full rounded-[10px] border border-[rgb(var(--color-border-tertiary)/0.85)] px-2.5 py-2 text-left transition-colors hover:border-[rgb(var(--color-border-secondary)/0.85)]',
+                    'w-full rounded-lg border px-2.5 py-2 text-left transition-colors hover:bg-[var(--tse-bar)]',
+                    entry.nome === candidatoPadrao
+                      ? 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)]'
+                      : 'border-[#EEEEEE] bg-white',
                     hidden ? 'opacity-35' : entry.isNso ? 'opacity-80' : 'opacity-100'
                   )}
                 >
@@ -673,12 +679,12 @@ export function TendenciaTemporalPanel({
                         style={{ backgroundColor: entry.color }}
                         aria-hidden
                       />
-                      <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text-primary">
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--tse-text)]">
                         {legendDisplayName(entry.nome)}
                       </span>
                       {entry.latestValue !== null ? (
                         <span
-                          className="shrink-0 text-[12px] font-medium tabular-nums"
+                          className="shrink-0 text-[12px] font-bold tabular-nums"
                           style={{ color: entry.color }}
                         >
                           {entry.latestValue.toFixed(1).replace('.', ',')}%
@@ -687,11 +693,11 @@ export function TendenciaTemporalPanel({
                     </div>
 
                     {!entry.isNso ? (
-                      <p className={cn('ml-3.5 text-[10.5px] tabular-nums', deltaClass)}>{delta.text}</p>
+                      <p className={cn('ml-3.5 text-[11px] tabular-nums', deltaClass)}>{delta.text}</p>
                     ) : null}
 
                     {entry.resumo ? (
-                      <p className="ml-3.5 text-[10.5px] leading-snug text-text-muted">{entry.resumo}</p>
+                      <p className="ml-3.5 text-[11px] leading-snug text-[var(--tse-muted)]">{entry.resumo}</p>
                     ) : null}
                   </div>
                 </button>
@@ -706,17 +712,17 @@ export function TendenciaTemporalPanel({
   return (
     <div
       className={cn(
-        'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        tseCardClass,
         fillAvailable && 'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
         className
       )}
     >
       {showHeader ? (
         <div className="mb-3.5 shrink-0">
-          <h2 className="text-[13px] font-medium text-text-primary">
+          <h2 className="text-[15px] font-bold text-[var(--tse-text)]">
             Tendência temporal de intenção · todos os candidatos
           </h2>
-          <p className="mt-0.5 text-[11px] text-text-muted">
+          <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">
             {fixPopups
               ? 'Clique em uma data para fixar o popup · vários podem ficar abertos · use o X para fechar'
               : 'Passe o mouse sobre uma data para ver o detalhe · ative “Fixar popups” para manter abertos'}
@@ -736,16 +742,14 @@ export function TendenciaTemporalPanel({
             }}
             aria-pressed={fixPopups}
             className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors',
-              fixPopups
-                ? 'border-[#D3D1C7] bg-[#F5F4F0] text-text-primary'
-                : 'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-primary hover:bg-bg-app',
+              tseBotaoNeutroClass,
+              fixPopups && 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)]',
             )}
           >
             {fixPopups ? (
-              <IconPinFilled className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+              <Pin className="h-3.5 w-3.5 text-[var(--tse-gold-text)]" aria-hidden />
             ) : (
-              <IconPin className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+              <PinOff className="h-3.5 w-3.5 text-[var(--tse-muted)]" aria-hidden />
             )}
             Fixar popups
           </button>
@@ -754,7 +758,7 @@ export function TendenciaTemporalPanel({
               <button
                 type="button"
                 onClick={pinAllDates}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2.5 py-1.5 text-[11.5px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+                className={tseBotaoNeutroClass}
               >
                 Mostrar todas
               </button>
@@ -762,7 +766,7 @@ export function TendenciaTemporalPanel({
                 <button
                   type="button"
                   onClick={() => setPinnedIndexes([])}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2.5 py-1.5 text-[11.5px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+                  className={tseBotaoNeutroClass}
                 >
                   Fechar todas
                 </button>
@@ -773,9 +777,9 @@ export function TendenciaTemporalPanel({
             <button
               type="button"
               onClick={onTelaCheia}
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2.5 py-1.5 text-[11.5px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+              className={cn(tseBotaoNeutroClass, 'ml-auto')}
             >
-              <IconArrowsMaximize className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+              <Maximize2 className="h-3.5 w-3.5 text-[var(--tse-gold-text)]" aria-hidden />
               Tela cheia
             </button>
           ) : null}
@@ -785,9 +789,9 @@ export function TendenciaTemporalPanel({
           <button
             type="button"
             onClick={onTelaCheia}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2.5 py-1.5 text-[11.5px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+            className={tseBotaoNeutroClass}
           >
-            <IconArrowsMaximize className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+            <Maximize2 className="h-3.5 w-3.5 text-[var(--tse-gold-text)]" aria-hidden />
             Tela cheia
           </button>
         </div>

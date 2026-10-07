@@ -1,29 +1,35 @@
-import {
-  RESUMO_ELEICOES_TAB_ATENDIMENTO,
-  resumoEleicoesHubHref,
-} from '@/lib/resumo-eleicoes-hub-route'
+import { AGENDA_HREF, ATENDIMENTO_HREF } from '@/lib/resumo-eleicoes-hub-route'
+
+const RESULTADO_2026_HREF = '/dashboard/resumo-eleicoes/resultado-2026'
 
 export type SidebarQuickAccessItem = {
   id: string
   label: string
   href: string
-  icon: 'Activity' | 'Calendar' | 'ClipboardList'
+  icon: 'Activity' | 'Calendar' | 'ClipboardList' | 'Vote'
   pageKey: string
 }
 
-/** Ordem alfabética por rótulo (pt-BR). */
+/** Resultado 2026 fixo no topo; os demais em ordem alfabética por rótulo (pt-BR). */
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
+  {
+    id: 'quick-resultado-2026',
+    label: 'Resultado 2026',
+    href: RESULTADO_2026_HREF,
+    icon: 'Vote',
+    pageKey: 'resumo-eleicoes',
+  },
   {
     id: 'quick-agenda',
     label: 'Agenda',
-    href: '/dashboard/agenda',
+    href: AGENDA_HREF,
     icon: 'Calendar',
     pageKey: 'agenda',
   },
   {
     id: 'quick-atendimentos',
     label: 'Atendimentos',
-    href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO),
+    href: ATENDIMENTO_HREF,
     icon: 'ClipboardList',
     pageKey: 'resumo-eleicoes',
   },
@@ -36,19 +42,10 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   },
 ]
 
-export function isSidebarQuickAccessActive(
-  item: SidebarQuickAccessItem,
-  pathname: string,
-  search: string,
-): boolean {
+export function isSidebarQuickAccessActive(item: SidebarQuickAccessItem, pathname: string): boolean {
   switch (item.id) {
     case 'quick-agenda':
-      return pathname.startsWith('/dashboard/agenda')
-    case 'quick-atendimentos': {
-      if (!pathname.startsWith('/dashboard/resumo-eleicoes')) return false
-      const tab = new URLSearchParams(search).get('tab')
-      return !tab || tab === RESUMO_ELEICOES_TAB_ATENDIMENTO
-    }
+      return pathname.startsWith(AGENDA_HREF)
     case 'quick-termometro':
       return pathname.startsWith('/dashboard/war-room')
     default:

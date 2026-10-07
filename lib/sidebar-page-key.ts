@@ -23,12 +23,10 @@ export function pageKeyForSidebarItem(id: string): string {
     id === 'resumo-eleicoes-menu' ||
     id === 'resumo-eleicoes-principal' ||
     id === 'resumo-eleicoes-historico' ||
+    id === 'resultado-2026' ||
     id === 'resumo-eleicoes-secao'
   ) {
     return 'resumo-eleicoes'
-  }
-  if (id === 'resumo-eleicoes-chapa-federal' || id === 'resumo-eleicoes-chapa-estadual') {
-    return 'chapas'
   }
   if (
     id === 'conteudo-menu' ||

@@ -40,6 +40,7 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'chapas-estaduais': 'Estadual',
   'resumo-eleicoes-principal': 'Por cidade',
   'resumo-eleicoes-historico': 'Hist. federal',
+  'resultado-2026': 'Resultado 2026',
   'resumo-eleicoes-secao': 'Resultados Anteriores',
   'gestao-pesquisas-inicio': 'Início',
   'gestao-pesquisas-config': 'Config',

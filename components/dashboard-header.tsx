@@ -3,7 +3,6 @@
 import { usePathname, useSearchParams } from 'next/navigation'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
-import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import {
   TERRITORIO_CAMPO_PAGE_TITLE,
   territorioCampoPageTitle,
@@ -12,7 +11,6 @@ import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { AppBrandTitle } from '@/components/app-brand-title'
-import { WarRoomTopbarCountdown } from '@/components/war-room/war-room-topbar-countdown'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
@@ -25,9 +23,11 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/agenda': 'Agenda',
   '/dashboard/territorio': 'Base Eleitoral',
   '/dashboard/territorio/ipt': 'Mapa de Diagnóstico da Campanha',
-  '/dashboard/chapas': 'Chapas',
-  '/dashboard/chapas-estaduais': 'Chapas Estaduais',
-  '/dashboard/resumo-eleicoes': 'Painel de Atendimentos',
+  '/dashboard/chapas': 'Chapa Federal',
+  '/dashboard/chapas-estaduais': 'Chapa Estadual',
+  '/dashboard/resumo-eleicoes': 'Atendimento',
+  '/dashboard/resumo-eleicoes/secao': 'Votação por Seção',
+  '/dashboard/resumo-eleicoes/resultado-2026': 'Resultado 2026',
   '/dashboard/conteudo': 'Redes Sociais',
   '/dashboard/noticias': 'Radar eleitoral',
   '/dashboard/noticias/monitoramento': 'Radar eleitoral',
@@ -36,7 +36,6 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/mobilizacao/membros': 'Arena · Membros',
   '/dashboard/mobilizacao/painel': 'Arena · Painel',
   '/dashboard/mobilizacao/config': 'Arena · Config legado',
-  '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',
   '/dashboard/whatsapp': 'WhatsApp',
   '/dashboard/war-room': 'Termômetro',
   '/dashboard/material-campanha': 'Gestão de Material',
@@ -52,9 +51,6 @@ const pathToTitle: Record<string, string> = {
 }
 
 function getPageTitle(pathname: string, tab: string | null, _view: string | null): string {
-  if (pathname === '/dashboard/noticias/monitoramento' && tab === MONITORAMENTO_TAB_LIDERES) {
-    return 'Radar eleitoral · Eng. líderes'
-  }
   if (pathname === '/dashboard/territorio') {
     return territorioCampoPageTitle(tab)
   }
@@ -66,10 +62,19 @@ function getPageTitle(pathname: string, tab: string | null, _view: string | null
     if (rest.startsWith('cards')) return 'Redes Sociais · Cards'
     if (rest.startsWith('referencias')) return 'Redes Sociais · Referências visuais'
     if (rest.startsWith('analise')) return 'Redes Sociais · Análise'
-    if (rest.startsWith('instagram-lideres')) return 'Redes Sociais · Instagram líderes'
     return 'Redes Sociais'
   }
-  return pathToTitle[pathname] ?? (pathname.replace(/^\/dashboard\/?/, '').replace(/^\//, '') || 'Visão Geral')
+  return pathToTitle[pathname] ?? tituloPorCaminho(pathname)
+}
+
+/** Fallback legível para rotas sem título: `/dashboard/a-b/c-d` → `a b · c d`. */
+function tituloPorCaminho(pathname: string): string {
+  const partes = pathname
+    .replace(/^\/dashboard\/?/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((p) => p.replace(/-/g, ' '))
+  return partes.join(' · ') || 'Visão Geral'
 }
 
 export function DashboardHeader() {
@@ -96,6 +101,7 @@ export function DashboardHeader() {
 
   return (
     <header
+      id="cockpit-topbar"
       className={cn(
         'sticky top-0 z-30',
         isWarRoom &&
@@ -161,9 +167,6 @@ export function DashboardHeader() {
                     {pageTitle}
                   </h1>
                 )}
-                <div className="wr-topbar-clean__countdown-slot min-w-0 shrink truncate leading-none">
-                  <WarRoomTopbarCountdown />
-                </div>
               </div>
             ) : (
               <div className="flex min-w-0 flex-nowrap items-center gap-x-3 overflow-hidden sm:gap-x-4">
@@ -179,15 +182,6 @@ export function DashboardHeader() {
                     {pageTitle}
                   </h1>
                 )}
-                <div
-                  className={cn(
-                    'min-w-0 shrink truncate leading-none',
-                    lightBrand ? 'text-white/65' : 'text-text-muted',
-                    mobileAmberHeader && 'max-lg:text-white/75',
-                  )}
-                >
-                  <WarRoomTopbarCountdown />
-                </div>
               </div>
             )}
           </div>

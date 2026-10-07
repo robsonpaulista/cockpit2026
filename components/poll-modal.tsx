@@ -1,54 +1,44 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { X, Save } from 'lucide-react'
-import { useTheme } from '@/contexts/theme-context'
-import { cn } from '@/lib/utils'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
-
-interface City {
-  id: string
-  name: string
-  state: string
-}
-
-interface Poll {
-  id?: string
-  data: string
-  instituto: string
-  candidato_nome: string
-  tipo: 'estimulada' | 'espontanea'
-  cargo: 'dep_estadual' | 'dep_federal' | 'governador' | 'senador' | 'presidente'
-  cidade_id?: string | null
-  intencao: number
-  rejeicao: number
-}
+import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { Save } from 'lucide-react'
+import { TseErro, TseModal, tseBotaoCinzaClass, tseBotaoPrimarioClass, tseCampoClass, tseRotuloCampoClass } from '@/components/tse/tse-ui'
+import {
+  CARGO_PESQUISA_LABEL,
+  TIPO_PESQUISA_LABEL,
+  salvarPesquisa,
+  type CargoPesquisa,
+  type CidadePesquisa,
+  type Pesquisa,
+  type PesquisaForm,
+  type TipoPesquisa,
+} from '@/lib/services/pesquisa-client'
 
 interface PollModalProps {
-  poll: Poll | null
+  poll: Pesquisa | null
+  cidades: CidadePesquisa[]
+  candidatos: string[]
   onClose: () => void
   onUpdate: (options?: { silent?: boolean }) => void | Promise<void>
 }
 
-const cargoOptions = [
-  { value: 'dep_estadual', label: 'Dep. Estadual' },
-  { value: 'dep_federal', label: 'Dep. Federal' },
-  { value: 'governador', label: 'Governador' },
-  { value: 'senador', label: 'Senador' },
-  { value: 'presidente', label: 'Presidente' },
-]
+const FORM_ID = 'poll-modal-form'
 
-const tipoOptions = [
-  { value: 'estimulada', label: 'Estimulada' },
-  { value: 'espontanea', label: 'Espontânea' },
-]
-
-const POLLS_FETCH_LIMIT = 5000
-
-export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
-  const [formData, setFormData] = useState<Poll>({
-    data: '',
+function formInicial(poll: Pesquisa | null): PesquisaForm {
+  if (poll) {
+    return {
+      data: poll.data?.split('T')[0] ?? '',
+      instituto: poll.instituto,
+      candidato_nome: poll.candidato_nome,
+      tipo: poll.tipo,
+      cargo: poll.cargo,
+      cidade_id: poll.cidade_id ?? null,
+      intencao: poll.intencao,
+      rejeicao: poll.rejeicao,
+    }
+  }
+  return {
+    data: new Date().toISOString().split('T')[0],
     instituto: '',
     candidato_nome: '',
     tipo: 'estimulada',
@@ -56,401 +46,221 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
     cidade_id: null,
     intencao: 0,
     rejeicao: 0,
-  })
-  const [cities, setCities] = useState<City[]>([])
-  const [filteredCities, setFilteredCities] = useState<City[]>([])
-  const [loadingCities, setLoadingCities] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [candidatosExistentes, setCandidatosExistentes] = useState<string[]>([])
-  const candidatoInputRef = useRef<HTMLInputElement | null>(null)
-  const { theme } = useTheme()
-  const isCockpit = false
-
-  useEffect(() => {
-    fetchCities()
-    fetchCandidatosExistentes()
-  }, [])
-
-  useEffect(() => {
-    if (poll) {
-      // Garantir que a data está no formato correto (YYYY-MM-DD)
-      let dataFormatada = poll.data
-      if (dataFormatada && dataFormatada.includes('T')) {
-        // Se tem timestamp, extrair apenas a data
-        dataFormatada = dataFormatada.split('T')[0]
-      }
-      setFormData({
-        ...poll,
-        data: dataFormatada,
-      })
-    } else {
-      // Resetar para valores padrão
-      const today = new Date().toISOString().split('T')[0]
-      setFormData({
-        data: today,
-        instituto: '',
-        candidato_nome: '',
-        tipo: 'estimulada',
-        cargo: 'dep_estadual',
-        cidade_id: null,
-        intencao: 0,
-        rejeicao: 0,
-      })
-    }
-  }, [poll])
-
-  const fetchCities = async () => {
-    try {
-      setLoadingCities(true)
-      const response = await fetch('/api/campo/cities')
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Se não houver cidades, sincronizar do IBGE
-        if (!data || data.length === 0) {
-          console.log('Nenhuma cidade encontrada, sincronizando do IBGE...')
-          const syncResponse = await fetch('/api/campo/cities/sync', { method: 'POST' })
-          if (syncResponse.ok) {
-            const syncData = await syncResponse.json()
-            const citiesData = syncData.data || []
-            const sorted = citiesData.sort((a: City, b: City) => a.name.localeCompare(b.name))
-            setCities(sorted)
-            setFilteredCities(sorted)
-            return
-          }
-        }
-        
-        // Ordenar por nome
-        const sorted = data.sort((a: City, b: City) => a.name.localeCompare(b.name))
-        setCities(sorted)
-        setFilteredCities(sorted)
-      } else {
-        // Se houver erro, tentar sincronizar do IBGE
-        console.log('Tentando sincronizar municípios do IBGE...')
-        const syncResponse = await fetch('/api/campo/cities/sync', { method: 'POST' })
-        if (syncResponse.ok) {
-          const syncData = await syncResponse.json()
-          const citiesData = syncData.data || []
-          const sorted = citiesData.sort((a: City, b: City) => a.name.localeCompare(b.name))
-          setCities(sorted)
-          setFilteredCities(sorted)
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao buscar cidades:', error)
-    } finally {
-      setLoadingCities(false)
-    }
   }
-
-  const fetchCandidatosExistentes = async () => {
-    try {
-      const response = await fetch(`/api/pesquisa?limit=${POLLS_FETCH_LIMIT}`)
-      if (response.ok) {
-        const data = await response.json()
-        // Extrair nomes únicos de candidatos, ordenados alfabeticamente
-        const candidatos = Array.from(
-          new Set(
-            data
-              .map((p: Poll) => p.candidato_nome)
-              .filter((nome: string) => nome && nome.trim() !== '')
-          )
-        ).sort((a, b) => String(a).localeCompare(String(b))) as string[]
-        setCandidatosExistentes(candidatos)
-      }
-    } catch (error) {
-      console.error('Erro ao buscar candidatos existentes:', error)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-
-    try {
-      const url = poll?.id ? `/api/pesquisa/${poll.id}` : '/api/pesquisa'
-      const method = poll?.id ? 'PUT' : 'POST'
-
-      // Preparar dados para envio
-      const dataToSend = {
-        ...formData,
-        cidade_id: formData.cidade_id && formData.cidade_id.trim() !== '' 
-          ? formData.cidade_id 
-          : null,
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToSend),
-      })
-
-      if (response.ok) {
-        await Promise.resolve(onUpdate({ silent: !poll?.id }))
-        
-        // Atualizar lista de candidatos existentes após salvar
-        await fetchCandidatosExistentes()
-        
-        // Se for edição, fechar o modal
-        if (poll?.id) {
-          onClose()
-        } else {
-          // Se for nova pesquisa, manter o modal aberto e limpar apenas os campos variáveis.
-          setFormData((prev) => ({
-            ...prev,
-            candidato_nome: '',
-            intencao: 0,
-            rejeicao: 0,
-          }))
-          setTimeout(() => {
-            candidatoInputRef.current?.focus()
-          }, 0)
-        }
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Erro ao salvar pesquisa')
-      }
-    } catch (error) {
-      alert('Erro ao salvar pesquisa')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (typeof document === 'undefined') return null
-
-  return createPortal(
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-primary">
-            {poll?.id ? 'Editar Pesquisa' : 'Nova Pesquisa'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-background transition-colors"
-          >
-            <X className="w-5 h-5 text-secondary" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Data */}
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Data *
-            </label>
-            <input
-              type="date"
-              value={formData.data}
-              onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-              required
-              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-            />
-          </div>
-
-          {/* Instituto */}
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Instituto *
-            </label>
-            <input
-              type="text"
-              value={formData.instituto}
-              onChange={(e) => setFormData({ ...formData, instituto: e.target.value })}
-              placeholder="Nome do instituto"
-              required
-              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-            />
-          </div>
-
-          {/* Nome do Candidato */}
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Nome do Candidato *
-            </label>
-            <input
-              type="text"
-              list="candidatos-list"
-              ref={candidatoInputRef}
-              value={formData.candidato_nome}
-              onChange={(e) => setFormData({ ...formData, candidato_nome: e.target.value })}
-              placeholder="Digite ou selecione um candidato existente"
-              required
-              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-            />
-            <datalist id="candidatos-list">
-              {candidatosExistentes.map((candidato) => (
-                <option key={candidato} value={candidato} />
-              ))}
-            </datalist>
-            {candidatosExistentes.length > 0 && (
-              <p className="text-xs text-secondary mt-1">
-                {candidatosExistentes.length} candidato{candidatosExistentes.length !== 1 ? 's' : ''} cadastrado{candidatosExistentes.length !== 1 ? 's' : ''} anteriormente. Você pode selecionar ou digitar um novo nome.
-              </p>
-            )}
-          </div>
-
-          {/* Cidade */}
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Município (Piauí)
-            </label>
-            {loadingCities ? (
-              <div className="w-full px-4 py-2 border border-card rounded-lg bg-background animate-pulse">
-                <span className="text-sm text-secondary">Carregando municípios...</span>
-              </div>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  placeholder="Digite para buscar município (ex: Teresina, Parnaíba...)"
-                  onChange={(e) => {
-                    const searchTerm = e.target.value.toLowerCase()
-                    if (searchTerm === '') {
-                      setFilteredCities(cities)
-                    } else {
-                      const filtered = cities.filter(city => 
-                        city.name.toLowerCase().includes(searchTerm)
-                      )
-                      setFilteredCities(filtered)
-                    }
-                  }}
-                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft mb-2 bg-surface"
-                />
-                <select
-                  value={formData.cidade_id || ''}
-                  onChange={(e) => setFormData({ ...formData, cidade_id: e.target.value || null })}
-                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-                  style={{ maxHeight: '200px', overflowY: 'auto' }}
-                >
-                  <option value="">Selecione um município (opcional)</option>
-                  {(filteredCities.length > 0 ? filteredCities : cities).map((city) => (
-                    <option key={city.id} value={city.id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-                {cities.length > 0 && (
-                  <p className="text-xs text-secondary mt-1">
-                    {filteredCities.length === cities.length 
-                      ? `${cities.length} municípios do Piauí disponíveis`
-                      : `${filteredCities.length} de ${cities.length} municípios encontrados`
-                    }
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Tipo e Cargo */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Tipo *
-              </label>
-              <select
-                value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as Poll['tipo'] })}
-                required
-                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-              >
-                {tipoOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Cargo *
-              </label>
-              <select
-                value={formData.cargo}
-                onChange={(e) => setFormData({ ...formData, cargo: e.target.value as Poll['cargo'] })}
-                required
-                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-              >
-                {cargoOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Intenção e Rejeição */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Intenção (%) *
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={formData.intencao}
-                onChange={(e) => setFormData({ ...formData, intencao: parseFloat(e.target.value) || 0 })}
-                required
-                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Rejeição (%) *
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={formData.rejeicao}
-                onChange={(e) => setFormData({ ...formData, rejeicao: parseFloat(e.target.value) || 0 })}
-                required
-                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-              />
-            </div>
-          </div>
-
-          {/* Botões */}
-          <div className="flex items-center gap-3 pt-4 border-t border-card">
-            <button
-              type="submit"
-              disabled={submitting}
-              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1')}
-            >
-              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
-              {submitting ? 'Salvando...' : poll?.id ? 'Salvar Alterações' : 'Salvar e Adicionar Outro'}
-            </button>
-            {!poll?.id && (
-              <button
-                type="button"
-                onClick={() => {
-                  onUpdate()
-                  onClose()
-                }}
-                className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
-              >
-                Salvar e Fechar
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
-            >
-              {poll?.id ? 'Cancelar' : 'Fechar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
-  )
 }
 
+export function PollModal({ poll, cidades, candidatos, onClose, onUpdate }: PollModalProps) {
+  const editando = Boolean(poll?.id)
+  const [form, setForm] = useState<PesquisaForm>(() => formInicial(poll))
+  const [buscaCidade, setBuscaCidade] = useState<string>('')
+  const [salvando, setSalvando] = useState<boolean>(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [salvasNaSessao, setSalvasNaSessao] = useState<number>(0)
+  const candidatoInputRef = useRef<HTMLInputElement | null>(null)
+
+  const cidadesFiltradas = useMemo(() => {
+    const q = buscaCidade.trim().toLowerCase()
+    if (!q) return cidades
+    const filtradas = cidades.filter((c) => c.name.toLowerCase().includes(q))
+    return filtradas.length > 0 ? filtradas : cidades
+  }, [cidades, buscaCidade])
+
+  const atualizar = <K extends keyof PesquisaForm>(campo: K, valor: PesquisaForm[K]) =>
+    setForm((prev) => ({ ...prev, [campo]: valor }))
+
+  const enviar = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSalvando(true)
+    setErro(null)
+    try {
+      await salvarPesquisa(form, poll?.id)
+      await onUpdate({ silent: !editando })
+      if (editando) {
+        onClose()
+        return
+      }
+      setSalvasNaSessao((n) => n + 1)
+      setForm((prev) => ({ ...prev, candidato_nome: '', intencao: 0, rejeicao: 0 }))
+      setTimeout(() => candidatoInputRef.current?.focus(), 0)
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao salvar pesquisa.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <TseModal
+      id="poll-modal-titulo"
+      titulo={editando ? 'Editar pesquisa' : 'Nova pesquisa'}
+      subtitulo={
+        editando
+          ? 'Altere os dados e salve.'
+          : salvasNaSessao > 0
+            ? `${salvasNaSessao} ${salvasNaSessao === 1 ? 'registro salvo' : 'registros salvos'} · data, instituto, município, tipo e cargo são mantidos para o próximo candidato`
+            : 'Cadastre um candidato por vez; data, instituto e município ficam preenchidos para o próximo.'
+      }
+      onClose={onClose}
+      largura="max-w-2xl"
+      rodape={
+        <>
+          <button type="button" onClick={onClose} className={tseBotaoCinzaClass}>
+            {editando ? 'Cancelar' : 'Concluir'}
+          </button>
+          <button type="submit" form={FORM_ID} disabled={salvando} className={tseBotaoPrimarioClass}>
+            <Save className="h-4 w-4" aria-hidden />
+            {salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Salvar e adicionar outro'}
+          </button>
+        </>
+      }
+    >
+      {erro ? <TseErro>{erro}</TseErro> : null}
+      <form id={FORM_ID} onSubmit={(e) => void enviar(e)} className="space-y-4 rounded-xl bg-white p-4 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Data *</span>
+            <input
+              type="date"
+              value={form.data}
+              onChange={(e) => atualizar('data', e.target.value)}
+              required
+              className={tseCampoClass}
+            />
+          </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Instituto *</span>
+            <input
+              type="text"
+              value={form.instituto}
+              onChange={(e) => atualizar('instituto', e.target.value)}
+              placeholder="Nome do instituto"
+              required
+              className={tseCampoClass}
+            />
+          </label>
+        </div>
+
+        <label className="block">
+          <span className={tseRotuloCampoClass}>Candidato *</span>
+          <input
+            type="text"
+            list="poll-modal-candidatos"
+            ref={candidatoInputRef}
+            value={form.candidato_nome}
+            onChange={(e) => atualizar('candidato_nome', e.target.value)}
+            placeholder="Digite ou selecione um candidato existente"
+            required
+            className={tseCampoClass}
+          />
+          <datalist id="poll-modal-candidatos">
+            {candidatos.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          {candidatos.length > 0 ? (
+            <span className="mt-1 block text-[11px] text-[var(--tse-muted)]">
+              {candidatos.length} {candidatos.length === 1 ? 'candidato cadastrado' : 'candidatos cadastrados'} · selecione
+              ou digite um novo nome
+            </span>
+          ) : null}
+        </label>
+
+        <div>
+          <span className={tseRotuloCampoClass}>Município (Piauí)</span>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <input
+              type="text"
+              value={buscaCidade}
+              onChange={(e) => setBuscaCidade(e.target.value)}
+              placeholder="Filtrar municípios…"
+              aria-label="Filtrar municípios"
+              className={tseCampoClass}
+            />
+            <select
+              value={form.cidade_id || ''}
+              onChange={(e) => atualizar('cidade_id', e.target.value || null)}
+              className={tseCampoClass}
+              disabled={cidades.length === 0}
+            >
+              <option value="">{cidades.length === 0 ? 'Carregando municípios…' : 'Estado (sem município)'}</option>
+              {cidadesFiltradas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {cidades.length > 0 ? (
+            <span className="mt-1 block text-[11px] text-[var(--tse-muted)]">
+              {cidadesFiltradas.length === cidades.length
+                ? `${cidades.length} municípios disponíveis`
+                : `${cidadesFiltradas.length} de ${cidades.length} municípios`}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Tipo *</span>
+            <select
+              value={form.tipo}
+              onChange={(e) => atualizar('tipo', e.target.value as TipoPesquisa)}
+              required
+              className={tseCampoClass}
+            >
+              {(Object.keys(TIPO_PESQUISA_LABEL) as TipoPesquisa[]).map((t) => (
+                <option key={t} value={t}>
+                  {TIPO_PESQUISA_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Cargo *</span>
+            <select
+              value={form.cargo}
+              onChange={(e) => atualizar('cargo', e.target.value as CargoPesquisa)}
+              required
+              className={tseCampoClass}
+            >
+              {(Object.keys(CARGO_PESQUISA_LABEL) as CargoPesquisa[]).map((c) => (
+                <option key={c} value={c}>
+                  {CARGO_PESQUISA_LABEL[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Intenção (%) *</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={form.intencao}
+              onChange={(e) => atualizar('intencao', parseFloat(e.target.value) || 0)}
+              required
+              className={tseCampoClass}
+            />
+          </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Rejeição (%) *</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={form.rejeicao}
+              onChange={(e) => atualizar('rejeicao', parseFloat(e.target.value) || 0)}
+              required
+              className={tseCampoClass}
+            />
+          </label>
+        </div>
+      </form>
+    </TseModal>
+  )
+}

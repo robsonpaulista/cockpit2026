@@ -1,14 +1,12 @@
 import type { MenuItem } from '@/types'
 import {
-  resumoEleicoesHubHref,
-  RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL,
-  RESUMO_ELEICOES_TAB_CHAPA_FEDERAL,
-  RESUMO_ELEICOES_TAB_SECAO,
+  AGENDA_HREF,
+  ATENDIMENTO_HREF,
+  CHAPA_ESTADUAL_HREF,
+  CHAPA_FEDERAL_HREF,
+  VOTACAO_SECAO_HREF,
 } from '@/lib/resumo-eleicoes-hub-route'
-import {
-  TERRITORIO_CAMPO_TAB_PANORAMA,
-  territorioCampoHref,
-} from '@/lib/territorio-campo-route'
+import { territorioCampoHref } from '@/lib/territorio-campo-route'
 
 export interface SidebarMenuItemConfig extends MenuItem {
   children?: MenuItem[]
@@ -16,26 +14,16 @@ export interface SidebarMenuItemConfig extends MenuItem {
 
 /** Mesma árvore da sidebar — fonte única para navegação do Jarvis. */
 export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
-  { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
+  { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: AGENDA_HREF },
   { id: 'backup', label: 'Backup', icon: 'Database', href: '/dashboard/backup' },
   {
     id: 'chapas-menu',
     label: 'Chapas',
     icon: 'Vote',
-    href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
+    href: CHAPA_FEDERAL_HREF,
     children: [
-      {
-        id: 'chapas-estaduais',
-        label: 'Estadual',
-        icon: 'Vote',
-        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL),
-      },
-      {
-        id: 'chapas',
-        label: 'Federal',
-        icon: 'Vote',
-        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
-      },
+      { id: 'chapas', label: 'Federal', icon: 'Vote', href: CHAPA_FEDERAL_HREF },
+      { id: 'chapas-estaduais', label: 'Estadual', icon: 'BarChart3', href: CHAPA_ESTADUAL_HREF },
     ],
   },
   { id: 'emendas', label: 'Emendas', icon: 'FileSpreadsheet', href: '/dashboard/emendas' },
@@ -102,25 +90,13 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     id: 'resumo-eleicoes-menu',
     label: 'Resumo Eleições',
     icon: 'BarChart3',
-    href: '/dashboard/resumo-eleicoes',
+    href: ATENDIMENTO_HREF,
     children: [
       {
         id: 'resumo-eleicoes-principal',
         label: 'Atendimento',
         icon: 'ClipboardList',
-        href: '/dashboard/resumo-eleicoes',
-      },
-      {
-        id: 'resumo-eleicoes-chapa-estadual',
-        label: 'Chapa Estadual',
-        icon: 'BarChart3',
-        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL),
-      },
-      {
-        id: 'resumo-eleicoes-chapa-federal',
-        label: 'Chapa Federal',
-        icon: 'Vote',
-        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
+        href: ATENDIMENTO_HREF,
       },
       {
         id: 'resumo-eleicoes-historico',
@@ -132,9 +108,15 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
         id: 'resumo-eleicoes-secao',
         label: 'Votação por seção',
         icon: 'MapPinned',
-        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO),
+        href: VOTACAO_SECAO_HREF,
       },
     ],
+  },
+  {
+    id: 'resultado-2026',
+    label: 'Resultado 2026',
+    icon: 'Vote',
+    href: '/dashboard/resumo-eleicoes/resultado-2026',
   },
   {
     id: 'war-room',
@@ -146,7 +128,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     id: 'territorio',
     label: 'Território & Campo',
     icon: 'MapPin',
-    href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
+    href: territorioCampoHref(),
   },
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
 ]
@@ -194,9 +176,14 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'chapas-menu': ['chapas'],
   'resumo-eleicoes-principal': ['atendimento', 'resumo eleicoes', 'resumo por cidade', 'eleicoes por cidade'],
   'resumo-eleicoes-historico': ['historico federal', 'historico eleicoes'],
+  'resultado-2026': [
+    'resultado 2026',
+    'resultado por secao 2026',
+    'resultado jadyel',
+    'apuracao 2026',
+    'votos jadyel por secao',
+  ],
   'resumo-eleicoes-secao': ['votacao por secao', 'por secao', 'secao eleitoral', 'resumo secao'],
-  'resumo-eleicoes-chapa-federal': ['chapa federal', 'chapas federal', 'federal'],
-  'resumo-eleicoes-chapa-estadual': ['chapa estadual', 'chapas estadual', 'estadual'],
   'resumo-eleicoes-menu': ['resumo eleicoes', 'eleicoes'],
   'conteudo-hub': ['redes sociais', 'presenca e conteudo', 'presenca conteudo', 'conteudo hub'],
   'conteudo-menu': ['redes sociais', 'redes', 'presenca', 'conteudo', 'presenca e conteudo'],
@@ -207,7 +194,7 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'conteudo-analise': ['analise conteudo'],
   'conteudo-redes': ['instagram', 'redes sociais', 'redes instagram'],
   noticias: ['noticias', 'crises', 'noticias e crises', 'radar'],
-  'noticias-menu': ['noticias', 'crises', 'radar', 'radar 224', 'engajamento lideres', 'exercito digital', 'mapa ig'],
+  'noticias-menu': ['noticias', 'crises', 'radar', 'radar 224'],
   'noticias-monitoramento': ['monitoramento', 'google alerts', 'panorama', 'radar eleitoral'],
   'radar-224': ['radar 224', 'radar municipios', 'cobertura noticias', 'fontes regionais'],
   'noticias-youtube': ['youtube', 'radar youtube', 'menções youtube'],

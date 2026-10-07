@@ -7,7 +7,6 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/resumo-eleicoes/secao')) return 'Por seção'
   if (p.startsWith('/dashboard/resumo-eleicoes/historico')) return 'Hist. federal'
   if (p.startsWith('/dashboard/territorio/ipt')) return 'Mapa Diagnóstico Campanha'
-  if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
   if (p.startsWith('/dashboard/noticias/monitoramento')) return 'Monitoramento'
   if (p.startsWith('/dashboard/radar-224')) return 'Radar 224'
   if (p.startsWith('/dashboard/conteudo/redes')) return 'Instagram'
@@ -16,7 +15,6 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/conteudo/cards')) return 'Cards'
   if (p.startsWith('/dashboard/conteudo/referencias')) return 'Referências'
   if (p.startsWith('/dashboard/conteudo/analise')) return 'Análise'
-  if (p.startsWith('/dashboard/conteudo/instagram-lideres')) return 'IG líderes'
   if (p.startsWith('/dashboard/conteudo')) return 'Redes Sociais'
 
   const exact: Record<string, string> = {
@@ -36,7 +34,6 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/noticias/youtube': 'Monitoramento',
     '/dashboard/mobilizacao': 'Mobilização',
     '/dashboard/mobilizacao/config': 'Mob. config',
-    '/dashboard/mobilizacao/mapa-digital-ig': 'Engajamento Líderes',
     '/dashboard/whatsapp': 'WhatsApp',
     '/dashboard/pesquisa': 'Pesquisa',
     '/dashboard/operacao': 'Operação',

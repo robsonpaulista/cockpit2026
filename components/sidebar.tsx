@@ -48,10 +48,7 @@ import {
 } from '@/lib/sidebar-lucide-icons'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronDown, ChevronLeft, Menu, X } from 'lucide-react'
-import {
-  TERRITORIO_CAMPO_TAB_PANORAMA,
-  territorioCampoHref,
-} from '@/lib/territorio-campo-route'
+import { territorioCampoHref } from '@/lib/territorio-campo-route'
 import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
 import { canAccessSidebarItem } from '@/lib/page-access'
 import {
@@ -202,82 +199,19 @@ interface SidebarNavItemProps {
   menuLabel: (id: string, fallback: string) => string
 }
 
-function pageKeyForItem(id: string): string {
-  if (id === 'chapas-menu') return 'chapas'
-  if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'ficha-atendimento') return 'ficha-atendimento'
-  if (
-    id === 'mobilizacao-menu' ||
-    id === 'mobilizacao-config' ||
-    id === 'mobilizacao-membros' ||
-    id === 'mobilizacao-painel' ||
-    id === 'mobilizacao-config-legado'
-  ) {
-    return 'mobilizacao'
-  }
-  if (
-    id === 'gestao-pesquisas-menu' ||
-    id === 'gestao-pesquisas-inicio' ||
-    id === 'gestao-pesquisas-config'
-  ) {
-    return 'gestao_pesquisas'
-  }
-  if (
-    id === 'resumo-eleicoes-menu' ||
-    id === 'resumo-eleicoes-principal' ||
-    id === 'resumo-eleicoes-historico' ||
-    id === 'resumo-eleicoes-secao' ||
-    id === 'resumo-eleicoes-chapa-federal' ||
-    id === 'resumo-eleicoes-chapa-estadual'
-  ) {
-    return id === 'resumo-eleicoes-chapa-federal' || id === 'resumo-eleicoes-chapa-estadual'
-      ? 'chapas'
-      : 'resumo-eleicoes'
-  }
-  if (
-    id === 'conteudo-menu' ||
-    id === 'conteudo-hub' ||
-    id === 'conteudo-obras' ||
-    id === 'conteudo-agenda' ||
-    id === 'conteudo-cards' ||
-    id === 'conteudo-referencias' ||
-    id === 'conteudo-analise' ||
-    id === 'conteudo-redes'
-  ) {
-    return 'conteudo'
-  }
-  if (id === 'noticias-menu' || id === 'noticias-monitoramento' || id === 'radar-224') {
-    return 'noticias'
-  }
-  if (id === 'territorio-ipt') return 'ipt'
-  return id === 'home' ? 'dashboard' : id
-}
-
-/** Ativa item filho; considera `?tab=` no hub Resumo Eleições. */
+/** Ativa item filho; links com query exigem os mesmos parâmetros na URL atual. */
 function isChildLinkActive(pathname: string, href: string, search: string): boolean {
   const [hrefPath, hrefQuery = ''] = href.split('?')
   if (pathname !== hrefPath) {
-    if (hrefPath === '/dashboard/resumo-eleicoes') return false
-    if (href === '/dashboard/conteudo') {
-      return pathname === '/dashboard/conteudo' || pathname === '/dashboard/conteudo/'
-    }
+    if (hrefPath === '/dashboard/resumo-eleicoes' || hrefPath === '/dashboard/conteudo') return false
     return pathname.startsWith(`${href}/`)
   }
 
+  if (!hrefQuery) return true
   const currentParams = new URLSearchParams(search)
-  if (hrefQuery) {
-    const hrefParams = new URLSearchParams(hrefQuery)
-    for (const [key, value] of hrefParams.entries()) {
-      if (currentParams.get(key) !== value) return false
-    }
-    return true
+  for (const [key, value] of new URLSearchParams(hrefQuery).entries()) {
+    if (currentParams.get(key) !== value) return false
   }
-
-  if (hrefPath === '/dashboard/resumo-eleicoes') {
-    const tab = currentParams.get('tab')
-    return !tab || tab === 'atendimento'
-  }
-
   return true
 }
 
@@ -358,6 +292,8 @@ function SidebarNavItem({
         <>
           <button
             type="button"
+            data-active={isActive ? 'true' : undefined}
+            aria-expanded={submenuOpen}
             onClick={() =>
               setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
             }
@@ -449,6 +385,7 @@ function SidebarNavItem({
                     <li key={child.id}>
                       <Link
                         href={child.href}
+                        aria-current={childActive ? 'page' : undefined}
                         onClick={() => {
                           if (child.href !== pathname) setNavigating(true)
                           setMobileOpen(false)
@@ -482,6 +419,7 @@ function SidebarNavItem({
                     <li key={child.id}>
                       <Link
                         href={child.href}
+                        aria-current={childActive ? 'page' : undefined}
                         onClick={() => {
                           if (child.href !== pathname) setNavigating(true)
                           setMobileOpen(false)
@@ -500,12 +438,12 @@ function SidebarNavItem({
       ) : (
         <Link
           href={item.href}
+          aria-current={isActive ? 'page' : undefined}
           onClick={(e) => {
             if (item.id === 'territorio') {
-              const panoramaHref = territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA)
               if (pathname.startsWith('/dashboard/territorio') && searchKey) {
                 e.preventDefault()
-                router.replace(panoramaHref)
+                router.replace(territorioCampoHref())
               } else if (item.href !== pathname) {
                 setNavigating(true)
               }
@@ -738,6 +676,7 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         type="button"
+        id="cockpit-sidebar-toggle"
         data-sidebar-shell
         data-sidebar-mobile-toggle={filmNav ? 'true' : undefined}
         onMouseDown={(e) => {
@@ -805,6 +744,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         ref={asideRef}
+        id="cockpit-sidebar"
         data-sidebar-shell
         className={cn(
           'fixed left-0 top-0 h-full overflow-visible transition-all duration-300 ease-out',
@@ -828,6 +768,7 @@ export function Sidebar() {
         >
           {/* Logo (zona do título) */}
           <div
+            data-sidebar-brand-zone={navCollapsed && !navMobileOpen ? 'collapsed' : 'expanded'}
             className={cn(
               filmNav
                 ? sidebarShellHeaderClass(navCollapsed, navMobileOpen)
@@ -949,7 +890,6 @@ export function Sidebar() {
             collapsed={navCollapsed}
             mobileOpen={navMobileOpen}
             isGradientHome={isGradientHome}
-            searchKey={searchKey}
             onNavigate={(href) => {
               if (href !== pathname) setNavigating(true)
               setMobileOpen(false)

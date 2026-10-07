@@ -1,4 +1,4 @@
-import { TERRITORIO_CAMPO_TAB_PANORAMA, territorioCampoHref } from '@/lib/territorio-campo-route'
+import { territorioCampoHref } from '@/lib/territorio-campo-route'
 
 export type PermissionTab = {
   id: string
@@ -44,9 +44,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       {
         key: 'territorio',
         label: 'Base Eleitoral',
-        path: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
+        path: territorioCampoHref(),
         tabs: tabs('territorio', [
-          { id: 'panorama', label: 'Panorama' },
           { id: 'base', label: 'Base' },
           { id: 'visitas', label: 'Visitas' },
           { id: 'liderancas', label: 'Lideranças' },
@@ -59,7 +58,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Pesquisas de Opinião',
         path: '/dashboard/pesquisa',
         tabs: tabs('pesquisa', [
-          { id: 'panorama', label: 'Panorama' },
           { id: 'tendencia', label: 'Tendência temporal' },
           { id: 'cadastradas', label: 'Pesquisas cadastradas' },
           { id: 'gerar-publico', label: 'Gerar público pesquisa' },
@@ -77,8 +75,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
           { id: 'instagram', label: 'Instagram' },
           { id: 'meta-ads', label: 'Anúncios' },
           { id: 'trends', label: 'Buscas' },
-          { id: 'viral', label: 'Viral' },
-          { id: 'lideres', label: 'Eng. líderes' },
         ]),
       },
       {

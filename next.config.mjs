@@ -49,6 +49,8 @@ const nextConfig = {
         './node_modules/@supabase/supabase-js/**/*',
       ],
       /** Script Apify + sharp (resize). Sem imgly/onnx — estouram o limite 250MB da function. */
+      '/api/resumo-eleicoes/resultado-2026': ['./data/resultado-secao-2026.json'],
+      '/api/territorio/base': ['./data/resultado-secao-2026.json'],
       '/api/instagram-radar/collect': instagramRadarCollectIncludes,
       'app/api/instagram-radar/collect/route': instagramRadarCollectIncludes,
     },

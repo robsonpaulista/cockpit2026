@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import { CHAPA_ESTADUAL_HREF, CHAPA_FEDERAL_HREF } from '@/lib/resumo-eleicoes-hub-route'
 
 function ChapasSectionTitle({
   icon: Icon,
@@ -141,13 +142,11 @@ export type ChapasEscopo = 'federal' | 'estadual'
 type ChapasPanelProps = {
   escopoOverride?: ChapasEscopo
   embedded?: boolean
-  onTrocarEscopo?: () => void
 }
 
 export function ChapasPanel({
   escopoOverride,
   embedded = false,
-  onTrocarEscopo,
 }: ChapasPanelProps = {}) {
   const { user } = useAuth()
   const isCockpit = false
@@ -1370,26 +1369,14 @@ export function ChapasPanel({
                     </>
                   )}
                 </button>
-                {embedded && onTrocarEscopo ? (
-                  <button
-                    type="button"
-                    onClick={onTrocarEscopo}
-                    title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
-                    className={cn(controlButtonClass, 'disabled:opacity-100')}
-                  >
-                    <ArrowRightLeft className="h-4 w-4" />
-                    {isChapasEstaduais ? 'Federais' : 'Estaduais'}
-                  </button>
-                ) : (
-                  <Link
-                    href={isChapasEstaduais ? '/dashboard/chapas' : '/dashboard/chapas-estaduais'}
-                    title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
-                    className={cn(controlButtonClass, 'disabled:opacity-100')}
-                  >
-                    <ArrowRightLeft className="h-4 w-4" />
-                    {isChapasEstaduais ? 'Federais' : 'Estaduais'}
-                  </Link>
-                )}
+                <Link
+                  href={isChapasEstaduais ? CHAPA_FEDERAL_HREF : CHAPA_ESTADUAL_HREF}
+                  title={isChapasEstaduais ? 'Ir para Chapa Federal' : 'Ir para Chapa Estadual'}
+                  className={cn(controlButtonClass, 'disabled:opacity-100')}
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  {isChapasEstaduais ? 'Federal' : 'Estadual'}
+                </Link>
                 <button
                   type="button"
                   onClick={toggleFullscreen}

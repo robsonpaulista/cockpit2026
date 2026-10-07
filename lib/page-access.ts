@@ -5,8 +5,12 @@ import {
   type PermissionPage,
 } from '@/lib/page-permissions-catalog'
 import {
-  type ResumoEleicoesHubTab,
-  resumoEleicoesHubHref,
+  isResumoEleicoesHubTab,
+  RESUMO_ELEICOES_TAB_AGENDA,
+  RESUMO_ELEICOES_TAB_ATENDIMENTO,
+  RESUMO_ELEICOES_TAB_SECAO,
+  resumoEleicoesHref,
+  VOTACAO_SECAO_HREF,
 } from '@/lib/resumo-eleicoes-hub-route'
 import {
   type TerritorioCampoTab,
@@ -41,6 +45,9 @@ export function canAccessPage(canAccess: CanAccessFn, pageKey: string): boolean 
       canAccessTab(canAccess, 'resumo-eleicoes', 'chapa-estadual')
     )
   }
+  if (pageKey === 'agenda') {
+    return canAccessTab(canAccess, 'resumo-eleicoes', RESUMO_ELEICOES_TAB_AGENDA)
+  }
   const page = permissionPageByKey(pageKey)
   if (!page?.tabs?.length) return false
   return page.tabs.some((tab) => canAccessTab(canAccess, pageKey, tab.id))
@@ -64,6 +71,14 @@ export function canAccessDashboardPage(
   if (pageKey === 'chapas') {
     return canAccessPage(canAccess, 'chapas')
   }
+  if (pageKey === 'resumo-eleicoes') {
+    if (pathname === '/dashboard/resumo-eleicoes' || pathname === '/dashboard/resumo-eleicoes/') {
+      return canAccessTab(canAccess, pageKey, RESUMO_ELEICOES_TAB_ATENDIMENTO)
+    }
+    if (pathname.startsWith(VOTACAO_SECAO_HREF)) {
+      return canAccessTab(canAccess, pageKey, RESUMO_ELEICOES_TAB_SECAO)
+    }
+  }
   return canAccessPage(canAccess, pageKey)
 }
 
@@ -81,15 +96,15 @@ export function hrefForAllowedHub(canAccess: CanAccessFn, pageKey: string, fallb
   if (pageKey === 'territorio') {
     return territorioCampoHref(tabId as TerritorioCampoTab)
   }
-  if (pageKey === 'resumo-eleicoes') {
-    return resumoEleicoesHubHref(tabId as ResumoEleicoesHubTab)
+  if (pageKey === 'resumo-eleicoes' && isResumoEleicoesHubTab(tabId)) {
+    return resumoEleicoesHref(tabId)
   }
   if (pageKey === 'noticias') {
     if (tabId === 'geral') return '/dashboard/noticias/monitoramento'
     return `/dashboard/noticias/monitoramento?tab=${tabId}`
   }
   if (pageKey === 'pesquisa') {
-    if (tabId === 'panorama') return '/dashboard/pesquisa'
+    if (tabId === 'tendencia') return '/dashboard/pesquisa'
     return `/dashboard/pesquisa?tab=${tabId}`
   }
   if (pageKey === 'conteudo') {
@@ -104,6 +119,11 @@ export function expandStoredPermissions(stored: string[] | undefined | null): Se
     next.add(tabPermissionKey('resumo-eleicoes', 'chapa-federal'))
     next.add(tabPermissionKey('resumo-eleicoes', 'chapa-estadual'))
     next.delete('chapas')
+  }
+  const panoramaPesquisa = tabPermissionKey('pesquisa', 'panorama')
+  if (next.has(panoramaPesquisa)) {
+    next.add(tabPermissionKey('pesquisa', 'tendencia'))
+    next.delete(panoramaPesquisa)
   }
   return next
 }
@@ -176,10 +196,10 @@ export function toggleTabPermission(selected: Set<string>, page: PermissionPage,
 
 export function canAccessSidebarItem(canAccess: CanAccessFn, itemId: string): boolean {
   if (itemId === 'conteudo-redes') return canAccessPage(canAccess, 'conteudo')
-  if (itemId === 'chapas' || itemId === 'resumo-eleicoes-chapa-federal') {
+  if (itemId === 'chapas') {
     return canAccessTab(canAccess, 'resumo-eleicoes', 'chapa-federal')
   }
-  if (itemId === 'chapas-estaduais' || itemId === 'resumo-eleicoes-chapa-estadual') {
+  if (itemId === 'chapas-estaduais') {
     return canAccessTab(canAccess, 'resumo-eleicoes', 'chapa-estadual')
   }
   if (itemId === 'resumo-eleicoes-principal') {
@@ -188,7 +208,11 @@ export function canAccessSidebarItem(canAccess: CanAccessFn, itemId: string): bo
   if (itemId === 'resumo-eleicoes-secao') {
     return canAccessTab(canAccess, 'resumo-eleicoes', 'secao')
   }
-  if (itemId === 'resumo-eleicoes-menu' || itemId === 'resumo-eleicoes-historico') {
+  if (
+    itemId === 'resumo-eleicoes-menu' ||
+    itemId === 'resumo-eleicoes-historico' ||
+    itemId === 'resultado-2026'
+  ) {
     return canAccessPage(canAccess, 'resumo-eleicoes')
   }
   const key = pageKeyForSidebarItem(itemId)

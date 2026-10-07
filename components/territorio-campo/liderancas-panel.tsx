@@ -1,21 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  MapPin,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  Users,
-  Vote,
-  X,
-} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Check, Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import {
   ResumoLiderancasCrudModal,
   type LiderancaCrudRow,
@@ -23,10 +9,13 @@ import {
 import {
   compareTerritorioNumber,
   compareTerritorioText,
-  TerritorioCidadeExpectativaSortBar,
-  TerritorioSortableHeaderButton,
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
+import {
+  MUNICIPIOS_PI_ORDENADOS,
+  useCidadesExpandidas,
+  useTerritorioMunicipio,
+} from '@/components/territorio-campo/territorio-municipio-context'
 import {
   canonicalizeLiderancaAtual,
   isLiderancaAtualEmDialogo,
@@ -34,30 +23,55 @@ import {
   isLiderancaAtualSim,
 } from '@/lib/territorio-lideranca-atual'
 import { VOTOS_ESPONTANEOS_2026 } from '@/lib/territorio-liderancas-espontaneos'
-import {
-  territorioCxBtnGhostClass,
-  territorioCxBtnPrimaryClass,
-} from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
+import {
+  TseBarraRotulo,
+  TseBarraValor,
+  TseBusca,
+  TseCarregando,
+  TseCarregarMais,
+  TseChevronCelula,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseListaFiltro,
+  TseRank,
+  TseSegmentado,
+  TseStatus,
+  TseThOrdenavel,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseCardClass,
+  tseLinkAcaoClass,
+  tseRotuloCampoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
 
 type FiltroLiderancaAtual = 'todos' | 'sim' | 'em_dialogo' | 'nao'
-type SortCidadeCol = 'cidade' | 'expectativa'
+type SortCol = 'cidade' | 'liderancas' | 'expectativa' | 'previsto'
 
-const FILTRO_LIDERANCA_OPCOES: Array<{ id: FiltroLiderancaAtual; label: string }> = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'sim', label: 'Liderança SIM' },
-  { id: 'em_dialogo', label: 'Em diálogo' },
-  { id: 'nao', label: 'Liderança NÃO' },
+const PAGE_SIZE = 30
+const TOTAL_MUNICIPIOS_PI = 224
+
+const SITUACOES: Array<{ id: Exclude<FiltroLiderancaAtual, 'todos'>; label: string; cor: string }> = [
+  { id: 'sim', label: 'Liderança SIM', cor: 'var(--tse-green)' },
+  { id: 'em_dialogo', label: 'Em diálogo', cor: 'var(--tse-yellow)' },
+  { id: 'nao', label: 'Liderança NÃO', cor: 'var(--tse-zero)' },
 ]
 
-function filtrarPorLiderancaAtual(
-  row: LiderancaCrudRow,
-  filtro: FiltroLiderancaAtual,
-): boolean {
+const FILTRO_OPCOES: Array<{ id: FiltroLiderancaAtual; label: string }> = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'sim', label: 'SIM' },
+  { id: 'em_dialogo', label: 'Em diálogo' },
+  { id: 'nao', label: 'NÃO' },
+]
+
+function filtrarPorLiderancaAtual(row: LiderancaCrudRow, filtro: FiltroLiderancaAtual): boolean {
   if (filtro === 'sim') return isLiderancaAtualSim(row.liderancaAtual)
-  if (filtro === 'em_dialogo') {
-    return isLiderancaAtualEmDialogo(row.liderancaAtual) || row.emDialogo
-  }
+  if (filtro === 'em_dialogo') return isLiderancaAtualEmDialogo(row.liderancaAtual) || row.emDialogo
   if (filtro === 'nao') return isLiderancaAtualNao(row.liderancaAtual)
   return true
 }
@@ -94,12 +108,11 @@ type InlineForm = {
   previsto: string
 }
 
+const fmt = (n: number): string => Math.round(n).toLocaleString('pt-BR')
+const fmtPct = (n: number): string => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+
 function normalizarBusca(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .trim()
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 }
 
 function parseNumero(value: string): number {
@@ -108,14 +121,15 @@ function parseNumero(value: string): number {
 }
 
 export function LiderancasPanel() {
+  const { municipio, noMunicipio } = useTerritorioMunicipio()
   const [rows, setRows] = useState<LiderancaCrudRow[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [busca, setBusca] = useState<string>('')
   const [filtroLideranca, setFiltroLideranca] = useState<FiltroLiderancaAtual>('todos')
-  const [sortCol, setSortCol] = useState<SortCidadeCol>('expectativa')
-  const [sortAsc, setSortAsc] = useState(false)
-  const [cidadesRecolhidas, setCidadesRecolhidas] = useState<Set<string>>(new Set())
+  const [sortCol, setSortCol] = useState<SortCol>('previsto')
+  const [sortAsc, setSortAsc] = useState<boolean>(false)
+  const [limite, setLimite] = useState<number>(PAGE_SIZE)
   const [modal, setModal] = useState<ModalState | null>(null)
   const [selecionandoCidade, setSelecionandoCidade] = useState<boolean>(false)
   const [novaCidade, setNovaCidade] = useState<string>('')
@@ -143,16 +157,22 @@ export function LiderancasPanel() {
     void carregar()
   }, [carregar])
 
+  useEffect(() => {
+    setLimite(PAGE_SIZE)
+  }, [municipio])
+
+  const rowsNoMunicipio = useMemo(() => rows.filter((row) => noMunicipio(row.municipio)), [rows, noMunicipio])
+
   const rowsFiltradas = useMemo(
-    () => rows.filter((row) => filtrarPorLiderancaAtual(row, filtroLideranca)),
-    [rows, filtroLideranca],
+    () => rowsNoMunicipio.filter((row) => filtrarPorLiderancaAtual(row, filtroLideranca)),
+    [rowsNoMunicipio, filtroLideranca],
   )
 
-  const cidades = useMemo(
+  const cidadesCadastro = useMemo(
     () =>
-      Array.from(new Set(rows.map((row) => row.municipio.trim()).filter(Boolean))).sort((a, b) =>
-        a.localeCompare(b, 'pt-BR'),
-      ),
+      Array.from(
+        new Set([...MUNICIPIOS_PI_ORDENADOS, ...rows.map((row) => row.municipio.trim()).filter(Boolean)]),
+      ).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     [rows],
   )
 
@@ -175,88 +195,74 @@ export function LiderancasPanel() {
       agrupados.set(cidade, atuais)
     }
 
-    return Array.from(agrupados.entries())
-      .map(([cidade, liderancas]) => {
-        const ordenadas = [...liderancas].sort((a, b) => {
-          if (sortCol === 'cidade') {
-            const byNome = compareTerritorioText(a.nome, b.nome, true)
-            if (byNome !== 0) return byNome
-            return compareTerritorioNumber(a.previsto ?? 0, b.previsto ?? 0, false)
-          }
-          const byRevisao = compareTerritorioNumber(a.previsto ?? 0, b.previsto ?? 0, sortAsc)
-          if (byRevisao !== 0) return byRevisao
-          const byExp = compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, sortAsc)
-          if (byExp !== 0) return byExp
-          return compareTerritorioText(a.nome, b.nome, true)
-        })
-        return {
-          cidade,
-          rows: ordenadas,
-          totalExpectativa: ordenadas.reduce(
-            (total, lideranca) => total + lideranca.expectativaLegado,
-            0,
-          ),
-          totalPrevisto: ordenadas.reduce(
-            (total, lideranca) => total + (lideranca.previsto ?? 0),
-            0,
-          ),
-        }
-      })
-      .sort((a, b) => {
-        if (sortCol === 'cidade') {
-          const byCidade = compareTerritorioText(a.cidade, b.cidade, sortAsc)
-          if (byCidade !== 0) return byCidade
-          return compareTerritorioNumber(a.totalPrevisto, b.totalPrevisto, false)
-        }
-        const byRevisao = compareTerritorioNumber(a.totalPrevisto, b.totalPrevisto, sortAsc)
-        if (byRevisao !== 0) return byRevisao
-        const byExp = compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, sortAsc)
-        if (byExp !== 0) return byExp
-        return compareTerritorioText(a.cidade, b.cidade, true)
-      })
-  }, [busca, rowsFiltradas, sortAsc, sortCol])
+    return Array.from(agrupados.entries()).map(([cidade, liderancas]) => ({
+      cidade,
+      rows: [...liderancas].sort(
+        (a, b) =>
+          compareTerritorioNumber(a.previsto ?? 0, b.previsto ?? 0, false) ||
+          compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, false) ||
+          compareTerritorioText(a.nome, b.nome, true),
+      ),
+      totalExpectativa: liderancas.reduce((total, l) => total + l.expectativaLegado, 0),
+      totalPrevisto: liderancas.reduce((total, l) => total + (l.previsto ?? 0), 0),
+    }))
+  }, [busca, rowsFiltradas])
 
-  const alternarSort = (column: SortCidadeCol) => {
+  const gruposOrdenados = useMemo(
+    () =>
+      [...grupos].sort((a, b) => {
+        const porNome = compareTerritorioText(a.cidade, b.cidade, true)
+        if (sortCol === 'cidade') return compareTerritorioText(a.cidade, b.cidade, sortAsc)
+        if (sortCol === 'liderancas') return compareTerritorioNumber(a.rows.length, b.rows.length, sortAsc) || porNome
+        if (sortCol === 'expectativa') {
+          return compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, sortAsc) || porNome
+        }
+        return (
+          compareTerritorioNumber(a.totalPrevisto, b.totalPrevisto, sortAsc) ||
+          compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, sortAsc) ||
+          porNome
+        )
+      }),
+    [grupos, sortCol, sortAsc],
+  )
+
+  const rank = useMemo(
+    () =>
+      new Map(
+        [...grupos]
+          .sort((a, b) => b.totalPrevisto - a.totalPrevisto || compareTerritorioText(a.cidade, b.cidade, true))
+          .map((g, i) => [g.cidade, i + 1]),
+      ),
+    [grupos],
+  )
+
+  const chavesCidades = useMemo(() => grupos.map((g) => g.cidade), [grupos])
+  const { expandidas, alternar, todasAbertas, alternarTodas } = useCidadesExpandidas(chavesCidades, !loading)
+
+  const alternarSort = (column: SortCol) => {
     const next = toggleTerritorioSort(sortCol, sortAsc, column, ['cidade'] as const)
     setSortCol(next.column)
     setSortAsc(next.asc)
   }
 
-  const totalExpectativa = useMemo(
-    () => rowsFiltradas.reduce((total, row) => total + row.expectativaLegado, 0),
-    [rowsFiltradas],
-  )
-  const totalPrevisto = useMemo(
-    () => rowsFiltradas.reduce((total, row) => total + (row.previsto ?? 0), 0),
-    [rowsFiltradas],
-  )
-  const incluiEspontaneos = filtroLideranca === 'todos'
-  const kpiExpectativa =
-    totalExpectativa + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.expectativa : 0)
-  const kpiRevisaoFinal =
-    totalPrevisto + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.revisaoFinal : 0)
-  const todasRecolhidas =
-    grupos.length > 0 && grupos.every((grupo) => cidadesRecolhidas.has(grupo.cidade))
+  const totalExpectativa = rowsFiltradas.reduce((total, row) => total + row.expectativaLegado, 0)
+  const totalPrevisto = rowsFiltradas.reduce((total, row) => total + (row.previsto ?? 0), 0)
+  // Espontâneos não têm cidade: só entram no total do Piauí sem filtro de situação.
+  const incluiEspontaneos = filtroLideranca === 'todos' && !municipio
+  const kpiExpectativa = totalExpectativa + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.expectativa : 0)
+  const kpiRevisaoFinal = totalPrevisto + (incluiEspontaneos ? VOTOS_ESPONTANEOS_2026.revisaoFinal : 0)
+  const maxExpectativa = grupos.reduce((m, g) => Math.max(m, g.totalExpectativa), 0)
+  const maxPrevisto = grupos.reduce((m, g) => Math.max(m, g.totalPrevisto), 0)
+  const cidadesCount = new Set(rowsFiltradas.map((row) => row.municipio.trim()).filter(Boolean)).size
+  const universo = municipio ? 1 : TOTAL_MUNICIPIOS_PI
+  const pctCobertura = (Math.min(cidadesCount, universo) / universo) * 100
+  const escopoLabel = municipio ?? 'Piauí'
+  const contagemSituacao = SITUACOES.map((s) => ({
+    ...s,
+    valor: rowsNoMunicipio.filter((row) => filtrarPorLiderancaAtual(row, s.id)).length,
+  }))
 
-  const alternarCidade = (cidade: string) => {
-    setCidadesRecolhidas((atuais) => {
-      const proximas = new Set(atuais)
-      if (proximas.has(cidade)) proximas.delete(cidade)
-      else proximas.add(cidade)
-      return proximas
-    })
-  }
-
-  const alternarTodas = () => {
-    setCidadesRecolhidas(
-      todasRecolhidas ? new Set() : new Set(grupos.map((grupo) => grupo.cidade)),
-    )
-  }
-
-  const iniciarEdicaoInline = (
-    lideranca: LiderancaCrudRow,
-    campo: keyof InlineForm = 'nome',
-  ) => {
+  const iniciarEdicaoInline = (lideranca: LiderancaCrudRow, campo: keyof InlineForm = 'nome') => {
     setEditingId(lideranca.id)
     setFocusField(campo)
     setInlineForm({
@@ -303,8 +309,9 @@ export function LiderancasPanel() {
         }),
       })
       const data = (await response.json()) as ApiResponse
-      if (!response.ok || !data.row) throw new Error(data.error || 'Erro ao salvar liderança')
-      setRows((atuais) => atuais.map((row) => (row.id === id ? data.row! : row)))
+      const salvo = data.row
+      if (!response.ok || !salvo) throw new Error(data.error || 'Erro ao salvar liderança')
+      setRows((atuais) => atuais.map((row) => (row.id === id ? salvo : row)))
       cancelarEdicaoInline()
       if (data.warning) setError(data.warning)
     } catch (err: unknown) {
@@ -319,9 +326,7 @@ export function LiderancasPanel() {
     setSavingId(lideranca.id)
     setError(null)
     try {
-      const response = await fetch(`/api/territorio/liderancas/${lideranca.id}`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(`/api/territorio/liderancas/${lideranca.id}`, { method: 'DELETE' })
       const data = (await response.json()) as ApiResponse
       if (!response.ok) throw new Error(data.error || 'Erro ao excluir liderança')
       setRows((atuais) => atuais.filter((row) => row.id !== lideranca.id))
@@ -333,6 +338,11 @@ export function LiderancasPanel() {
     }
   }
 
+  const abrirSeletorCidade = () => {
+    setNovaCidade(municipio ?? '')
+    setSelecionandoCidade(true)
+  }
+
   const abrirNovaLideranca = () => {
     const cidade = novaCidade.trim()
     if (!cidade) return
@@ -341,592 +351,363 @@ export function LiderancasPanel() {
     setNovaCidade('')
   }
 
-  return (
-    <section className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Indicador
-          icon={Users}
-          label="Lideranças"
-          valor={rowsFiltradas.length.toLocaleString('pt-BR')}
-        />
-        <Indicador
-          icon={MapPin}
-          label="Cidades"
-          valor={new Set(rowsFiltradas.map((row) => row.municipio.trim()).filter(Boolean)).size.toLocaleString('pt-BR')}
-        />
-        <Indicador
-          icon={Vote}
-          label="Expectativa"
-          valor={kpiExpectativa.toLocaleString('pt-BR')}
-          detalhe={
-            incluiEspontaneos
-              ? `Inclui ${VOTOS_ESPONTANEOS_2026.expectativa.toLocaleString('pt-BR')} espontâneos`
-              : undefined
-          }
-        />
-        <Indicador
-          icon={Vote}
-          label="Revisão Final"
-          valor={kpiRevisaoFinal.toLocaleString('pt-BR')}
-          detalhe={
-            incluiEspontaneos
-              ? `Inclui ${VOTOS_ESPONTANEOS_2026.revisaoFinal.toLocaleString('pt-BR')} espontâneos`
-              : undefined
-          }
-        />
-      </div>
+  /** Célula editável: clique entra em edição focando este campo. */
+  const celula = (
+    lideranca: LiderancaCrudRow,
+    campo: keyof InlineForm,
+    exibicao: ReactNode,
+    opts: { rotulo: string; numerico?: boolean; className?: string },
+  ) => {
+    const editando = editingId === lideranca.id && inlineForm
+    return (
+      <td
+        className={cn('cursor-pointer px-2 py-1.5', opts.numerico && 'text-right tabular-nums', opts.className)}
+        onClick={() => {
+          if (!editando) iniciarEdicaoInline(lideranca, campo)
+        }}
+        title={editando ? undefined : 'Clique para editar'}
+      >
+        {editando ? (
+          <InlineInput
+            value={inlineForm[campo]}
+            onChange={(value) => setInlineForm((form) => form && { ...form, [campo]: value })}
+            ariaLabel={opts.rotulo}
+            numeric={opts.numerico}
+            autoFocus={focusField === campo}
+            onSave={() => void salvarEdicaoInline(lideranca.id)}
+            onCancel={cancelarEdicaoInline}
+          />
+        ) : (
+          exibicao
+        )}
+      </td>
+    )
+  }
 
-      <div className="territorio-cx-filter-strip !mb-0 sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#969692]"
-              aria-hidden
-            />
-            <input
-              value={busca}
-              onChange={(event) => setBusca(event.target.value)}
-              placeholder="Buscar cidade, liderança ou cargo"
-              className="territorio-cx-input h-10 w-full !bg-white pl-9 pr-9"
-            />
-            {busca ? (
-              <button
-                type="button"
-                onClick={() => setBusca('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#969692] hover:text-[#2b2d31]"
-                aria-label="Limpar busca"
-              >
-                <X className="h-3.5 w-3.5" aria-hidden />
+  const situacaoBadge = (lideranca: LiderancaCrudRow) => {
+    if (lideranca.emDialogo || isLiderancaAtualEmDialogo(lideranca.liderancaAtual)) {
+      return <TseStatus cor="var(--tse-yellow)">Em diálogo</TseStatus>
+    }
+    if (isLiderancaAtualSim(lideranca.liderancaAtual)) return <TseStatus cor="var(--tse-green)">SIM</TseStatus>
+    if (isLiderancaAtualNao(lideranca.liderancaAtual)) return <TseStatus cor="var(--tse-zero)">NÃO</TseStatus>
+    return <span className="text-[var(--tse-muted)]">{lideranca.liderancaAtual || '—'}</span>
+  }
+
+  if (loading && rows.length === 0) return <TseCarregando texto="Carregando lideranças…" />
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+        <aside className="space-y-4">
+          <section className={tseCardClass}>
+            <h2 className="text-xl font-bold">Dados Gerais</h2>
+            <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">Cadastro de lideranças · {escopoLabel}</p>
+            <TseDados>
+              <TseDado rotulo="Lideranças" valor={fmt(rowsFiltradas.length)} sufixo={`/ ${fmt(rowsNoMunicipio.length)}`} />
+              <TseDado rotulo="Cidades" valor={fmt(cidadesCount)} sufixo={`/ ${fmt(universo)}`} />
+              <TseDado rotulo="Expectativa" valor={fmt(kpiExpectativa)} />
+              <TseDado rotulo="Revisão final" valor={fmt(kpiRevisaoFinal)} />
+            </TseDados>
+            <TseBarraRotulo pct={pctCobertura} rotulo={fmtPct(pctCobertura)} />
+            <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Cobertura de municípios</p>
+            {incluiEspontaneos ? (
+              <p className="mt-3 rounded-lg bg-[var(--tse-bar)] p-3 text-[11px] text-[var(--tse-muted)]">
+                Totais incluem votos espontâneos: {fmt(VOTOS_ESPONTANEOS_2026.expectativa)} na expectativa e{' '}
+                {fmt(VOTOS_ESPONTANEOS_2026.revisaoFinal)} na revisão final.
+              </p>
+            ) : null}
+          </section>
+
+          <TseListaFiltro
+            titulo="Situação"
+            itens={contagemSituacao}
+            ativo={filtroLideranca === 'todos' ? null : filtroLideranca}
+            onChange={(id) => setFiltroLideranca(id ?? 'todos')}
+          />
+        </aside>
+
+        <main className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TseSegmentado opcoes={FILTRO_OPCOES} valor={filtroLideranca} onChange={setFiltroLideranca} />
+            <div className="flex flex-wrap items-center gap-2">
+              <TseBusca value={busca} onChange={setBusca} placeholder="Buscar liderança ou cargo" />
+              <button type="button" onClick={() => void carregar()} disabled={loading} className={tseBotaoCinzaClass}>
+                <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} />
+                Atualizar
+              </button>
+              <button type="button" onClick={abrirSeletorCidade} className={tseBotaoPrimarioClass}>
+                <Plus className="h-4 w-4" />
+                Nova liderança
+              </button>
+            </div>
+          </div>
+
+          {error ? (
+            <div className="mt-3">
+              <TseErro>{error}</TseErro>
+            </div>
+          ) : null}
+
+          <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+            <div className="min-w-[180px] flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xl font-bold uppercase">Lideranças</p>
+                <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                  {escopoLabel}
+                </span>
+              </div>
+              <p className="text-[15px] text-[var(--tse-muted)]">
+                {fmt(rowsFiltradas.length)} lideranças em {fmt(cidadesCount)} {cidadesCount === 1 ? 'cidade' : 'cidades'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-black">{fmt(kpiExpectativa)}</p>
+              <p className="text-[13px] text-[var(--tse-muted)]">expectativa</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-black">{fmt(kpiRevisaoFinal)}</p>
+              <p className="text-[13px] text-[var(--tse-muted)]">revisão final</p>
+            </div>
+          </section>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--tse-muted)]">
+            <p>
+              {fmt(grupos.length)} {grupos.length === 1 ? 'município' : 'municípios'}
+              {busca.trim() ? ' encontrados' : ''} · clique numa liderança para editar na linha
+            </p>
+            {grupos.length > 0 ? (
+              <button type="button" onClick={alternarTodas} className={tseLinkAcaoClass}>
+                {todasAbertas ? 'Recolher todas' : 'Expandir todas'}
               </button>
             ) : null}
-          </label>
-
-          <div
-            className="inline-flex h-10 shrink-0 items-center rounded-[10px] border border-[#e8e8e6] bg-white p-0.5"
-            role="group"
-            aria-label="Filtrar por liderança atual"
-          >
-            {FILTRO_LIDERANCA_OPCOES.map((opcao) => {
-              const ativo = filtroLideranca === opcao.id
-              return (
-                <button
-                  key={opcao.id}
-                  type="button"
-                  onClick={() => setFiltroLideranca(opcao.id)}
-                  aria-pressed={ativo}
-                  className={cn(
-                    'h-8 rounded-md px-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
-                    ativo
-                      ? 'territorio-cx-chip-active border border-[#e8a825] bg-[rgba(232,168,37,0.14)] text-[#2b2d31]'
-                      : 'text-[#686865] hover:text-[#2b2d31]',
-                  )}
-                >
-                  {opcao.label}
-                </button>
-              )
-            })}
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={alternarTodas}
-            disabled={grupos.length === 0}
-            className={territorioCxBtnGhostClass}
-          >
-            {todasRecolhidas ? (
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            )}
-            {todasRecolhidas ? 'Expandir tudo' : 'Recolher tudo'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void carregar()}
-            disabled={loading}
-            className={territorioCxBtnGhostClass}
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} aria-hidden />
-            Atualizar
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelecionandoCidade(true)}
-            className={territorioCxBtnPrimaryClass}
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Nova liderança
-          </button>
-        </div>
+          {gruposOrdenados.length === 0 ? (
+            <div className="mt-3">
+              <TseVazio>
+                {municipio ? `Nenhuma liderança encontrada em ${municipio}.` : 'Nenhuma liderança encontrada.'}
+              </TseVazio>
+            </div>
+          ) : (
+            <>
+              <div className={cn('mt-3', tseTabela.container)}>
+                <table className={tseTabela.table} data-tse-tabela>
+                  <thead className={tseTabela.thead}>
+                    <tr>
+                      <th className="w-14 px-3 py-2.5 text-center">Pos.</th>
+                      <TseThOrdenavel col="cidade" sortCol={sortCol} sortAsc={sortAsc} onSort={alternarSort}>
+                        Município
+                      </TseThOrdenavel>
+                      <TseThOrdenavel col="liderancas" alinhar="right" sortCol={sortCol} sortAsc={sortAsc} onSort={alternarSort}>
+                        Lideranças
+                      </TseThOrdenavel>
+                      <TseThOrdenavel
+                        col="expectativa"
+                        alinhar="right"
+                        className="w-[200px]"
+                        sortCol={sortCol}
+                        sortAsc={sortAsc}
+                        onSort={alternarSort}
+                      >
+                        Expectativa
+                      </TseThOrdenavel>
+                      <TseThOrdenavel
+                        col="previsto"
+                        alinhar="right"
+                        className="w-[200px]"
+                        sortCol={sortCol}
+                        sortAsc={sortAsc}
+                        onSort={alternarSort}
+                      >
+                        Revisão final
+                      </TseThOrdenavel>
+                      <th className="px-3 py-2.5 text-right">Ações</th>
+                      <th className="w-10 px-2 py-2.5" aria-label="Expandir" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gruposOrdenados.slice(0, limite).map((grupo) => {
+                      const aberta = expandidas.has(grupo.cidade)
+                      return (
+                        <GrupoLinhas
+                          key={grupo.cidade}
+                          grupo={grupo}
+                          aberta={aberta}
+                          posicao={rank.get(grupo.cidade) ?? 0}
+                          maxExpectativa={maxExpectativa}
+                          maxPrevisto={maxPrevisto}
+                          onToggle={() => alternar(grupo.cidade)}
+                          onAdicionar={() => setModal({ cidade: grupo.cidade, editingId: null, creating: true })}
+                        >
+                          {grupo.rows.map((lideranca) => {
+                            const editando = editingId === lideranca.id && inlineForm
+                            const salvando = savingId === lideranca.id
+                            return (
+                              <tr
+                                key={lideranca.id}
+                                className={cn('border-t border-[#EEEEEE]', editando && 'bg-[var(--tse-yellow-soft)]')}
+                              >
+                                {celula(lideranca, 'nome', lideranca.nome || '—', {
+                                  rotulo: 'Nome da liderança',
+                                  className: 'pl-4 font-semibold',
+                                })}
+                                {celula(lideranca, 'cargo', lideranca.cargo || '—', {
+                                  rotulo: 'Cargo',
+                                  className: 'text-[var(--tse-muted)]',
+                                })}
+                                {celula(lideranca, 'depEstadual', lideranca.depEstadual || '—', {
+                                  rotulo: 'Deputado estadual',
+                                  className: 'text-[var(--tse-muted)]',
+                                })}
+                                {celula(lideranca, 'governador', lideranca.governador || '—', {
+                                  rotulo: 'Governador',
+                                  className: 'text-[var(--tse-muted)]',
+                                })}
+                                <td
+                                  className="cursor-pointer px-2 py-1.5"
+                                  onClick={() => {
+                                    if (!editando) iniciarEdicaoInline(lideranca, 'liderancaAtual')
+                                  }}
+                                  title={editando ? undefined : 'Clique para editar'}
+                                >
+                                  {editando ? (
+                                    <select
+                                      value={inlineForm.liderancaAtual}
+                                      onChange={(event) =>
+                                        setInlineForm((form) => form && { ...form, liderancaAtual: event.target.value })
+                                      }
+                                      className={inlineFieldClass}
+                                      aria-label="Situação da liderança"
+                                    >
+                                      <option value="SIM">SIM</option>
+                                      <option value="NÃO">NÃO</option>
+                                      <option value="EM DIÁLOGO">EM DIÁLOGO</option>
+                                    </select>
+                                  ) : (
+                                    situacaoBadge(lideranca)
+                                  )}
+                                </td>
+                                {celula(lideranca, 'votos2024', fmt(lideranca.votos2024 ?? 0), {
+                                  rotulo: 'Votos 2024',
+                                  numerico: true,
+                                  className: 'text-[var(--tse-muted)]',
+                                })}
+                                {celula(lideranca, 'promessa', fmt(lideranca.promessa), {
+                                  rotulo: 'Promessa 2026',
+                                  numerico: true,
+                                  className: 'text-[var(--tse-muted)]',
+                                })}
+                                {celula(lideranca, 'expectativaLegado', fmt(lideranca.expectativaLegado), {
+                                  rotulo: 'Expectativa',
+                                  numerico: true,
+                                  className: 'font-bold',
+                                })}
+                                {celula(lideranca, 'previsto', fmt(lideranca.previsto ?? 0), {
+                                  rotulo: 'Revisão final',
+                                  numerico: true,
+                                  className: 'font-bold',
+                                })}
+                                <td className="px-2 py-1.5 text-right">
+                                  <div className="flex items-center justify-end gap-0.5">
+                                    {editando ? (
+                                      <>
+                                        <IconeAcao
+                                          rotulo="Salvar"
+                                          onClick={() => void salvarEdicaoInline(lideranca.id)}
+                                          disabled={salvando}
+                                          className="text-[var(--tse-olive)] hover:bg-[#F3F7E6]"
+                                        >
+                                          {salvando ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Check className="h-3.5 w-3.5" />
+                                          )}
+                                        </IconeAcao>
+                                        <IconeAcao rotulo="Cancelar" onClick={cancelarEdicaoInline} disabled={salvando}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </IconeAcao>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <IconeAcao
+                                          rotulo={`Editar ${lideranca.nome}`}
+                                          onClick={() => iniciarEdicaoInline(lideranca)}
+                                          disabled={savingId != null}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </IconeAcao>
+                                        <IconeAcao
+                                          rotulo={`Excluir ${lideranca.nome}`}
+                                          onClick={() => void excluirInline(lideranca)}
+                                          disabled={savingId != null}
+                                          className="hover:bg-red-50 hover:text-red-600"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </IconeAcao>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </GrupoLinhas>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <TseCarregarMais restantes={gruposOrdenados.length - limite} onClick={() => setLimite((n) => n + PAGE_SIZE)} />
+            </>
+          )}
+        </main>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-status-danger/30 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">
-          {error}
-        </div>
-      ) : null}
-
-      {loading && rows.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Carregando lideranças…
-        </div>
-      ) : grupos.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-card px-4 py-12 text-center text-sm text-text-secondary">
-          Nenhuma liderança encontrada.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <TerritorioCidadeExpectativaSortBar
-            cidadeActive={sortCol === 'cidade'}
-            cidadeAsc={sortAsc}
-            expectativaActive={sortCol === 'expectativa'}
-            expectativaAsc={sortAsc}
-            onSortCidade={() => alternarSort('cidade')}
-            onSortExpectativa={() => alternarSort('expectativa')}
-          />
-          {grupos.map((grupo) => {
-            const recolhida = cidadesRecolhidas.has(grupo.cidade)
-            return (
-              <article
-                key={grupo.cidade}
-                className="territorio-cx-city-group overflow-hidden rounded-xl border border-[#e8e8e6] bg-white shadow-none"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e6] bg-[#f7f7f6] px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => alternarCidade(grupo.cidade)}
-                    className="flex min-w-0 items-center gap-2 text-left"
-                    aria-expanded={!recolhida}
-                  >
-                    {recolhida ? (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
-                    )}
-                    <MapPin className="h-4 w-4 shrink-0 text-[#e8a825]" aria-hidden />
-                    <span className="truncate text-sm font-semibold text-text-primary">
-                      {grupo.cidade}
-                    </span>
-                    <span className="rounded-full bg-background px-2 py-0.5 text-[10px] text-text-secondary">
-                      {grupo.rows.length}
-                    </span>
-                  </button>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-text-secondary">
-                      Expectativa:{' '}
-                      <strong className="tabular-nums text-text-primary">
-                        {grupo.totalExpectativa.toLocaleString('pt-BR')} votos
-                      </strong>
-                    </span>
-                    <span className="text-xs text-text-secondary">
-                      Revisão Final:{' '}
-                      <strong className="tabular-nums text-text-primary">
-                        {grupo.totalPrevisto.toLocaleString('pt-BR')} votos
-                      </strong>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setModal({ cidade: grupo.cidade, editingId: null, creating: true })
-                      }
-                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-card bg-surface px-2 text-[11px] font-medium text-text-primary"
-                    >
-                      <Plus className="h-3 w-3" aria-hidden />
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-
-                {!recolhida ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1060px] text-xs">
-                      <thead>
-                        <tr className="text-text-secondary">
-                          <th className="px-4 py-2 text-left font-medium">Liderança</th>
-                          <th className="px-3 py-2 text-left font-medium">Cargo</th>
-                          <th className="px-3 py-2 text-left font-medium">Dep. Estadual</th>
-                          <th className="px-3 py-2 text-left font-medium">Governador</th>
-                          <th className="px-3 py-2 text-left font-medium">Situação</th>
-                          <th className="px-3 py-2 text-right font-medium">Votos 2024</th>
-                          <th className="px-3 py-2 text-right font-medium">Promessa 2026</th>
-                          <th className="px-3 py-2 text-right font-medium">Expectativa</th>
-                          <th className="px-3 py-2 text-right font-medium">
-                            <TerritorioSortableHeaderButton
-                              label="Revisão Final"
-                              active={sortCol === 'expectativa'}
-                              asc={sortAsc}
-                              onClick={() => alternarSort('expectativa')}
-                              align="right"
-                              compact
-                              className="w-full"
-                            />
-                          </th>
-                          <th className="w-16 px-3 py-2 text-right font-medium">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {grupo.rows.map((lideranca, index) => {
-                          const editando = editingId === lideranca.id && inlineForm
-                          const salvando = savingId === lideranca.id
-                          return (
-                            <tr
-                              key={lideranca.id}
-                              className={cn(
-                                'border-t border-card text-text-primary',
-                                index % 2 === 1 && 'bg-background/30',
-                                editando && 'bg-[#e8a825]/5',
-                              )}
-                            >
-                              <td
-                                className="cursor-pointer px-2 py-1.5 pl-4 font-medium"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'nome')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.nome}
-                                    onChange={(value) =>
-                                      setInlineForm((form) => form && { ...form, nome: value })
-                                    }
-                                    ariaLabel="Nome da liderança"
-                                    autoFocus={focusField === 'nome'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.nome || '-'
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-text-secondary"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'cargo')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.cargo}
-                                    onChange={(value) =>
-                                      setInlineForm((form) => form && { ...form, cargo: value })
-                                    }
-                                    ariaLabel="Cargo"
-                                    autoFocus={focusField === 'cargo'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.cargo || '-'
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-text-secondary"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'depEstadual')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.depEstadual}
-                                    onChange={(value) =>
-                                      setInlineForm(
-                                        (form) => form && { ...form, depEstadual: value },
-                                      )
-                                    }
-                                    ariaLabel="Deputado estadual"
-                                    autoFocus={focusField === 'depEstadual'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.depEstadual || '-'
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-text-secondary"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'governador')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.governador}
-                                    onChange={(value) =>
-                                      setInlineForm(
-                                        (form) => form && { ...form, governador: value },
-                                      )
-                                    }
-                                    ariaLabel="Governador"
-                                    autoFocus={focusField === 'governador'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.governador || '-'
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'liderancaAtual')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <select
-                                    value={inlineForm.liderancaAtual}
-                                    onChange={(event) =>
-                                      setInlineForm(
-                                        (form) =>
-                                          form && {
-                                            ...form,
-                                            liderancaAtual: event.target.value,
-                                          },
-                                      )
-                                    }
-                                    className={inlineFieldClass}
-                                    aria-label="Situação da liderança"
-                                  >
-                                    <option value="SIM">SIM</option>
-                                    <option value="NÃO">NÃO</option>
-                                    <option value="EM DIÁLOGO">EM DIÁLOGO</option>
-                                  </select>
-                                ) : lideranca.emDialogo ? (
-                                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-text-primary">
-                                    Em diálogo
-                                  </span>
-                                ) : (
-                                  <span className="text-text-secondary">
-                                    {lideranca.liderancaAtual || '-'}
-                                  </span>
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-right tabular-nums text-text-secondary"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'votos2024')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.votos2024}
-                                    onChange={(value) =>
-                                      setInlineForm(
-                                        (form) => form && { ...form, votos2024: value },
-                                      )
-                                    }
-                                    ariaLabel="Votos 2024"
-                                    numeric
-                                    autoFocus={focusField === 'votos2024'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  (lideranca.votos2024 ?? 0).toLocaleString('pt-BR')
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-right tabular-nums text-text-secondary"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'promessa')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.promessa}
-                                    onChange={(value) =>
-                                      setInlineForm((form) => form && { ...form, promessa: value })
-                                    }
-                                    ariaLabel="Promessa 2026"
-                                    numeric
-                                    autoFocus={focusField === 'promessa'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.promessa.toLocaleString('pt-BR')
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-right font-semibold tabular-nums"
-                                onClick={() => {
-                                  if (!editando)
-                                    iniciarEdicaoInline(lideranca, 'expectativaLegado')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.expectativaLegado}
-                                    onChange={(value) =>
-                                      setInlineForm(
-                                        (form) =>
-                                          form && { ...form, expectativaLegado: value },
-                                      )
-                                    }
-                                    ariaLabel="Expectativa"
-                                    numeric
-                                    autoFocus={focusField === 'expectativaLegado'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  lideranca.expectativaLegado.toLocaleString('pt-BR')
-                                )}
-                              </td>
-                              <td
-                                className="cursor-pointer px-2 py-1.5 text-right font-semibold tabular-nums"
-                                onClick={() => {
-                                  if (!editando) iniciarEdicaoInline(lideranca, 'previsto')
-                                }}
-                                title={editando ? undefined : 'Clique para editar'}
-                              >
-                                {editando ? (
-                                  <InlineInput
-                                    value={inlineForm.previsto}
-                                    onChange={(value) =>
-                                      setInlineForm((form) => form && { ...form, previsto: value })
-                                    }
-                                    ariaLabel="Revisão Final"
-                                    numeric
-                                    autoFocus={focusField === 'previsto'}
-                                    onSave={() => void salvarEdicaoInline(lideranca.id)}
-                                    onCancel={cancelarEdicaoInline}
-                                  />
-                                ) : (
-                                  (lideranca.previsto ?? 0).toLocaleString('pt-BR')
-                                )}
-                              </td>
-                              <td className="px-2 py-1.5 text-right">
-                                <div className="flex items-center justify-end gap-0.5">
-                                  {editando ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => void salvarEdicaoInline(lideranca.id)}
-                                        disabled={salvando}
-                                        className="rounded p-1.5 text-emerald-700 hover:bg-emerald-500/10 disabled:opacity-50"
-                                        aria-label={`Salvar ${lideranca.nome}`}
-                                        title="Salvar"
-                                      >
-                                        {salvando ? (
-                                          <Loader2
-                                            className="h-3.5 w-3.5 animate-spin"
-                                            aria-hidden
-                                          />
-                                        ) : (
-                                          <Check className="h-3.5 w-3.5" aria-hidden />
-                                        )}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={cancelarEdicaoInline}
-                                        disabled={salvando}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-background disabled:opacity-50"
-                                        aria-label="Cancelar edição"
-                                        title="Cancelar"
-                                      >
-                                        <X className="h-3.5 w-3.5" aria-hidden />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => iniciarEdicaoInline(lideranca)}
-                                        disabled={savingId != null}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-background hover:text-text-primary disabled:opacity-50"
-                                        aria-label={`Editar ${lideranca.nome}`}
-                                        title="Editar na linha"
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" aria-hidden />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => void excluirInline(lideranca)}
-                                        disabled={savingId != null}
-                                        className="rounded p-1.5 text-text-secondary hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50"
-                                        aria-label={`Excluir ${lideranca.nome}`}
-                                        title="Excluir"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-              </article>
-            )
-          })}
-        </div>
-      )}
-
       {selecionandoCidade ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-card bg-surface p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 text-[#333333] shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-text-primary">Nova liderança</h3>
-                <p className="text-xs text-text-secondary">Informe a cidade do cadastro.</p>
+                <h3 className="text-[15px] font-bold">Nova liderança</h3>
+                <p className="text-[12px] text-[#717171]">Informe a cidade do cadastro.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelecionandoCidade(false)}
-                className="rounded p-1.5 text-text-secondary hover:bg-background"
+                className="rounded p-1.5 text-[#717171] hover:bg-[#F4F4F2]"
                 aria-label="Fechar"
               >
-                <X className="h-4 w-4" aria-hidden />
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <label className="text-xs text-text-secondary">
-              Cidade
+            <label className="block">
+              <span className={tseRotuloCampoClass}>Cidade</span>
               <input
                 value={novaCidade}
                 onChange={(event) => setNovaCidade(event.target.value)}
                 list="territorio-liderancas-cidades"
                 placeholder="Ex.: Teresina"
                 autoFocus
-                className="mt-1 h-9 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
+                className={tseCampoClass}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') abrirNovaLideranca()
                 }}
               />
               <datalist id="territorio-liderancas-cidades">
-                {cidades.map((cidade) => (
+                {cidadesCadastro.map((cidade) => (
                   <option key={cidade} value={cidade} />
                 ))}
               </datalist>
             </label>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelecionandoCidade(false)}
-                className="h-8 rounded-lg border border-card px-3 text-xs text-text-primary"
-              >
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setSelecionandoCidade(false)} className={tseBotaoCinzaClass}>
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={abrirNovaLideranca}
                 disabled={!novaCidade.trim()}
-                className={cn(territorioCxBtnPrimaryClass, 'h-8 disabled:opacity-50')}
+                className={tseBotaoPrimarioClass}
               >
                 Continuar
               </button>
@@ -945,12 +726,127 @@ export function LiderancasPanel() {
           onChanged={() => void carregar()}
         />
       ) : null}
-    </section>
+    </>
+  )
+}
+
+function GrupoLinhas({
+  grupo,
+  aberta,
+  posicao,
+  maxExpectativa,
+  maxPrevisto,
+  onToggle,
+  onAdicionar,
+  children,
+}: {
+  grupo: GrupoCidade
+  aberta: boolean
+  posicao: number
+  maxExpectativa: number
+  maxPrevisto: number
+  onToggle: () => void
+  onAdicionar: () => void
+  children: ReactNode
+}) {
+  return (
+    <>
+      <tr
+        onClick={onToggle}
+        aria-expanded={aberta}
+        className={cn(tseTabela.trClicavel, aberta && 'bg-[var(--tse-yellow-soft)]')}
+      >
+        <td className="px-3 py-2 text-center">
+          <TseRank posicao={posicao} />
+        </td>
+        <td className="px-3 py-2 font-bold uppercase">{grupo.cidade}</td>
+        <td className="px-3 py-2 text-right tabular-nums">{fmt(grupo.rows.length)}</td>
+        <td className="px-3 py-2">
+          <TseBarraValor
+            valor={grupo.totalExpectativa}
+            max={maxExpectativa}
+            formatado={fmt(grupo.totalExpectativa)}
+            cor="amarelo"
+          />
+        </td>
+        <td className="px-3 py-2">
+          <TseBarraValor valor={grupo.totalPrevisto} max={maxPrevisto} formatado={fmt(grupo.totalPrevisto)} />
+        </td>
+        <td className="px-3 py-2 text-right">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAdicionar()
+            }}
+            className={tseLinkAcaoClass}
+          >
+            Adicionar
+          </button>
+        </td>
+        <TseChevronCelula aberta={aberta} />
+      </tr>
+      {aberta ? (
+        <tr className="bg-[var(--tse-bar)]">
+          <td colSpan={7} className="px-3 pb-3 pt-1">
+            <div className="overflow-x-auto rounded-lg bg-white">
+              <table className="w-full min-w-[1000px] text-[12px]" data-tse-tabela>
+                <thead className="text-left text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                  <tr>
+                    <th className="px-2 py-2 pl-4">Liderança</th>
+                    <th className="px-2 py-2">Cargo</th>
+                    <th className="px-2 py-2">Dep. estadual</th>
+                    <th className="px-2 py-2">Governador</th>
+                    <th className="px-2 py-2">Situação</th>
+                    <th className="px-2 py-2 text-right">Votos 2024</th>
+                    <th className="px-2 py-2 text-right">Promessa 2026</th>
+                    <th className="px-2 py-2 text-right">Expectativa</th>
+                    <th className="px-2 py-2 text-right">Revisão final</th>
+                    <th className="w-16 px-2 py-2 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>{children}</tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
+  )
+}
+
+function IconeAcao({
+  rotulo,
+  onClick,
+  disabled,
+  className,
+  children,
+}: {
+  rotulo: string
+  onClick: () => void
+  disabled?: boolean
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={rotulo}
+      title={rotulo}
+      className={cn(
+        'rounded p-1.5 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)] disabled:opacity-50',
+        className,
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
 const inlineFieldClass =
-  'h-7 w-full min-w-[88px] rounded border border-[#e8a825]/50 bg-surface px-1.5 text-xs text-text-primary outline-none focus:border-[#e8a825] focus:ring-1 focus:ring-[#e8a825]/25'
+  'h-7 w-full min-w-[88px] rounded border border-[var(--tse-yellow)] bg-white px-1.5 text-[12px] text-[var(--tse-text)] outline-none focus:ring-2 focus:ring-[var(--tse-yellow-soft)]'
 
 type InlineInputProps = {
   value: string
@@ -985,29 +881,5 @@ function InlineInput({
       }}
       className={cn(inlineFieldClass, numeric && 'text-right tabular-nums')}
     />
-  )
-}
-
-type IndicadorProps = {
-  icon: typeof Users
-  label: string
-  valor: string
-  detalhe?: string
-}
-
-function Indicador({ icon: Icon, label, valor, detalhe }: IndicadorProps) {
-  return (
-    <div className="territorio-cx-kpi relative overflow-hidden">
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 text-[#969692]" aria-hidden />
-        <p className="territorio-cx-kpi__label">{label}</p>
-      </div>
-      <p className="territorio-cx-kpi__value">{valor}</p>
-      {detalhe ? <p className="mt-1 text-[10px] text-[#969692]">{detalhe}</p> : null}
-      <span
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-[#e8a825]"
-        aria-hidden
-      />
-    </div>
   )
 }

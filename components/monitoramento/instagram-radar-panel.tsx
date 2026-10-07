@@ -1,246 +1,415 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
-import { InstagramCompareBoard } from '@/components/instagram-radar/instagram-compare-board'
-import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
-import type { InstagramRadarCollectStatus } from '@/lib/instagram-radar-types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  TseBarraRotulo,
+  TseBarraValor,
+  TseBusca,
+  TseCarregando,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseVazio,
+  tseControleClass,
+  tseLinkAcaoClass,
+} from '@/components/tse/tse-ui'
+import {
+  RadarAviso,
+  RadarCandidatoNome,
+  RadarCodigo,
+  RadarColetar,
+  RadarDadosGerais,
+  RadarLayout,
+  RadarLinhaContagem,
+  RadarListaCandidatos,
+  RadarResumo,
+  RadarSubItem,
+  RadarSubLista,
+  RadarTabela,
+  fmtData,
+  fmtDataHora,
+  fmtInt,
+  normalizar,
+  ordenarLinhas,
+  plural,
+  rankPor,
+  useLinhasAbertas,
+  useOrdenacao,
+  type RadarAbaProps,
+  type RadarColuna,
+} from '@/components/monitoramento/radar-ui'
+import { buildInstagramRadarCompareRows, type InstagramRadarCompareActorRow } from '@/lib/instagram-radar-aggregate'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
-import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { loadInstagramConfigAsync } from '@/lib/instagramApi'
-import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
-import { typographyBodyMutedClass } from '@/lib/typography-chrome'
-import { cn } from '@/lib/utils'
+import {
+  coletarInstagramRadar,
+  fetchInstagramRadar,
+  fetchInstagramRadarStatus,
+  type InstagramRadarStatus,
+} from '@/lib/services/radar-eleitoral-client'
+import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 
-const LOOKBACK_OPTIONS = [30, 60, 90] as const
+const PERIODOS = [30, 60, 90] as const
+const MAX_POSTS_DETALHE = 12
+type Coluna = 'nome' | 'posts' | 'semana' | 'engajamento' | 'reels'
+const COLUNAS_TEXTO: readonly Coluna[] = ['nome']
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+const fmtDec = (n: number): string => n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+function Avatar({ nome, url }: { nome: string; url: string | null | undefined }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+  }
+  return (
+    <span
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--tse-yellow-soft)] text-[12px] font-black text-[var(--tse-gold-text)]"
+      aria-hidden
+    >
+      {(nome.trim().charAt(0) || '?').toUpperCase()}
+    </span>
+  )
 }
 
-async function fetchInstagramStatus(attempt = 0): Promise<{
-  res: Response
-  json: InstagramRadarCollectStatus & { setupRequired?: boolean; message?: string; error?: string; retryable?: boolean }
-}> {
-  const res = await fetch('/api/instagram-radar/status', { cache: 'no-store' })
-  const json = (await res.json()) as InstagramRadarCollectStatus & {
-    setupRequired?: boolean
-    message?: string
-    error?: string
-    retryable?: boolean
-  }
-  if ((res.status === 503 || json.retryable) && attempt < 2) {
-    await sleep(2500 * (attempt + 1))
-    return fetchInstagramStatus(attempt + 1)
-  }
-  return { res, json }
-}
-
-async function fetchInstagramBootstrap(days: number, attempt = 0) {
-  const res = await fetch(`/api/instagram-radar/bootstrap?days=${days}&limit=400`, {
-    cache: 'no-store',
-  })
-  const json = (await res.json()) as {
-    error?: string
-    retryable?: boolean
-    setupRequired?: boolean
-    actors?: PoliticalActorWithTerms[]
-    posts?: InstagramRadarPostWithActor[]
-    status?: InstagramRadarCollectStatus & { message?: string }
-  }
-
-  if ((res.status === 503 || json.retryable) && attempt < 2) {
-    await sleep(2500 * (attempt + 1))
-    return fetchInstagramBootstrap(days, attempt + 1)
-  }
-
-  return { res, json }
-}
-
-function formatNextCollect(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-export function InstagramRadarPanel() {
-  const [lookbackDays, setLookbackDays] = useState<number>(30)
-  const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
-  const [setupRequired, setSetupRequired] = useState(false)
+export function InstagramRadarPanel({ atores, candidato, onCandidatoChange }: RadarAbaProps) {
+  const [dias, setDias] = useState<number>(30)
+  const [atoresIg, setAtoresIg] = useState<PoliticalActorWithTerms[]>([])
   const [posts, setPosts] = useState<InstagramRadarPostWithActor[]>([])
-  const [status, setStatus] = useState<InstagramRadarCollectStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [collecting, setCollecting] = useState(false)
-  const [error, setError] = useState('')
-  const [collectMessage, setCollectMessage] = useState('')
-  const [collectWarnings, setCollectWarnings] = useState<string[]>([])
-
-  const refreshStatus = useCallback(async () => {
-    const { res, json: j } = await fetchInstagramStatus()
-    if (!res.ok && !j.setupRequired) {
-      setError(j.error ?? 'Falha ao carregar status do Instagram Radar.')
-      return null
-    }
-    setStatus(j)
-    return j
-  }, [])
+  const [status, setStatus] = useState<InstagramRadarStatus | null>(null)
+  const [setupRequired, setSetupRequired] = useState<boolean>(false)
+  const [carregando, setCarregando] = useState<boolean>(true)
+  const [coletando, setColetando] = useState<boolean>(false)
+  const [erro, setErro] = useState<string>('')
+  const [mensagem, setMensagem] = useState<string>('')
+  const [avisos, setAvisos] = useState<string[]>([])
+  const [busca, setBusca] = useState<string>('')
+  const { ordem, asc, ordenar } = useOrdenacao<Coluna>('engajamento', COLUNAS_TEXTO)
+  const { abertas, alternar, setAbertas } = useLinhasAbertas(candidato)
 
   const carregar = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setCarregando(true)
+    setErro('')
     try {
-      const { res, json } = await fetchInstagramBootstrap(lookbackDays)
-
-      setSetupRequired(Boolean(json.setupRequired))
-      setActors(json.actors ?? [])
-      setPosts(json.posts ?? [])
-      if (json.status) setStatus(json.status)
-
-      if (!res.ok) {
-        if (json.setupRequired) {
-          setPosts([])
-        } else {
-          throw new Error(json.error ?? 'Falha ao carregar Instagram Radar.')
-        }
-      }
+      const r = await fetchInstagramRadar(dias)
+      setSetupRequired(r.setupRequired)
+      setAtoresIg(r.dados.atores)
+      setPosts(r.dados.posts)
+      if (r.dados.status) setStatus(r.dados.status)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar Instagram.')
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar Instagram.')
     } finally {
-      setLoading(false)
+      setCarregando(false)
     }
-  }, [lookbackDays])
+  }, [dias])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
 
-  const coletar = useCallback(async () => {
-    setCollecting(true)
-    setCollectMessage('')
-    setCollectWarnings([])
-    setError('')
+  const coletar = async () => {
+    setColetando(true)
+    setMensagem('')
+    setAvisos([])
+    setErro('')
     try {
-      const igConfig = await loadInstagramConfigAsync()
-      const res = await fetch('/api/instagram-radar/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instagramBusinessAccountId: igConfig.businessAccountId || undefined,
-        }),
-      })
-      const j = (await res.json()) as {
-        error?: string
-        totals?: {
-          postsFound: number
-          postsInserted: number
-          postsUpdated: number
-          estimatedCostUsd: number
-          errors?: string[]
-        }
-      }
-      if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
-
-      const t = j.totals
-      const warnings = (t?.errors ?? []).filter(Boolean)
-      setCollectWarnings(warnings)
-      setCollectMessage(
-        t
-          ? `Coleta concluída: ${t.postsFound} posts · ${t.postsInserted} novos · ${t.postsUpdated} atualizados`
-          : 'Coleta concluída.'
-      )
+      const config = await loadInstagramConfigAsync()
+      const r = await coletarInstagramRadar(config.businessAccountId || undefined)
+      setMensagem(r.mensagem)
+      setAvisos(r.avisos)
       await carregar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro na coleta.')
+      setErro(e instanceof Error ? e.message : 'Erro na coleta.')
     } finally {
-      setCollecting(false)
-      await refreshStatus()
+      setColetando(false)
+      const s = await fetchInstagramRadarStatus().catch(() => null)
+      if (s) setStatus(s)
     }
-  }, [carregar, refreshStatus])
+  }
 
-  const canCollect = status?.canCollect ?? false
-  const cooldownEnabled = status?.cooldownEnabled ?? true
-  const apifyConfigured = status?.apifyConfigured ?? false
-  const ownAccountConfigured = status?.ownAccountConfigured ?? false
-  const collectDisabled =
-    collecting ||
-    setupRequired ||
-    (!apifyConfigured && !ownAccountConfigured) ||
-    (cooldownEnabled && !canCollect && !collecting)
+  /** O bootstrap traz o @ do candidato próprio (API Graph); o cadastro global traz as edições recentes. */
+  const atoresMesclados = useMemo(() => {
+    if (atores.length === 0) return atoresIg
+    const doIg = new Map(atoresIg.map((a) => [a.id, a]))
+    return atores.map((a) => {
+      const ig = doIg.get(a.id)
+      return ig
+        ? {
+            ...a,
+            instagram_username: a.instagram_username ?? ig.instagram_username,
+            instagram_avatar_url: a.instagram_avatar_url ?? ig.instagram_avatar_url,
+          }
+        : a
+    })
+  }, [atores, atoresIg])
+
+  const linhas = useMemo(
+    () => buildInstagramRadarCompareRows(atoresMesclados, posts, dias),
+    [atoresMesclados, posts, dias],
+  )
+  const ranking = useMemo(() => rankPor(linhas, (l) => l.actor.slug, (l) => l.avgEngagement), [linhas])
+
+  const termo = normalizar(busca.trim())
+  const filtradas = linhas.filter(
+    (l) =>
+      (!candidato || l.actor.slug === candidato) &&
+      (!termo ||
+        normalizar(l.actor.name).includes(termo) ||
+        normalizar(l.instagramUsername).includes(termo) ||
+        l.posts.some((p) => normalizar(p.caption).includes(termo))),
+  )
+  const comIg = filtradas.filter((l) => l.instagramUsername)
+  const semIg = filtradas.filter((l) => !l.instagramUsername)
+  const visiveis = ordenarLinhas<InstagramRadarCompareActorRow, Coluna>(
+    comIg,
+    (l, c) =>
+      c === 'nome'
+        ? l.actor.name
+        : c === 'posts'
+          ? l.postCount
+          : c === 'semana'
+            ? l.postsPerWeek
+            : c === 'reels'
+              ? l.reelCount
+              : l.avgEngagement,
+    ordem,
+    asc,
+  )
+
+  const totalPosts = comIg.reduce((s, l) => s + l.postCount, 0)
+  const engajamentoTotal = comIg.reduce((s, l) => s + l.avgEngagement * l.postCount, 0)
+  const engMedio = totalPosts > 0 ? engajamentoTotal / totalPosts : 0
+  const todosPosts = linhas.reduce((s, l) => s + l.postCount, 0)
+  const foco = linhas.find((l) => l.actor.slug === candidato) ?? linhas.find((l) => l.actor.actor_type === 'own_candidate')
+  const pctFoco = todosPosts > 0 && foco ? (foco.postCount / todosPosts) * 100 : 0
+  const maxPosts = Math.max(1, ...linhas.map((l) => l.postCount))
+  const maxEng = Math.max(1, ...linhas.map((l) => l.avgEngagement))
+  const nomeCandidato = linhas.find((l) => l.actor.slug === candidato)?.actor.name
+  const todosAbertos = visiveis.length > 0 && visiveis.every((l) => abertas.has(l.actor.slug))
+
+  const cooldown = status?.cooldownEnabled ?? true
+  const podeColetar = status?.canCollect ?? false
+  const fonteConfigurada = Boolean(status?.apifyConfigured || status?.ownAccountConfigured)
+  const coletaBloqueada = setupRequired || !fonteConfigurada || (cooldown && !podeColetar)
+
+  const colunas: RadarColuna<InstagramRadarCompareActorRow, Coluna>[] = [
+    {
+      id: 'nome',
+      rotulo: 'Candidato',
+      celula: (l) => (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar nome={l.actor.name} url={l.actor.instagram_avatar_url} />
+          <RadarCandidatoNome
+            nome={l.actor.name}
+            tipo={l.actor.actor_type}
+            extra={<span>@{l.instagramUsername}</span>}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'posts',
+      rotulo: 'Posts',
+      alinhar: 'right',
+      celula: (l) => <TseBarraValor valor={l.postCount} max={maxPosts} formatado={fmtInt(l.postCount)} />,
+    },
+    {
+      id: 'semana',
+      rotulo: 'Por semana',
+      alinhar: 'right',
+      className: 'hidden md:table-cell',
+      celula: (l) => <span className="font-bold tabular-nums">{fmtDec(l.postsPerWeek)}</span>,
+    },
+    {
+      id: 'engajamento',
+      rotulo: 'Eng. médio',
+      alinhar: 'right',
+      className: 'hidden sm:table-cell',
+      celula: (l) => (
+        <TseBarraValor valor={l.avgEngagement} max={maxEng} formatado={fmtInt(Math.round(l.avgEngagement))} larguraNumero="w-20" cor="amarelo" />
+      ),
+    },
+    {
+      id: 'reels',
+      rotulo: 'Reels',
+      alinhar: 'right',
+      className: 'hidden lg:table-cell',
+      celula: (l) => <span className="font-bold tabular-nums">{fmtInt(l.reelCount)}</span>,
+    },
+  ]
+
+  if (carregando && posts.length === 0 && atoresIg.length === 0) return <TseCarregando texto="Carregando posts do Instagram…" />
 
   return (
-    <div className="flex flex-col gap-4">
-      {setupRequired ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Execute{' '}
-          <code className="rounded bg-white/80 px-1">database/create-instagram-radar-tables.sql</code> no
-          Supabase e configure o candidato próprio em Redes &amp; Instagram.
-        </div>
-      ) : null}
-
-      <div className={chromePanelToolbarClass}>
-        <span className={typographyBodyMutedClass}>Janela:</span>
-        {LOOKBACK_OPTIONS.map((days) => (
-          <button
-            key={days}
-            type="button"
-            onClick={() => setLookbackDays(days)}
-            className={chromeFilterChipClass(lookbackDays === days)}
-          >
-            {days} dias
-          </button>
-        ))}
-        <button
-          type="button"
-          disabled={collectDisabled}
-          onClick={() => void coletar()}
-          title={
-            cooldownEnabled && !canCollect && status?.nextCollectAt
-              ? `Próxima coleta: ${formatNextCollect(status.nextCollectAt)}`
-              : undefined
-          }
-          className={cn(chromeButtonClass, 'ml-auto')}
+    <RadarLayout
+      aside={
+        <>
+          <RadarDadosGerais fonte={`Instagram dos candidatos · últimos ${dias} dias`}>
+            <TseDados>
+              <TseDado rotulo="Posts" valor={fmtInt(totalPosts)} />
+              <TseDado rotulo="Engajamento médio" valor={fmtInt(Math.round(engMedio))} sufixo="por post" />
+              <TseDado rotulo="Perfis com @" valor={fmtInt(comIg.length)} sufixo={`/ ${fmtInt(filtradas.length)}`} />
+            </TseDados>
+            {foco ? (
+              <>
+                <TseBarraRotulo pct={pctFoco} rotulo={`${pctFoco.toFixed(1).replace('.', ',')}%`} />
+                <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Fatia dos posts publicados por {foco.actor.name}</p>
+              </>
+            ) : null}
+          </RadarDadosGerais>
+          <RadarListaCandidatos
+            titulo="Candidatos · eng. médio"
+            itens={linhas
+              .filter((l) => l.instagramUsername)
+              .map((l) => ({
+                slug: l.actor.slug,
+                nome: l.actor.name,
+                tipo: l.actor.actor_type,
+                valor: Math.round(l.avgEngagement),
+              }))}
+            candidato={candidato}
+            onCandidatoChange={onCandidatoChange}
+          />
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <select
+          value={dias}
+          onChange={(e) => setDias(Number(e.target.value))}
+          className={tseControleClass}
+          aria-label="Período"
         >
-          {collecting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          )}
-          Atualizar
-        </button>
+          {PERIODOS.map((d) => (
+            <option key={d} value={d}>
+              Últimos {d} dias
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <TseBusca value={busca} onChange={setBusca} placeholder="Buscar candidato, @ ou legenda" className="w-64" />
+          <RadarColetar
+            onClick={() => void coletar()}
+            ocupado={coletando}
+            disabled={coletaBloqueada}
+            title={
+              cooldown && !podeColetar && status?.nextCollectAt
+                ? `Próxima coleta: ${fmtDataHora(status.nextCollectAt)}`
+                : undefined
+            }
+          />
+        </div>
       </div>
 
-      {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}
-      {collectWarnings.length > 0 ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          <p className="font-medium">Avisos da coleta</p>
-          <ul className="mt-1 list-disc pl-4">
-            {collectWarnings.map((w) => (
-              <li key={w}>{w}</li>
+      {setupRequired ? (
+        <RadarAviso titulo="Tabelas do radar ausentes">
+          Execute <RadarCodigo>database/create-instagram-radar-tables.sql</RadarCodigo> no Supabase e configure o
+          candidato próprio em Instagram Pessoal.
+        </RadarAviso>
+      ) : null}
+      {status && !fonteConfigurada && !setupRequired ? (
+        <RadarAviso titulo="Coleta não configurada">
+          Configure o Apify (concorrentes) ou a conta própria do Instagram para habilitar a coleta.
+        </RadarAviso>
+      ) : null}
+      {cooldown && status && !podeColetar && status.nextCollectAt && !coletando ? (
+        <RadarAviso titulo="Coleta em intervalo">
+          Próxima coleta disponível em {fmtDataHora(status.nextCollectAt)}.
+        </RadarAviso>
+      ) : null}
+      {mensagem ? <RadarAviso tom="ok" titulo="Coleta concluída">{mensagem}</RadarAviso> : null}
+      {avisos.length > 0 ? (
+        <RadarAviso titulo="Avisos da coleta">
+          <ul className="list-disc pl-4">
+            {avisos.map((a) => (
+              <li key={a}>{a}</li>
             ))}
           </ul>
+        </RadarAviso>
+      ) : null}
+      {erro ? (
+        <div className="mt-4">
+          <TseErro>{erro}</TseErro>
         </div>
       ) : null}
-      {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
-      <InstagramCompareBoard
-        actors={actors}
-        posts={posts}
-        lookbackDays={lookbackDays}
-        loading={loading}
+      <RadarResumo
+        titulo="Instagram"
+        escopo={nomeCandidato ?? 'Todos os candidatos'}
+        descricao={`Conteúdo e engajamento relativo (não seguidores) · últimos ${dias} dias`}
+        numeros={[
+          { rotulo: 'posts', valor: fmtInt(totalPosts) },
+          { rotulo: 'eng. médio', valor: fmtInt(Math.round(engMedio)) },
+          { rotulo: 'perfis', valor: fmtInt(comIg.length) },
+        ]}
       />
 
-      {!setupRequired ? (
-        <YoutubeActorsManager
-          actors={actors}
-          onChanged={carregar}
-          disabled={loading || collecting}
-          showInstagramField
-        />
-      ) : null}
-    </div>
+      <RadarLinhaContagem
+        acoes={
+          <>
+            {termo ? (
+              <button type="button" onClick={() => setBusca('')} className={tseLinkAcaoClass}>
+                Limpar busca
+              </button>
+            ) : null}
+            {visiveis.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAbertas(todosAbertos ? new Set() : new Set(visiveis.map((l) => l.actor.slug)))}
+                className={tseLinkAcaoClass}
+              >
+                {todosAbertos ? 'Recolher todos' : 'Expandir todos'}
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {plural(visiveis.length, 'perfil', 'perfis')}
+        {termo ? ' com a busca aplicada' : ''} · clique na linha para ver os posts
+      </RadarLinhaContagem>
+
+      <div className="mt-3">
+        {visiveis.length === 0 ? (
+          <TseVazio>
+            {linhas.length === 0
+              ? 'Nenhum candidato ativo. Cadastre candidatos em “Candidatos”.'
+              : 'Nenhum perfil encontrado. Cadastre o @ Instagram dos candidatos em “Candidatos”.'}
+          </TseVazio>
+        ) : (
+          <RadarTabela
+            linhas={visiveis}
+            chave={(l) => l.actor.slug}
+            rank={(l) => ranking.get(l.actor.slug) ?? 0}
+            colunas={colunas}
+            ordem={ordem}
+            asc={asc}
+            onOrdenar={ordenar}
+            abertas={abertas}
+            onAlternar={alternar}
+            detalhe={(l) => (
+              <RadarSubLista vazio="Nenhum post nesta janela. Rode a coleta de posts.">
+                {l.posts.length > 0
+                  ? l.posts.slice(0, MAX_POSTS_DETALHE).map((p) => (
+                      <RadarSubItem
+                        key={p.id}
+                        titulo={p.caption?.trim() || '(sem legenda)'}
+                        href={p.post_url}
+                        meta={`${fmtData(p.posted_at)}${p.post_type ? ` · ${p.post_type}` : ''} · ${fmtInt(
+                          p.likes_count,
+                        )} curtidas · ${fmtInt(p.comments_count)} comentários`}
+                        valor={fmtInt(p.likes_count + p.comments_count)}
+                      />
+                    ))
+                  : null}
+              </RadarSubLista>
+            )}
+          />
+        )}
+        {semIg.length > 0 ? (
+          <p className="mt-3 text-[12px] text-[var(--tse-muted)]">
+            Sem @ Instagram cadastrado: {semIg.map((l) => l.actor.name).join(', ')}.
+          </p>
+        ) : null}
+      </div>
+    </RadarLayout>
   )
 }

@@ -12,7 +12,7 @@ export function IdleSplashOverlay() {
 
   if (!ativo) return null
 
-  return <PreviewHomeScreen mode="rest" onEnter={dispensar} />
+  return <PreviewHomeScreen onEnter={dispensar} />
 }
 
 /** @deprecated use IdleSplashOverlay dentro do layout do dashboard */

@@ -2,22 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Outfit } from 'next/font/google'
 import { createClient } from '@/lib/supabase/client'
-import { PreviewHomeScreen } from '@/components/preview-home/preview-home-screen'
-import '@/app/dashboard/war-room/war-room-fonts.css'
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  display: 'swap',
-  variable: '--font-preview-home',
-})
+import { CockpitHome } from '@/components/home/cockpit-home'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 
 type HomePhase = 'checking' | 'guest'
 
 /**
- * Entrada pública: home cinematográfica (Entrar abre o login flutuante).
+ * Entrada pública: home amarela do Cockpit X (Entrar abre o cartão de login).
  * Se já autenticado → `/dashboard`.
  */
 export default function HomePage() {
@@ -62,22 +54,8 @@ export default function HomePage() {
   }, [router, supabase])
 
   if (phase === 'checking') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0d]">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-[#f2d06b]" />
-          <p className="text-sm text-white/60">Carregando...</p>
-        </div>
-      </div>
-    )
+    return <div className="min-h-screen bg-[var(--tse-yellow)]" style={TSE_TOKENS} aria-busy="true" />
   }
 
-  return (
-    <div
-      className={outfit.variable}
-      style={{ fontFamily: 'var(--font-preview-home), Outfit, sans-serif' }}
-    >
-      <PreviewHomeScreen />
-    </div>
-  )
+  return <CockpitHome />
 }

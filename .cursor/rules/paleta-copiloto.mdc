@@ -1,30 +1,37 @@
 ---
-description: Paleta oficial Copiloto (#022B3A · #005B8F · #F04B23) em toda a aplicação
+description: Paleta oficial Copiloto (#022B3A · #005B8F · #F04B23) nas telas; sidebar e header no padrão TSE amarelo
 alwaysApply: true
 ---
 
 # Paleta oficial Cockpit 2026
 
 Documentação: `docs/paleta-copiloto.md`  
-Tokens: `app/design-tokens-copiloto.css`
+Tokens: `app/design-tokens-copiloto.css` · Sidebar: `app/sidebar-tse.css`
 
-## Core (obrigatório)
+## Core das telas (obrigatório)
 
-- Petróleo `#022B3A` — texto, sidebar
+- Petróleo `#022B3A` — texto forte
 - Azul `#005B8F` — primário de UI / dados
-- Accent `#F04B23` — CTA/alerta pontual; **ano 2026 na logomarca**
+- Accent `#F04B23` — CTA/alerta pontual
 - Fundo `#F5F6F8` · Card `#FFFFFF` · Aux `#6B7280`
 
-## Logomarca (sidebar)
+## Sidebar e header — padrão TSE (amarelo)
 
-- **COCKPIT** = branco `#FFFFFF`
-- **2026** = coral `#F04B23` (`--palette-accent`)
-- Proibido `#f04b23` / laranja legado no wordmark
+- Topo amarelo `#EBB402` com texto branco, altura 52px: zona da logo da sidebar (`[data-sidebar-brand-zone]`) e header das páginas (`#cockpit-topbar`), divisória `#D9A502` (variáveis `--cockpit-top-*`)
+- Corpo da sidebar branco `#FFFFFF`
+- Texto `#333333`, secundário/ícones `#717171`, divisores `#E6E6E3`
+- Hover: fundo `#F4F4F2`, ícone dourado `#B8960B`
+- Ativo: fundo `#FFF8D6`, barra esquerda `#EBB402`, ícone `#B8960B`
+- Avatar do usuário: fundo `#EBB402` com inicial branca na sidebar; invertido (branco com grafite) no header
+- Logomarca no topo amarelo: **COCKPIT** branco + **X** grafite `#333333`
+- Tipografia do topo: título do header usa a mesma fonte da logomarca (Michroma, peso 400, caixa alta)
+- Item ativo marcado por `aria-current="page"` / `data-active="true"`; cores só via `app/sidebar-tse.css` (ancorado em `#cockpit-sidebar` / `#cockpit-topbar`)
 
 ## Ao escrever UI / CSS
 
-1. Preferir `var(--palette-*)`, `var(--wr-*)` ou `var(--brand-accent)`.
-2. Proibido introduzir marca em `#f04b23`, `#c43d1c`, `#e0a030`, `#f4b43e` (laranja/ouro legado).
-3. Sidebar: header e corpo com a **mesma** cor (`--palette-petrol` / `#022B3A`).
+1. Preferir `var(--palette-*)`, `var(--wr-*)` ou `var(--brand-accent)` nas telas; `var(--sb-*)` na sidebar.
+2. Proibido introduzir marca em `#f04b23`, `#c43d1c`, `#e0a030`, `#f4b43e` (laranja/ouro legado). O amarelo TSE `#EBB402` é da sidebar/header e das páginas migradas para o padrão TSE.
+3. Sidebar: topo amarelo (alinhado ao header) e corpo branco; não criar overrides de cor da sidebar/header por página.
 4. Accent coral só em ênfase pontual; botões recorrentes usam azul institucional.
-5. Qualquer tela nova ou refactor deve sair alinhada a esta paleta — sem exceção de “tema local”.
+5. Padrão TSE em migração para todas as telas (já em Resultado 2026, Território, Instagram Pessoal, Agenda, Radar Eleitoral, Atendimento, Pesquisas e Emendas): montar com `components/tse/tse-ui.tsx` (`TsePage`, `TseFilterBar`, `TseTabs`, cards, `tseTabela` com `data-tse-tabela`) e tokens `TSE_TOKENS`, sem redefinir hex por página. Telas ainda não migradas seguem o core acima.
+6. Home pública (`/`, `/login`, `/preview-home`): `components/home/cockpit-home.tsx`. É toda amarela, com a logomarca COCKPIT X animada e o login em cartão branco.

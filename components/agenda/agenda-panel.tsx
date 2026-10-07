@@ -1,1019 +1,434 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import type React from 'react'
-import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
-import { Calendar, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw, UserCheck } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
-import { ArrivalTimer } from '@/components/arrival-timer'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertCircle, CalendarDays, Maximize2, RefreshCw, Settings, X } from 'lucide-react'
 import { ArrivalNotificationsPanel } from '@/components/arrival-notifications-panel'
-import { formatEventDescriptionForDisplay } from '@/lib/agenda/event-present'
-import { fetchCalendarAttendances } from '@/lib/agenda/fetch-calendar-attendance'
-import { WAR_ROOM_ARRIVALS_SILENT_REFRESH_MS } from '@/lib/war-room/agenda-arrivals-refresh'
+import { AgendaEventosTabela } from '@/components/agenda/agenda-eventos-tabela'
+import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import {
-  AgendaToCampoButton,
-  type CampoGoogleLink,
-} from '@/components/agenda/agenda-to-campo-button'
+  TseBarraRotulo,
+  TseBusca,
+  TseCarregando,
+  TseCarregarMais,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseFilterBar,
+  TseListaFiltro,
+  TsePage,
+  TseSelectGrande,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseCardClass,
+  tseControleClass,
+  tseLinkAcaoClass,
+  type TseItemLista,
+} from '@/components/tse/tse-ui'
+import { useAgendaGoogle } from '@/hooks/use-agenda-google'
+import {
+  formatAgendaDatePt,
+  formatAgendaTimePt,
+  getCalendarEventDate,
+  normalizeAgendaText,
+} from '@/lib/agenda/calendar-event-utils'
+import {
+  AGENDA_PERIODOS,
+  AGENDA_SITUACOES,
+  chaveDia,
+  corDaOrigem,
+  diaDaChave,
+  diaDoEvento,
+  eventoJaComecou,
+  noPeriodo,
+  origemETitulo,
+  rotuloDia,
+  SEM_ORIGEM,
+  situacaoDoEvento,
+  type AgendaPeriodo,
+  type AgendaSituacao,
+} from '@/lib/agenda/agenda-filtros'
+import type { AgendaEvento } from '@/lib/services/agenda-google-client'
 import { cn } from '@/lib/utils'
-import {
-  typographyBodyClass,
-  typographyBodyMediumClass,
-  typographyBodyMutedClass,
-  typographyContentRootClass,
-  typographyMetricValueClass,
-  typographySectionLabelClass,
-  typographySectionLeadClass,
-  typographySectionTitleClass,
-} from '@/lib/typography-chrome'
 
-/** Âmbar fixo da marca — não usar `text-accent-gold` (azul no tema republicanos). */
-const agendaAmberIconClass = 'text-[#f04b23]'
+const PAGE_SIZE = 30
+const DIAS_NA_LISTA = 10
+const VALOR_DIA = 'dia'
 
-const agendaAmberButtonClass = cn(
-  'inline-flex items-center justify-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/10 transition-colors hover:bg-accent-gold/15 disabled:cursor-not-allowed disabled:opacity-50',
-  typographyBodyMediumClass,
-  'text-text-primary',
-)
+const fmt = (n: number): string => n.toLocaleString('pt-BR')
+const fmtPct = (n: number): string => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%`
+const tempo = (e: AgendaEvento): number => getCalendarEventDate(e)?.getTime() ?? 0
+const plural = (n: number, um: string, varios: string): string => `${fmt(n)} ${n === 1 ? um : varios}`
 
-interface CalendarConfig {
-  calendarId: string
-  serviceAccountEmail: string
-  subjectUser?: string
-  hasServerCredentials?: boolean
-}
-
-const GOOGLE_CALENDAR_LOCAL_KEY = 'google_calendar_config'
-
-function stripLocalCalendarSecrets() {
-  if (typeof window === 'undefined') return
-  try {
-    const raw = localStorage.getItem(GOOGLE_CALENDAR_LOCAL_KEY)
-    if (!raw) return
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    if ('credentials' in parsed) {
-      delete parsed.credentials
-      localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(parsed))
-    }
-  } catch {
-    localStorage.removeItem(GOOGLE_CALENDAR_LOCAL_KEY)
-  }
-}
-
-interface CalendarEvent {
-  id: string
-  summary: string
-  description?: string
-  start: {
-    dateTime?: string
-    date?: string
-  }
-  end: {
-    dateTime?: string
-    date?: string
-  }
-  location?: string
-  attendees?: Array<{ email: string; displayName?: string }>
-  status?: string
-  origin?: string // Origem extraída da descrição (ex: "THE - PI")
-  attendance?: {
-    attended: boolean
-    notes?: string
-    arrival_time?: string
-  }
-}
-
-const AGENDA_CONFIRMADOS_SCOPE = { scope: 'global' as const }
-
-export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
-  const { user, loading: authLoading } = useAuth()
-  const [config, setConfig] = useState<CalendarConfig | null>(null)
-  const [configLoaded, setConfigLoaded] = useState(false)
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showConfig, setShowConfig] = useState(false)
-  const [showFullscreen, setShowFullscreen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [attendanceStatuses, setAttendanceStatuses] = useState<
-    Record<string, { attended?: boolean | null; notes?: string; arrival_time?: string }>
-  >({})
-  const [confirmingArrival, setConfirmingArrival] = useState<Record<string, boolean>>({})
-  const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [campoLinks, setCampoLinks] = useState<Record<string, CampoGoogleLink>>({})
-  const eventsRef = useRef(events)
-  eventsRef.current = events
-  const arrivalsInFlight = useRef(false)
-
-  // Função para destacar origem no texto (ex: "(THE - PI)" ou "(BSB)")
-  const highlightOriginInText = (text: string): React.ReactNode => {
-    if (!text) return text
-    
-    // Procurar no início do texto por parênteses
-    const match = text.match(/^(\([^)]+\))(.*)/)
-    if (match) {
-      const origin = match[1] // "(THE - PI)"
-      const rest = match[2] // resto do texto
-      const originText = match[1].replace(/[()]/g, '') // "THE - PI"
-      
-      return (
-        <>
-          <span className={cn('rounded px-2 py-0.5 text-[11px] font-medium tracking-normal !text-white', getOriginColor(originText))}>
-            {origin}
-          </span>
-          {rest}
-        </>
-      )
-    }
-    
-    return text
-  }
-
-  // Função para obter cor baseada na origem
-  const getOriginColor = (origin?: string): string => {
-    if (!origin) return 'bg-gray-500'
-    
-    const originLower = origin.toLowerCase()
-    if (originLower.includes('the')) return 'bg-blue-500'
-    if (originLower.includes('pi')) return 'bg-purple-500'
-    if (originLower.includes('ma')) return 'bg-green-500'
-    if (originLower.includes('ce')) return 'bg-yellow-500'
-    if (originLower.includes('rn')) return 'bg-red-500'
-    if (originLower.includes('pb')) return 'bg-pink-500'
-    if (originLower.includes('pe')) return 'bg-orange-500'
-    if (originLower.includes('al')) return 'bg-indigo-500'
-    if (originLower.includes('se')) return 'bg-teal-500'
-    if (originLower.includes('ba')) return 'bg-cyan-500'
-    
-    return 'bg-gray-500'
-  }
+export function AgendaPanel() {
+  const agenda = useAgendaGoogle()
+  const { config, configCarregada, eventos, carregando, atualizando, erro, presencas, linksCampo, agora } = agenda
+  const [periodo, setPeriodo] = useState<AgendaPeriodo>('todos')
+  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null)
+  const [situacao, setSituacao] = useState<AgendaSituacao | null>(null)
+  const [origem, setOrigem] = useState<string | null>(null)
+  const [busca, setBusca] = useState<string>('')
+  const [limite, setLimite] = useState<number>(PAGE_SIZE)
+  const [abertos, setAbertos] = useState<Set<string>>(() => new Set())
+  const [telaCheia, setTelaCheia] = useState<boolean>(false)
+  const [mostrarConfig, setMostrarConfig] = useState<boolean>(false)
 
   useEffect(() => {
-    if (authLoading) return
+    setLimite(PAGE_SIZE)
+  }, [periodo, diaSelecionado, situacao, origem, busca])
 
-    const loadConfig = async () => {
-      stripLocalCalendarSecrets()
+  const ordenados = useMemo(() => [...eventos].sort((a, b) => tempo(a) - tempo(b)), [eventos])
 
-      if (!user?.id) {
-        setConfig(null)
-        setConfigLoaded(true)
-        setLoading(false)
-        return
-      }
-
-      setConfigLoaded(false)
-      try {
-        const response = await fetch('/api/agenda/google-calendar-config')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.config?.calendarId) {
-            const publicConfig: CalendarConfig = {
-              calendarId: data.config.calendarId,
-              serviceAccountEmail: data.config.serviceAccountEmail || '',
-              subjectUser: data.config.subjectUser || undefined,
-              hasServerCredentials: Boolean(data.config.hasServerCredentials),
-            }
-            setConfig(publicConfig)
-            localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(publicConfig))
-            setConfigLoaded(true)
-            setLoading(false)
-            return
-          }
-        }
-
-        setConfig(null)
-        localStorage.removeItem(GOOGLE_CALENDAR_LOCAL_KEY)
-      } catch (error) {
-        console.error('Erro ao carregar configuração:', error)
-        setConfig(null)
-      } finally {
-        setConfigLoaded(true)
-        setLoading(false)
-      }
-    }
-
-    void loadConfig()
-  }, [user?.id, authLoading])
-
-  const fetchEvents = useCallback(async (isManual = false) => {
-    if (!config?.calendarId) return
-
-    if (isManual) {
-      setIsRefreshing(true)
-    } else {
-      setLoading(true)
-    }
-    setError(null)
-
-    try {
-      const response = await fetch('/api/agenda/events', { cache: 'no-store' })
-      const data = await response.json()
-
-      if (response.ok) {
-        setEvents(data.events || [])
-      } else {
-        setError(data.error || 'Erro ao buscar eventos')
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao conectar com Google Calendar')
-    } finally {
-      if (isManual) {
-        setIsRefreshing(false)
-      } else {
-        setLoading(false)
-      }
-    }
-  }, [config])
-
-  useEffect(() => {
-    if (config) {
-      fetchEvents(false) // Carregamento inicial
-    }
-  }, [config, fetchEvents])
-
-  const loadAttendanceStatuses = useCallback(async () => {
-    const ids = eventsRef.current.map((event) => event.id).filter(Boolean)
-    if (ids.length === 0) {
-      setAttendanceStatuses({})
-      return
-    }
-    if (arrivalsInFlight.current) return
-    arrivalsInFlight.current = true
-
-    try {
-      const byId = await fetchCalendarAttendances(ids, AGENDA_CONFIRMADOS_SCOPE)
-      const statuses: Record<
-        string,
-        { attended?: boolean | null; notes?: string; arrival_time?: string }
-      > = {}
-
-      for (const [eventId, attendance] of Object.entries(byId)) {
-        statuses[eventId] = {
-          attended: attendance.attended ?? null,
-          arrival_time: attendance.arrival_time ?? undefined,
-        }
-      }
-
-      setAttendanceStatuses(statuses)
-    } catch (err) {
-      console.error('Erro ao carregar status de atendimentos:', err)
-    } finally {
-      arrivalsInFlight.current = false
-    }
-  }, [])
-
-  // Carregar status de atendimentos quando eventos mudarem
-  useEffect(() => {
-    if (events.length > 0) {
-      void loadAttendanceStatuses()
-    }
-  }, [events, loadAttendanceStatuses])
-
-  // Atualização silenciosa — todos os usuários veem chegadas confirmadas pela equipe
-  useEffect(() => {
-    if (events.length === 0) return
-
-    const interval = window.setInterval(() => {
-      void loadAttendanceStatuses()
-    }, WAR_ROOM_ARRIVALS_SILENT_REFRESH_MS)
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        void loadAttendanceStatuses()
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-
-    return () => {
-      window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [events.length, loadAttendanceStatuses])
-
-  const loadCampoLinks = useCallback(async () => {
-    if (!user?.id) return
-    try {
-      const response = await fetch('/api/campo/agendas/google-links')
-      if (!response.ok) return
-      const data = (await response.json()) as { links?: Record<string, CampoGoogleLink> }
-      setCampoLinks(data.links ?? {})
-    } catch {
-      // coluna google_event_id pode ainda não existir no banco
-    }
-  }, [user?.id])
-
-  useEffect(() => {
-    void loadCampoLinks()
-  }, [loadCampoLinks])
-
-  const handleCampoLinked = useCallback((eventId: string, link: CampoGoogleLink) => {
-    setCampoLinks((prev) => ({ ...prev, [eventId]: link }))
-  }, [])
-
-  // Verificar eventos próximos (5 minutos) para alerta intermitente
-  useEffect(() => {
-    if (events.length === 0) return
-
-    const checkUpcomingEvents = () => {
-      const now = new Date()
-      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000)
-
-      const upcoming = events.find((event) => {
-        const eventDate = event.start.dateTime 
-          ? new Date(event.start.dateTime) 
-          : event.start.date 
-          ? new Date(event.start.date) 
-          : null
-        
-        if (!eventDate) return false
-        return eventDate >= now && eventDate <= fiveMinutesFromNow
-      })
-
-      setUpcomingEventAlert(upcoming?.id || null)
-    }
-
-    checkUpcomingEvents()
-    const interval = setInterval(checkUpcomingEvents, 10000) // Verificar a cada 10 segundos
-
-    return () => clearInterval(interval)
-  }, [events])
-
-
-  const handleSaveConfig = async (newConfig: {
-    calendarId: string
-    serviceAccountEmail: string
-    credentials?: string
-    subjectUser?: string
-  }) => {
-    try {
-      const response = await fetch('/api/agenda/google-calendar-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newConfig),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const publicConfig: CalendarConfig = {
-          calendarId: data.config?.calendarId || newConfig.calendarId,
-          serviceAccountEmail: data.config?.serviceAccountEmail || newConfig.serviceAccountEmail || '',
-          subjectUser: data.config?.subjectUser || newConfig.subjectUser,
-          hasServerCredentials: Boolean(data.config?.hasServerCredentials),
-        }
-        setConfig(publicConfig)
-        localStorage.setItem(GOOGLE_CALENDAR_LOCAL_KEY, JSON.stringify(publicConfig))
-        void fetchEvents(true)
-      } else {
-        const errorData = await response.json()
-        console.error('Erro ao salvar configuração:', errorData.error)
-        alert(errorData.error || 'Erro ao salvar configuração. Apenas admin pode alterar.')
-      }
-    } catch (error) {
-      console.error('Erro ao salvar configuração:', error)
-      alert('Erro ao salvar configuração. Tente novamente.')
-    }
-  }
-
-  const handleAttendanceChange = async (eventId: string, attended: boolean) => {
-    if (!user?.id) return
-
-    try {
-      const response = await fetch('/api/agenda/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId,
-          attended,
-        }),
-      })
-
-      if (response.ok) {
-        await loadAttendanceStatuses()
-      }
-    } catch (err) {
-      console.error('Erro ao salvar status de atendimento:', err)
-    }
-  }
-
-  const handleConfirmArrival = async (eventId: string, eventSummary?: string) => {
-    if (!user?.id) return
-
-    const eventName = eventSummary || 'este evento'
-    const linkedCampo = Boolean(campoLinks[eventId])
-    const confirmMessage = linkedCampo
-      ? `Deseja confirmar a chegada para "${eventName}"?\n\nO horário será registrado na agenda e o check-in em Campo & Agenda será sincronizado automaticamente.`
-      : `Deseja realmente confirmar a chegada para "${eventName}"?\n\nEsta ação registrará o horário atual como momento da chegada.`
-
-    if (!window.confirm(confirmMessage)) {
-      return
-    }
-
-    setConfirmingArrival((prev) => ({ ...prev, [eventId]: true }))
-
-    try {
-      const response = await fetch('/api/agenda/attendance/confirm-arrival', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId }),
-      })
-
-      if (response.ok) {
-        const data = (await response.json()) as {
-          attendance: { arrival_time?: string }
-          campoSync?: { synced: boolean; agendaId?: string; reason?: string }
-        }
-        await loadAttendanceStatuses()
-        if (data.campoSync?.synced && data.campoSync.agendaId) {
-          setCampoLinks((prev) => ({
-            ...prev,
-            [eventId]: {
-              ...(prev[eventId] ?? {
-                id: data.campoSync!.agendaId!,
-                date: '',
-                type: 'visita',
-              }),
-              id: data.campoSync!.agendaId!,
-              status: 'concluida',
-            },
-          }))
-        }
-      } else {
-        alert('Erro ao confirmar chegada. Tente novamente.')
-      }
-    } catch (err) {
-      console.error('Erro ao confirmar chegada:', err)
-      alert('Erro ao confirmar chegada. Tente novamente.')
-    } finally {
-      setConfirmingArrival((prev) => ({ ...prev, [eventId]: false }))
-    }
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-'
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    } catch {
-      return dateString
-    }
-  }
-
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return '-'
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    } catch {
-      return dateString
-    }
-  }
-
-  const formatDateOnly = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
+  const doPeriodo = useMemo(() => {
+    const diaFixo = diaSelecionado ? diaDaChave(diaSelecionado) : null
+    return ordenados.filter((e) => {
+      const dia = diaDoEvento(e)
+      if (dia == null) return false
+      return diaFixo != null ? dia === diaFixo : noPeriodo(dia, periodo, agora)
     })
+  }, [ordenados, diaSelecionado, periodo, agora])
+
+  const termo = normalizeAgendaText(busca)
+  const filtrados = doPeriodo.filter((e) => {
+    if (situacao && situacaoDoEvento(presencas[e.id]) !== situacao) return false
+    if (origem && origemETitulo(e).origem !== origem) return false
+    if (!termo) return true
+    return normalizeAgendaText([e.summary, e.location, e.description].filter(Boolean).join(' ')).includes(termo)
+  })
+
+  const totalPorDia = new Map<number, number>()
+  for (const e of filtrados) {
+    const dia = diaDoEvento(e)
+    if (dia != null) totalPorDia.set(dia, (totalPorDia.get(dia) ?? 0) + 1)
+  }
+  const visiveis = filtrados.slice(0, limite)
+
+  const contagemSituacao: TseItemLista<AgendaSituacao>[] = AGENDA_SITUACOES.map((s) => ({
+    id: s.id,
+    label: s.label,
+    cor: s.cor,
+    valor: doPeriodo.filter((e) => situacaoDoEvento(presencas[e.id]) === s.id).length,
+  }))
+  const qtdSituacao = (id: AgendaSituacao): number => contagemSituacao.find((s) => s.id === id)?.valor ?? 0
+
+  const porOrigem = new Map<string, number>()
+  for (const e of doPeriodo) {
+    const o = origemETitulo(e).origem
+    porOrigem.set(o, (porOrigem.get(o) ?? 0) + 1)
+  }
+  const origens: TseItemLista<string>[] = [...porOrigem.entries()]
+    .sort((a, b) => (a[0] === SEM_ORIGEM ? 1 : b[0] === SEM_ORIGEM ? -1 : b[1] - a[1]))
+    .map(([id, valor], i) => ({ id, label: id, valor, cor: corDaOrigem(i) }))
+
+  const porDia = new Map<number, number>()
+  for (const e of ordenados) {
+    const dia = diaDoEvento(e)
+    if (dia != null) porDia.set(dia, (porDia.get(dia) ?? 0) + 1)
+  }
+  const proximosDias: TseItemLista<string>[] = [...porDia.entries()].slice(0, DIAS_NA_LISTA).map(([dia, valor]) => ({
+    id: chaveDia(dia),
+    label: rotuloDia(dia, agora),
+    valor,
+    cor: noPeriodo(dia, 'hoje', agora) ? 'var(--tse-yellow)' : 'var(--tse-green)',
+  }))
+
+  const iniciados = doPeriodo.filter((e) => eventoJaComecou(e, agora))
+  const atendidosIniciados = iniciados.filter((e) => presencas[e.id]?.attended === true).length
+  const pctAtendidos = iniciados.length ? (atendidosIniciados / iniciados.length) * 100 : 0
+  const noCampo = doPeriodo.filter((e) => linksCampo[e.id]).length
+  const hoje = ordenados.filter((e) => {
+    const dia = diaDoEvento(e)
+    return dia != null && noPeriodo(dia, 'hoje', agora)
+  }).length
+  const diasComAgenda = new Set(doPeriodo.map(diaDoEvento)).size
+
+  const escopo = diaSelecionado
+    ? formatAgendaDatePt(new Date(diaDaChave(diaSelecionado)))
+    : (AGENDA_PERIODOS.find((p) => p.id === periodo)?.label ?? '')
+  const temFiltros = Boolean(situacao || origem || termo)
+  const algumAguardando = eventos.some((e) => presencas[e.id]?.arrival_time && presencas[e.id]?.attended == null)
+  const iminente = agenda.proximoAlertaId ? eventos.find((e) => e.id === agenda.proximoAlertaId) : undefined
+  const todosAbertos = visiveis.length > 0 && visiveis.every((e) => abertos.has(e.id))
+
+  const escolherDia = (chave: string | null) => {
+    setDiaSelecionado(chave)
+    if (chave) setPeriodo('todos')
   }
 
-  const getEventDate = (event: CalendarEvent): Date | null => {
-    if (event.start.dateTime) return new Date(event.start.dateTime)
-    if (event.start.date) return new Date(event.start.date)
-    return null
+  const alternar = (id: string) =>
+    setAbertos((prev) => {
+      const prox = new Set(prev)
+      if (prox.has(id)) prox.delete(id)
+      else prox.add(id)
+      return prox
+    })
+
+  const limparFiltros = () => {
+    setSituacao(null)
+    setOrigem(null)
+    setBusca('')
   }
 
-  const isSameDay = (date1: Date, date2: Date): boolean => {
-    // Normalizar datas para o timezone local (meia-noite local)
-    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate())
-    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate())
-    return d1.getTime() === d2.getTime()
-  }
+  const tabela = (
+    <AgendaEventosTabela
+      eventos={visiveis}
+      totalPorDia={totalPorDia}
+      abertos={abertos}
+      onAlternar={alternar}
+      agenda={agenda}
+    />
+  )
 
-  // Filtrar eventos por data selecionada
-  const filteredEvents = useMemo(() => {
-    if (!selectedDate) return events
-
-    return events.filter((event) => {
-      const eventDate = getEventDate(event)
-      if (!eventDate) return false
-      return isSameDay(eventDate, selectedDate)
-    })
-  }, [events, selectedDate])
-
-  // Ordenar eventos por data
-  const sortedEvents = useMemo(() => {
-    return [...filteredEvents].sort((a, b) => {
-      const dateA = getEventDate(a)?.getTime() || 0
-      const dateB = getEventDate(b)?.getTime() || 0
-      return dateA - dateB
-    })
-  }, [filteredEvents])
-
-  // Verificar se há avisos ativos para aplicar margem condicionalmente
-  const hasActiveArrivals = useMemo(() => {
-    return events.some((event) => {
-      const attendance = attendanceStatuses[event.id]
-      return (
-        attendance?.arrival_time &&
-        (attendance.attended === undefined || attendance.attended === null)
-      )
-    })
-  }, [events, attendanceStatuses])
-
-  return (
-    <div
-      className={cn(
-        typographyContentRootClass,
-        embedded ? 'w-full min-w-0' : 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-bg-surface',
-      )}
-    >
-
-      {/* Quadro de Avisos na Lateral Direita */}
-      <ArrivalNotificationsPanel
-        events={events}
-        attendanceStatuses={attendanceStatuses}
-        formatTime={formatTime}
-      />
-
-      <div
-        className={cn(
-          embedded ? undefined : 'px-4 py-6 lg:px-6',
-          hasActiveArrivals && 'lg:mr-80',
-        )}
+  const conteudo = !configCarregada ? (
+    <TseCarregando texto="Carregando configuração…" />
+  ) : !config ? (
+    <TseVazio>
+      <p>Nenhum Google Calendar configurado.</p>
+      <button
+        type="button"
+        onClick={() => setMostrarConfig(true)}
+        className={cn(tseBotaoPrimarioClass, 'mx-auto mt-3')}
       >
-        {/* Botão de Configuração */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h2 className={cn(typographySectionTitleClass, 'mb-2')}>Eventos do Google Calendar</h2>
-            <p className={cn(typographySectionLeadClass, 'break-words')}>
-              {!configLoaded
-                ? 'Carregando...'
-                : config
-                  ? `Conectado ao calendário: ${config.calendarId}`
-                  : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
-            </p>
-          </div>
-          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
-            {config && (
-              <button
-                onClick={() => fetchEvents(true)}
-                disabled={isRefreshing || loading}
-                className={cn(
-                  'flex w-full items-center justify-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-text-primary transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto',
-                  typographyBodyClass,
-                )}
-                title="Atualizar eventos manualmente"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? 'Atualizando...' : 'Atualizar'}
-              </button>
-            )}
-            <button
-              onClick={() => setShowConfig(true)}
-              disabled={!configLoaded}
-              className={cn(agendaAmberButtonClass, 'w-full justify-center px-4 py-2 sm:w-auto')}
+        <Settings className="h-4 w-4" />
+        Configurar Google Calendar
+      </button>
+    </TseVazio>
+  ) : carregando && eventos.length === 0 ? (
+    <TseCarregando texto="Carregando compromissos…" />
+  ) : (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+      <aside className="space-y-4">
+        <section className={tseCardClass}>
+          <h2 className="text-xl font-bold">Dados Gerais</h2>
+          <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">Google Calendar · {escopo}</p>
+          <TseDados>
+            <TseDado rotulo="Compromissos" valor={fmt(doPeriodo.length)} />
+            <TseDado rotulo="Hoje" valor={fmt(hoje)} />
+            <TseDado rotulo="Registrados em Campo" valor={fmt(noCampo)} sufixo={`/ ${fmt(doPeriodo.length)}`} />
+          </TseDados>
+          <TseBarraRotulo pct={pctAtendidos} rotulo={fmtPct(pctAtendidos)} />
+          <p className="mt-1 text-[11px] text-[var(--tse-muted)]">
+            {iniciados.length
+              ? `Atendidos entre os ${plural(iniciados.length, 'compromisso iniciado', 'compromissos iniciados')}`
+              : 'Nenhum compromisso iniciado no período'}
+          </p>
+        </section>
+
+        <TseListaFiltro titulo="Situação" itens={contagemSituacao} ativo={situacao} onChange={setSituacao} />
+
+        {proximosDias.length > 0 ? (
+          <TseListaFiltro titulo="Próximos dias" itens={proximosDias} ativo={diaSelecionado} onChange={escolherDia} />
+        ) : null}
+
+        {origens.some((o) => o.id !== SEM_ORIGEM) ? (
+          <TseListaFiltro titulo="Origem" itens={origens} ativo={origem} onChange={setOrigem} />
+        ) : null}
+      </aside>
+
+      <main className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={situacao ?? ''}
+              onChange={(e) => setSituacao((e.target.value || null) as AgendaSituacao | null)}
+              className={tseControleClass}
+              aria-label="Filtrar por situação"
             >
-              <Settings className="w-4 h-4" />
-              {config ? 'Reconfigurar' : 'Configurar'}
-            </button>
+              <option value="">Todas as situações</option>
+              {AGENDA_SITUACOES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={diaSelecionado ?? ''}
+              onChange={(e) => escolherDia(e.target.value || null)}
+              className={tseControleClass}
+              aria-label="Escolher um dia"
+            />
+            {diaSelecionado ? (
+              <button
+                type="button"
+                onClick={() => escolherDia(null)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-2.5 text-[13px] font-semibold"
+              >
+                Dia: {escopo}
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
+          <TseBusca value={busca} onChange={setBusca} placeholder="Buscar compromisso, local ou descrição" className="w-72" />
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 rounded-xl border border-status-error/30 bg-status-error/10">
-            <p className={cn(typographyBodyClass, 'text-status-error')}>{error}</p>
+        {iminente ? (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--tse-yellow-soft)] px-4 py-3 text-[13px] shadow-[inset_3px_0_0_var(--tse-yellow)]">
+            <AlertCircle className="h-5 w-5 shrink-0 animate-pulse text-[var(--tse-gold-text)]" aria-hidden />
+            <p>
+              <strong>Compromisso em menos de 5 minutos:</strong> {origemETitulo(iminente).titulo} às{' '}
+              {formatAgendaTimePt(iminente)}
+            </p>
           </div>
-        )}
+        ) : null}
 
-        {/* Alerta de evento próximo (5 minutos) */}
-        {upcomingEventAlert && (
-          <div className={`mb-6 p-4 rounded-xl border-2 border-status-warning/50 bg-status-warning/20 animate-pulse`}>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-status-warning animate-pulse" />
-              <p className={cn(typographyBodyMediumClass, 'text-status-warning')}>
-                ⚠️ Evento próximo! Faltam menos de 5 minutos para o próximo compromisso.
+        {erro ? (
+          <div className="mt-4">
+            <TseErro>{erro}</TseErro>
+          </div>
+        ) : null}
+
+        <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+          <div className="min-w-[180px] flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xl font-bold uppercase">Agenda</p>
+              <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                {escopo}
+              </span>
+            </div>
+            <p className="text-[15px] text-[var(--tse-muted)]">
+              {plural(doPeriodo.length, 'compromisso', 'compromissos')} · {plural(diasComAgenda, 'dia', 'dias')}
+            </p>
+          </div>
+          {(['aguardando', 'atendido', 'sem-marcacao'] as const).map((id) => (
+            <div key={id} className="text-right">
+              <p className="text-3xl font-black">{fmt(qtdSituacao(id))}</p>
+              <p className="text-[13px] lowercase text-[var(--tse-muted)]">
+                {AGENDA_SITUACOES.find((s) => s.id === id)?.label}
               </p>
             </div>
-          </div>
-        )}
+          ))}
+        </section>
 
-        {!configLoaded ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
-            <span className={cn('ml-2', typographyBodyMutedClass)}>Carregando configuração...</span>
-          </div>
-        ) : !config ? (
-          <div className="bg-surface rounded-2xl border border-card p-8 text-center">
-            <Calendar className="w-16 h-16 text-secondary mx-auto mb-4" />
-            <h3 className={cn(typographySectionTitleClass, 'mb-2')}>
-              Nenhuma configuração encontrada
-            </h3>
-            <p className={cn(typographySectionLeadClass, 'mb-4')}>
-              Configure sua conexão com o Google Calendar para começar a visualizar seus eventos.
-            </p>
-            <button
-              onClick={() => setShowConfig(true)}
-              className={cn(agendaAmberButtonClass, 'px-6 py-3')}
-            >
-              Configurar Google Calendar
-            </button>
-          </div>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
-            <span className={cn('ml-2', typographyBodyMutedClass)}>Carregando eventos...</span>
-          </div>
-        ) : (
-          <>
-            {/* Filtro de Data */}
-            <div className="mb-6 rounded-xl border border-card bg-surface p-4">
-              <label className={cn('mb-2 block', typographyBodyMediumClass)}>
-                Filtrar por Data
-              </label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <input
-                  type="date"
-                  value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      // Criar data no timezone local para evitar problemas de timezone
-                      const [year, month, day] = e.target.value.split('-').map(Number)
-                      const date = new Date(year, month - 1, day) // month é 0-indexed
-                      setSelectedDate(date)
-                    } else {
-                      setSelectedDate(null)
-                    }
-                  }}
-                  min="2026-01-01"
-                  className={cn(
-                    'w-full rounded-lg border border-card bg-background px-4 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-auto',
-                    typographyBodyClass,
-                  )}
-                />
-                {selectedDate && (
-                  <button
-                    onClick={() => setSelectedDate(null)}
-                    className={cn(
-                      'w-full px-4 py-2 text-center transition-colors hover:text-text-primary sm:w-auto sm:text-left',
-                      typographyBodyMutedClass,
-                    )}
-                  >
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-              {selectedDate && (
-                <p className={cn('mt-2', typographyBodyMutedClass)}>
-                  Mostrando eventos de {formatDateOnly(selectedDate)} ({sortedEvents.length} evento{sortedEvents.length !== 1 ? 's' : ''})
-                </p>
-              )}
-            </div>
-
-            {/* Lista de Eventos */}
-            <div className="py-2">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className={cn(typographySectionTitleClass, 'flex items-center gap-2')}>
-                  <Calendar className={cn('h-5 w-5', agendaAmberIconClass)} />
-                  {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
-                </h3>
-                <button
-                  onClick={() => setShowFullscreen(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
-                  title="Visualizar em tela cheia"
-                >
-                  <Maximize2 className="w-5 h-5" />
-                </button>
-              </div>
-
-              {sortedEvents.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className={typographyBodyMutedClass}>
-                    {selectedDate ? 'Nenhum evento encontrado para esta data' : 'Nenhum evento encontrado'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {sortedEvents.map((event) => {
-                    const eventDate = getEventDate(event)
-                    const isPast = eventDate ? eventDate < new Date() : false
-                    const isUpcoming = upcomingEventAlert === event.id
-                    const attendance = attendanceStatuses[event.id]
-
-                    return (
-                      <div
-                        key={event.id}
-                        className={`p-4 rounded-xl border border-card hover:bg-background/50 transition-colors relative ${
-                          isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
-                        } ${isPast ? 'opacity-75' : ''}`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <h4 className={cn(typographyBodyMediumClass, 'min-w-0 flex-1 font-semibold')}>
-                            {highlightOriginInText(event.summary || 'Sem título')}
-                          </h4>
-                          <div className="shrink-0 text-right">
-                            <p className={typographyBodyMediumClass}>
-                              {event.start.dateTime
-                                ? formatDate(event.start.dateTime)
-                                : event.start.date
-                                  ? formatDate(event.start.date)
-                                  : '-'}
-                            </p>
-                            {isPast ? (
-                              <p className={cn(typographyBodyMutedClass, 'mt-1')}>Passado</p>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className={cn('mt-1 flex flex-wrap items-center gap-3', typographyBodyMutedClass)}>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span className={typographyMetricValueClass}>
-                              {event.start.dateTime
-                                ? formatTime(event.start.dateTime)
-                                : event.start.date
-                                  ? formatDate(event.start.date)
-                                  : '-'}
-                            </span>
-                          </div>
-                          {event.location ? (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3.5 w-3.5" />
-                              <span>{event.location}</span>
-                            </div>
-                          ) : null}
-                          {event.attendees && event.attendees.length > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3.5 w-3.5" />
-                              <span>{event.attendees.length} participante(s)</span>
-                            </div>
-                          ) : null}
-                        </div>
-                        {user?.id ? (
-                          <div className="mt-3 flex flex-wrap items-center gap-4">
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name={`attendance-${event.id}`}
-                                checked={attendance?.attended === true}
-                                onChange={() => handleAttendanceChange(event.id, true)}
-                                className="h-4 w-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
-                              />
-                              <span className={cn(typographyBodyMutedClass, 'flex items-center gap-1')}>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Atendido
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name={`attendance-${event.id}`}
-                                checked={attendance?.attended === false}
-                                onChange={() => handleAttendanceChange(event.id, false)}
-                                className="h-4 w-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
-                              />
-                              <span className={cn(typographyBodyMutedClass, 'flex items-center gap-1')}>
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                Não Atendido
-                              </span>
-                            </label>
-                            {attendance === undefined ? (
-                              <span className={typographyBodyMutedClass}>Não marcado</span>
-                            ) : null}
-                            {attendance?.arrival_time ? (
-                              <div className="flex flex-col items-start gap-1">
-                                <ArrivalTimer arrivalTime={attendance.arrival_time} />
-                                {campoLinks[event.id]?.status === 'concluida' ? (
-                                  <span className={cn(typographyBodyMutedClass, 'font-medium text-green-600')}>
-                                    Check-in Campo sincronizado
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleConfirmArrival(event.id, event.summary)}
-                                disabled={confirmingArrival[event.id]}
-                                className={cn(agendaAmberButtonClass, 'px-3 py-1.5')}
-                              >
-                                {confirmingArrival[event.id] ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Confirmando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="h-4 w-4" />
-                                    Confirmar Chegada
-                                  </>
-                                )}
-                              </button>
-                            )}
-                            <AgendaToCampoButton
-                              event={event}
-                              linked={campoLinks[event.id]}
-                              onLinked={handleCampoLinked}
-                            />
-                          </div>
-                        ) : null}
-                        {formatEventDescriptionForDisplay(event.description) ? (
-                          <p className={cn(typographyBodyMutedClass, 'mt-3 leading-relaxed')}>
-                            {formatEventDescriptionForDisplay(event.description)}
-                          </p>
-                        ) : null}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Modal de Configuração */}
-      {showConfig && (
-        <GoogleCalendarConfigModal
-          onClose={() => setShowConfig(false)}
-          onSave={handleSaveConfig}
-          currentConfig={config || undefined}
-        />
-      )}
-
-      {/* Modal de Tela Cheia */}
-      {showFullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-bg-surface">
-          {/* Quadro de Avisos na Lateral Direita - dentro do modal */}
-          <ArrivalNotificationsPanel
-            events={events}
-            attendanceStatuses={attendanceStatuses}
-            formatTime={formatTime}
-            zIndex={60}
-          />
-          
-          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className={cn(typographySectionTitleClass, 'flex items-center gap-2')}>
-              <Calendar className={cn('h-6 w-6', agendaAmberIconClass)} />
-              {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
-            </h2>
-            <button
-              onClick={() => setShowFullscreen(false)}
-              className="p-2 rounded-lg hover:bg-background transition-colors"
-              title="Fechar tela cheia"
-            >
-              <X className="w-6 h-6 text-secondary" />
-            </button>
-          </div>
-          <div className={cn('flex-1 overflow-auto p-4 sm:p-6', hasActiveArrivals && 'lg:mr-80')}>
-            <div className="max-w-5xl mx-auto">
-              {sortedEvents.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className={typographyBodyMutedClass}>
-                    {selectedDate ? 'Nenhum evento encontrado para esta data' : 'Nenhum evento encontrado'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {sortedEvents.map((event) => {
-                    const eventDate = getEventDate(event)
-                    const isPast = eventDate ? eventDate < new Date() : false
-                    const isUpcoming = upcomingEventAlert === event.id
-                    const attendance = attendanceStatuses[event.id]
-
-                    return (
-                      <div
-                        key={event.id}
-                        className={`p-5 rounded-xl border border-card hover:bg-background/50 transition-colors ${
-                          isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
-                        } ${isPast ? 'opacity-75' : ''}`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <h4 className={cn(typographySectionTitleClass, 'min-w-0 flex-1')}>
-                            {highlightOriginInText(event.summary || 'Sem título')}
-                          </h4>
-                          <div className="shrink-0 text-right">
-                            <p className={typographyBodyMediumClass}>
-                              {event.start.dateTime
-                                ? formatDate(event.start.dateTime)
-                                : event.start.date
-                                  ? formatDate(event.start.date)
-                                  : '-'}
-                            </p>
-                            {isPast ? (
-                              <p className={cn(typographyBodyMutedClass, 'mt-1')}>Passado</p>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className={cn('mt-2 flex flex-wrap items-center gap-4', typographyBodyMutedClass)}>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            <span className={typographyMetricValueClass}>
-                              {event.start.dateTime
-                                ? formatTime(event.start.dateTime)
-                                : event.start.date
-                                  ? formatDate(event.start.date)
-                                  : '-'}
-                            </span>
-                          </div>
-                          {event.location ? (
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4" />
-                              <span>{event.location}</span>
-                            </div>
-                          ) : null}
-                          {event.attendees && event.attendees.length > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              <span>{event.attendees.length} participante(s)</span>
-                            </div>
-                          ) : null}
-                        </div>
-                        {user?.id ? (
-                          <div className="mt-4 flex flex-wrap items-center gap-4">
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name={`attendance-fullscreen-${event.id}`}
-                                checked={attendance?.attended === true}
-                                onChange={() => handleAttendanceChange(event.id, true)}
-                                className="h-4 w-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
-                              />
-                              <span className={cn(typographyBodyMutedClass, 'flex items-center gap-1')}>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Atendido
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <input
-                                type="radio"
-                                name={`attendance-fullscreen-${event.id}`}
-                                checked={attendance?.attended === false}
-                                onChange={() => handleAttendanceChange(event.id, false)}
-                                className="h-4 w-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
-                              />
-                              <span className={cn(typographyBodyMutedClass, 'flex items-center gap-1')}>
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                Não Atendido
-                              </span>
-                            </label>
-                            {attendance === undefined ? (
-                              <span className={typographyBodyMutedClass}>Não marcado</span>
-                            ) : null}
-                            {attendance?.arrival_time ? (
-                              <div className="flex flex-col items-start gap-1">
-                                <ArrivalTimer arrivalTime={attendance.arrival_time} />
-                                {campoLinks[event.id]?.status === 'concluida' ? (
-                                  <span className={cn(typographyBodyMutedClass, 'font-medium text-green-600')}>
-                                    Check-in Campo sincronizado
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleConfirmArrival(event.id, event.summary)}
-                                disabled={confirmingArrival[event.id]}
-                                className={cn(agendaAmberButtonClass, 'px-3 py-1.5')}
-                              >
-                                {confirmingArrival[event.id] ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Confirmando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="h-4 w-4" />
-                                    Confirmar Chegada
-                                  </>
-                                )}
-                              </button>
-                            )}
-                            <AgendaToCampoButton
-                              event={event}
-                              linked={campoLinks[event.id]}
-                              onLinked={handleCampoLinked}
-                            />
-                          </div>
-                        ) : null}
-                        {formatEventDescriptionForDisplay(event.description) ? (
-                          <p className={cn(typographyBodyMutedClass, 'mt-3 leading-relaxed')}>
-                            {formatEventDescriptionForDisplay(event.description)}
-                          </p>
-                        ) : null}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[12px] text-[var(--tse-muted)]">
+            {plural(filtrados.length, 'compromisso', 'compromissos')}
+            {temFiltros ? ' com os filtros aplicados' : ''} · em ordem cronológica
+          </p>
+          <div className="flex items-center gap-4">
+            {temFiltros ? (
+              <button type="button" onClick={limparFiltros} className={tseLinkAcaoClass}>
+                Limpar filtros
+              </button>
+            ) : null}
+            {visiveis.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAbertos(todosAbertos ? new Set() : new Set(visiveis.map((e) => e.id)))}
+                className={tseLinkAcaoClass}
+              >
+                {todosAbertos ? 'Recolher todos' : 'Expandir todos'}
+              </button>
+            ) : null}
           </div>
         </div>
-      )}
+
+        <div className="mt-3">
+          {filtrados.length === 0 ? (
+            <TseVazio>
+              {doPeriodo.length === 0
+                ? 'Nenhum compromisso no período selecionado.'
+                : 'Nenhum compromisso encontrado para os filtros selecionados.'}
+            </TseVazio>
+          ) : (
+            tabela
+          )}
+        </div>
+        <TseCarregarMais restantes={filtrados.length - limite} onClick={() => setLimite((n) => n + PAGE_SIZE)} />
+      </main>
     </div>
+  )
+
+  return (
+    <TsePage className={cn(algumAguardando && 'lg:pr-80 2xl:pr-80')}>
+      <ArrivalNotificationsPanel events={eventos} attendanceStatuses={presencas} />
+
+      <TseFilterBar>
+        <TseSelectGrande
+          icone={CalendarDays}
+          rotulo="Período"
+          value={diaSelecionado ? VALOR_DIA : periodo}
+          onChange={(e) => {
+            if (e.target.value === VALOR_DIA) return
+            setPeriodo(e.target.value as AgendaPeriodo)
+            setDiaSelecionado(null)
+          }}
+        >
+          {AGENDA_PERIODOS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+          {diaSelecionado ? <option value={VALOR_DIA}>{escopo}</option> : null}
+        </TseSelectGrande>
+        <div className="min-w-0 text-[13px] leading-tight">
+          <p className="font-bold">Google Calendar</p>
+          <p className="truncate text-[var(--tse-muted)]">
+            {!configCarregada ? 'Carregando…' : config ? config.calendarId : 'Não configurado'}
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {config ? (
+            <>
+              <button type="button" onClick={agenda.atualizar} disabled={atualizando || carregando} className={tseBotaoCinzaClass}>
+                <RefreshCw className={cn(tseBotaoIconeClass, atualizando && 'animate-spin')} />
+                Atualizar
+              </button>
+              <button type="button" onClick={() => setTelaCheia(true)} className={tseBotaoCinzaClass}>
+                <Maximize2 className={tseBotaoIconeClass} />
+                Tela cheia
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setMostrarConfig(true)}
+            disabled={!configCarregada}
+            className={tseBotaoCinzaClass}
+          >
+            <Settings className={tseBotaoIconeClass} />
+            {config ? 'Reconfigurar' : 'Configurar'}
+          </button>
+        </div>
+      </TseFilterBar>
+
+      <div className="mt-5">{conteudo}</div>
+
+      {telaCheia ? (
+        <div style={TSE_TOKENS} className="fixed inset-0 z-50 overflow-y-auto bg-[var(--tse-bg)] text-[var(--tse-text)]">
+          <ArrivalNotificationsPanel events={eventos} attendanceStatuses={presencas} zIndex={60} />
+          <div className={cn('mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-6', algumAguardando && 'lg:pr-80')}>
+            <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-white px-6 py-3 shadow-sm">
+              <CalendarDays className="h-6 w-6 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-semibold">Agenda · {escopo}</p>
+                <p className="text-[13px] text-[var(--tse-muted)]">
+                  {plural(filtrados.length, 'compromisso', 'compromissos')}
+                  {temFiltros ? ' com os filtros aplicados' : ''}
+                </p>
+              </div>
+              <button type="button" onClick={() => setTelaCheia(false)} className={tseBotaoCinzaClass}>
+                <X className={tseBotaoIconeClass} />
+                Fechar
+              </button>
+            </div>
+            <div className="mt-5">
+              {filtrados.length === 0 ? <TseVazio>Nenhum compromisso para mostrar.</TseVazio> : tabela}
+            </div>
+            <TseCarregarMais restantes={filtrados.length - limite} onClick={() => setLimite((n) => n + PAGE_SIZE)} />
+          </div>
+        </div>
+      ) : null}
+
+      {mostrarConfig ? (
+        <GoogleCalendarConfigModal
+          onClose={() => setMostrarConfig(false)}
+          onSave={agenda.salvarConfig}
+          currentConfig={config ?? undefined}
+        />
+      ) : null}
+    </TsePage>
   )
 }

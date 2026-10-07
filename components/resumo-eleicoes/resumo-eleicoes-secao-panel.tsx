@@ -170,7 +170,7 @@ function listasIguais(a: readonly string[], b: readonly string[]): boolean {
 }
 
 import {
-  resumoEleicoesHubHref,
+  resumoEleicoesHref,
   RESUMO_ELEICOES_TAB_ATENDIMENTO,
 } from '@/lib/resumo-eleicoes-hub-route'
 
@@ -801,7 +801,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
           <div className="mb-6 flex flex-wrap items-center gap-4">
             <Link
               href={
-                resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO, {
+                resumoEleicoesHref(RESUMO_ELEICOES_TAB_ATENDIMENTO, {
                   cidade: cidade || undefined,
                 })
               }

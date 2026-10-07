@@ -19,11 +19,21 @@ export const TERRITORIO_BASE_HEADERS = [
   'PROMESSA LIDERANÇA 2026',
   'REVISÃO FINAL 2026',
   'VOTAÇÃO FINAL 2022',
+  'VOTAÇÃO JADYEL 2026',
 ] as const
 
-export type TerritorioBaseRecord = Record<(typeof TERRITORIO_BASE_HEADERS)[number], string | number>
+/** Votação apurada do município (repetida em cada liderança da cidade; não somar por cidade). */
+export const TERRITORIO_BASE_VOTACAO_JADYEL_2026 = 'VOTAÇÃO JADYEL 2026' as const
 
-export function mapTerritorioLiderancaToBaseRecord(row: TerritorioLiderancaRow): TerritorioBaseRecord {
+export type TerritorioBaseRecord = Record<
+  (typeof TERRITORIO_BASE_HEADERS)[number],
+  string | number | null
+>
+
+export function mapTerritorioLiderancaToBaseRecord(
+  row: TerritorioLiderancaRow,
+  votacaoJadyel2026: number | null = null,
+): TerritorioBaseRecord {
   return {
     id: Number(row.id),
     CIDADE: String(row.municipio || '').trim(),
@@ -37,5 +47,6 @@ export function mapTerritorioLiderancaToBaseRecord(row: TerritorioLiderancaRow):
     'PROMESSA LIDERANÇA 2026': Number(row.promessa_lideranca_2026 || 0),
     'REVISÃO FINAL 2026': Number(row.previsto_2026 || 0),
     'VOTAÇÃO FINAL 2022': Number(row.votacao_final_2022 || 0),
+    [TERRITORIO_BASE_VOTACAO_JADYEL_2026]: votacaoJadyel2026,
   }
 }

@@ -1,100 +1,88 @@
 'use client'
 
-import { useEffect } from 'react'
-import { BarChart3, MapPin, Users } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { CalendarDays, RefreshCw } from 'lucide-react'
 import {
-  DashboardHubTabBar,
-  DashboardPageChrome,
-  DashboardPageContent,
-  DashboardPageHeader,
-  DashboardPageMetaStrip,
-  DashboardPageShell,
-} from '@/components/dashboard/dashboard-page-chrome'
-import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
-import { conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
-import { cn } from '@/lib/utils'
-import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+  TseFilterBar,
+  TsePage,
+  TseSelectGrande,
+  TseTabs,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  type TseAba,
+} from '@/components/tse/tse-ui'
 import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
-import '@/app/dashboard/war-room/war-room-fonts.css'
-import '@/app/dashboard/war-room/war-room-clean.css'
+import { FOLLOWERS_HISTORY_RANGE_OPTIONS } from '@/lib/instagram-followers-history-chart'
+import { cn } from '@/lib/utils'
 
 export type ConteudoRedesTab = 'posts' | 'audience' | 'locations'
 
-const TABS: { id: ConteudoRedesTab; label: string; icon: typeof BarChart3 }[] = [
-  { id: 'posts', label: 'Posts & Insights', icon: BarChart3 },
-  { id: 'audience', label: 'Audiência', icon: Users },
-  { id: 'locations', label: 'Por Cidade', icon: MapPin },
+const TABS: readonly TseAba<ConteudoRedesTab>[] = [
+  { id: 'posts', label: 'Posts & Insights' },
+  { id: 'audience', label: 'Audiência' },
+  { id: 'locations', label: 'Por Cidade' },
 ]
-
-const TAB_DESCRIPTIONS: Record<ConteudoRedesTab, string> = {
-  posts: 'Histórico de seguidores, comparativos por tipo e tema, e posts campeões por indicador.',
-  audience: 'Evolução da audiência, métricas do perfil e publicações classificadas por tema.',
-  locations: 'Top cidades de seguidores e de engajamento com publicações (Instagram Insights).',
-}
 
 interface ConteudoRedesShellProps {
   activeTab: ConteudoRedesTab
   onTabChange: (tab: ConteudoRedesTab) => void
-  metaLine?: string
-  tabActions?: React.ReactNode
-  children: React.ReactNode
+  dateRange: string
+  onDateRangeChange: (range: string) => void
+  username?: string
+  seguidores?: number
+  publicacoes: number
+  loading: boolean
+  onAtualizar: () => void
+  children: ReactNode
 }
 
 export function ConteudoRedesShell({
   activeTab,
   onTabChange,
-  metaLine,
-  tabActions,
+  dateRange,
+  onDateRangeChange,
+  username,
+  seguidores,
+  publicacoes,
+  loading,
+  onAtualizar,
   children,
 }: ConteudoRedesShellProps) {
-  const topbarVisible = useDashboardTopbarVisible()
   const visibleTabs = useAllowedHubTabs('conteudo', TABS, activeTab, onTabChange)
-  const pageTitle = 'Instagram Pessoal'
-  const tabDescription = TAB_DESCRIPTIONS[activeTab]
-  const description = metaLine ? (
-    <span className={typographyPageLeadClass}>
-      {metaLine}
-      <span className="mx-1.5 text-text-muted" aria-hidden>
-        ·
-      </span>
-      {tabDescription}
-    </span>
-  ) : (
-    tabDescription
-  )
-
-  useEffect(() => {
-    document.body.setAttribute('data-war-room-clean', '')
-    document.body.setAttribute('data-wr-copiloto', '')
-    return () => {
-      document.body.removeAttribute('data-wr-copiloto')
-    }
-  }, [])
 
   return (
-    <DashboardPageShell>
-      <DashboardPageChrome>
-        {topbarVisible ? (
-          <DashboardPageMetaStrip>{description}</DashboardPageMetaStrip>
-        ) : (
-          <DashboardPageHeader title={pageTitle} description={description} />
-        )}
-        <DashboardHubTabBar
-          tabs={visibleTabs}
-          activeTab={activeTab}
-          onTabChange={(tab) => onTabChange(tab as ConteudoRedesTab)}
-          actions={tabActions}
-        />
-      </DashboardPageChrome>
-      <DashboardPageContent
-        className={cn(
-          typographyContentRootClass,
-          conteudoRedesTextClass,
-          'wr-page-canvas--scroll pt-2 md:pt-3',
-        )}
-      >
-        {children}
-      </DashboardPageContent>
-    </DashboardPageShell>
+    <TsePage>
+      <TseFilterBar>
+        <TseSelectGrande
+          icone={CalendarDays}
+          rotulo="Período"
+          value={dateRange}
+          onChange={(e) => onDateRangeChange(e.target.value)}
+        >
+          {FOLLOWERS_HISTORY_RANGE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              Últimos {o.label}
+            </option>
+          ))}
+        </TseSelectGrande>
+        {username ? (
+          <div className="text-[13px] leading-tight">
+            <p className="font-bold">@{username}</p>
+            <p className="text-[var(--tse-muted)]">
+              {(seguidores ?? 0).toLocaleString('pt-BR')} seguidores ·{' '}
+              {publicacoes.toLocaleString('pt-BR')} {publicacoes === 1 ? 'publicação' : 'publicações'} no período
+            </p>
+          </div>
+        ) : null}
+        <button type="button" onClick={onAtualizar} disabled={loading} className={cn(tseBotaoCinzaClass, 'ml-auto')}>
+          <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} />
+          Atualizar
+        </button>
+      </TseFilterBar>
+
+      <TseTabs className="mt-5" abas={visibleTabs} ativa={activeTab} onChange={onTabChange} />
+
+      <div className="mt-5">{children}</div>
+    </TsePage>
   )
 }

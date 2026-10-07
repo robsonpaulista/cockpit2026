@@ -1,281 +1,439 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Clock, Loader2, RefreshCw } from 'lucide-react'
-import { MetaAdsCollectProgressBar } from '@/components/meta-ads-radar/meta-ads-collect-progress-bar'
-import { MetaAdsCompareBoard } from '@/components/meta-ads-radar/meta-ads-compare-board'
-import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  TseBarraRotulo,
+  TseBarraValor,
+  TseBusca,
+  TseCarregando,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseListaFiltro,
+  TseStatus,
+  TseVazio,
+  tseControleClass,
+  tseLinkAcaoClass,
+} from '@/components/tse/tse-ui'
+import {
+  RadarAviso,
+  RadarCandidatoNome,
+  RadarChip,
+  RadarCodigo,
+  RadarColetar,
+  RadarDadosGerais,
+  RadarLayout,
+  RadarLinhaContagem,
+  RadarListaCandidatos,
+  RadarProgresso,
+  RadarResumo,
+  RadarSubItem,
+  RadarSubLista,
+  RadarTabela,
+  RadarTopItens,
+  fmtData,
+  fmtDataHora,
+  fmtInt,
+  normalizar,
+  ordenarLinhas,
+  plural,
+  rankPor,
+  useLinhasAbertas,
+  useOrdenacao,
+  type RadarAbaProps,
+  type RadarColuna,
+} from '@/components/monitoramento/radar-ui'
 import { useMetaAdsCollectPolling } from '@/hooks/use-meta-ads-collect-polling'
+import {
+  buildMetaAdsCompareRows,
+  buildMetaAdsPeriodTotals,
+  type MetaAdsCompareActorRow,
+} from '@/lib/meta-ads-aggregate'
+import { formatMetaAdsCollectElapsed, metaAdsCollectPhaseLabel } from '@/lib/meta-ads-collect-progress'
+import { formatSpendBrl } from '@/lib/meta-ads-format'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
-import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
-import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
-import { typographyBodyMutedClass } from '@/lib/typography-chrome'
-import { cn } from '@/lib/utils'
+import { coletarMetaAds, fetchMetaAdsMencoes } from '@/lib/services/radar-eleitoral-client'
 
-const LOOKBACK_OPTIONS = [30, 60, 90] as const
+const PERIODOS = [30, 60, 90] as const
+type Coluna = 'nome' | 'anuncios' | 'ativos' | 'gasto' | 'paginas'
+const COLUNAS_TEXTO: readonly Coluna[] = ['nome', 'paginas']
 
-function formatNextCollect(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-export function MetaAdsRadarPanel() {
-  const [lookbackDays, setLookbackDays] = useState<number>(30)
-  const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
-  const [setupRequired, setSetupRequired] = useState(false)
-  const [ads, setAds] = useState<MetaAdsMentionWithActor[]>([])
-  const [statusMessage, setStatusMessage] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [collecting, setCollecting] = useState(false)
-  const [error, setError] = useState('')
-  const [collectMessage, setCollectMessage] = useState('')
-  const [collectWarnings, setCollectWarnings] = useState<string[]>([])
-  const [pollCollect, setPollCollect] = useState(false)
-  const [conexaoInstavel, setConexaoInstavel] = useState(false)
-
-  const { progress, status, refresh: refreshStatus } = useMetaAdsCollectPolling(
-    collecting || pollCollect
-  )
+export function MetaAdsRadarPanel({ atores, candidato, onCandidatoChange }: RadarAbaProps) {
+  const [dias, setDias] = useState<number>(30)
+  const [anuncios, setAnuncios] = useState<MetaAdsMentionWithActor[]>([])
+  const [setupRequired, setSetupRequired] = useState<boolean>(false)
+  const [carregando, setCarregando] = useState<boolean>(true)
+  const [coletando, setColetando] = useState<boolean>(false)
+  const [acompanhar, setAcompanhar] = useState<boolean>(false)
+  const [instavel, setInstavel] = useState<boolean>(false)
+  const [erro, setErro] = useState<string>('')
+  const [mensagem, setMensagem] = useState<string>('')
+  const [avisos, setAvisos] = useState<string[]>([])
+  const [busca, setBusca] = useState<string>('')
+  const [pagina, setPagina] = useState<string | null>(null)
+  const { ordem, asc, ordenar } = useOrdenacao<Coluna>('anuncios', COLUNAS_TEXTO)
+  const { abertas, alternar, setAbertas } = useLinhasAbertas(candidato)
+  const { progress, status, refresh } = useMetaAdsCollectPolling(coletando || acompanhar)
 
   useEffect(() => {
-    if (status?.collectInProgress) setPollCollect(true)
-    else if (!collecting) setPollCollect(false)
-  }, [status?.collectInProgress, collecting])
+    if (status?.collectInProgress) setAcompanhar(true)
+    else if (!coletando) setAcompanhar(false)
+  }, [status?.collectInProgress, coletando])
 
   const carregar = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    let instavel = false
+    setErro('')
     try {
-      const [actorsRes, adsRes, statusJson] = await Promise.all([
-        fetch('/api/monitoramento/actors', { cache: 'no-store' }),
-        fetch(`/api/meta-ads/mentions?politico=all&days=${lookbackDays}&limit=500`, {
-          cache: 'no-store',
-        }),
-        refreshStatus(),
-      ])
-
-      const actorsJson = (await actorsRes.json()) as {
-        error?: string
-        retryable?: boolean
-        setupRequired?: boolean
-        actors?: PoliticalActorWithTerms[]
-      }
-      if (actorsRes.ok) {
-        setSetupRequired(Boolean(actorsJson.setupRequired))
-        setActors(actorsJson.actors ?? [])
-      } else if (actorsJson.retryable) {
-        // Rede instável: mantém dados atuais e sinaliza para nova tentativa.
-        instavel = true
-      } else if (actorsJson.setupRequired) {
-        setSetupRequired(true)
-      }
-
-      const adsJson = (await adsRes.json()) as {
-        error?: string
-        retryable?: boolean
-        setupRequired?: boolean
-        ads?: MetaAdsMentionWithActor[]
-      }
-
-      if (!adsRes.ok) {
-        if (adsJson.setupRequired) {
-          setSetupRequired(true)
-          setAds([])
-        } else if (adsJson.retryable) {
-          instavel = true
-        } else {
-          throw new Error(adsJson.error ?? 'Falha ao carregar anúncios Meta.')
-        }
-      } else {
-        setSetupRequired(Boolean(adsJson.setupRequired))
-        setAds(adsJson.ads ?? [])
-      }
-
-      if (statusJson?.setupRequired) setSetupRequired(true)
-      if (statusJson?.message) setStatusMessage(statusJson.message)
-      setConexaoInstavel(instavel)
+      const [r, s] = await Promise.all([fetchMetaAdsMencoes(dias), refresh()])
+      if (!r.instavel) setAnuncios(r.dados)
+      setSetupRequired(r.setupRequired || Boolean(s?.setupRequired))
+      setInstavel(r.instavel)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar Meta Ads.')
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar anúncios.')
     } finally {
-      setLoading(false)
+      setCarregando(false)
     }
-  }, [lookbackDays, refreshStatus])
+  }, [dias, refresh])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
 
-  // Rede instável (503 retryable do Supabase): nova tentativa automática após alguns segundos.
   useEffect(() => {
-    if (!conexaoInstavel) return
+    if (!instavel) return
     const id = window.setTimeout(() => void carregar(), 5000)
     return () => window.clearTimeout(id)
-  }, [conexaoInstavel, carregar])
+  }, [instavel, carregar])
 
-  const coletar = useCallback(async () => {
-    setCollecting(true)
-    setCollectMessage('')
-    setCollectWarnings([])
-    setError('')
+  const coletar = async () => {
+    setColetando(true)
+    setMensagem('')
+    setAvisos([])
+    setErro('')
     try {
-      const res = await fetch('/api/meta-ads/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const j = (await res.json()) as {
-        error?: string
-        totals?: {
-          adsFound: number
-          adsInserted: number
-          adsUpdated: number
-          errors?: string[]
-        }
-      }
-      if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
-
-      const t = j.totals
-      const warnings = (t?.errors ?? []).filter(Boolean)
-      setCollectWarnings(warnings)
-      setCollectMessage(
-        t
-          ? `Coleta concluída: ${t.adsFound} anúncios encontrados · ${t.adsInserted} novos · ${t.adsUpdated} atualizados`
-          : 'Coleta concluída.'
-      )
+      const r = await coletarMetaAds()
+      setMensagem(r.mensagem)
+      setAvisos(r.avisos)
       await carregar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro na coleta.')
+      setErro(e instanceof Error ? e.message : 'Erro na coleta.')
     } finally {
-      setCollecting(false)
-      await refreshStatus()
+      setColetando(false)
+      await refresh()
     }
-  }, [carregar, refreshStatus])
+  }
 
-  const canCollect = status?.canCollect ?? true
-  const runnerAvailable = status?.runnerAvailable !== false
-  const dailyLimitEnabled = status?.dailyLimitEnabled ?? true
-  const collectInProgress = collecting || Boolean(status?.collectInProgress)
-  const collectDisabled =
-    collectInProgress ||
-    setupRequired ||
-    !runnerAvailable ||
-    (dailyLimitEnabled && !canCollect && !collecting)
+  const anunciosDaPagina = useMemo(
+    () => (pagina ? anuncios.filter((a) => (a.page_name ?? '—') === pagina) : anuncios),
+    [anuncios, pagina],
+  )
+  const linhas = useMemo(() => buildMetaAdsCompareRows(atores, anunciosDaPagina), [atores, anunciosDaPagina])
+  const ranking = useMemo(
+    () => rankPor(linhas, (l) => l.actor.slug, (l) => l.adCount * 1e6 + l.activeCount),
+    [linhas],
+  )
+
+  const paginas = useMemo(() => {
+    const cont = new Map<string, number>()
+    for (const l of buildMetaAdsCompareRows(atores, anuncios)) {
+      if (candidato && l.actor.slug !== candidato) continue
+      for (const a of l.ads) cont.set(a.page_name ?? '—', (cont.get(a.page_name ?? '—') ?? 0) + 1)
+    }
+    return [...cont.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+  }, [atores, anuncios, candidato])
+
+  const termo = normalizar(busca.trim())
+  const filtradas = linhas.filter(
+    (l) =>
+      (!candidato || l.actor.slug === candidato) &&
+      (!termo ||
+        normalizar(l.actor.name).includes(termo) ||
+        l.ads.some((a) => normalizar(a.page_name).includes(termo) || normalizar(a.ad_body).includes(termo))),
+  )
+  const visiveis = ordenarLinhas<MetaAdsCompareActorRow, Coluna>(
+    filtradas,
+    (l, c) =>
+      c === 'nome'
+        ? l.actor.name
+        : c === 'ativos'
+          ? l.activeCount
+          : c === 'gasto'
+            ? l.spendMaxBrl
+            : c === 'paginas'
+              ? (l.topPages[0]?.page_name ?? '')
+              : l.adCount,
+    ordem,
+    asc,
+  )
+
+  const totais = buildMetaAdsPeriodTotals(filtradas.flatMap((l) => l.ads))
+  const totalAtivos = filtradas.reduce((s, l) => s + l.activeCount, 0)
+  const todos = linhas.reduce((s, l) => s + l.adCount, 0)
+  const foco = linhas.find((l) => l.actor.slug === candidato) ?? linhas.find((l) => l.actor.actor_type === 'own_candidate')
+  const pctFoco = todos > 0 && foco ? (foco.adCount / todos) * 100 : 0
+  const maxAnuncios = Math.max(1, ...linhas.map((l) => l.adCount))
+  const nomeCandidato = linhas.find((l) => l.actor.slug === candidato)?.actor.name
+  const temFiltros = Boolean(termo || pagina)
+  const todosAbertos = visiveis.length > 0 && visiveis.every((l) => abertas.has(l.actor.slug))
+
+  const runnerDisponivel = status?.runnerAvailable !== false
+  const limiteDiario = status?.dailyLimitEnabled ?? true
+  const podeColetar = status?.canCollect ?? true
+  const emColeta = coletando || Boolean(status?.collectInProgress)
+  const coletaBloqueada = setupRequired || !runnerDisponivel || (limiteDiario && !podeColetar && !coletando)
+
+  const colunas: RadarColuna<MetaAdsCompareActorRow, Coluna>[] = [
+    {
+      id: 'nome',
+      rotulo: 'Candidato',
+      celula: (l) => <RadarCandidatoNome nome={l.actor.name} tipo={l.actor.actor_type} />,
+    },
+    {
+      id: 'anuncios',
+      rotulo: 'Anúncios',
+      alinhar: 'right',
+      celula: (l) => <TseBarraValor valor={l.adCount} max={maxAnuncios} formatado={fmtInt(l.adCount)} />,
+    },
+    {
+      id: 'ativos',
+      rotulo: 'Ativos',
+      alinhar: 'right',
+      className: 'hidden sm:table-cell',
+      celula: (l) => <span className="font-bold tabular-nums">{fmtInt(l.activeCount)}</span>,
+    },
+    {
+      id: 'gasto',
+      rotulo: 'Gasto est.',
+      alinhar: 'right',
+      className: 'hidden md:table-cell',
+      celula: (l) => <span className="whitespace-nowrap text-[12px] tabular-nums">{l.spendLabel}</span>,
+    },
+    {
+      id: 'paginas',
+      rotulo: 'Principais páginas',
+      className: 'hidden max-w-[300px] xl:table-cell',
+      celula: (l) => <RadarTopItens itens={l.topPages.map((p) => ({ nome: p.page_name, qtd: p.count }))} />,
+    },
+  ]
+
+  if (carregando && anuncios.length === 0) return <TseCarregando texto="Carregando anúncios da Meta…" />
 
   return (
-    <div className="flex flex-col gap-4">
-      {setupRequired ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Execute{' '}
-          <code className="rounded bg-white/80 px-1">database/create-meta-ads-radar-tables.sql</code> no
-          Supabase antes da primeira coleta. Se a tabela já existia, rode também{' '}
-          <code className="rounded bg-white/80 px-1">database/alter-meta-ads-mentions-spend.sql</code> para
-          habilitar gasto e impressões. Opcional:{' '}
-          <code className="rounded bg-white/80 px-1">database/alter-meta-ads-collect-log-progress.sql</code>{' '}
-          para barra de progresso. Em seguida rode{' '}
-          <code className="rounded bg-white/80 px-1">npx playwright install chromium</code> no servidor.
-        </div>
-      ) : null}
-
-      {!runnerAvailable && statusMessage ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {statusMessage}
-        </div>
-      ) : null}
-
-      {runnerAvailable ? (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <p className="font-medium">
-            {dailyLimitEnabled
-              ? 'Limite de coleta: 1 vez a cada 24 horas'
-              : 'Coleta liberada (sem limite de 24h)'}
-          </p>
-          <p className="mt-1 text-blue-800/90">
-            {statusMessage ||
-              (dailyLimitEnabled
-                ? 'Coleta rápida: listagem na biblioteca da Meta (gasto, impressões, páginas). Limite de 1 busca completa por dia.'
-                : 'Modo desenvolvimento: META_ADS_SKIP_DAILY_LIMIT está ativo. Coleta rápida sem localização geográfica.')}
-          </p>
-          {dailyLimitEnabled && status && !status.canCollect && status.nextCollectAt && !collectInProgress ? (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-900">
-              <Clock className="h-3.5 w-3.5" aria-hidden />
-              Próxima coleta disponível: {formatNextCollect(status.nextCollectAt)}
-              {status.hoursUntilNextCollect !== null && status.hoursUntilNextCollect > 0
-                ? ` (≈ ${status.hoursUntilNextCollect}h)`
-                : ''}
-            </p>
+    <RadarLayout
+      aside={
+        <>
+          <RadarDadosGerais fonte={`Biblioteca de Anúncios da Meta · últimos ${dias} dias`}>
+            <TseDados>
+              <TseDado rotulo="Anúncios" valor={fmtInt(totais.adCount)} />
+              <TseDado rotulo="Ativos agora" valor={fmtInt(totalAtivos)} />
+              <TseDado rotulo="Investimento" valor={totais.spendLabel} />
+              {totais.impressionsLabel ? <TseDado rotulo="Impressões" valor={totais.impressionsLabel} /> : null}
+            </TseDados>
+            {foco ? (
+              <>
+                <TseBarraRotulo pct={pctFoco} rotulo={`${pctFoco.toFixed(1).replace('.', ',')}%`} />
+                <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Fatia dos anúncios de {foco.actor.name}</p>
+              </>
+            ) : null}
+          </RadarDadosGerais>
+          <RadarListaCandidatos
+            itens={linhas.map((l) => ({ slug: l.actor.slug, nome: l.actor.name, tipo: l.actor.actor_type, valor: l.adCount }))}
+            candidato={candidato}
+            onCandidatoChange={onCandidatoChange}
+          />
+          {paginas.length > 0 ? (
+            <TseListaFiltro
+              titulo="Páginas patrocinadoras"
+              itens={paginas.map(([nome, qtd]) => ({ id: nome, label: nome, valor: qtd, cor: 'var(--tse-zero)' }))}
+              ativo={pagina}
+              onChange={setPagina}
+            />
           ) : null}
-        </div>
-      ) : null}
-
-      <MetaAdsCollectProgressBar progress={progress} collecting={collectInProgress} />
-
-      <div className={chromePanelToolbarClass}>
-        <span className={typographyBodyMutedClass}>Janela:</span>
-        {LOOKBACK_OPTIONS.map((days) => (
-          <button
-            key={days}
-            type="button"
-            onClick={() => setLookbackDays(days)}
-            className={chromeFilterChipClass(lookbackDays === days)}
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={dias}
+            onChange={(e) => setDias(Number(e.target.value))}
+            className={tseControleClass}
+            aria-label="Período"
           >
-            {days} dias
-          </button>
-        ))}
-        <button
-          type="button"
-          disabled={collectDisabled}
-          onClick={() => void coletar()}
-          title={
-            dailyLimitEnabled && !canCollect && status?.nextCollectAt
-              ? `Próxima coleta: ${formatNextCollect(status.nextCollectAt)}`
-              : undefined
-          }
-          className={cn(chromeButtonClass, 'ml-auto')}
-        >
-          {collectInProgress ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          )}
-          Atualizar
-        </button>
+            {PERIODOS.map((d) => (
+              <option key={d} value={d}>
+                Últimos {d} dias
+              </option>
+            ))}
+          </select>
+          {pagina ? <RadarChip onRemover={() => setPagina(null)}>Página: {pagina}</RadarChip> : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <TseBusca value={busca} onChange={setBusca} placeholder="Buscar candidato, página ou texto" className="w-64" />
+          <RadarColetar
+            onClick={() => void coletar()}
+            ocupado={emColeta}
+            disabled={coletaBloqueada}
+            title={
+              limiteDiario && !podeColetar && status?.nextCollectAt
+                ? `Próxima coleta: ${fmtDataHora(status.nextCollectAt)}`
+                : undefined
+            }
+          />
+        </div>
       </div>
 
-      {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}
-      {collectWarnings.length > 0 ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          <p className="font-medium">Avisos da coleta</p>
-          <ul className="mt-1 list-disc pl-4">
-            {collectWarnings.map((w) => (
-              <li key={w}>{w}</li>
+      {setupRequired ? (
+        <RadarAviso titulo="Tabelas do radar ausentes">
+          Execute <RadarCodigo>database/create-meta-ads-radar-tables.sql</RadarCodigo> no Supabase. Se a tabela já
+          existia, rode também <RadarCodigo>database/alter-meta-ads-mentions-spend.sql</RadarCodigo> (gasto e impressões)
+          e, opcionalmente, <RadarCodigo>database/alter-meta-ads-collect-log-progress.sql</RadarCodigo> (progresso).
+        </RadarAviso>
+      ) : null}
+      {!runnerDisponivel ? (
+        <RadarAviso titulo="Coleta indisponível neste servidor">
+          {status?.runnerMessage || 'O coletor da Biblioteca de Anúncios não está disponível.'}
+        </RadarAviso>
+      ) : null}
+      {runnerDisponivel && limiteDiario && status && !podeColetar && status.nextCollectAt && !emColeta ? (
+        <RadarAviso titulo="Limite de 1 coleta a cada 24 horas">
+          Próxima coleta disponível em {fmtDataHora(status.nextCollectAt)}
+          {status.hoursUntilNextCollect !== null && status.hoursUntilNextCollect > 0
+            ? ` (≈ ${status.hoursUntilNextCollect}h)`
+            : ''}
+          .
+        </RadarAviso>
+      ) : null}
+      {emColeta ? (
+        <RadarProgresso
+          titulo={progress?.message ?? 'Coleta Meta Ads em andamento…'}
+          percent={progress?.percent ?? 8}
+          detalhe={[
+            `Etapa: ${progress ? metaAdsCollectPhaseLabel(progress.phase) : 'Iniciando'}`,
+            progress?.actorName && progress.actorTotal
+              ? `Candidato ${progress.actorIndex ?? '?'}/${progress.actorTotal}: ${progress.actorName}`
+              : null,
+            progress?.adsFound != null ? `${progress.adsFound} anúncio(s) na listagem` : null,
+            formatMetaAdsCollectElapsed(progress?.startedAt)
+              ? `${formatMetaAdsCollectElapsed(progress?.startedAt)} decorridos`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          rodape="Consulta automatizada da biblioteca. Costuma levar 1–3 minutos por candidato monitorado."
+        />
+      ) : null}
+      {instavel && !erro ? <RadarAviso carregando>Conexão com o Supabase instável. Tentando novamente…</RadarAviso> : null}
+      {mensagem ? <RadarAviso tom="ok" titulo="Coleta concluída">{mensagem}</RadarAviso> : null}
+      {avisos.length > 0 ? (
+        <RadarAviso titulo="Avisos da coleta">
+          <ul className="list-disc pl-4">
+            {avisos.map((a) => (
+              <li key={a}>{a}</li>
             ))}
           </ul>
+        </RadarAviso>
+      ) : null}
+      {erro ? (
+        <div className="mt-4">
+          <TseErro>{erro}</TseErro>
         </div>
       ) : null}
-      {conexaoInstavel && !error ? (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          Conexão com o Supabase instável. Tentando novamente…
-        </div>
-      ) : null}
-      {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
-      <MetaAdsCompareBoard
-        actors={actors}
-        ads={ads}
-        lookbackDays={lookbackDays}
-        loading={loading}
+      <RadarResumo
+        titulo="Anúncios"
+        escopo={nomeCandidato ?? 'Todos os candidatos'}
+        descricao={`Anúncios políticos · gasto, impressões e páginas · últimos ${dias} dias`}
+        numeros={[
+          { rotulo: 'anúncios', valor: fmtInt(totais.adCount) },
+          { rotulo: 'ativos', valor: fmtInt(totalAtivos) },
+          { rotulo: 'investimento', valor: <span className="text-xl">{totais.spendLabel}</span> },
+        ]}
       />
 
-      {!setupRequired ? (
-        <YoutubeActorsManager actors={actors} onChanged={carregar} disabled={loading || collectInProgress} />
-      ) : null}
-    </div>
+      <RadarLinhaContagem
+        acoes={
+          <>
+            {temFiltros ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setBusca('')
+                  setPagina(null)
+                }}
+                className={tseLinkAcaoClass}
+              >
+                Limpar filtros
+              </button>
+            ) : null}
+            {visiveis.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAbertas(todosAbertos ? new Set() : new Set(visiveis.map((l) => l.actor.slug)))}
+                className={tseLinkAcaoClass}
+              >
+                {todosAbertos ? 'Recolher todos' : 'Expandir todos'}
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {plural(visiveis.length, 'candidato', 'candidatos')}
+        {temFiltros ? ' com os filtros aplicados' : ''} · clique na linha para ver os anúncios
+      </RadarLinhaContagem>
+
+      <div className="mt-3">
+        {visiveis.length === 0 ? (
+          <TseVazio>
+            {linhas.length === 0
+              ? 'Nenhum candidato ativo. Cadastre candidatos em “Candidatos” e rode a coleta.'
+              : 'Nenhum candidato encontrado para os filtros selecionados.'}
+          </TseVazio>
+        ) : (
+          <RadarTabela
+            linhas={visiveis}
+            chave={(l) => l.actor.slug}
+            rank={(l) => ranking.get(l.actor.slug) ?? 0}
+            colunas={colunas}
+            ordem={ordem}
+            asc={asc}
+            onOrdenar={ordenar}
+            abertas={abertas}
+            onAlternar={alternar}
+            detalhe={(l) => (
+              <RadarSubLista vazio="Nenhum anúncio nesta janela. Rode a coleta na Biblioteca de Anúncios da Meta.">
+                {l.ads.length > 0
+                  ? l.ads.map((a) => (
+                      <RadarSubItem
+                        key={a.id}
+                        titulo={
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            {a.page_name ?? 'Página desconhecida'}
+                            {a.is_active === true ? <TseStatus cor="var(--tse-green)">Ativo</TseStatus> : null}
+                            {a.is_active === false ? <TseStatus cor="var(--tse-zero)">Inativo</TseStatus> : null}
+                          </span>
+                        }
+                        href={a.library_url}
+                        extra={
+                          a.ad_body ? (
+                            <p className="mt-0.5 line-clamp-2 text-[12px] text-[var(--tse-muted)]">{a.ad_body}</p>
+                          ) : null
+                        }
+                        meta={[
+                          `${fmtData(a.started_running_at)}${a.ended_running_at ? ` → ${fmtData(a.ended_running_at)}` : ''}`,
+                          `Gasto: ${formatSpendBrl(a.spend_min_brl, a.spend_max_brl, a.spend_text)}`,
+                          a.impressions_text ? `Imp.: ${a.impressions_text}` : null,
+                          a.payer_name ? `Pago por ${a.payer_name}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      />
+                    ))
+                  : null}
+              </RadarSubLista>
+            )}
+          />
+        )}
+      </div>
+    </RadarLayout>
   )
 }

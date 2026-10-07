@@ -18,7 +18,7 @@ import { sidebarItemIconOnlyClass } from '@/lib/sidebar-layout'
 import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sidebar-apify-styles'
 import { JARVIS_SIDEBAR_DIVIDER, JARVIS_SIDEBAR_SECTION } from '@/lib/jarvis-sidebar-styles'
 import { usePermissions } from '@/hooks/use-permissions'
-import { canAccessPage } from '@/lib/page-access'
+import { canAccessDashboardPage } from '@/lib/page-access'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
 
@@ -26,7 +26,6 @@ type Props = {
   collapsed: boolean
   mobileOpen: boolean
   isGradientHome: boolean
-  searchKey: string
   onNavigate: (href: string) => void
 }
 
@@ -34,7 +33,6 @@ export function SidebarQuickAccess({
   collapsed,
   mobileOpen,
   isGradientHome,
-  searchKey,
   onNavigate,
 }: Props) {
   const pathname = usePathname() ?? ''
@@ -43,7 +41,9 @@ export function SidebarQuickAccess({
 
   const items = loading
     ? []
-    : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) => canAccessPage(canAccess, item.pageKey))
+    : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) =>
+        canAccessDashboardPage(canAccess, item.pageKey, item.href),
+      )
 
   if (items.length === 0) return null
 
@@ -80,13 +80,14 @@ export function SidebarQuickAccess({
 
       <ul className="space-y-0.5">
         {items.map((item) => {
-          const active = isSidebarQuickAccessActive(item, pathname, searchKey)
+          const active = isSidebarQuickAccessActive(item, pathname)
           const iconClass = sidebarNavIconClass(active)
 
           return (
             <li key={item.id} className="group relative">
               <Link
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 onClick={() => onNavigate(item.href)}
                 className={cn(
                   sidebarNavItemClass(active),

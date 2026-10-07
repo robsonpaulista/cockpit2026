@@ -1,179 +1,334 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
-import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
-import { YoutubeCompareBoard } from '@/components/youtube-radar/youtube-compare-board'
-import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
-import { chromeButtonClass, chromePanelToolbarClass } from '@/lib/button-chrome'
-import { typographyBodyMutedClass } from '@/lib/typography-chrome'
-import { cn } from '@/lib/utils'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  TseBarraRotulo,
+  TseBarraValor,
+  TseBusca,
+  TseCarregando,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseListaFiltro,
+  TseVazio,
+  tseLinkAcaoClass,
+} from '@/components/tse/tse-ui'
+import {
+  RadarAviso,
+  RadarCandidatoNome,
+  RadarChip,
+  RadarCodigo,
+  RadarColetar,
+  RadarDadosGerais,
+  RadarLayout,
+  RadarLinhaContagem,
+  RadarListaCandidatos,
+  RadarResumo,
+  RadarSubItem,
+  RadarSubLista,
+  RadarTabela,
+  RadarTopItens,
+  fmtData,
+  fmtInt,
+  normalizar,
+  ordenarLinhas,
+  plural,
+  rankPor,
+  useLinhasAbertas,
+  useOrdenacao,
+  type RadarAbaProps,
+  type RadarColuna,
+} from '@/components/monitoramento/radar-ui'
+import { coletarYoutube, fetchYoutubeMencoes } from '@/lib/services/radar-eleitoral-client'
+import { buildYoutubeCompareRows, type YoutubeCompareActorRow } from '@/lib/youtube-radar-aggregate'
+import type { YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
 
-const LOOKBACK_DAYS = 30
+const DIAS = 30
+const MAX_VIDEOS_DETALHE = 30
+type Coluna = 'nome' | 'videos' | 'views' | 'canais'
+const COLUNAS_TEXTO: readonly Coluna[] = ['nome', 'canais']
 
-export function YoutubeRadarPanel() {
-  const lookbackDays = LOOKBACK_DAYS
-  const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
-  const [apiConfigured, setApiConfigured] = useState<boolean | null>(null)
-  const [setupRequired, setSetupRequired] = useState(false)
-  const [mentions, setMentions] = useState<YoutubeMentionWithActor[]>([])
-  const [loading, setLoading] = useState(true)
-  const [collecting, setCollecting] = useState(false)
-  const [error, setError] = useState('')
-  const [collectMessage, setCollectMessage] = useState('')
-  const [conexaoInstavel, setConexaoInstavel] = useState(false)
+export function YoutubeRadarPanel({
+  atores,
+  candidato,
+  onCandidatoChange,
+  youtubeConfigurado,
+}: RadarAbaProps & { youtubeConfigurado: boolean | null }) {
+  const [mencoes, setMencoes] = useState<YoutubeMentionWithActor[]>([])
+  const [setupRequired, setSetupRequired] = useState<boolean>(false)
+  const [carregando, setCarregando] = useState<boolean>(true)
+  const [coletando, setColetando] = useState<boolean>(false)
+  const [instavel, setInstavel] = useState<boolean>(false)
+  const [erro, setErro] = useState<string>('')
+  const [mensagem, setMensagem] = useState<string>('')
+  const [busca, setBusca] = useState<string>('')
+  const [canal, setCanal] = useState<string | null>(null)
+  const { ordem, asc, ordenar } = useOrdenacao<Coluna>('videos', COLUNAS_TEXTO)
+  const { abertas, alternar, setAbertas } = useLinhasAbertas(candidato)
 
   const carregar = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    let instavel = false
+    setErro('')
     try {
-      const [actorsRes, mentionsRes] = await Promise.all([
-        fetch('/api/youtube/actors', { cache: 'no-store' }),
-        fetch(`/api/youtube/mentions?politico=all&days=${lookbackDays}&limit=500`, {
-          cache: 'no-store',
-        }),
-      ])
-
-      const actorsJson = (await actorsRes.json()) as {
-        configured?: boolean
-        setupRequired?: boolean
-        actors?: PoliticalActorWithTerms[]
-        error?: string
-        retryable?: boolean
-      }
-      if (actorsRes.ok) {
-        setApiConfigured(Boolean(actorsJson.configured))
-        setSetupRequired(Boolean(actorsJson.setupRequired))
-        setActors(actorsJson.actors ?? [])
-      } else if (actorsJson.retryable) {
-        instavel = true
-      } else if (actorsJson.setupRequired) {
-        setSetupRequired(true)
-      }
-
-      const mentionsJson = (await mentionsRes.json()) as {
-        mentions?: YoutubeMentionWithActor[]
-        error?: string
-        retryable?: boolean
-        setupRequired?: boolean
-      }
-
-      if (!mentionsRes.ok) {
-        if (mentionsJson.retryable) {
-          instavel = true
-        } else {
-          throw new Error(mentionsJson.error ?? 'Falha ao carregar menções.')
-        }
-      } else {
-        setMentions(mentionsJson.mentions ?? [])
-      }
-
-      setConexaoInstavel(instavel)
+      const r = await fetchYoutubeMencoes(DIAS)
+      if (!r.instavel) setMencoes(r.dados)
+      setSetupRequired(r.setupRequired)
+      setInstavel(r.instavel)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar radar.')
+      setErro(e instanceof Error ? e.message : 'Erro ao carregar vídeos.')
     } finally {
-      setLoading(false)
+      setCarregando(false)
     }
-  }, [lookbackDays])
+  }, [])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
 
   useEffect(() => {
-    if (!conexaoInstavel) return
+    if (!instavel) return
     const id = window.setTimeout(() => void carregar(), 5000)
     return () => window.clearTimeout(id)
-  }, [conexaoInstavel, carregar])
+  }, [instavel, carregar])
 
-  const coletar = useCallback(async () => {
-    setCollecting(true)
-    setCollectMessage('')
-    setError('')
+  const coletar = async () => {
+    setColetando(true)
+    setMensagem('')
+    setErro('')
     try {
-      const res = await fetch('/api/youtube/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lookbackDays }),
-      })
-      const j = (await res.json()) as {
-        error?: string
-        totals?: { videosFound: number; videosInserted: number; videosUpdated: number; quotaEstimate: number }
-      }
-      if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
-
-      const t = j.totals
-      setCollectMessage(
-        t
-          ? `Coleta concluída: ${t.videosFound} vídeos encontrados · ${t.videosInserted} novos · ${t.videosUpdated} atualizados · ~${t.quotaEstimate} un. de quota`
-          : 'Coleta concluída.'
-      )
+      setMensagem(await coletarYoutube(DIAS))
       await carregar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro na coleta.')
+      setErro(e instanceof Error ? e.message : 'Erro na coleta.')
     } finally {
-      setCollecting(false)
+      setColetando(false)
     }
-  }, [lookbackDays, carregar])
+  }
+
+  const mencoesDoCanal = useMemo(
+    () => (canal ? mencoes.filter((m) => (m.channel_title ?? '—') === canal) : mencoes),
+    [mencoes, canal],
+  )
+  const linhas = useMemo(() => buildYoutubeCompareRows(atores, mencoesDoCanal), [atores, mencoesDoCanal])
+  const ranking = useMemo(() => rankPor(linhas, (l) => l.actor.slug, (l) => l.videoCount * 1e12 + l.totalViews), [linhas])
+
+  const canais = useMemo(() => {
+    const cont = new Map<string, number>()
+    for (const l of buildYoutubeCompareRows(atores, mencoes)) {
+      if (candidato && l.actor.slug !== candidato) continue
+      for (const m of l.mentions) cont.set(m.channel_title ?? '—', (cont.get(m.channel_title ?? '—') ?? 0) + 1)
+    }
+    return [...cont.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+  }, [atores, mencoes, candidato])
+
+  const termo = normalizar(busca.trim())
+  const filtradas = linhas.filter(
+    (l) =>
+      (!candidato || l.actor.slug === candidato) &&
+      (!termo ||
+        normalizar(l.actor.name).includes(termo) ||
+        l.mentions.some((m) => normalizar(m.video_title).includes(termo) || normalizar(m.channel_title).includes(termo))),
+  )
+  const visiveis = ordenarLinhas<YoutubeCompareActorRow, Coluna>(
+    filtradas,
+    (l, c) =>
+      c === 'nome'
+        ? l.actor.name
+        : c === 'views'
+          ? l.totalViews
+          : c === 'canais'
+            ? (l.topChannels[0]?.channel_title ?? '')
+            : l.videoCount,
+    ordem,
+    asc,
+  )
+
+  const totalVideos = filtradas.reduce((s, l) => s + l.videoCount, 0)
+  const totalViews = filtradas.reduce((s, l) => s + l.totalViews, 0)
+  const canaisDistintos = new Set(filtradas.flatMap((l) => l.mentions.map((m) => m.channel_title ?? '—'))).size
+  const todosVideos = linhas.reduce((s, l) => s + l.videoCount, 0)
+  const foco = linhas.find((l) => l.actor.slug === candidato) ?? linhas.find((l) => l.actor.actor_type === 'own_candidate')
+  const pctFoco = todosVideos > 0 && foco ? (foco.videoCount / todosVideos) * 100 : 0
+  const maxVideos = Math.max(1, ...linhas.map((l) => l.videoCount))
+  const maxViews = Math.max(1, ...linhas.map((l) => l.totalViews))
+  const nomeCandidato = linhas.find((l) => l.actor.slug === candidato)?.actor.name
+  const temFiltros = Boolean(termo || canal)
+  const todosAbertos = visiveis.length > 0 && visiveis.every((l) => abertas.has(l.actor.slug))
+
+  const colunas: RadarColuna<YoutubeCompareActorRow, Coluna>[] = [
+    {
+      id: 'nome',
+      rotulo: 'Candidato',
+      celula: (l) => <RadarCandidatoNome nome={l.actor.name} tipo={l.actor.actor_type} />,
+    },
+    {
+      id: 'videos',
+      rotulo: 'Vídeos',
+      alinhar: 'right',
+      celula: (l) => <TseBarraValor valor={l.videoCount} max={maxVideos} formatado={fmtInt(l.videoCount)} />,
+    },
+    {
+      id: 'views',
+      rotulo: 'Visualizações',
+      alinhar: 'right',
+      className: 'hidden sm:table-cell',
+      celula: (l) => (
+        <TseBarraValor valor={l.totalViews} max={maxViews} formatado={fmtInt(l.totalViews)} larguraNumero="w-24" cor="amarelo" />
+      ),
+    },
+    {
+      id: 'canais',
+      rotulo: 'Principais canais',
+      className: 'hidden max-w-[320px] xl:table-cell',
+      celula: (l) => <RadarTopItens itens={l.topChannels.map((c) => ({ nome: c.channel_title, qtd: c.count }))} />,
+    },
+  ]
+
+  if (carregando && mencoes.length === 0) return <TseCarregando texto="Carregando vídeos do YouTube…" />
 
   return (
-    <div className="flex flex-col gap-4">
-      {setupRequired ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Execute o script{' '}
-          <code className="rounded bg-white/80 px-1">database/create-youtube-radar-tables.sql</code> no
-          Supabase antes da primeira coleta.
+    <RadarLayout
+      aside={
+        <>
+          <RadarDadosGerais fonte={`YouTube Data API · últimos ${DIAS} dias`}>
+            <TseDados>
+              <TseDado rotulo="Vídeos" valor={fmtInt(totalVideos)} />
+              <TseDado rotulo="Visualizações" valor={fmtInt(totalViews)} />
+              <TseDado rotulo="Canais distintos" valor={fmtInt(canaisDistintos)} />
+            </TseDados>
+            {foco ? (
+              <>
+                <TseBarraRotulo pct={pctFoco} rotulo={`${pctFoco.toFixed(1).replace('.', ',')}%`} />
+                <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Fatia dos vídeos que citam {foco.actor.name}</p>
+              </>
+            ) : null}
+          </RadarDadosGerais>
+          <RadarListaCandidatos
+            itens={linhas.map((l) => ({ slug: l.actor.slug, nome: l.actor.name, tipo: l.actor.actor_type, valor: l.videoCount }))}
+            candidato={candidato}
+            onCandidatoChange={onCandidatoChange}
+          />
+          {canais.length > 0 ? (
+            <TseListaFiltro
+              titulo="Principais canais"
+              itens={canais.map(([nome, qtd]) => ({ id: nome, label: nome, valor: qtd, cor: 'var(--tse-zero)' }))}
+              ativo={canal}
+              onChange={setCanal}
+            />
+          ) : null}
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-[var(--tse-muted)]">Janela: últimos {DIAS} dias</span>
+          {canal ? <RadarChip onRemover={() => setCanal(null)}>Canal: {canal}</RadarChip> : null}
         </div>
-      ) : null}
-
-      {apiConfigured === false ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Configure <code className="rounded bg-white/80 px-1">YOUTUBE_DATA_API_KEY</code> em{' '}
-          <code className="rounded bg-white/80 px-1">.env.local</code> e reinicie o servidor.
+        <div className="flex flex-wrap items-center gap-2">
+          <TseBusca value={busca} onChange={setBusca} placeholder="Buscar candidato, vídeo ou canal" className="w-64" />
+          <RadarColetar
+            onClick={() => void coletar()}
+            ocupado={coletando}
+            disabled={youtubeConfigurado === false || setupRequired}
+          />
         </div>
-      ) : null}
-
-      <div className={chromePanelToolbarClass}>
-        <span className={typographyBodyMutedClass}>Janela: {lookbackDays} dias</span>
-        <button
-          type="button"
-          disabled={collecting || apiConfigured === false || setupRequired}
-          onClick={() => void coletar()}
-          className={cn(chromeButtonClass, 'ml-auto')}
-        >
-          {collecting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          )}
-          Atualizar
-        </button>
       </div>
 
-      {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}
-      {conexaoInstavel && !error ? (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          Conexão com o Supabase instável. Tentando novamente…
+      {setupRequired ? (
+        <RadarAviso titulo="Tabelas do radar ausentes">
+          Execute <RadarCodigo>database/create-youtube-radar-tables.sql</RadarCodigo> no Supabase antes da primeira coleta.
+        </RadarAviso>
+      ) : null}
+      {youtubeConfigurado === false ? (
+        <RadarAviso titulo="YouTube não configurado">
+          Configure <RadarCodigo>YOUTUBE_DATA_API_KEY</RadarCodigo> no ambiente e reinicie o servidor.
+        </RadarAviso>
+      ) : null}
+      {instavel && !erro ? <RadarAviso carregando>Conexão com o Supabase instável. Tentando novamente…</RadarAviso> : null}
+      {mensagem ? <RadarAviso tom="ok" titulo="Coleta concluída">{mensagem}</RadarAviso> : null}
+      {erro ? (
+        <div className="mt-4">
+          <TseErro>{erro}</TseErro>
         </div>
       ) : null}
-      {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
-      <YoutubeCompareBoard
-        actors={actors}
-        mentions={mentions}
-        lookbackDays={lookbackDays}
-        loading={loading}
+      <RadarResumo
+        titulo="YouTube"
+        escopo={nomeCandidato ?? 'Todos os candidatos'}
+        descricao={`Menções em vídeos públicos · últimos ${DIAS} dias`}
+        numeros={[
+          { rotulo: 'vídeos', valor: fmtInt(totalVideos) },
+          { rotulo: 'visualizações', valor: fmtInt(totalViews) },
+          { rotulo: 'canais', valor: fmtInt(canaisDistintos) },
+        ]}
       />
 
-      {!setupRequired ? (
-        <YoutubeActorsManager
-          actors={actors}
-          onChanged={carregar}
-          disabled={loading || collecting}
-        />
-      ) : null}
-    </div>
+      <RadarLinhaContagem
+        acoes={
+          <>
+            {temFiltros ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setBusca('')
+                  setCanal(null)
+                }}
+                className={tseLinkAcaoClass}
+              >
+                Limpar filtros
+              </button>
+            ) : null}
+            {visiveis.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAbertas(todosAbertos ? new Set() : new Set(visiveis.map((l) => l.actor.slug)))}
+                className={tseLinkAcaoClass}
+              >
+                {todosAbertos ? 'Recolher todos' : 'Expandir todos'}
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {plural(visiveis.length, 'candidato', 'candidatos')}
+        {temFiltros ? ' com os filtros aplicados' : ''} · clique na linha para ver os vídeos
+      </RadarLinhaContagem>
+
+      <div className="mt-3">
+        {visiveis.length === 0 ? (
+          <TseVazio>
+            {linhas.length === 0
+              ? 'Nenhum candidato ativo. Cadastre candidatos em “Candidatos” e rode a coleta.'
+              : 'Nenhum candidato encontrado para os filtros selecionados.'}
+          </TseVazio>
+        ) : (
+          <RadarTabela
+            linhas={visiveis}
+            chave={(l) => l.actor.slug}
+            rank={(l) => ranking.get(l.actor.slug) ?? 0}
+            colunas={colunas}
+            ordem={ordem}
+            asc={asc}
+            onOrdenar={ordenar}
+            abertas={abertas}
+            onAlternar={alternar}
+            detalhe={(l) => (
+              <RadarSubLista vazio="Nenhum vídeo nesta janela. Rode a coleta para buscar no YouTube.">
+                {l.mentions.length > 0
+                  ? l.mentions.slice(0, MAX_VIDEOS_DETALHE).map((m) => (
+                      <RadarSubItem
+                        key={m.id}
+                        titulo={m.video_title}
+                        href={m.url}
+                        meta={`${m.channel_title ?? '—'} · ${fmtData(m.published_at)} · termo “${m.search_term}”`}
+                        valor={`${fmtInt(m.views)} views`}
+                      />
+                    ))
+                  : null}
+              </RadarSubLista>
+            )}
+          />
+        )}
+      </div>
+    </RadarLayout>
   )
 }

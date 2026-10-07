@@ -5,6 +5,7 @@
 @import './design-tokens-copiloto.css';
 @import './theme.css';
 @import './sidebar-obsidian-glass.css';
+@import './sidebar-tse.css';
 
 /* Tipografia base — Source Sans 3 + Inter (fallback) via next/font */
 html {
@@ -2876,49 +2877,6 @@ body:not([data-war-room-clean]) .sidebar-apify-shell .group:hover .cockpit-icon,
 body:not([data-war-room-clean]) .sidebar-apify-shell a:hover .cockpit-icon,
 body:not([data-war-room-clean]) .sidebar-apify-shell button:hover .cockpit-icon {
   color: #e8a825;
-}
-
-/* Atendimentos — destaque sem fill (só barra âmbar) */
-.resumo-tr-destaque-petrol,
-.resumo-tr-destaque-petrol:hover {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  border-bottom-color: #e8e8e6 !important;
-  box-shadow: inset 2px 0 0 #e8a825;
-  color: #2b2d31 !important;
-}
-
-.resumo-tr-destaque-petrol td,
-.resumo-tr-destaque-petrol td.text-text-secondary,
-.resumo-tr-destaque-petrol .text-text-secondary {
-  color: #2b2d31 !important;
-  background: transparent !important;
-}
-
-.resumo-tr-destaque-petrol input[type='checkbox'] {
-  accent-color: #e8a825;
-}
-
-.resumo-tr-destaque-forte,
-.resumo-tr-destaque-forte:hover {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #2b2d31 !important;
-  box-shadow: inset 2px 0 0 #e8a825;
-}
-
-.resumo-tr-destaque-forte td,
-.resumo-tr-destaque-forte td.text-text-secondary,
-.resumo-tr-destaque-forte .text-text-secondary {
-  color: #2b2d31 !important;
-  background: transparent !important;
-}
-
-.resumo-tr-selecionado,
-.resumo-tr-selecionado:hover {
-  background: transparent !important;
-  background-color: transparent !important;
 }
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {

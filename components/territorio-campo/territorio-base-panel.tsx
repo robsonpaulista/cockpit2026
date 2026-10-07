@@ -2,37 +2,14 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { TerritorioBaseKpiStrip } from '@/components/territorio-campo/territorio-base-kpi-strip'
-import { MunicipalityListItem } from '@/components/territorio/municipality-list-item'
-import {
-  IconAlertCircle,
-  IconBriefcase,
-  IconCheck,
-  IconChevronDown,
-  IconDownload,
-  IconNetwork,
-  IconRefresh,
-  IconSearch,
-  IconUsers,
-  IconX,
-} from '@tabler/icons-react'
+import { Briefcase, Check, ChevronDown, Download, Network, RefreshCw } from 'lucide-react'
 import { TerritorioBaseExportModal } from '@/components/territorio-campo/territorio-base-export-modal'
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
 import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance-modal'
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
-import { KPI } from '@/types'
 import { cn } from '@/lib/utils'
-import {
-  territorioBaseCargoChipClass,
-  territorioBaseGhostButtonClass,
-  territorioBasePillFilterActiveClass,
-  territorioBasePillFilterIdleClass,
-  territorioBasePillInputClass,
-  territorioBaseTextClass,
-} from '@/lib/territorio-base-styles'
-import { useTheme } from '@/contexts/theme-context'
 import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { resolverColunaDepEstadualLideranca, extrairDepEstadualDeLideranca } from '@/lib/planilha-dep-estadual-lideranca'
@@ -40,19 +17,65 @@ import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 import {
   compareTerritorioNumber,
   compareTerritorioText,
-  TerritorioCidadeExpectativaSortBar,
   toggleTerritorioSort,
 } from '@/components/territorio-campo/territorio-sortable-header'
+import { TERRITORIO_BASE_VOTACAO_JADYEL_2026 } from '@/lib/territorio-base-records'
+import {
+  corNivelCargo,
+  TerritorioCidadesTabela,
+  type CidadeBaseLinha,
+  type LiderancaBase,
+  type SortCidadeCol,
+} from '@/components/territorio-campo/territorio-cidades-tabela'
+import { useTerritorioMunicipio } from '@/components/territorio-campo/territorio-municipio-context'
+import {
+  TseBarraRotulo,
+  TseBusca,
+  TseCard,
+  TseCarregando,
+  TseCarregarMais,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseListaFiltro,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseCardClass,
+  tseControleClass,
+  tseLinkAcaoClass,
+} from '@/components/tse/tse-ui'
 
-interface Lideranca {
-  [key: string]: any
-}
+type Lideranca = LiderancaBase
 
 type CenarioVotos = 'revisao_final' | 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
-type SortCidadeCol = 'cidade' | 'expectativa'
+type FaixaVotos = '' | 'ate-100' | 'ate-300' | 'ate-500' | 'acima-500' | 'acima-1000'
 
 /** Rótulo fixo na UI — o cenário só altera a coluna de votos, não o texto exibido. */
 const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
+const LABEL_VOTACAO_JADYEL_2026 = 'Jadyel 2026'
+const TOTAL_MUNICIPIOS_PI = 224
+const PAGE_SIZE = 30
+
+const FAIXAS: { id: Exclude<FaixaVotos, ''>; label: string; cabe: (v: number) => boolean }[] = [
+  { id: 'ate-100', label: 'Até 100', cabe: (v) => v <= 100 },
+  { id: 'ate-300', label: 'Até 300', cabe: (v) => v <= 300 },
+  { id: 'ate-500', label: 'Até 500', cabe: (v) => v <= 500 },
+  { id: 'acima-500', label: 'Acima de 500', cabe: (v) => v > 500 },
+  { id: 'acima-1000', label: 'Acima de 1000', cabe: (v) => v > 1000 },
+]
+
+const fmt = (n: number): string => Math.round(n).toLocaleString('pt-BR')
+const fmtPct = (n: number): string => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+
+/** O valor é o total do município repetido em cada liderança: lê de uma linha, não soma. */
+function votacaoJadyelCidade(liderancasCidade: Lideranca[]): number | null {
+  for (const l of liderancasCidade) {
+    const v = l[TERRITORIO_BASE_VOTACAO_JADYEL_2026]
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+  }
+  return null
+}
 
 function labelCenarioDados(cenario: CenarioVotos): string {
   if (cenario === 'revisao_final') return 'Revisão Final'
@@ -61,39 +84,58 @@ function labelCenarioDados(cenario: CenarioVotos): string {
   return 'Aferido'
 }
 
+/** Aceita "1.234", "1,234", "4,50" etc. (planilhas com separadores mistos). */
+function normalizeNumber(value: unknown): number {
+  if (typeof value === 'number') return value
+  const str = String(value ?? '').trim()
+  if (!str) return 0
+
+  let cleaned = str.replace(/[^\d.,]/g, '')
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    cleaned =
+      cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')
+        ? cleaned.replace(/\./g, '').replace(',', '.')
+        : cleaned.replace(/,/g, '')
+  } else if (cleaned.includes(',')) {
+    const parts = cleaned.split(',')
+    cleaned = parts.length === 2 && parts[1].length <= 2 ? cleaned.replace(',', '.') : cleaned.replace(/,/g, '')
+  }
+  const numValue = parseFloat(cleaned)
+  return isNaN(numValue) ? 0 : numValue
+}
+
+const texto = (v: unknown): string => String(v ?? '').trim()
+
 export function TerritorioBasePanel() {
-  const { theme } = useTheme()
-  const accentTextClass = territorioBaseTextClass
-  const accentBorderClass = 'border-[#e8a825]'
-  const sectionShellClass = 'territorio-cx-panel border-[#e8e8e6] bg-white shadow-none'
+  const { municipio, noMunicipio } = useTerritorioMunicipio()
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
-  const [filtroCidade, setFiltroCidade] = useState<string>('')
   const [filtroNome, setFiltroNome] = useState<string>('')
   const [filtroCargo, setFiltroCargo] = useState<string>('')
   const [filtroDepEstadual, setFiltroDepEstadual] = useState<string[]>([])
-  const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<string>('')
-  const [showDepDropdown, setShowDepDropdown] = useState(false)
-  const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState(true)
-  const [showMindMap, setShowMindMap] = useState(false)
-  const [showExportModal, setShowExportModal] = useState(false)
+  const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<FaixaVotos>('')
+  const [showDepDropdown, setShowDepDropdown] = useState<boolean>(false)
+  const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState<boolean>(true)
+  const [showMindMap, setShowMindMap] = useState<boolean>(false)
+  const [showExportModal, setShowExportModal] = useState<boolean>(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
-  const [baseCarregada, setBaseCarregada] = useState(false)
-  const [showCityDemands, setShowCityDemands] = useState(false)
+  const [baseCarregada, setBaseCarregada] = useState<boolean>(false)
+  const [showCityDemands, setShowCityDemands] = useState<boolean>(false)
   const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
-  const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
-  const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState(false)
+  const [showExecutiveBriefing, setShowExecutiveBriefing] = useState<boolean>(false)
+  const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState<boolean>(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('revisao_final')
   const [sortCol, setSortCol] = useState<SortCidadeCol>('expectativa')
-  const [sortAsc, setSortAsc] = useState(false)
-  const depDropdownRef = useRef<HTMLDivElement | null>(null)
+  const [sortAsc, setSortAsc] = useState<boolean>(false)
+  const [limite, setLimite] = useState<number>(PAGE_SIZE)
   const depDropdownButtonRef = useRef<HTMLButtonElement | null>(null)
   const depDropdownMenuRef = useRef<HTMLDivElement | null>(null)
+  const mapaVotoCruzadoRef = useRef<HTMLDivElement | null>(null)
   const [depMenuPos, setDepMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   const fetchBaseFromDb = useCallback(async (opts?: { refresh?: boolean }) => {
@@ -138,8 +180,7 @@ export function TerritorioBasePanel() {
     if (!el) return
     const r = el.getBoundingClientRect()
     const vw = window.innerWidth
-    const panelMin = 224
-    const width = Math.max(r.width, panelMin)
+    const width = Math.max(r.width, 224)
     let left = r.left
     if (left + width > vw - 8) left = Math.max(8, vw - width - 8)
     setDepMenuPos({ top: r.bottom + 4, left, width })
@@ -164,15 +205,12 @@ export function TerritorioBasePanel() {
 
     const handleClickOutside = (event: MouseEvent) => {
       const t = event.target as Node
-      if (depDropdownRef.current?.contains(t)) return
+      if (depDropdownButtonRef.current?.contains(t)) return
       if (depDropdownMenuRef.current?.contains(t)) return
       setShowDepDropdown(false)
     }
-
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowDepDropdown(false)
-      }
+      if (event.key === 'Escape') setShowDepDropdown(false)
     }
 
     window.addEventListener('mousedown', handleClickOutside)
@@ -183,24 +221,26 @@ export function TerritorioBasePanel() {
     }
   }, [showDepDropdown])
 
-  // Buscar dados da base territorial (territorio_liderancas)
-  // Identificar colunas importantes
-  const liderancaAtualCol = headers.find((h) =>
-    /liderança atual|lideranca atual|atual\?/i.test(h)
-  )
+  const liderancaAtualCol = headers.find((h) => /liderança atual|lideranca atual|atual\?/i.test(h))
   const expectativaJadyelCol = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
-    return /expectativa.*jadyel.*2026/i.test(normalized) ||
-           /expectativa.*2026.*jadyel/i.test(normalized) ||
-           /aferid[oa].*2026/i.test(normalized)
+    return (
+      /expectativa.*jadyel.*2026/i.test(normalized) ||
+      /expectativa.*2026.*jadyel/i.test(normalized) ||
+      /aferid[oa].*2026/i.test(normalized)
+    )
   })
   const promessaLiderancaCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
   const expectativaLegadoCol = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
-    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
-      (/expectativa.*votos.*2026/i.test(h) && !/jadyel/i.test(normalized) && !/promessa/i.test(normalized) && !/aferid[oa]/i.test(normalized))
+    return (
+      /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+      (/expectativa.*votos.*2026/i.test(h) &&
+        !/jadyel/i.test(normalized) &&
+        !/promessa/i.test(normalized) &&
+        !/aferid[oa]/i.test(normalized))
+    )
   })
-
   const revisaoFinalCol = headers.find((h) => /revis[aã]o\s+final/i.test(h))
 
   const votosReferenciaCol = (() => {
@@ -216,7 +256,6 @@ export function TerritorioBasePanel() {
     return expectativaJadyelCol || expectativaLegadoCol || promessaLiderancaCol
   })()
 
-  const labelCenarioVotos = LABEL_EXPECTATIVA_2026
   const labelCenarioDadosAtivo = labelCenarioDados(cenarioVotos)
 
   useEffect(() => {
@@ -227,243 +266,116 @@ export function TerritorioBasePanel() {
       return
     }
     if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol) {
-      if (expectativaJadyelCol) {
-        setCenarioVotos('aferido_jadyel')
-      } else if (expectativaLegadoCol) {
-        setCenarioVotos('legado_anterior')
-      }
+      if (expectativaJadyelCol) setCenarioVotos('aferido_jadyel')
+      else if (expectativaLegadoCol) setCenarioVotos('legado_anterior')
       return
     }
     if (cenarioVotos === 'aferido_jadyel' && !expectativaJadyelCol) {
-      if (expectativaLegadoCol) {
-        setCenarioVotos('legado_anterior')
-      } else if (promessaLiderancaCol) {
-        setCenarioVotos('promessa_lideranca')
-      }
+      if (expectativaLegadoCol) setCenarioVotos('legado_anterior')
+      else if (promessaLiderancaCol) setCenarioVotos('promessa_lideranca')
       return
     }
     if (cenarioVotos === 'legado_anterior' && !expectativaLegadoCol) {
-      if (expectativaJadyelCol) {
-        setCenarioVotos('aferido_jadyel')
-      } else if (promessaLiderancaCol) {
-        setCenarioVotos('promessa_lideranca')
-      }
+      if (expectativaJadyelCol) setCenarioVotos('aferido_jadyel')
+      else if (promessaLiderancaCol) setCenarioVotos('promessa_lideranca')
     }
-  }, [
-    headers.length,
-    cenarioVotos,
-    revisaoFinalCol,
-    promessaLiderancaCol,
-    expectativaJadyelCol,
-    expectativaLegadoCol,
-  ])
+  }, [headers.length, cenarioVotos, revisaoFinalCol, promessaLiderancaCol, expectativaJadyelCol, expectativaLegadoCol])
 
-  // Função para normalizar números
-  const normalizeNumber = (value: any): number => {
-    if (typeof value === 'number') return value
-    
-    const str = String(value).trim()
-    if (!str) return 0
-    
-    let cleaned = str.replace(/[^\d.,]/g, '')
-    
-    if (cleaned.includes(',') && cleaned.includes('.')) {
-      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-        cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-      } else {
-        cleaned = cleaned.replace(/,/g, '')
-      }
-    } else if (cleaned.includes(',')) {
-      const parts = cleaned.split(',')
-      if (parts.length === 2) {
-        if (parts[1].length === 3) {
-          cleaned = cleaned.replace(/,/g, '')
-        } else if (parts[1].length <= 2) {
-          cleaned = cleaned.replace(',', '.')
-        } else {
-          cleaned = cleaned.replace(/,/g, '')
-        }
-      } else {
-        cleaned = cleaned.replace(/,/g, '')
-      }
-    }
-    
-    const numValue = parseFloat(cleaned)
-    return isNaN(numValue) ? 0 : numValue
-  }
-
-  // Identificar colunas para filtros
-  const nomeCol = headers.find((h) =>
-    /nome|name|lider|pessoa/i.test(h)
-  ) || headers[0] || 'Coluna 1'
-  const cidadeCol = headers.find((h) =>
-    /cidade|city|município|municipio/i.test(h)
-  ) || headers[1] || 'Coluna 2'
+  const nomeCol = headers.find((h) => /nome|name|lider|pessoa/i.test(h)) || headers[0] || 'Coluna 1'
+  const cidadeCol = headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || 'Coluna 2'
   const cargoCol = (() => {
-    // Priorizar "Cargo 2024" explicitamente
-    const cargo2024 = headers.find(h => /cargo.*2024/i.test(h))
+    const cargo2024 = headers.find((h) => /cargo.*2024/i.test(h))
     if (cargo2024) return cargo2024
-    // Fallback: Cargo Atual ou qualquer coluna de cargo (exceto 2020)
     return headers.find((h) => {
       const normalized = h.toLowerCase().trim()
-      return /cargo.*atual|cargo/i.test(normalized) && 
-             !/cargo.*2020/i.test(normalized) &&
-             !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
+      return (
+        /cargo.*atual|cargo/i.test(normalized) &&
+        !/cargo.*2020/i.test(normalized) &&
+        !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
+      )
     })
   })()
   const depEstadualCol = resolverColunaDepEstadualLideranca(headers)
 
-  const extrairDepEstadual = (lider: Lideranca): string => {
-    const cargoColNome = cargoCol ? String(lider[cargoCol] || '') : ''
-    const nomeColValor = nomeCol ? String(lider[nomeCol] || '') : ''
-    return extrairDepEstadualDeLideranca({
-      nome: nomeColValor,
-      cargo: cargoColNome,
-      depEstadual: depEstadualCol ? String(lider[depEstadualCol] || '') : '',
+  const cidadeDe = (l: Lideranca): string => texto(l[cidadeCol]) || 'Sem cidade'
+  const votosDe = (l: Lideranca): number => (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
+
+  const extrairDepEstadual = (lider: Lideranca): string =>
+    extrairDepEstadualDeLideranca({
+      nome: texto(lider[nomeCol]),
+      cargo: cargoCol ? texto(lider[cargoCol]) : '',
+      depEstadual: depEstadualCol ? texto(lider[depEstadualCol]) : '',
     })
-  }
 
   const deputadosEstaduaisUnicos = Array.from(
-    new Set(
-      liderancas
-        .map((l) => extrairDepEstadual(l))
-        .filter((n) => n.length > 0)
-    )
+    new Set(liderancas.map((l) => extrairDepEstadual(l)).filter((n) => n.length > 0)),
   ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
   const toggleDepEstadual = (dep: string) => {
-    setFiltroDepEstadual((prev) =>
-      prev.includes(dep) ? prev.filter((item) => item !== dep) : [...prev, dep]
-    )
+    setFiltroDepEstadual((prev) => (prev.includes(dep) ? prev.filter((item) => item !== dep) : [...prev, dep]))
   }
 
-  // Lista de cargos únicos para dropdown
   const cargosUnicos = cargoCol
-    ? Array.from(new Set(
-        liderancas
-          .map(l => String(l[cargoCol] || '').trim())
-          .filter(c => c.length > 0)
-      )).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    ? Array.from(new Set(liderancas.map((l) => texto(l[cargoCol])).filter((c) => c.length > 0))).sort((a, b) =>
+        a.localeCompare(b, 'pt-BR'),
+      )
     : []
 
-  // Filtrar lideranças: exclui LIDERANCA ATUAL = N/Não; inclui SIM ou com votos no cenário
+  // Exclui LIDERANCA ATUAL = N/Não; inclui SIM ou com votos no cenário.
   const liderancasFiltradas = (() => {
     if (liderancas.length === 0) return []
 
-    let filtradas = liderancas.filter((l) =>
-      deveIncluirLiderancaPlanilha(l, {
-        liderancaAtualCol,
-        colunasVotos: [votosReferenciaCol],
-      })
+    let filtradas = liderancas.filter(
+      (l) =>
+        deveIncluirLiderancaPlanilha(l, { liderancaAtualCol, colunasVotos: [votosReferenciaCol] }) &&
+        noMunicipio(texto(l[cidadeCol])),
     )
 
-    // Aplicar filtros adicionais (Cidade, Nome, Cargo)
-    if (filtroCidade) {
-      filtradas = filtradas.filter((l) => {
-        const cidade = String(l[cidadeCol] || '').toLowerCase()
-        return cidade.includes(filtroCidade.toLowerCase())
-      })
-    }
-
     if (filtroNome) {
-      filtradas = filtradas.filter((l) => {
-        const nome = String(l[nomeCol] || '').toLowerCase()
-        return nome.includes(filtroNome.toLowerCase())
-      })
+      const termo = filtroNome.toLowerCase()
+      filtradas = filtradas.filter((l) => texto(l[nomeCol]).toLowerCase().includes(termo))
     }
-
     if (filtroCargo && cargoCol) {
-      filtradas = filtradas.filter((l) => {
-        const cargo = String(l[cargoCol] || '').trim()
-        return cargo === filtroCargo
-      })
+      filtradas = filtradas.filter((l) => texto(l[cargoCol]) === filtroCargo)
     }
-
     if (filtroDepEstadual.length > 0) {
-      filtradas = filtradas.filter((l) => {
-        const dep = extrairDepEstadual(l)
-        return filtroDepEstadual.includes(dep)
-      })
+      filtradas = filtradas.filter((l) => filtroDepEstadual.includes(extrairDepEstadual(l)))
     }
 
-    // Aplicar filtro por faixa de votos esperados (considerando o total de cada cidade)
-    if (filtroFaixaVotos && votosReferenciaCol) {
-      // Agrupar por cidade e calcular total de votos por cidade
-      const votosPorCidade = filtradas.reduce((acc, l) => {
-        const cidade = l[cidadeCol] || 'Sem cidade'
-        if (!acc[cidade]) {
-          acc[cidade] = 0
-        }
-        acc[cidade] += normalizeNumber(l[votosReferenciaCol])
-        return acc
-      }, {} as Record<string, number>)
-
-      // Filtrar cidades que estão na faixa selecionada
-      const cidadesNaFaixa = Object.keys(votosPorCidade).filter((cidade) => {
-        const totalVotos = votosPorCidade[cidade]
-        
-        switch (filtroFaixaVotos) {
-          case 'ate-100':
-            return totalVotos <= 100
-          case 'ate-300':
-            return totalVotos <= 300
-          case 'ate-500':
-            return totalVotos <= 500
-          case 'acima-500':
-            return totalVotos > 500
-          case 'acima-1000':
-            return totalVotos > 1000
-          default:
-            return true
-        }
-      })
-
-      // Filtrar lideranças para manter apenas as das cidades na faixa
-      filtradas = filtradas.filter((l) => {
-        const cidade = l[cidadeCol] || 'Sem cidade'
-        return cidadesNaFaixa.includes(cidade)
-      })
+    // Faixa considera o total de votos de cada cidade.
+    const faixa = FAIXAS.find((f) => f.id === filtroFaixaVotos)
+    if (faixa && votosReferenciaCol) {
+      const votosPorCidade = new Map<string, number>()
+      for (const l of filtradas) votosPorCidade.set(cidadeDe(l), (votosPorCidade.get(cidadeDe(l)) ?? 0) + votosDe(l))
+      filtradas = filtradas.filter((l) => faixa.cabe(votosPorCidade.get(cidadeDe(l)) ?? 0))
     }
 
     return filtradas
   })()
 
-  const mapaVotoCruzado = useMemo(() => {
-    const porCidade: Record<string, {
-      votos: number
-      liderancas: number
-      porDeputado: Record<string, { votos: number; liderancas: number }>
-    }> = {}
+  const mapaVotoCruzado = (() => {
+    const porCidade: Record<
+      string,
+      { votos: number; liderancas: number; porDeputado: Record<string, { votos: number; liderancas: number }> }
+    > = {}
 
-    liderancasFiltradas.forEach((lider) => {
-      const cidade = String(lider[cidadeCol] || '').trim() || 'Sem cidade'
+    for (const lider of liderancasFiltradas) {
+      const cidade = cidadeDe(lider)
       const dep = extrairDepEstadual(lider) || 'Não informado'
-      const votos = votosReferenciaCol ? normalizeNumber(lider[votosReferenciaCol]) : 0
-
-      if (!porCidade[cidade]) {
-        porCidade[cidade] = { votos: 0, liderancas: 0, porDeputado: {} }
-      }
-
+      const votos = votosDe(lider)
+      porCidade[cidade] ??= { votos: 0, liderancas: 0, porDeputado: {} }
       porCidade[cidade].votos += votos
       porCidade[cidade].liderancas += 1
-
-      if (!porCidade[cidade].porDeputado[dep]) {
-        porCidade[cidade].porDeputado[dep] = { votos: 0, liderancas: 0 }
-      }
+      porCidade[cidade].porDeputado[dep] ??= { votos: 0, liderancas: 0 }
       porCidade[cidade].porDeputado[dep].votos += votos
       porCidade[cidade].porDeputado[dep].liderancas += 1
-    })
+    }
 
     return Object.entries(porCidade)
       .map(([cidade, info]) => {
         const rankingDeputados = Object.entries(info.porDeputado)
-          .map(([nome, dados]) => ({
-            nome,
-            votos: Math.round(dados.votos),
-            liderancas: dados.liderancas,
-          }))
-          .sort((a, b) => (b.votos - a.votos) || (b.liderancas - a.liderancas))
-
+          .map(([nome, dados]) => ({ nome, votos: Math.round(dados.votos), liderancas: dados.liderancas }))
+          .sort((a, b) => b.votos - a.votos || b.liderancas - a.liderancas)
         return {
           cidade,
           votos: Math.round(info.votos),
@@ -473,201 +385,72 @@ export function TerritorioBasePanel() {
         }
       })
       .sort((a, b) => b.votos - a.votos)
-  }, [liderancasFiltradas, cidadeCol, votosReferenciaCol, depEstadualCol, cargoCol])
+  })()
 
-  // Calcular KPIs baseados nos dados filtrados
-  const calcularKPIs = (): KPI[] => {
-    const dadosParaKPIs = liderancasFiltradas.length > 0 ? liderancasFiltradas : liderancas
-
-    if (dadosParaKPIs.length === 0) {
-      return [
-        {
-          id: 'liderancas',
-          label: 'Lideranças Atuais',
-          value: 0,
-          status: 'neutral',
-        },
-        {
-          id: 'total',
-          label: 'Total de Registros',
-          value: liderancas.length,
-          status: 'neutral',
-        },
-      ]
-    }
-
-    // Tentar identificar colunas comuns (nomeCol e cidadeCol já foram definidos no escopo superior)
-    const statusCol = headers.find((h) =>
-      /status|ativo|situação/i.test(h)
-    )
-
-    const ativos = statusCol
-      ? dadosParaKPIs.filter((l) =>
-          /ativo|active|sim|yes|true/i.test(String(l[statusCol] || ''))
-        ).length
-      : dadosParaKPIs.length
-
-    // Função para normalizar números (tratar vírgula como separador de milhar)
-    const normalizeNumber = (value: any): number => {
-      if (typeof value === 'number') return value
-      
-      const str = String(value).trim()
-      if (!str) return 0
-      
-      // Remover espaços e caracteres não numéricos exceto vírgula e ponto
-      let cleaned = str.replace(/[^\d.,]/g, '')
-      
-      // Se tem vírgula e ponto
-      if (cleaned.includes(',') && cleaned.includes('.')) {
-        // Formato: 1.234,56 ou 1,234.56
-        // Se vírgula vem depois do ponto, é separador decimal (BR)
-        if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-          cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-        } else {
-          // Se ponto vem depois da vírgula, vírgula é separador de milhar
-          cleaned = cleaned.replace(/,/g, '')
-        }
-      } else if (cleaned.includes(',')) {
-        // Apenas vírgula: verificar se é separador de milhar ou decimal
-        const parts = cleaned.split(',')
-        if (parts.length === 2) {
-          // Se tem exatamente 3 dígitos após vírgula = separador de milhar (ex: 4,000 = 4000)
-          if (parts[1].length === 3) {
-            cleaned = cleaned.replace(/,/g, '')
-          } else if (parts[1].length <= 2) {
-            // 1-2 dígitos após vírgula = separador decimal (ex: 4,50 = 4.50)
-            cleaned = cleaned.replace(',', '.')
-          } else {
-            // Mais de 3 dígitos = separador de milhar
-            cleaned = cleaned.replace(/,/g, '')
-          }
-        } else {
-          // Múltiplas vírgulas = separador de milhar
-          cleaned = cleaned.replace(/,/g, '')
-        }
-      }
-      
-      const numValue = parseFloat(cleaned)
-      return isNaN(numValue) ? 0 : numValue
-    }
-
-    // Calcular total de votos no cenário selecionado
-    let totalExpectativaVotos = 0
-    if (votosReferenciaCol) {
-      totalExpectativaVotos = dadosParaKPIs.reduce((sum, l) => {
-        const value = l[votosReferenciaCol]
-        return sum + normalizeNumber(value)
-      }, 0)
-    }
-
-    return [
-  {
-    id: 'liderancas',
-        label: 'Lideranças Atuais',
-        value: liderancasFiltradas.length,
-    status: 'success',
-  },
-  {
-        id: 'total',
-        label: 'Total de Registros',
-        value: liderancas.length,
-    status: 'success',
-  },
-      ...(votosReferenciaCol && totalExpectativaVotos > 0
-        ? [
-            {
-              id: 'expectativa-votos',
-              label: 'Projetado',
-              value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
-              status: 'success' as const,
-            },
-          ]
-        : []),
-      {
-        id: 'cidades',
-        label: 'Cidades Únicas',
-        value: cidadeCol
-          ? new Set(dadosParaKPIs.map((l) => l[cidadeCol]).filter(Boolean)).size
-          : 0,
-    status: 'success',
-  },
-]
-  }
-
-  const kpis = calcularKPIs()
-
-  // Calcular totais por cargo - contar todas as lideranças, uma por uma
-  const calcularTotaisPorCargo = () => {
-    if (!cargoCol || liderancasFiltradas.length === 0) return []
-
-    const totaisPorCargo: Record<string, number> = {}
-    
-    // Contar cada liderança por cargo (ignorar vazios)
-    liderancasFiltradas.forEach((lider) => {
-      const cargo = String(lider[cargoCol] || '').trim()
-      if (!cargo) return // Ignorar lideranças sem cargo preenchido
-      totaisPorCargo[cargo] = (totaisPorCargo[cargo] || 0) + 1
-    })
-
-    // Converter para array e ordenar por quantidade (decrescente)
-    return Object.entries(totaisPorCargo)
-      .map(([cargo, total]) => ({ cargo, total }))
-      .sort((a, b) => b.total - a.total)
-  }
-
-  const totaisPorCargo = calcularTotaisPorCargo()
-
-  const cidadesUnicasCount = new Set(
-    liderancasFiltradas.map((l) => l[cidadeCol] || 'Sem cidade')
-  ).size
-  const todasExpandidas =
-    expandedCities.size === cidadesUnicasCount && cidadesUnicasCount > 0
-  const hasFiltrosAtivos =
-    Boolean(filtroCidade) ||
-    Boolean(filtroNome) ||
-    Boolean(filtroCargo) ||
-    filtroDepEstadual.length > 0 ||
-    Boolean(filtroFaixaVotos)
-  const pageSubtitle = hasFiltrosAtivos
-    ? `${liderancasFiltradas.length} ativas · filtros aplicados`
-    : `${liderancasFiltradas.length} ativas · ${liderancas.length} registros totais`
-
-  const cidadesParaAnaliseInvestimento = useMemo(() => {
-    const agrupado = liderancasFiltradas.reduce((acc, lider) => {
-      const cidade = String(lider[cidadeCol] || 'Sem cidade').trim() || 'Sem cidade'
-      if (!acc[cidade]) {
-        acc[cidade] = { previsaoVotos: 0, liderancas: 0 }
-      }
-      acc[cidade].liderancas += 1
-      if (votosReferenciaCol) {
-        acc[cidade].previsaoVotos += normalizeNumber(lider[votosReferenciaCol])
-      }
-      return acc
-    }, {} as Record<string, { previsaoVotos: number; liderancas: number }>)
-
-    return Object.entries(agrupado)
-      .map(([cidade, info]) => ({
-        cidade,
-        previsaoVotos: Math.round(info.previsaoVotos),
-        liderancas: info.liderancas,
-      }))
-      .sort((a, b) => b.previsaoVotos - a.previsaoVotos)
-  }, [liderancasFiltradas, cidadeCol, votosReferenciaCol])
-
-  const liderancasPorCidadeMap = useMemo(() => {
-    const acc: Record<string, Lideranca[]> = {}
+  const totaisPorCargo = (() => {
+    if (!cargoCol) return []
+    const totais = new Map<string, number>()
     for (const l of liderancasFiltradas) {
-      const c = String(l[cidadeCol] || '').trim() || 'Sem cidade'
-      if (!acc[c]) acc[c] = []
-      acc[c].push(l)
+      const cargo = texto(l[cargoCol])
+      if (cargo) totais.set(cargo, (totais.get(cargo) ?? 0) + 1)
     }
-    return acc
-  }, [liderancasFiltradas, cidadeCol])
+    return [...totais.entries()].map(([cargo, total]) => ({ cargo, total })).sort((a, b) => b.total - a.total)
+  })()
 
-  const cidadesTerritorioLista = useMemo(
-    () => Object.keys(liderancasPorCidadeMap).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    [liderancasPorCidadeMap]
+  const liderancasPorCidadeMap: Record<string, Lideranca[]> = {}
+  for (const l of liderancasFiltradas) (liderancasPorCidadeMap[cidadeDe(l)] ??= []).push(l)
+
+  const linhasCidades: CidadeBaseLinha[] = Object.entries(liderancasPorCidadeMap).map(([cidade, lista]) => ({
+    cidade,
+    liderancas: lista,
+    expectativa: lista.reduce((s, l) => s + votosDe(l), 0),
+    votacao2026: votacaoJadyelCidade(lista),
+  }))
+
+  const linhasOrdenadas = [...linhasCidades].sort((a, b) => {
+    const porNome = compareTerritorioText(a.cidade, b.cidade, true)
+    if (sortCol === 'cidade') return compareTerritorioText(a.cidade, b.cidade, sortAsc)
+    if (sortCol === 'liderancas') {
+      return compareTerritorioNumber(a.liderancas.length, b.liderancas.length, sortAsc) || porNome
+    }
+    if (sortCol === 'votacao2026') {
+      return compareTerritorioNumber(a.votacao2026 ?? -1, b.votacao2026 ?? -1, sortAsc) || porNome
+    }
+    return compareTerritorioNumber(a.expectativa, b.expectativa, sortAsc) || porNome
+  })
+
+  const rankCidades = new Map(
+    [...linhasCidades]
+      .sort((a, b) => b.expectativa - a.expectativa || compareTerritorioText(a.cidade, b.cidade, true))
+      .map((l, i) => [l.cidade, i + 1]),
   )
+
+  const totalExpectativa = linhasCidades.reduce((s, l) => s + l.expectativa, 0)
+  const totalVotacao2026 = linhasCidades.reduce((s, l) => s + (l.votacao2026 ?? 0), 0)
+  const maxExpectativa = linhasCidades.reduce((m, l) => Math.max(m, l.expectativa), 0)
+  const maxVotacao = linhasCidades.reduce((m, l) => Math.max(m, l.votacao2026 ?? 0), 0)
+  const maiorBase = linhasCidades.find((l) => rankCidades.get(l.cidade) === 1) ?? null
+  const cidadesUnicasCount = linhasCidades.length
+  const universoMunicipios = municipio ? 1 : TOTAL_MUNICIPIOS_PI
+  const pctCobertura = (Math.min(cidadesUnicasCount, universoMunicipios) / universoMunicipios) * 100
+  const todasExpandidas = expandedCities.size >= cidadesUnicasCount && cidadesUnicasCount > 0
+  const hasFiltrosAtivos =
+    Boolean(filtroNome) || Boolean(filtroCargo) || filtroDepEstadual.length > 0 || Boolean(filtroFaixaVotos)
+  const escopoLabel = municipio ?? 'Piauí'
+
+  // Com um município escolhido no topo, abre direto as lideranças dele.
+  const cidadesVisiveisRef = useRef<string[]>([])
+  cidadesVisiveisRef.current = Object.keys(liderancasPorCidadeMap)
+  useEffect(() => {
+    setLimite(PAGE_SIZE)
+    setExpandedCities(municipio ? new Set(cidadesVisiveisRef.current) : new Set())
+  }, [municipio, baseCarregada])
+
+  const cidadesParaAnaliseInvestimento = linhasCidades
+    .map((l) => ({ cidade: l.cidade, previsaoVotos: Math.round(l.expectativa), liderancas: l.liderancas.length }))
+    .sort((a, b) => b.previsaoVotos - a.previsaoVotos)
+
+  const cidadesTerritorioLista = Object.keys(liderancasPorCidadeMap).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
   const cidadesExpandidasLista = useMemo(() => Array.from(expandedCities), [expandedCities])
 
@@ -697,9 +480,7 @@ export function TerritorioBasePanel() {
       if (!liderancasCidade?.length) return false
       setSelectedCityForDemands(nomeCidade)
       if (typeof window !== 'undefined') {
-        const nomes = liderancasCidade
-          .map((lider) => String(lider[nomeCol] || '').trim())
-          .filter((nome) => nome.length > 0)
+        const nomes = liderancasCidade.map((lider) => texto(lider[nomeCol])).filter((nome) => nome.length > 0)
         sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(nomes))
       }
       setShowCityDemands(true)
@@ -722,12 +503,11 @@ export function TerritorioBasePanel() {
       alternarLiderancasCidade: (nomeCidade: string, expandir?: boolean) =>
         territorioAgentActionsRef.current.alternarLiderancasCidade(nomeCidade, expandir),
       recolherTodasCidades: () => territorioAgentActionsRef.current.recolherTodasCidades(),
-      abrirObrasCidade: (nomeCidade: string) =>
-        territorioAgentActionsRef.current.abrirObrasCidade(nomeCidade),
+      abrirObrasCidade: (nomeCidade: string) => territorioAgentActionsRef.current.abrirObrasCidade(nomeCidade),
       fecharModalObras: () => territorioAgentActionsRef.current.fecharModalObras(),
       atualizarDados: () => territorioAgentActionsRef.current.atualizarDados(),
     }),
-    []
+    [],
   )
 
   const contextoAgenteTerritorio = useMemo<AIAgentPageContext>(
@@ -749,8 +529,10 @@ export function TerritorioBasePanel() {
       showCityDemands,
       selectedCityForDemands,
       territorioAgentPageActions,
-    ]
+    ],
   )
+
+  const expectativaFormatada = votosReferenciaCol && totalExpectativa > 0 ? fmt(totalExpectativa) : undefined
 
   const jarvisHostProps = useMemo(
     () => ({
@@ -758,606 +540,437 @@ export function TerritorioBasePanel() {
       loadingKPIs: loading,
       loadingTerritorios: loading,
       kpisCount: liderancasFiltradas.length > 0 ? 4 : 0,
-      expectativa2026: kpis.find((k) => k.id === 'expectativa-votos')?.value,
+      expectativa2026: expectativaFormatada,
       candidatoPadrao: candidatoPadrao || undefined,
     }),
-    [contextoAgenteTerritorio, loading, liderancasFiltradas.length, kpis, candidatoPadrao]
+    [contextoAgenteTerritorio, loading, liderancasFiltradas.length, expectativaFormatada, candidatoPadrao],
   )
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
   const exportFiltrosResumo = useMemo(() => {
-    const rows: Array<{ Campo: string; Valor: string }> = [
-      { Campo: 'Cenário de votos', Valor: labelCenarioDadosAtivo },
-    ]
-    if (filtroCidade.trim()) rows.push({ Campo: 'Filtro cidade', Valor: filtroCidade.trim() })
+    const rows: Array<{ Campo: string; Valor: string }> = [{ Campo: 'Cenário de votos', Valor: labelCenarioDadosAtivo }]
+    if (municipio) rows.push({ Campo: 'Município', Valor: municipio })
     if (filtroNome.trim()) rows.push({ Campo: 'Filtro liderança', Valor: filtroNome.trim() })
     if (filtroCargo.trim()) rows.push({ Campo: 'Filtro cargo', Valor: filtroCargo.trim() })
     if (filtroDepEstadual.length > 0) {
       rows.push({ Campo: 'Filtro dep. estadual', Valor: filtroDepEstadual.join(', ') })
     }
-    if (filtroFaixaVotos.trim()) {
-      rows.push({ Campo: 'Faixa de votos', Valor: filtroFaixaVotos.trim() })
-    }
+    const faixa = FAIXAS.find((f) => f.id === filtroFaixaVotos)
+    if (faixa) rows.push({ Campo: 'Faixa de votos', Valor: faixa.label })
     return rows
-  }, [
-    labelCenarioDadosAtivo,
-    filtroCidade,
-    filtroNome,
-    filtroCargo,
-    filtroDepEstadual,
-    filtroFaixaVotos,
-  ])
+  }, [labelCenarioDadosAtivo, municipio, filtroNome, filtroCargo, filtroDepEstadual, filtroFaixaVotos])
+
+  const limparFiltros = () => {
+    setFiltroNome('')
+    setFiltroCargo('')
+    setFiltroDepEstadual([])
+    setFiltroFaixaVotos('')
+    setLimite(PAGE_SIZE)
+  }
+
+  const ordenarPor = (col: SortCidadeCol) => {
+    const next = toggleTerritorioSort(sortCol, sortAsc, col, ['cidade'] as const)
+    setSortCol(next.column)
+    setSortAsc(next.asc)
+  }
+
+  const alternarMapaTelaCheia = () => {
+    const container = mapaVotoCruzadoRef.current
+    if (!container) return
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else container.requestFullscreen().catch(() => {})
+  }
+
+  if (loading && !baseCarregada) return <TseCarregando texto="Carregando base territorial…" />
+
+  if (!baseCarregada) {
+    return (
+      <TseErro>
+        <p className="font-semibold">Não foi possível carregar a base territorial</p>
+        {error ? <p className="mt-1 text-xs">{error}</p> : null}
+        <button
+          type="button"
+          onClick={() => void fetchBaseFromDb({ refresh: true })}
+          className={cn(tseLinkAcaoClass, 'mt-3')}
+        >
+          Tentar novamente
+        </button>
+      </TseErro>
+    )
+  }
+
+  if (liderancas.length === 0) return <TseVazio>Nenhum registro em territorio_liderancas.</TseVazio>
+
+  const temCenarios = Boolean(revisaoFinalCol || expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol)
 
   return (
-    <div className={cn('flex flex-col gap-4', territorioBaseTextClass)}>
-        <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs">
-              {baseCarregada && liderancas.length > 0
-                ? pageSubtitle
-                : 'Carregando lideranças da base territorial…'}
+    <>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+        <aside className="space-y-4">
+          <section className={tseCardClass}>
+            <h2 className="text-xl font-bold">Dados Gerais</h2>
+            <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">
+              Cenário {labelCenarioDadosAtivo} · {escopoLabel}
             </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {baseCarregada && liderancasFiltradas.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowExportModal(true)}
-                  className={territorioBaseGhostButtonClass}
-                  title="Exportar lideranças filtradas (Excel)"
-                >
-                  <IconDownload className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-                  Exportar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowMindMap(true)}
-                  className={territorioBaseGhostButtonClass}
-                  title="Ver mapa de lideranças"
-                >
-                  <IconNetwork className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-                  Mapa mental
-                </button>
-                {votosReferenciaCol ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowVoteInvestmentBalance(true)}
-                    className={territorioBaseGhostButtonClass}
-                    title="Analisar equilíbrio entre investimento e previsão de votos"
-                  >
-                    <IconBriefcase className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-                    Demandas
-                  </button>
-                ) : null}
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => territorioAgentActionsRef.current.atualizarDados()}
-              disabled={loading}
-              className={cn(territorioBaseGhostButtonClass, 'disabled:opacity-50')}
-            >
-              <IconRefresh
-                className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
-                stroke={1.5}
-                aria-hidden
+            <TseDados>
+              <TseDado
+                rotulo="Lideranças ativas"
+                valor={fmt(liderancasFiltradas.length)}
+                sufixo={`/ ${fmt(liderancas.length)}`}
               />
-              Atualizar
-            </button>
-          </div>
-        </div>
+              <TseDado
+                rotulo="Cidades com liderança"
+                valor={fmt(cidadesUnicasCount)}
+                sufixo={`/ ${fmt(universoMunicipios)}`}
+              />
+              <TseDado
+                rotulo="Média por cidade"
+                valor={cidadesUnicasCount ? fmt(totalExpectativa / cidadesUnicasCount) : '—'}
+              />
+              {totalExpectativa > 0 && totalVotacao2026 > 0 ? (
+                <TseDado rotulo="Apurado ÷ expectativa" valor={fmtPct((totalVotacao2026 / totalExpectativa) * 100)} />
+              ) : null}
+            </TseDados>
+            <TseBarraRotulo pct={pctCobertura} rotulo={fmtPct(pctCobertura)} />
+            <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Cobertura de municípios</p>
 
-        {/* Mensagem de Erro */}
-        {error && (
-          <div className="mb-4 flex items-start gap-3 rounded-xl border border-status-error/30 bg-status-error/10 p-4">
-            <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="mt-1 text-xs">{error}</p>
+            {maiorBase ? (
+              <div className="mt-4 rounded-lg bg-[var(--tse-bar)] p-3 text-[12px]">
+                <p className="font-bold">Maior base</p>
+                <p className="mt-1 uppercase">{maiorBase.cidade}</p>
+                <p className="text-[var(--tse-muted)]">
+                  {fmt(maiorBase.liderancas.length)} lideranças
+                  {maiorBase.votacao2026 != null ? ` · ${fmt(maiorBase.votacao2026)} votos em 2026` : ''}
+                </p>
+                <p className="mt-1 text-[14px] font-bold">{fmt(maiorBase.expectativa)} de expectativa</p>
+              </div>
+            ) : null}
+          </section>
+
+          {totaisPorCargo.length > 0 ? (
+            <TseListaFiltro
+              titulo="Lideranças por cargo"
+              itens={totaisPorCargo.map((item) => ({
+                id: item.cargo,
+                label: item.cargo,
+                valor: item.total,
+                cor: corNivelCargo(item.cargo),
+              }))}
+              ativo={filtroCargo || null}
+              onChange={(cargo) => setFiltroCargo(cargo ?? '')}
+            />
+          ) : null}
+
+          {filtroDepEstadual.length > 0 ? (
+            <TseCard titulo="Voto cruzado" subtitulo={filtroDepEstadual.join(', ')}>
+              <TseDados className="mt-3">
+                <TseDado rotulo="Cidades" valor={fmt(cidadesUnicasCount)} />
+                <TseDado rotulo="Lideranças" valor={fmt(liderancasFiltradas.length)} />
+                {votosReferenciaCol ? <TseDado rotulo={LABEL_EXPECTATIVA_2026} valor={fmt(totalExpectativa)} /> : null}
+              </TseDados>
+            </TseCard>
+          ) : null}
+        </aside>
+
+        <main className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {cargoCol && cargosUnicos.length > 0 ? (
+                <select
+                  value={filtroCargo}
+                  onChange={(e) => setFiltroCargo(e.target.value)}
+                  className={tseControleClass}
+                  aria-label="Filtrar por cargo"
+                >
+                  <option value="">Todos os cargos</option>
+                  {cargosUnicos.map((cargo) => (
+                    <option key={cargo} value={cargo}>
+                      {cargo}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+
+              {deputadosEstaduaisUnicos.length > 0 ? (
+                <button
+                  ref={depDropdownButtonRef}
+                  type="button"
+                  onClick={() => setShowDepDropdown((v) => !v)}
+                  title="Voto cruzado: selecione um ou mais deputados"
+                  aria-expanded={showDepDropdown}
+                  className={cn(
+                    tseControleClass,
+                    'inline-flex items-center gap-1.5',
+                    filtroDepEstadual.length > 0 && 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] font-semibold',
+                  )}
+                >
+                  {filtroDepEstadual.length === 0
+                    ? 'Dep. estadual'
+                    : filtroDepEstadual.length === deputadosEstaduaisUnicos.length
+                      ? 'Todos os dep.'
+                      : `${filtroDepEstadual.length} dep. estadual`}
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showDepDropdown && 'rotate-180')} />
+                </button>
+              ) : null}
+
+              {temCenarios ? (
+                <select
+                  value={cenarioVotos}
+                  onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+                  className={tseControleClass}
+                  aria-label="Cenário de votos"
+                >
+                  {revisaoFinalCol ? <option value="revisao_final">Cenário: Revisão Final 2026</option> : null}
+                  {expectativaJadyelCol ? <option value="aferido_jadyel">Cenário: Aferido 2026</option> : null}
+                  {promessaLiderancaCol ? <option value="promessa_lideranca">Cenário: Prometido 2026</option> : null}
+                  {expectativaLegadoCol ? (
+                    <option value="legado_anterior">Cenário: {LABEL_EXPECTATIVA_2026}</option>
+                  ) : null}
+                </select>
+              ) : null}
+
+              {votosReferenciaCol ? (
+                <select
+                  value={filtroFaixaVotos}
+                  onChange={(e) => {
+                    setFiltroFaixaVotos(e.target.value as FaixaVotos)
+                    setLimite(PAGE_SIZE)
+                  }}
+                  className={tseControleClass}
+                  aria-label="Faixa de votos por cidade"
+                >
+                  <option value="">Qualquer faixa</option>
+                  {FAIXAS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <TseBusca value={filtroNome} onChange={setFiltroNome} placeholder="Buscar liderança" />
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                disabled={liderancasFiltradas.length === 0}
+                className={tseBotaoCinzaClass}
+              >
+                <Download className={tseBotaoIconeClass} />
+                Exportar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMindMap(true)}
+                disabled={liderancasFiltradas.length === 0}
+                className={tseBotaoCinzaClass}
+              >
+                <Network className={tseBotaoIconeClass} />
+                Mapa mental
+              </button>
+              {votosReferenciaCol ? (
+                <button
+                  type="button"
+                  onClick={() => setShowVoteInvestmentBalance(true)}
+                  disabled={liderancasFiltradas.length === 0}
+                  className={tseBotaoCinzaClass}
+                  title="Equilíbrio entre investimento e previsão de votos"
+                >
+                  <Briefcase className={tseBotaoIconeClass} />
+                  Demandas
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => territorioAgentActionsRef.current.atualizarDados()}
+                disabled={loading}
+                className={tseBotaoCinzaClass}
+                title="Recarregar a base"
+              >
+                <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} />
+                Atualizar
+              </button>
             </div>
           </div>
-        )}
 
-        {/* KPIs - Só mostrar se houver dados */}
-        {baseCarregada && liderancas.length > 0 && (
-          <section className="mb-2">
-            <TerritorioBaseKpiStrip
-              kpis={kpis}
-              totalRegistros={liderancas.length}
-              cenarioLabel={labelCenarioDadosAtivo}
-              cidadesUnicasCount={cidadesUnicasCount}
-            />
+          {error ? <div className="mt-3"><TseErro>{error}</TseErro></div> : null}
 
-            {totaisPorCargo.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {totaisPorCargo.slice(0, 8).map((item) => (
-                  <span key={item.cargo} className={territorioBaseCargoChipClass}>
-                    <span className="font-medium">{item.total}</span>
-                    <span>{item.cargo}</span>
-                  </span>
-                ))}
-                {totaisPorCargo.length > 8 && (
-                  <span className={territorioBaseCargoChipClass}>
-                    +{totaisPorCargo.length - 8} outros
-                  </span>
-                )}
+          <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+            <div className="min-w-[180px] flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xl font-bold uppercase">Base de lideranças</p>
+                <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                  {escopoLabel}
+                </span>
               </div>
-            )}
+              <p className="text-[15px] text-[var(--tse-muted)]">
+                {fmt(liderancasFiltradas.length)} lideranças em {fmt(cidadesUnicasCount)}{' '}
+                {cidadesUnicasCount === 1 ? 'cidade' : 'cidades'}
+              </p>
+            </div>
+            {totalVotacao2026 > 0 ? (
+              <div className="text-right">
+                <p className="text-3xl font-black">{fmt(totalVotacao2026)}</p>
+                <p className="text-[13px] text-[var(--tse-muted)]">votos Jadyel 2026</p>
+              </div>
+            ) : null}
+            {votosReferenciaCol ? (
+              <div className="text-right">
+                <p className="text-3xl font-black">{fmt(totalExpectativa)}</p>
+                <p className="text-[13px] text-[var(--tse-muted)]">{LABEL_EXPECTATIVA_2026.toLowerCase()}</p>
+              </div>
+            ) : null}
           </section>
-        )}
 
-        {baseCarregada && liderancas.length > 0 && (
-          <div className="territorio-cx-filter-strip mb-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-                <label className="relative shrink-0">
-                  <IconSearch
-                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 opacity-50"
-                    stroke={1.5}
-                    aria-hidden
-                  />
-                  <input
-                    type="text"
-                    value={filtroCidade}
-                    onChange={(e) => setFiltroCidade(e.target.value)}
-                    placeholder="Buscar cidade…"
-                    className={cn(territorioBasePillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
-                  />
-                </label>
-
-                <label className="relative shrink-0">
-                  <IconSearch
-                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 opacity-50"
-                    stroke={1.5}
-                    aria-hidden
-                  />
-                  <input
-                    type="text"
-                    value={filtroNome}
-                    onChange={(e) => setFiltroNome(e.target.value)}
-                    placeholder="Buscar liderança…"
-                    className={cn(territorioBasePillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
-                  />
-                </label>
-
-                <span className="hidden h-4 w-px shrink-0 bg-[rgb(var(--color-border-tertiary))] sm:block" aria-hidden />
-
-                {cargoCol && cargosUnicos.length > 0 ? (
-                  filtroCargo ? (
-                    <span className={territorioBasePillFilterActiveClass}>
-                      {filtroCargo}
-                      <button
-                        type="button"
-                        onClick={() => setFiltroCargo('')}
-                        className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
-                        aria-label="Limpar filtro de cargo"
-                      >
-                        <IconX className="h-3 w-3" stroke={2} />
-                      </button>
-                    </span>
-                  ) : (
-                    <select
-                      value={filtroCargo}
-                      onChange={(e) => setFiltroCargo(e.target.value)}
-                      className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none pr-6')}
-                      aria-label="Filtrar por cargo"
-                    >
-                      <option value="">Cargo</option>
-                      {cargosUnicos.map((cargo) => (
-                        <option key={cargo} value={cargo}>
-                          {cargo}
-                        </option>
-                      ))}
-                    </select>
-                  )
-                ) : null}
-
-                {deputadosEstaduaisUnicos.length > 0 ? (
-                  <div className="relative shrink-0" ref={depDropdownRef}>
-                    {filtroDepEstadual.length > 0 ? (
-                      <span className={territorioBasePillFilterActiveClass}>
-                        {filtroDepEstadual.length === deputadosEstaduaisUnicos.length
-                          ? 'Todos os dep.'
-                          : `${filtroDepEstadual.length} dep.`}
-                        <button
-                          type="button"
-                          onClick={() => setFiltroDepEstadual([])}
-                          className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
-                          aria-label="Limpar filtro de deputado estadual"
-                        >
-                          <IconX className="h-3 w-3" stroke={2} />
-                        </button>
-                        <button
-                          ref={depDropdownButtonRef}
-                          type="button"
-                          onClick={() => setShowDepDropdown((v) => !v)}
-                          className="ml-1 inline-flex opacity-80 hover:opacity-100"
-                          aria-label="Editar filtro de deputado estadual"
-                        >
-                          <IconChevronDown
-                            className={cn('h-3 w-3 transition-transform', showDepDropdown && 'rotate-180')}
-                            stroke={2}
-                          />
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        ref={depDropdownButtonRef}
-                        type="button"
-                        onClick={() => setShowDepDropdown((v) => !v)}
-                        title="Voto cruzado: selecione um ou mais deputados"
-                        className={territorioBasePillFilterIdleClass}
-                      >
-                        Dep. estadual
-                        <IconChevronDown
-                          className={cn('h-3 w-3 opacity-70 transition-transform', showDepDropdown && 'rotate-180')}
-                          stroke={2}
-                        />
-                      </button>
-                    )}
-                  </div>
-                ) : null}
-
-                {revisaoFinalCol || expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
-                  <select
-                    value={cenarioVotos}
-                    onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                    className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none')}
-                    aria-label="Visão de votos"
-                  >
-                    {revisaoFinalCol ? (
-                      <option value="revisao_final">Revisão Final 2026</option>
-                    ) : null}
-                    {expectativaJadyelCol ? (
-                      <option value="aferido_jadyel">Aferido 2026</option>
-                    ) : null}
-                    {promessaLiderancaCol ? (
-                      <option value="promessa_lideranca">Prometido 2026</option>
-                    ) : null}
-                    {expectativaLegadoCol ? (
-                      <option value="legado_anterior">{LABEL_EXPECTATIVA_2026}</option>
-                    ) : null}
-                  </select>
-                ) : null}
-
-                {votosReferenciaCol ? (
-                  filtroFaixaVotos ? (
-                    <span className={territorioBasePillFilterActiveClass}>
-                      {filtroFaixaVotos === 'ate-100'
-                        ? 'Até 100'
-                        : filtroFaixaVotos === 'ate-300'
-                          ? 'Até 300'
-                          : filtroFaixaVotos === 'ate-500'
-                            ? 'Até 500'
-                            : filtroFaixaVotos === 'acima-500'
-                              ? 'Acima de 500'
-                              : 'Acima de 1000'}
-                      <button
-                        type="button"
-                        onClick={() => setFiltroFaixaVotos('')}
-                        className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
-                        aria-label="Limpar faixa de votos"
-                      >
-                        <IconX className="h-3 w-3" stroke={2} />
-                      </button>
-                    </span>
-                  ) : (
-                    <select
-                      value={filtroFaixaVotos}
-                      onChange={(e) => setFiltroFaixaVotos(e.target.value)}
-                      className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none')}
-                      aria-label="Faixa de votos"
-                    >
-                      <option value="">Faixa de votos</option>
-                      <option value="ate-100">Até 100</option>
-                      <option value="ate-300">Até 300</option>
-                      <option value="ate-500">Até 500</option>
-                      <option value="acima-500">Acima de 500</option>
-                      <option value="acima-1000">Acima de 1000</option>
-                    </select>
-                  )
-                ) : null}
-              </div>
-
-              {liderancasFiltradas.length > 0 && (
+          {filtroDepEstadual.length > 0 && mapaVotoCruzado.length > 0 ? (
+            <TseCard
+              className="mt-4"
+              titulo="Mapa de voto cruzado"
+              acao={
                 <button
                   type="button"
-                  onClick={() => {
-                    if (todasExpandidas) {
-                      setExpandedCities(new Set())
-                    } else {
-                      setExpandedCities(
-                        new Set(liderancasFiltradas.map((l) => l[cidadeCol] || 'Sem cidade'))
-                      )
-                    }
-                  }}
-                  className={cn(territorioBaseGhostButtonClass, 'ml-auto shrink-0 text-[11.5px]')}
+                  onClick={() => setShowMapaVotoCruzado((v) => !v)}
+                  className={tseLinkAcaoClass}
+                >
+                  {showMapaVotoCruzado ? 'Ocultar mapa' : 'Mostrar mapa'}
+                </button>
+              }
+            >
+              {showMapaVotoCruzado ? (
+                <div ref={mapaVotoCruzadoRef} className="mt-3">
+                  <MapaVotoCruzado
+                    deputados={filtroDepEstadual}
+                    cidades={mapaVotoCruzado}
+                    onFullscreen={alternarMapaTelaCheia}
+                  />
+                </div>
+              ) : null}
+            </TseCard>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--tse-muted)]">
+            <p>
+              {fmt(cidadesUnicasCount)} {cidadesUnicasCount === 1 ? 'município' : 'municípios'}
+              {hasFiltrosAtivos ? ' com os filtros aplicados' : ''}
+              {liderancaAtualCol || votosReferenciaCol
+                ? ` · lideranças atuais ou com ${LABEL_EXPECTATIVA_2026.toLowerCase()}`
+                : ''}
+            </p>
+            <div className="flex items-center gap-4">
+              {hasFiltrosAtivos ? (
+                <button type="button" onClick={limparFiltros} className={tseLinkAcaoClass}>
+                  Limpar filtros
+                </button>
+              ) : null}
+              {cidadesUnicasCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedCities(todasExpandidas ? new Set() : new Set(linhasCidades.map((l) => l.cidade)))
+                  }
+                  className={tseLinkAcaoClass}
                 >
                   {todasExpandidas ? 'Recolher todas' : 'Expandir todas'}
                 </button>
-              )}
-
-            {hasFiltrosAtivos && (
-              <div className="mt-1 flex w-full basis-full items-center justify-between gap-2">
-                <span className="text-[11px]">
-                  {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFiltroCidade('')
-                    setFiltroNome('')
-                    setFiltroCargo('')
-                    setFiltroDepEstadual([])
-                    setFiltroFaixaVotos('')
-                  }}
-                  className="text-[11px] font-medium hover:underline"
-                >
-                  Limpar filtros
-                </button>
-              </div>
-            )}
+              ) : null}
+            </div>
           </div>
-        )}
 
-        {showDepDropdown && depMenuPos && typeof document !== 'undefined'
-          ? createPortal(
-              <div
-                ref={depDropdownMenuRef}
-                className="fixed z-[10000] max-w-[min(calc(100vw-1rem),20rem)] rounded-lg border border-card bg-surface shadow-xl"
-                style={{
-                  top: depMenuPos.top,
-                  left: depMenuPos.left,
-                  minWidth: depMenuPos.width,
+          {linhasOrdenadas.length === 0 ? (
+            <div className="mt-3">
+              <TseVazio>
+                {municipio && !hasFiltrosAtivos
+                  ? `Nenhuma liderança atual cadastrada em ${municipio}.`
+                  : 'Nenhuma liderança encontrada com os filtros aplicados.'}
+              </TseVazio>
+            </div>
+          ) : (
+            <>
+              <TerritorioCidadesTabela
+                linhas={linhasOrdenadas.slice(0, limite)}
+                rank={rankCidades}
+                maxExpectativa={maxExpectativa}
+                maxVotacao={maxVotacao}
+                sortCol={sortCol}
+                sortAsc={sortAsc}
+                onSort={ordenarPor}
+                expandidas={expandedCities}
+                onToggle={(cidade) => territorioAgentActionsRef.current.alternarLiderancasCidade(cidade)}
+                onBriefing={(linha) => {
+                  setSelectedCityForBriefing(linha.cidade)
+                  setSelectedCityLiderancas(linha.liderancas)
+                  setShowExecutiveBriefing(true)
                 }}
-              >
-                <div className="max-h-56 overflow-auto p-1">
-                  {deputadosEstaduaisUnicos.map((dep) => {
-                    const checked = filtroDepEstadual.includes(dep)
-                    return (
-                      <button
-                        key={dep}
-                        type="button"
-                        onClick={() => toggleDepEstadual(dep)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
-                      >
-                        <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} bg-[#e8a825]` : 'border-card bg-white'}`}
-                        >
-                          {checked ? <IconCheck className="h-2.5 w-2.5 text-white" stroke={2.5} /> : null}
-                        </span>
-                        <span className="truncate">{dep}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="flex items-center justify-between border-t border-card p-2">
-                  <span className="text-[10px]">{filtroDepEstadual.length} sel.</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
-                      className={cn('text-[10px] hover:underline disabled:opacity-50', accentTextClass)}
-                      disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFiltroDepEstadual([])}
-                      className={cn('text-[10px] hover:underline', accentTextClass)}
-                    >
-                      Limpar
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )
-          : null}
-
-        {filtroDepEstadual.length > 0 && mapaVotoCruzado.length > 0 && (
-          <div className={cn('mb-6 rounded-2xl border p-4', sectionShellClass)}>
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowMapaVotoCruzado((v) => !v)}
-                className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors"
-              >
-                {showMapaVotoCruzado ? 'Ocultar mapa' : 'Mostrar mapa'}
-              </button>
-            </div>
-            {showMapaVotoCruzado && (
-              <div id="mapa-voto-cruzado-container">
-                <MapaVotoCruzado
-                  deputados={filtroDepEstadual}
-                  cidades={mapaVotoCruzado}
-                  onFullscreen={() => {
-                    const container = document.getElementById('mapa-voto-cruzado-container')
-                    if (!container) return
-                    if (document.fullscreenElement) {
-                      document.exitFullscreen()
-                    } else {
-                      container.requestFullscreen().catch(() => {})
-                    }
-                  }}
-                />
-              </div>
-            )}
-            {!showMapaVotoCruzado && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowMapaVotoCruzado(true)}
-                  className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors"
-                >
-                  Mostrar mapa de voto cruzado
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-2">
-          {baseCarregada && (liderancaAtualCol || votosReferenciaCol) && (
-            <p className="mb-3 text-[11px]">
-              Mostrando lideranças com liderança atual = sim ou com {LABEL_EXPECTATIVA_2026.toLowerCase()}
-            </p>
+                onObras={(cidade) => territorioAgentActionsRef.current.abrirObrasCidade(cidade)}
+                nomeCol={nomeCol}
+                cargoCol={cargoCol}
+                votosReferenciaCol={votosReferenciaCol}
+                normalizeNumber={normalizeNumber}
+                labelExpectativa={LABEL_EXPECTATIVA_2026}
+                labelVotacao={LABEL_VOTACAO_JADYEL_2026}
+              />
+              <TseCarregarMais
+                restantes={linhasOrdenadas.length - limite}
+                onClick={() => setLimite((n) => n + PAGE_SIZE)}
+              />
+            </>
           )}
+        </main>
+      </div>
 
-          {filtroDepEstadual.length > 0 && (
-            <div className="mb-4 rounded-xl border border-[#e8e8e6] bg-[#f7f7f6] px-3 py-2.5">
-              {(() => {
-                const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
-                const totalVotos = votosReferenciaCol
-                  ? liderancasFiltradas.reduce((sum, l) => sum + normalizeNumber(l[votosReferenciaCol]), 0)
-                  : 0
-
-                return (
-                  <p className="text-sm text-[#2b2d31]">
-                    <span className="font-semibold">
-                      Voto cruzado com {filtroDepEstadual.length} deputado(s):
-                    </span>{' '}
-                    {cidades.size} cidade{cidades.size !== 1 ? 's' : ''},{' '}
-                    {liderancasFiltradas.length} liderança{liderancasFiltradas.length !== 1 ? 's' : ''}{' '}
-                    {votosReferenciaCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} de ${LABEL_EXPECTATIVA_2026.toLowerCase()} em conjunto.` : '.'}
-                  </p>
-                )
-              })()}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : !baseCarregada ? (
-            <div className="py-12 text-center">
-              <IconUsers className="mx-auto mb-4 h-12 w-12 opacity-40" stroke={1.5} />
-              <p className="mb-4">Não foi possível carregar a base territorial</p>
-              <button
-                type="button"
-                onClick={() => void fetchBaseFromDb({ refresh: true })}
-                className={territorioBaseGhostButtonClass}
-              >
-                Tentar novamente
-              </button>
-            </div>
-          ) : liderancas.length === 0 ? (
-            <div className="text-center py-12">
-              <p>Nenhum registro em territorio_liderancas</p>
-            </div>
-          ) : liderancasFiltradas.length === 0 && liderancaAtualCol ? (
-            <div className="text-center py-12">
-              <p className="mb-2">
-                Nenhuma liderança atual encontrada
-              </p>
-              <p className="text-xs">
-                Verifique se há registros com Liderança Atual = SIM na base
-              </p>
-            </div>
-          ) : (() => {
-            const liderancasPorCidade = liderancasFiltradas.reduce((acc, lider) => {
-              const cidade = lider[cidadeCol] || 'Sem cidade'
-              if (!acc[cidade]) acc[cidade] = []
-              acc[cidade].push(lider)
-              return acc
-            }, {} as Record<string, typeof liderancasFiltradas>)
-
-            const cidadesOrdenadas = Object.keys(liderancasPorCidade).sort((a, b) => {
-              if (sortCol === 'cidade') {
-                const byCidade = compareTerritorioText(a, b, sortAsc)
-                if (byCidade !== 0) return byCidade
-              }
-              const totalA = liderancasPorCidade[a].reduce(
-                (sum: number, l: Lideranca) =>
-                  sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
-                0
-              )
-              const totalB = liderancasPorCidade[b].reduce(
-                (sum: number, l: Lideranca) =>
-                  sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
-                0
-              )
-              if (sortCol === 'expectativa') {
-                const byExp = compareTerritorioNumber(totalA, totalB, sortAsc)
-                if (byExp !== 0) return byExp
-                return compareTerritorioText(a, b, true)
-              }
-              return compareTerritorioNumber(totalA, totalB, false)
-            })
-
-            return (
-              <div>
-                <TerritorioCidadeExpectativaSortBar
-                  cidadeActive={sortCol === 'cidade'}
-                  cidadeAsc={sortAsc}
-                  expectativaActive={sortCol === 'expectativa'}
-                  expectativaAsc={sortAsc}
-                  expectativaLabel={LABEL_EXPECTATIVA_2026}
-                  onSortCidade={() => {
-                    const next = toggleTerritorioSort(sortCol, sortAsc, 'cidade', ['cidade'] as const)
-                    setSortCol(next.column)
-                    setSortAsc(next.asc)
-                  }}
-                  onSortExpectativa={() => {
-                    const next = toggleTerritorioSort(
-                      sortCol,
-                      sortAsc,
-                      'expectativa',
-                      ['cidade'] as const,
-                    )
-                    setSortCol(next.column)
-                    setSortAsc(next.asc)
-                  }}
-                />
-                {cidadesOrdenadas.map((cidade) => {
-                  const liderancasCidade = liderancasPorCidade[cidade]
-                  const totalExpectativaCidade = liderancasCidade.reduce(
-                    (sum: number, l: Lideranca) =>
-                      sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
-                    0
-                  )
-                  const isExpanded = expandedCities.has(cidade)
-
+      {showDepDropdown && depMenuPos && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={depDropdownMenuRef}
+              className="fixed z-[10000] max-w-[min(calc(100vw-1rem),20rem)] overflow-hidden rounded-lg border border-[#DDDDDD] bg-white text-[#333333] shadow-lg"
+              style={{ top: depMenuPos.top, left: depMenuPos.left, minWidth: depMenuPos.width }}
+            >
+              <div className="max-h-56 overflow-auto p-1">
+                {deputadosEstaduaisUnicos.map((dep) => {
+                  const checked = filtroDepEstadual.includes(dep)
                   return (
-                    <MunicipalityListItem
-                      key={cidade}
-                      cidade={cidade}
-                      liderancasCidade={liderancasCidade}
-                      isExpanded={isExpanded}
-                      onToggle={() => {
-                        territorioAgentActionsRef.current.alternarLiderancasCidade(cidade)
-                      }}
-                      onBriefing={(e) => {
-                        e.stopPropagation()
-                        setSelectedCityForBriefing(cidade)
-                        setSelectedCityLiderancas(liderancasCidade)
-                        setShowExecutiveBriefing(true)
-                      }}
-                      onObras={(e) => {
-                        e.stopPropagation()
-                        territorioAgentActionsRef.current.abrirObrasCidade(cidade)
-                      }}
-                      totalVotos={totalExpectativaCidade}
-                      votosLabel={LABEL_EXPECTATIVA_2026}
-                      nomeCol={nomeCol}
-                      cargoCol={cargoCol}
-                      votosReferenciaCol={votosReferenciaCol}
-                      normalizeNumber={normalizeNumber}
-                      expectativaSortAsc={sortCol === 'expectativa' ? sortAsc : false}
-                    />
+                    <button
+                      key={dep}
+                      type="button"
+                      onClick={() => toggleDepEstadual(dep)}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-[#FFF8D6]"
+                    >
+                      <span
+                        className={cn(
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border',
+                          checked ? 'border-[#EBB402] bg-[#EBB402]' : 'border-[#CFCFCF] bg-white',
+                        )}
+                      >
+                        {checked ? <Check className="h-3 w-3 text-white" /> : null}
+                      </span>
+                      <span className="truncate">{dep}</span>
+                    </button>
                   )
                 })}
               </div>
-            )
-          })()}
-        </div>
+              <div className="flex items-center justify-between border-t border-[#EEEEEE] px-3 py-2 text-[11px]">
+                <span className="text-[#717171]">{filtroDepEstadual.length} selecionados</span>
+                <div className="flex items-center gap-3 font-bold uppercase tracking-wide text-[#6A8421]">
+                  <button
+                    type="button"
+                    onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
+                    className="hover:underline disabled:opacity-50"
+                    disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
+                  >
+                    Todos
+                  </button>
+                  <button type="button" onClick={() => setFiltroDepEstadual([])} className="hover:underline">
+                    Limpar
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
-      {/* Modal de Mapa Mental */}
       <MindMapModal
         isOpen={showMindMap}
         onClose={() => setShowMindMap(false)}
@@ -1375,14 +988,12 @@ export function TerritorioBasePanel() {
         filtrosResumo={exportFiltrosResumo}
       />
 
-      {/* Modal de Demandas por Cidade */}
       <CityDemandsModal
         isOpen={showCityDemands}
         onClose={() => territorioAgentActionsRef.current.fecharModalObras()}
         cidade={selectedCityForDemands}
       />
 
-      {/* Modal de Briefing Executivo */}
       {showExecutiveBriefing && (
         <ExecutiveBriefingModal
           isOpen={showExecutiveBriefing}
@@ -1402,9 +1013,8 @@ export function TerritorioBasePanel() {
         isOpen={showVoteInvestmentBalance}
         onClose={() => setShowVoteInvestmentBalance(false)}
         cidades={cidadesParaAnaliseInvestimento}
-        cenarioLabel={labelCenarioVotos}
+        cenarioLabel={LABEL_EXPECTATIVA_2026}
       />
-    </div>
+    </>
   )
 }
-

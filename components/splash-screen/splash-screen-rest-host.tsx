@@ -75,7 +75,7 @@ export function SplashScreenRestHost() {
 
   return (
     <div className={outfit.variable}>
-      <PreviewHomeScreen mode="rest" onEnter={fechar} />
+      <PreviewHomeScreen onEnter={fechar} />
     </div>
   )
 }

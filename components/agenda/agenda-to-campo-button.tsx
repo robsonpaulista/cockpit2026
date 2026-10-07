@@ -12,16 +12,22 @@ import {
   type CampoCityOption,
 } from '@/lib/agenda/calendar-to-campo'
 import {
-  TERRITORIO_CAMPO_TAB_VISITAS,
-  territorioCampoHref,
-} from '@/lib/territorio-campo-route'
+  createCampoVisitaFromEvento,
+  fetchCampoCidades,
+  type CampoGoogleLink,
+} from '@/lib/services/agenda-google-client'
+import { TERRITORIO_CAMPO_TAB_VISITAS, territorioCampoHref } from '@/lib/territorio-campo-route'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
+import {
+  TseErro,
+  tseBotaoCinzaClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseRotuloCampoClass,
+} from '@/components/tse/tse-ui'
+import { cn } from '@/lib/utils'
 
-export interface CampoGoogleLink {
-  id: string
-  date: string
-  status: string
-  type: string
-}
+export type { CampoGoogleLink }
 
 interface AgendaToCampoButtonProps {
   event: CalendarEventRow
@@ -37,20 +43,19 @@ interface FormState {
   hora_evento: string
 }
 
+const FORM_VAZIO: FormState = { date: '', city_id: '', type: 'visita', description: '', hora_evento: '' }
+
+const botaoBase =
+  'inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-bold transition-colors'
+
 export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoButtonProps) {
-  const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [open, setOpen] = useState<boolean>(false)
+  const [mounted, setMounted] = useState<boolean>(false)
   const [cities, setCities] = useState<CampoCityOption[]>([])
-  const [loadingCities, setLoadingCities] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [loadingCities, setLoadingCities] = useState<boolean>(false)
+  const [saving, setSaving] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>({
-    date: '',
-    city_id: '',
-    type: 'visita',
-    description: '',
-    hora_evento: '',
-  })
+  const [form, setForm] = useState<FormState>(FORM_VAZIO)
   const [cidadeSugerida, setCidadeSugerida] = useState<string | undefined>()
 
   const prefill = useMemo(() => {
@@ -61,10 +66,7 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
   const loadCities = useCallback(async () => {
     setLoadingCities(true)
     try {
-      const res = await fetch('/api/campo/cities')
-      if (!res.ok) return
-      const data = (await res.json()) as CampoCityOption[]
-      setCities(data)
+      setCities(await fetchCampoCidades())
     } catch {
       setCities([])
     } finally {
@@ -96,7 +98,6 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
   const openModal = () => {
     setError(null)
     setOpen(true)
-    if (cities.length === 0) void loadCities()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,44 +105,15 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
     setError(null)
     setSaving(true)
     try {
-      const payload: Record<string, string | boolean> = {
+      const id = await createCampoVisitaFromEvento({
         date: form.date,
         type: form.type,
         description: form.description,
-        google_event_id: event.id,
-      }
-      if (form.city_id) payload.city_id = form.city_id
-      if (form.hora_evento) payload.hora_evento = `${form.hora_evento}:00`
-
-      const res = await fetch('/api/campo/agendas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        googleEventId: event.id,
+        cityId: form.city_id || undefined,
+        horaEvento: form.hora_evento || undefined,
       })
-
-      const data = (await res.json()) as { id?: string; error?: string; existingId?: string }
-
-      if (res.status === 409 && data.existingId) {
-        onLinked(event.id, {
-          id: data.existingId,
-          date: form.date,
-          status: 'planejada',
-          type: form.type,
-        })
-        setOpen(false)
-        return
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error ?? 'Erro ao registrar visita')
-      }
-
-      onLinked(event.id, {
-        id: data.id!,
-        date: form.date,
-        status: 'planejada',
-        type: form.type,
-      })
+      onLinked(event.id, { id, date: form.date, status: 'planejada', type: form.type })
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar visita')
@@ -154,10 +126,10 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
     return (
       <Link
         href={territorioCampoHref(TERRITORIO_CAMPO_TAB_VISITAS)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-status-success/40 bg-status-success/10 px-3 py-1.5 text-sm font-medium text-status-success transition-colors hover:bg-status-success/15"
-        title="Abrir Campo & Agenda"
+        className={cn(botaoBase, 'border border-[var(--tse-green)] bg-white text-[var(--tse-olive)] hover:bg-[var(--tse-bar)]')}
+        title="Abrir Território · Visitas"
       >
-        <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
         Em Campo
       </Link>
     )
@@ -168,35 +140,35 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
       <button
         type="button"
         onClick={openModal}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-card bg-surface px-3 py-1.5 text-sm text-text-primary transition-colors hover:bg-background"
-        title="Criar visita em Campo & Agenda a partir deste compromisso"
+        className={cn(botaoBase, 'bg-[#E8E8E8] text-[var(--tse-text)] hover:bg-[#DDDDDD]')}
+        title="Criar visita em Território · Visitas a partir deste compromisso"
       >
-        <MapPin className="h-4 w-4 shrink-0 text-accent-gold" aria-hidden />
-        Registrar em Campo
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--tse-yellow)]" aria-hidden />
+        Campo
       </button>
 
       {open && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
+            <div style={TSE_TOKENS} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
               <div
-                className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-card bg-surface shadow-xl"
+                className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white text-[var(--tse-text)] shadow-xl"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="agenda-campo-title"
               >
-                <div className="flex items-start justify-between gap-3 border-b border-card p-4">
-                  <div>
-                    <h3 id="agenda-campo-title" className="text-base font-semibold text-text-primary">
-                      Registrar em Campo & Agenda
+                <div className="flex items-start justify-between gap-3 border-b border-[#EEEEEE] px-5 py-4">
+                  <div className="min-w-0">
+                    <h3 id="agenda-campo-title" className="text-[15px] font-bold">
+                      Registrar em Campo
                     </h3>
-                    <p className="mt-1 text-xs text-secondary line-clamp-2">
+                    <p className="mt-0.5 line-clamp-2 text-[12px] text-[var(--tse-muted)]">
                       {event.summary || 'Compromisso do Google Calendar'}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="rounded-lg p-1 text-secondary hover:bg-background hover:text-text-primary"
+                    className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
                     aria-label="Fechar"
                   >
                     <X className="h-5 w-5" />
@@ -204,40 +176,40 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
                 </div>
 
                 {loadingCities && cities.length === 0 ? (
-                  <div className="flex items-center justify-center gap-2 p-8 text-sm text-secondary">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex items-center justify-center gap-2 p-8 text-[13px] text-[var(--tse-muted)]">
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--tse-yellow)]" />
                     Carregando cidades…
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4 p-4">
+                  <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-secondary">Data</label>
+                      <label>
+                        <span className={tseRotuloCampoClass}>Data</span>
                         <input
                           type="date"
                           required
                           value={form.date}
                           onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                          className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                          className={tseCampoClass}
                         />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-secondary">Horário</label>
+                      </label>
+                      <label>
+                        <span className={tseRotuloCampoClass}>Horário</span>
                         <input
                           type="time"
                           value={form.hora_evento}
                           onChange={(e) => setForm((f) => ({ ...f, hora_evento: e.target.value }))}
-                          className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                          className={tseCampoClass}
                         />
-                      </div>
+                      </label>
                     </div>
 
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-secondary">Município</label>
+                    <label className="block">
+                      <span className={tseRotuloCampoClass}>Município</span>
                       <select
                         value={form.city_id}
                         onChange={(e) => setForm((f) => ({ ...f, city_id: e.target.value }))}
-                        className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                        className={tseCampoClass}
                       >
                         <option value="">Selecione o município</option>
                         {cities.map((c) => (
@@ -247,18 +219,18 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
                         ))}
                       </select>
                       {!form.city_id && cidadeSugerida ? (
-                        <p className="mt-1 text-xs text-status-warning">
+                        <span className="mt-1 block text-[12px] font-semibold text-[var(--tse-gold-text)]">
                           Sugestão detectada: {cidadeSugerida} — confirme no seletor acima
-                        </p>
+                        </span>
                       ) : null}
-                    </div>
+                    </label>
 
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-secondary">Tipo</label>
+                    <label className="block">
+                      <span className={tseRotuloCampoClass}>Tipo</span>
                       <select
                         value={form.type}
                         onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as CampoAgendaType }))}
-                        className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                        className={tseCampoClass}
                       >
                         {(Object.keys(CAMPO_TYPE_LABELS) as CampoAgendaType[]).map((t) => (
                           <option key={t} value={t}>
@@ -266,58 +238,37 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-secondary">
+                      <span className="mt-1 block text-[11px] text-[var(--tse-muted)]">
                         VIAGEM e OBRAS → visita · EVENTO → evento · REUNIÃO → reunião
-                      </p>
-                    </div>
+                      </span>
+                    </label>
 
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-secondary">Descrição</label>
+                    <label className="block">
+                      <span className={tseRotuloCampoClass}>Descrição</span>
                       <textarea
                         rows={4}
                         value={form.description}
                         onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                        className="w-full resize-y rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                        className={cn(tseCampoClass, 'h-auto resize-y py-2')}
                       />
-                    </div>
+                    </label>
 
-                    {error ? (
-                      <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-sm text-status-error">
-                        {error}
-                      </p>
-                    ) : null}
+                    {error ? <TseErro>{error}</TseErro> : null}
 
-                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card pt-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpen(false)}
-                        className="rounded-lg px-4 py-2 text-sm text-secondary hover:bg-background"
-                      >
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#EEEEEE] pt-3">
+                      <button type="button" onClick={() => setOpen(false)} className={tseBotaoCinzaClass}>
                         Cancelar
                       </button>
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="inline-flex items-center gap-2 rounded-lg bg-accent-gold px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-gold/90 disabled:opacity-50"
-                      >
-                        {saving ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Salvando…
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="h-4 w-4" />
-                            Criar visita
-                          </>
-                        )}
+                      <button type="submit" disabled={saving} className={tseBotaoPrimarioClass}>
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                        {saving ? 'Salvando…' : 'Criar visita'}
                       </button>
                     </div>
                   </form>
                 )}
               </div>
             </div>,
-            document.body
+            document.body,
           )
         : null}
     </>

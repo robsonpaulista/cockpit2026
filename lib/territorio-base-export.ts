@@ -25,6 +25,11 @@ export const TERRITORIO_BASE_EXPORT_FIELDS: TerritorioBaseExportField[] = [
     defaultSelected: true,
   },
   {
+    id: 'VOTAÇÃO JADYEL 2026',
+    label: 'Votação Jadyel 2026 (cidade)',
+    defaultSelected: true,
+  },
+  {
     id: 'EXPECTATIVA JADYEL 2026',
     label: 'Expectativa Jadyel 2026',
     defaultSelected: false,

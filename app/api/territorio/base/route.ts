@@ -8,6 +8,10 @@ import {
   TERRITORIO_BASE_HEADERS,
   mapTerritorioLiderancaToBaseRecord,
 } from '@/lib/territorio-base-records'
+import {
+  chaveMunicipioResultado2026,
+  votosJadyelPorMunicipio2026,
+} from '@/lib/services/resultado-secao-2026-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +27,18 @@ export async function GET(request: NextRequest) {
     const refresh = request.nextUrl.searchParams.get('refresh') === '1'
     if (refresh) invalidateTerritorioLiderancasDbCache()
 
-    const rows = await listAllTerritorioLiderancas()
-    const records = rows.map(mapTerritorioLiderancaToBaseRecord)
+    const [rows, votosJadyel] = await Promise.all([
+      listAllTerritorioLiderancas(),
+      votosJadyelPorMunicipio2026(),
+    ])
+    const records = rows.map((row) =>
+      mapTerritorioLiderancaToBaseRecord(
+        row,
+        votosJadyel.size > 0
+          ? (votosJadyel.get(chaveMunicipioResultado2026(String(row.municipio || ''))) ?? null)
+          : null,
+      ),
+    )
 
     return NextResponse.json({
       fonte: 'db',

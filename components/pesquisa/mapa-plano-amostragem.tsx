@@ -144,7 +144,7 @@ export function MapaPlanoAmostragem({
   if (!temDados) {
     return (
       <div
-        className="flex items-center justify-center rounded-lg border border-dashed border-card bg-background/50 text-sm text-secondary"
+        className="flex items-center justify-center rounded-lg border-2 border-dashed border-[var(--tse-border)] bg-white text-[13px] text-[var(--tse-muted)]"
         style={{ height }}
       >
         Sem malha geográfica para este município.
@@ -161,10 +161,10 @@ export function MapaPlanoAmostragem({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[11px] text-secondary">{legendaMapa}</p>
+      <p className="text-[11px] text-[var(--tse-muted)]">{legendaMapa}</p>
       <div
         ref={hostRef}
-        className="w-full overflow-hidden rounded-lg border border-card"
+        className="w-full overflow-hidden rounded-lg border border-[#EEEEEE]"
         style={{ height }}
         aria-label={`Mapa do plano de amostragem — ${municipio}`}
       />
@@ -172,7 +172,7 @@ export function MapaPlanoAmostragem({
         {blocos.map((bloco) => (
           <span
             key={bloco.id}
-            className="inline-flex items-center gap-1.5 rounded-full border border-card px-2 py-0.5 text-[10px] text-secondary"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--tse-bar)] px-2 py-0.5 text-[10px] text-[var(--tse-muted)]"
           >
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"

@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { LoginForm } from '@/components/auth/login-form'
 import {
   HOME_SCENE_IMAGE,
   HOME_SCENE_MEDIA,
@@ -11,38 +9,18 @@ import {
 import './preview-home.css'
 
 export type PreviewHomeScreenProps = {
-  /**
-   * `preview` — rota /preview-home (Entrar abre login).
-   * `rest` — tela de descanso (Entrar volta ao Cockpit).
-   * `dashboard` — home autenticada `/dashboard` (Entrar abre o War Room).
-   */
-  mode?: 'preview' | 'rest' | 'dashboard'
-  /** Só em `rest` — fecha o overlay / dispensa idle. */
-  onEnter?: () => void
-  /** Abre o login flutuante ao montar (ex.: rota legada `/login`). */
-  initialLoginOpen?: boolean
-  /** Classe extra no root (ex.: overlay fixo). */
-  className?: string
+  /** Fecha o overlay / dispensa o idle. */
+  onEnter: () => void
 }
 
 /**
- * Home cinematográfica — vídeo full-bleed + marca Cockpit 2026.
- * Usada na entrada `/`, `/login`, `/preview-home`, `/dashboard` e descanso.
+ * Tela de descanso do dashboard — cena full-bleed + marca Cockpit 2026.
+ * Aberta pelo botão "Tela de descanso" da sidebar e por inatividade.
  */
-export function PreviewHomeScreen({
-  mode = 'preview',
-  onEnter,
-  initialLoginOpen = false,
-  className,
-}: PreviewHomeScreenProps) {
-  const router = useRouter()
-  const isRest = mode === 'rest'
-  const isDashboard = mode === 'dashboard'
-  const showLogin = mode === 'preview'
+export function PreviewHomeScreen({ onEnter }: PreviewHomeScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [ready, setReady] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(showLogin && initialLoginOpen)
+  const [ready, setReady] = useState<boolean>(false)
+  const [reducedMotion, setReducedMotion] = useState<boolean>(false)
   const useImage = HOME_SCENE_MEDIA === 'image' || reducedMotion
 
   useEffect(() => {
@@ -75,53 +53,20 @@ export function PreviewHomeScreen({
     setReady(true)
   }, [useImage])
 
-  useEffect(() => {
-    if (useImage) return
-    const video = videoRef.current
-    if (!video) return
-
-    if (showLogin && loginOpen) {
-      video.pause()
-      return
-    }
-
-    video.loop = true
-    void video.play().catch(() => {
-      /* ignore */
-    })
-  }, [showLogin, loginOpen, useImage])
-
-  const handleEnter = () => {
-    if (isRest) {
-      onEnter?.()
-      return
-    }
-    if (isDashboard) {
-      router.push('/dashboard/war-room')
-      return
-    }
-    const video = videoRef.current
-    if (video) video.pause()
-    setLoginOpen(true)
-  }
-
   const rootClass = [
     'preview-home',
+    'preview-home--rest',
     useImage ? 'preview-home--still' : '',
-    isRest ? 'preview-home--rest' : '',
-    isDashboard ? 'preview-home--dashboard' : '',
     ready ? 'preview-home--ready' : '',
-    showLogin && loginOpen ? 'preview-home--login' : '',
-    className ?? '',
   ]
     .filter(Boolean)
     .join(' ')
 
   return (
-    <main className={rootClass} role={isRest ? 'dialog' : undefined} aria-modal={isRest || undefined}>
+    <main className={rootClass} role="dialog" aria-modal>
       <div className="preview-home__media" aria-hidden>
         {useImage ? (
-          // eslint-disable-next-line @next/next/no-img-element -- asset estático em /public para teste
+          // eslint-disable-next-line @next/next/no-img-element -- asset estático em /public
           <img
             className="preview-home__still"
             src={HOME_SCENE_IMAGE}
@@ -143,11 +88,7 @@ export function PreviewHomeScreen({
         <div className="preview-home__scrim" />
       </div>
 
-      <div
-        className="preview-home__content"
-        aria-hidden={showLogin && loginOpen}
-        inert={showLogin && loginOpen ? true : undefined}
-      >
+      <div className="preview-home__content">
         <p className="preview-home__brand" aria-label="Cockpit 2026">
           <span className="preview-home__brand-name">COCKPIT</span>
           <span className="preview-home__brand-year">2026</span>
@@ -157,8 +98,8 @@ export function PreviewHomeScreen({
           Inteligência, território e operação em um só lugar.
         </p>
         <div className="preview-home__cta">
-          <button type="button" className="preview-home__btn" onClick={handleEnter}>
-            {isRest || isDashboard ? 'Entrar no Cockpit' : 'Entrar'}
+          <button type="button" className="preview-home__btn" onClick={onEnter}>
+            Entrar no Cockpit
           </button>
         </div>
       </div>
@@ -166,14 +107,6 @@ export function PreviewHomeScreen({
       <p className="preview-home__ai-credit">
         Imagem gerada por inteligência artificial · Gemini
       </p>
-
-      {showLogin ? (
-        <LoginForm
-          variant="floating"
-          open={loginOpen}
-          onClose={() => setLoginOpen(false)}
-        />
-      ) : null}
     </main>
   )
 }

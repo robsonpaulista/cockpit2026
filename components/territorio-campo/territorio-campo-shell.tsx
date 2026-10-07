@@ -1,59 +1,49 @@
 'use client'
 
 import { useEffect } from 'react'
-import { LayoutGrid, ClipboardList, MapPin, Route, Users } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import {
-  DashboardHubTabBar,
-  DashboardPageChrome,
-  DashboardPageContent,
-  DashboardPageHeader,
-  DashboardPageMetaStrip,
-  DashboardPageShell,
-} from '@/components/dashboard/dashboard-page-chrome'
-import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
+  TseFilterBar,
+  TsePage,
+  TseSelectGrande,
+  TseTabs,
+  tseLinkAcaoClass,
+  type TseAba,
+} from '@/components/tse/tse-ui'
 import {
-  TERRITORIO_CAMPO_PAGE_TITLE,
+  MUNICIPIOS_PI_ORDENADOS,
+  useTerritorioMunicipio,
+} from '@/components/territorio-campo/territorio-municipio-context'
+import {
   TERRITORIO_CAMPO_TAB_BASE,
   TERRITORIO_CAMPO_TAB_DEMANDAS,
   TERRITORIO_CAMPO_TAB_LIDERANCAS,
+  TERRITORIO_CAMPO_TAB_VISITAS,
   type TerritorioCampoTab,
 } from '@/lib/territorio-campo-route'
-import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
-import { cn } from '@/lib/utils'
-import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 import '@/app/dashboard/shared/territorio-cx-chrome.css'
 
-const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
-  { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
-  { id: 'base', label: 'Base', icon: MapPin },
-  { id: 'visitas', label: 'Visitas', icon: Route },
-  { id: TERRITORIO_CAMPO_TAB_LIDERANCAS, label: 'Lideranças', icon: Users },
-  { id: TERRITORIO_CAMPO_TAB_DEMANDAS, label: 'Demandas', icon: ClipboardList },
+const TABS: readonly TseAba<TerritorioCampoTab>[] = [
+  { id: TERRITORIO_CAMPO_TAB_BASE, label: 'Base' },
+  { id: TERRITORIO_CAMPO_TAB_VISITAS, label: 'Visitas' },
+  { id: TERRITORIO_CAMPO_TAB_LIDERANCAS, label: 'Lideranças' },
+  { id: TERRITORIO_CAMPO_TAB_DEMANDAS, label: 'Demandas' },
 ]
 
 interface TerritorioCampoShellProps {
   activeTab: TerritorioCampoTab
   onTabChange: (tab: TerritorioCampoTab) => void
-  tabActions?: React.ReactNode
   children: React.ReactNode
 }
 
-export function TerritorioCampoShell({
-  activeTab,
-  onTabChange,
-  tabActions,
-  children,
-}: TerritorioCampoShellProps) {
-  const topbarVisible = useDashboardTopbarVisible()
-  const pageTitle = TERRITORIO_CAMPO_PAGE_TITLE
-  const isBaseTab = activeTab === TERRITORIO_CAMPO_TAB_BASE
+export function TerritorioCampoShell({ activeTab, onTabChange, children }: TerritorioCampoShellProps) {
   const visibleTabs = useAllowedHubTabs('territorio', TABS, activeTab, onTabChange)
-  const descriptionText =
-    'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
+  const { municipio, setMunicipio } = useTerritorioMunicipio()
 
+  // Abas ainda não migradas para o padrão TSE dependem do tema Cockpit X (seletores em body[data-*]).
   useEffect(() => {
     document.body.setAttribute('data-war-room-clean', '')
     document.body.setAttribute('data-wr-copiloto', '')
@@ -65,34 +55,32 @@ export function TerritorioCampoShell({
   }, [])
 
   return (
-    <DashboardPageShell>
-      <DashboardPageChrome>
-        {topbarVisible ? (
-          <DashboardPageMetaStrip>
-            <span className={cn(typographyPageLeadClass, isBaseTab && territorioBaseTextClass)}>
-              {descriptionText}
-            </span>
-          </DashboardPageMetaStrip>
-        ) : (
-          <DashboardPageHeader title={pageTitle} description={descriptionText} />
-        )}
-        <DashboardHubTabBar
-          tabs={visibleTabs}
-          activeTab={activeTab}
-          onTabChange={(tab) => onTabChange(tab as TerritorioCampoTab)}
-          actions={tabActions}
-        />
-      </DashboardPageChrome>
-      <DashboardPageContent
-        className={cn(
-          typographyContentRootClass,
-          'wr-page-canvas--scroll',
-          isBaseTab && territorioBaseTextClass,
-        )}
-      >
-        {children}
-      </DashboardPageContent>
-    </DashboardPageShell>
+    <TsePage>
+      <TseFilterBar>
+        <TseSelectGrande
+          icone={MapPin}
+          rotulo="Município"
+          value={municipio ?? ''}
+          onChange={(e) => setMunicipio(e.target.value || null)}
+        >
+          <option value="">Piauí</option>
+          {MUNICIPIOS_PI_ORDENADOS.map((nome) => (
+            <option key={nome} value={nome}>
+              {nome}
+            </option>
+          ))}
+        </TseSelectGrande>
+        {municipio ? (
+          <button type="button" onClick={() => setMunicipio(null)} className={tseLinkAcaoClass}>
+            Ver Piauí inteiro
+          </button>
+        ) : null}
+      </TseFilterBar>
+
+      <TseTabs className="mt-5" abas={visibleTabs} ativa={activeTab} onChange={onTabChange} />
+
+      <div className="mt-5">{children}</div>
+    </TsePage>
   )
 }
 

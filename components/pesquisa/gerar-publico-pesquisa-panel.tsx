@@ -1,12 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Download, FileSpreadsheet, HelpCircle, Loader2, MapPin, Users } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { AlertTriangle, Download, FileSpreadsheet, HelpCircle, Loader2, MapPin } from 'lucide-react'
 import type { PlanoAmostragemPublico } from '@/lib/plano-amostragem-publico-types'
 import type { LocalMapaPlano } from '@/lib/eleitorado-locais-pi'
 import type { SetorMapaPlano } from '@/lib/setores-censitarios-pi'
-import type { CamadaMapaPlano } from '@/components/pesquisa/mapa-plano-amostragem'
 import {
   exportarPlanoAmostragemExcel,
   exportarPlanoAmostragemPdf,
@@ -15,68 +14,52 @@ import { PlanoCampoRoteiroSection } from '@/components/pesquisa/plano-campo-rote
 import { PlanoAmostragemComoFuncionaModal } from '@/components/pesquisa/plano-amostragem-como-funciona-modal'
 import { sugerirEntrevistadores } from '@/lib/plano-amostragem-publico'
 import {
-  brandAmberButtonClass,
-  brandAmberIconClass,
-  brandAmberIconWrapClass,
-} from '@/lib/sidebar-brand-styles'
+  fetchMunicipiosPlano,
+  gerarPlanoAmostragem,
+  type MunicipioPlano,
+  type PlanoAmostragemMeta,
+  type TipoPlanoPesquisa,
+} from '@/lib/services/pesquisa-client'
+import {
+  TseCard,
+  TseErro,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseRotuloCampoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
+import { cn } from '@/lib/utils'
 
 const MapaPlanoAmostragem = dynamic(
   () => import('./mapa-plano-amostragem').then((m) => m.MapaPlanoAmostragem),
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[420px] items-center justify-center rounded-lg border border-card bg-background/50 text-sm text-secondary">
+      <div className="flex h-[420px] items-center justify-center rounded-lg bg-[var(--tse-bar)] text-[13px] text-[var(--tse-muted)]">
         Carregando mapa…
       </div>
     ),
   },
 )
 
-type TipoPesquisaForm = 'opiniao' | 'eleitoral'
-
-type MunicipioOption = {
-  municipio: string
-  codigoIbge: string
-  populacao: number
-}
-
-type PlanoResponse = {
-  plano: PlanoAmostragemPublico
-  locais: LocalMapaPlano[]
-  setores: SetorMapaPlano[]
-  meta: {
-    bairrosEncontrados: number
-    fonteBairros: string | null
-    locaisComGeo: number
-    setoresIbge: number
-    fonteSetores: string | null
-    pesoTerritorial: 'populacao_ibge' | 'eleitorado_tse'
-    camadaMapa: CamadaMapaPlano
-    modoSetoresPlano: boolean
-    mapaReferenciaIbge: boolean
-    pesoPorEleitores: boolean
-    eleitoradoUrbanoTse: number
-    eleitoradoRuralTse: number
-    populacaoUrbanaSetor: number
-    populacaoRuralSetor: number
-  }
-}
-
 const OPCOES_N = [
   400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
 ] as const
 
 export function GerarPublicoPesquisaPanel() {
-  const [municipios, setMunicipios] = useState<MunicipioOption[]>([])
+  const [municipios, setMunicipios] = useState<MunicipioPlano[]>([])
   const [municipio, setMunicipio] = useState<string>('')
   const [amostra, setAmostra] = useState<number>(500)
-  const [tipo, setTipo] = useState<TipoPesquisaForm>('opiniao')
+  const [tipo, setTipo] = useState<TipoPlanoPesquisa>('opiniao')
   const [instituto, setInstituto] = useState<string>('')
   const [entrevistadores, setEntrevistadores] = useState<number>(() => sugerirEntrevistadores(500))
   const [plano, setPlano] = useState<PlanoAmostragemPublico | null>(null)
   const [locais, setLocais] = useState<LocalMapaPlano[]>([])
   const [setores, setSetores] = useState<SetorMapaPlano[]>([])
-  const [meta, setMeta] = useState<PlanoResponse['meta'] | null>(null)
+  const [meta, setMeta] = useState<PlanoAmostragemMeta | null>(null)
   const [loadingLista, setLoadingLista] = useState<boolean>(true)
   const [loadingPlano, setLoadingPlano] = useState<boolean>(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -85,26 +68,19 @@ export function GerarPublicoPesquisaPanel() {
 
   useEffect(() => {
     let cancelado = false
-    ;(async () => {
-      setLoadingLista(true)
-      try {
-        const res = await fetch('/api/pesquisa/plano-amostragem?list=municipios')
-        if (!res.ok) throw new Error('Falha ao carregar municípios')
-        const json = (await res.json()) as { municipios: MunicipioOption[] }
-        if (!cancelado) {
-          setMunicipios(json.municipios ?? [])
-          if (json.municipios?.length) {
-            setMunicipio((prev) => prev || json.municipios[0].municipio)
-          }
-        }
-      } catch (e) {
-        if (!cancelado) {
-          setErro(e instanceof Error ? e.message : 'Erro ao carregar municípios')
-        }
-      } finally {
+    setLoadingLista(true)
+    fetchMunicipiosPlano()
+      .then((lista) => {
+        if (cancelado) return
+        setMunicipios(lista)
+        if (lista.length) setMunicipio((prev) => prev || lista[0].municipio)
+      })
+      .catch((e: unknown) => {
+        if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro ao carregar municípios.')
+      })
+      .finally(() => {
         if (!cancelado) setLoadingLista(false)
-      }
-    })()
+      })
     return () => {
       cancelado = true
     }
@@ -131,90 +107,63 @@ export function GerarPublicoPesquisaPanel() {
     setLoadingPlano(true)
     setErro(null)
     try {
-      const params = new URLSearchParams({
-        municipio,
-        n: String(amostra),
-        tipo,
-        entrevistadores: String(entrevistadores),
-      })
-      if (instituto.trim()) params.set('instituto', instituto.trim())
-      const res = await fetch(`/api/pesquisa/plano-amostragem?${params.toString()}`)
-      const json = (await res.json()) as PlanoResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Erro ao gerar plano')
-      setPlano(json.plano)
-      setLocais(json.locais ?? [])
-      setSetores(json.setores ?? [])
-      setMeta(json.meta)
+      const resposta = await gerarPlanoAmostragem({ municipio, amostra, tipo, entrevistadores, instituto })
+      setPlano(resposta.plano)
+      setLocais(resposta.locais)
+      setSetores(resposta.setores)
+      setMeta(resposta.meta)
     } catch (e) {
       setPlano(null)
       setLocais([])
       setSetores([])
       setMeta(null)
-      setErro(e instanceof Error ? e.message : 'Erro ao gerar plano')
+      setErro(e instanceof Error ? e.message : 'Erro ao gerar plano.')
     } finally {
       setLoadingPlano(false)
     }
   }, [amostra, entrevistadores, instituto, municipio, tipo])
 
-  const handleExportXlsx = useCallback(() => {
-    if (!plano) return
-    setExportBusy('xlsx')
-    try {
-      exportarPlanoAmostragemExcel(plano)
-    } finally {
-      setExportBusy('idle')
-    }
-  }, [plano])
-
-  const handleExportPdf = useCallback(() => {
-    if (!plano) return
-    setExportBusy('pdf')
-    try {
-      exportarPlanoAmostragemPdf(plano)
-    } finally {
-      setExportBusy('idle')
-    }
-  }, [plano])
+  const exportar = useCallback(
+    (formato: 'xlsx' | 'pdf') => {
+      if (!plano) return
+      setExportBusy(formato)
+      try {
+        if (formato === 'xlsx') exportarPlanoAmostragemExcel(plano)
+        else exportarPlanoAmostragemPdf(plano)
+      } finally {
+        setExportBusy('idle')
+      }
+    },
+    [plano],
+  )
 
   return (
     <div className="flex flex-col gap-4">
-      <PlanoAmostragemComoFuncionaModal
-        open={comoFuncionaAberto}
-        onClose={() => setComoFuncionaAberto(false)}
-      />
-      <section className="rounded-xl border border-card bg-surface p-4 sm:p-5 shadow-card">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className={brandAmberIconWrapClass}>
-              <Users className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-text-primary">Gerar público para pesquisa</h2>
-              <p className="mt-1 text-sm text-secondary leading-relaxed">
-                Plano metodológico preliminar para o instituto executar no campo: cotas demográficas,
-                blocos urbano/rural e roteiro de equipe. Valide povoados e limites locais antes da coleta.
-              </p>
-            </div>
-          </div>
+      <PlanoAmostragemComoFuncionaModal open={comoFuncionaAberto} onClose={() => setComoFuncionaAberto(false)} />
+
+      <TseCard
+        titulo="Gerar público para pesquisa"
+        subtitulo="Plano metodológico preliminar para o instituto executar no campo: cotas demográficas, blocos urbano/rural e roteiro de equipe. Valide povoados e limites locais antes da coleta."
+        acao={
           <button
             type="button"
             onClick={() => setComoFuncionaAberto(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-card bg-background px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface sm:text-sm"
+            className={cn(tseBotaoCinzaClass, 'shrink-0')}
             title="Entenda como o plano distribui entrevistas por área"
           >
-            <HelpCircle className={`h-4 w-4 ${brandAmberIconClass}`} aria-hidden />
+            <HelpCircle className={tseBotaoIconeClass} aria-hidden />
             Como funciona?
           </button>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-text-muted">Município</span>
+        }
+      >
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Município</span>
             <select
               value={municipio}
               onChange={(e) => setMunicipio(e.target.value)}
               disabled={loadingLista}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+              className={tseCampoClass}
             >
               {municipios.map((m) => (
                 <option key={m.codigoIbge} value={m.municipio}>
@@ -224,13 +173,9 @@ export function GerarPublicoPesquisaPanel() {
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-text-muted">Amostra (N)</span>
-            <select
-              value={amostra}
-              onChange={(e) => setAmostra(Number(e.target.value))}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
-            >
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Amostra (N)</span>
+            <select value={amostra} onChange={(e) => setAmostra(Number(e.target.value))} className={tseCampoClass}>
               {OPCOES_N.map((n) => (
                 <option key={n} value={n}>
                   {n} entrevistas
@@ -239,8 +184,8 @@ export function GerarPublicoPesquisaPanel() {
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-text-muted">Entrevistadores</span>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Entrevistadores</span>
             <input
               type="number"
               min={1}
@@ -248,54 +193,45 @@ export function GerarPublicoPesquisaPanel() {
               value={entrevistadores}
               onChange={(e) => {
                 const n = Number.parseInt(e.target.value, 10)
-                if (Number.isFinite(n)) {
-                  setEntrevistadores(Math.max(1, Math.min(50, n)))
-                }
+                if (Number.isFinite(n)) setEntrevistadores(Math.max(1, Math.min(50, n)))
               }}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+              className={tseCampoClass}
             />
-            <span className="text-[11px] text-secondary">
+            <span className="mt-1 block text-[11px] text-[var(--tse-muted)]">
               ≈ {entrevistasPorEntrevistador} entrevistas/pessoa
             </span>
           </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-text-muted">Tipo</span>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Tipo</span>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoPesquisaForm)}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+              onChange={(e) => setTipo(e.target.value as TipoPlanoPesquisa)}
+              className={tseCampoClass}
             >
               <option value="opiniao">Opinião pública (peso: população IBGE)</option>
               <option value="eleitoral">Eleitoral (peso: eleitorado TSE)</option>
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-text-muted">Instituto (opcional)</span>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Instituto (opcional)</span>
             <input
               type="text"
               value={instituto}
               onChange={(e) => setInstituto(e.target.value)}
               placeholder="Nome do instituto parceiro"
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+              className={tseCampoClass}
             />
           </label>
         </div>
-
-        {municipioSelecionado ? (
-          <p className="mt-3 text-xs text-secondary">
-            IBGE {municipioSelecionado.codigoIbge} · população Censo 2022:{' '}
-            {municipioSelecionado.populacao.toLocaleString('pt-BR')}
-          </p>
-        ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => void gerarPlano()}
             disabled={!municipio || loadingPlano || loadingLista}
-            className={brandAmberButtonClass}
+            className={tseBotaoPrimarioClass}
           >
             {loadingPlano ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -304,60 +240,64 @@ export function GerarPublicoPesquisaPanel() {
             )}
             Gerar plano
           </button>
-
           {plano ? (
             <>
               <button
                 type="button"
-                onClick={handleExportXlsx}
+                onClick={() => exportar('xlsx')}
                 disabled={exportBusy !== 'idle'}
-                className="inline-flex items-center gap-2 rounded-lg border border-card bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-surface"
+                className={tseBotaoCinzaClass}
               >
                 {exportBusy === 'xlsx' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
                 ) : (
-                  <FileSpreadsheet className="h-4 w-4" aria-hidden />
+                  <FileSpreadsheet className={tseBotaoIconeClass} aria-hidden />
                 )}
                 Excel
               </button>
               <button
                 type="button"
-                onClick={handleExportPdf}
+                onClick={() => exportar('pdf')}
                 disabled={exportBusy !== 'idle'}
-                className="inline-flex items-center gap-2 rounded-lg border border-card bg-background px-3 py-2 text-sm font-medium text-text-primary hover:bg-surface"
+                className={tseBotaoCinzaClass}
               >
                 {exportBusy === 'pdf' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
                 ) : (
-                  <Download className="h-4 w-4" aria-hidden />
+                  <Download className={tseBotaoIconeClass} aria-hidden />
                 )}
                 PDF
               </button>
             </>
           ) : null}
+          {municipioSelecionado ? (
+            <span className="text-[12px] text-[var(--tse-muted)] lg:ml-auto">
+              IBGE {municipioSelecionado.codigoIbge} · população Censo 2022:{' '}
+              {municipioSelecionado.populacao.toLocaleString('pt-BR')}
+            </span>
+          ) : null}
         </div>
+      </TseCard>
 
-        {erro ? (
-          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-            {erro}
-          </p>
-        ) : null}
-      </section>
+      {erro ? <TseErro>{erro}</TseErro> : null}
 
       {plano ? (
-        <PlanoPreview
-          plano={plano}
-          meta={meta}
-          locais={locais}
-          setores={setores}
-          municipio={municipio}
-        />
+        <PlanoPreview plano={plano} meta={meta} locais={locais} setores={setores} municipio={municipio} />
       ) : (
-        <section className="rounded-xl border border-dashed border-card bg-background/50 p-6 text-center text-sm text-secondary">
-          Selecione o município e clique em &quot;Gerar plano&quot; para ver cotas, blocos territoriais e
-          sugestão de equipe de campo.
-        </section>
+        <TseVazio>
+          Selecione o município e clique em «Gerar plano» para ver cotas, blocos territoriais e sugestão de equipe
+          de campo.
+        </TseVazio>
       )}
+    </div>
+  )
+}
+
+function ResumoItem({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg bg-[var(--tse-bar)] px-3 py-2">
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</dt>
+      <dd className="mt-0.5 text-[14px] font-bold">{children}</dd>
     </div>
   )
 }
@@ -370,7 +310,7 @@ function PlanoPreview({
   municipio,
 }: {
   plano: PlanoAmostragemPublico
-  meta: PlanoResponse['meta'] | null
+  meta: PlanoAmostragemMeta | null
   locais: LocalMapaPlano[]
   setores: SetorMapaPlano[]
   municipio: string
@@ -380,12 +320,12 @@ function PlanoPreview({
   return (
     <div className="flex flex-col gap-4" id="plano-amostragem-preview">
       {plano.avisos.length > 0 ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-600/70 dark:bg-amber-950/70">
-          <div className="mb-2 flex items-center gap-2 text-amber-950 dark:text-amber-50">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-            <span className="text-sm font-semibold">Avisos metodológicos</span>
+        <div className="rounded-xl bg-[var(--tse-yellow-soft)] p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--tse-gold-text)]" aria-hidden />
+            <span className="text-[13px] font-bold">Avisos metodológicos</span>
           </div>
-          <ul className="list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-amber-950 dark:text-amber-100">
+          <ul className="list-disc space-y-1.5 pl-5 text-[12px] leading-relaxed">
             {plano.avisos.map((a, i) => (
               <li key={i}>{a}</li>
             ))}
@@ -393,111 +333,81 @@ function PlanoPreview({
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-card bg-surface p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-text-primary">Resumo</h3>
-        <p className="mt-2 text-sm text-secondary leading-relaxed">{plano.metodologiaResumo}</p>
-        <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
-          <div>
-            <dt className="text-xs text-text-muted">Território</dt>
-            <dd className="font-medium text-text-primary">{plano.territorio ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">Eleitorado</dt>
-            <dd className="font-medium text-text-primary">
-              {plano.eleitorado?.toLocaleString('pt-BR') ?? '—'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">Urbano / rural</dt>
-            <dd className="font-medium text-text-primary">
-              {plano.taxaUrbanaPct}% / {plano.taxaRuralPct}% (município)
-              <span className="mt-0.5 block text-xs font-normal text-secondary">
-                Meta amostra: {plano.amostraUrbana} urb. + {plano.amostraRural} rur. = {plano.amostraTotal}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">Peso territorial</dt>
-            <dd className="font-medium text-text-primary">
-              {meta?.pesoTerritorial === 'eleitorado_tse'
-                ? 'Eleitorado TSE'
-                : 'População IBGE'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">Entrevistadores</dt>
-            <dd className="font-medium text-text-primary">
-              {plano.entrevistadoresPrevistos} pessoas
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">
-              {meta?.modoSetoresPlano ? 'Blocos (setores)' : 'Blocos (TSE)'}
-            </dt>
-            <dd className="font-medium text-text-primary">
-              {meta?.modoSetoresPlano
-                ? `${meta.setoresIbge ?? 0} setores`
-                : `${meta?.bairrosEncontrados ?? 0} bairros/recortes`}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-text-muted">Mapa</dt>
-            <dd className="font-medium text-text-primary">
-              {meta?.camadaMapa === 'hibrido'
-                ? 'IBGE ref. + TSE'
-                : meta?.camadaMapa === 'setores_ibge'
-                  ? 'Setores IBGE'
-                  : 'Locais TSE'}
-            </dd>
-          </div>
+      <TseCard titulo="Resumo" subtitulo={plano.metodologiaResumo}>
+        <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+          <ResumoItem rotulo="Território">{plano.territorio ?? '—'}</ResumoItem>
+          <ResumoItem rotulo="Eleitorado">{plano.eleitorado?.toLocaleString('pt-BR') ?? '—'}</ResumoItem>
+          <ResumoItem rotulo="Urbano / rural">
+            {plano.taxaUrbanaPct}% / {plano.taxaRuralPct}%
+            <span className="mt-0.5 block text-[11px] font-normal text-[var(--tse-muted)]">
+              Meta: {plano.amostraUrbana} urb. + {plano.amostraRural} rur. = {plano.amostraTotal}
+            </span>
+          </ResumoItem>
+          <ResumoItem rotulo="Peso territorial">
+            {meta?.pesoTerritorial === 'eleitorado_tse' ? 'Eleitorado TSE' : 'População IBGE'}
+          </ResumoItem>
+          <ResumoItem rotulo="Entrevistadores">{plano.entrevistadoresPrevistos} pessoas</ResumoItem>
+          <ResumoItem rotulo={meta?.modoSetoresPlano ? 'Blocos (setores)' : 'Blocos (TSE)'}>
+            {meta?.modoSetoresPlano
+              ? `${meta.setoresIbge ?? 0} setores`
+              : `${meta?.bairrosEncontrados ?? 0} bairros/recortes`}
+          </ResumoItem>
+          <ResumoItem rotulo="Mapa">
+            {meta?.camadaMapa === 'hibrido'
+              ? 'IBGE ref. + TSE'
+              : meta?.camadaMapa === 'setores_ibge'
+                ? 'Setores IBGE'
+                : 'Locais TSE'}
+          </ResumoItem>
         </dl>
-      </section>
+      </TseCard>
 
       {setores.length > 0 || locais.length > 0 ? (
-        <section className="rounded-xl border border-card bg-surface p-4 sm:p-5">
-          <h3 className="mb-3 text-sm font-semibold text-text-primary">Mapa territorial</h3>
-          <MapaPlanoAmostragem
-            municipio={municipio}
-            locais={locais}
-            setores={setores}
-            blocos={plano.divisaoTerritorial}
-            camadaMapa={meta?.camadaMapa ?? 'locais_tse'}
-          />
-        </section>
+        <TseCard titulo="Mapa territorial">
+          <div className="mt-3">
+            <MapaPlanoAmostragem
+              municipio={municipio}
+              locais={locais}
+              setores={setores}
+              blocos={plano.divisaoTerritorial}
+              camadaMapa={meta?.camadaMapa ?? 'locais_tse'}
+            />
+          </div>
+        </TseCard>
       ) : null}
 
-      <section className="rounded-xl border border-card bg-surface p-4 sm:p-5 overflow-x-auto">
-        <h3 className="mb-3 text-sm font-semibold text-text-primary">
-          Divisão territorial ({totalBlocos} entrevistas)
-        </h3>
-        <table className="w-full min-w-[600px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-card text-xs uppercase tracking-wide text-text-muted">
-              <th className="py-2 pr-3 font-semibold">Bloco</th>
-              <th className="py-2 pr-3 font-semibold">Tipo</th>
-              <th className="py-2 pr-3 font-semibold text-right">N</th>
-              <th className="py-2 pr-3 font-semibold text-right">% no estrato</th>
-              <th className="py-2 font-semibold text-right">% da amostra</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plano.divisaoTerritorial.map((b) => (
-              <tr key={b.id} className="border-b border-card/60">
-                <td className="py-2 pr-3 text-text-primary">
-                  {b.nome}
-                  {b.notas ? (
-                    <p className="mt-0.5 text-[11px] text-secondary">{b.notas}</p>
-                  ) : null}
-                </td>
-                <td className="py-2 pr-3 capitalize text-secondary">{b.tipo}</td>
-                <td className="py-2 pr-3 text-right font-medium">{b.entrevistas}</td>
-                <td className="py-2 pr-3 text-right text-secondary">{b.pesoPct}%</td>
-                <td className="py-2 text-right text-secondary">{b.pctAmostra}%</td>
+      <div>
+        <h3 className="mb-2 text-[15px] font-bold">Divisão territorial ({totalBlocos} entrevistas)</h3>
+        <div className={tseTabela.container}>
+          <table className={cn(tseTabela.table, 'min-w-[600px]')} data-tse-tabela>
+            <thead className={tseTabela.thead}>
+              <tr>
+                <th className={tseTabela.th}>Bloco</th>
+                <th className={tseTabela.th}>Tipo</th>
+                <th className={cn(tseTabela.th, 'text-right')}>N</th>
+                <th className={cn(tseTabela.th, 'text-right')}>% no estrato</th>
+                <th className={cn(tseTabela.th, 'text-right')}>% da amostra</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {plano.divisaoTerritorial.map((b) => (
+                <tr key={b.id} className={tseTabela.tr}>
+                  <td className={tseTabela.td}>
+                    <span className="font-semibold">{b.nome}</span>
+                    {b.notas ? <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">{b.notas}</p> : null}
+                  </td>
+                  <td className={cn(tseTabela.td, 'capitalize text-[var(--tse-muted)]')}>{b.tipo}</td>
+                  <td className={cn(tseTabela.td, 'text-right font-bold tabular-nums')}>{b.entrevistas}</td>
+                  <td className={cn(tseTabela.td, 'text-right tabular-nums text-[var(--tse-muted)]')}>{b.pesoPct}%</td>
+                  <td className={cn(tseTabela.td, 'text-right tabular-nums text-[var(--tse-muted)]')}>
+                    {b.pctAmostra}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <CotaTable titulo="Sexo" cotas={plano.cotasSexo} />
@@ -505,27 +415,29 @@ function PlanoPreview({
         <CotaTable titulo="Horário" cotas={plano.cotasHorario} />
       </div>
 
-      <section className="rounded-xl border border-card bg-surface p-4 sm:p-5 overflow-x-auto">
-        <h3 className="mb-3 text-sm font-semibold text-text-primary">Equipe de campo sugerida</h3>
-        <table className="w-full min-w-[480px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-card text-xs uppercase tracking-wide text-text-muted">
-              <th className="py-2 pr-3 font-semibold">#</th>
-              <th className="py-2 pr-3 font-semibold text-right">Entrevistas</th>
-              <th className="py-2 font-semibold">Blocos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plano.equipeCampo.map((e) => (
-              <tr key={e.entrevistador} className="border-b border-card/60">
-                <td className="py-2 pr-3">{e.entrevistador}</td>
-                <td className="py-2 pr-3 text-right font-medium">{e.entrevistas}</td>
-                <td className="py-2 text-secondary text-xs">{e.blocosSugeridos}</td>
+      <div>
+        <h3 className="mb-2 text-[15px] font-bold">Equipe de campo sugerida</h3>
+        <div className={tseTabela.container}>
+          <table className={cn(tseTabela.table, 'min-w-[480px]')} data-tse-tabela>
+            <thead className={tseTabela.thead}>
+              <tr>
+                <th className={tseTabela.th}>#</th>
+                <th className={cn(tseTabela.th, 'text-right')}>Entrevistas</th>
+                <th className={tseTabela.th}>Blocos</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {plano.equipeCampo.map((e) => (
+                <tr key={e.entrevistador} className={tseTabela.tr}>
+                  <td className={cn(tseTabela.td, 'font-semibold')}>{e.entrevistador}</td>
+                  <td className={cn(tseTabela.td, 'text-right font-bold tabular-nums')}>{e.entrevistas}</td>
+                  <td className={cn(tseTabela.td, 'text-[12px] text-[var(--tse-muted)]')}>{e.blocosSugeridos}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <PlanoCampoRoteiroSection
         plano={plano}
@@ -534,48 +446,46 @@ function PlanoPreview({
         usarSetoresIbge={meta?.modoSetoresPlano ?? false}
       />
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <ListaRegras titulo="Regras de campo" itens={plano.regrasCampo} />
         <ListaRegras titulo="Elegibilidade" itens={plano.regrasSorteio} />
         <ListaRegras titulo="Auditoria" itens={plano.auditoria} />
-      </section>
+      </div>
     </div>
   )
 }
 
-function CotaTable({
-  titulo,
-  cotas,
-}: {
-  titulo: string
-  cotas: PlanoAmostragemPublico['cotasSexo']
-}) {
+function CotaTable({ titulo, cotas }: { titulo: string; cotas: PlanoAmostragemPublico['cotasSexo'] }) {
+  const max = Math.max(1, ...cotas.map((c) => c.pct))
   return (
-    <section className="rounded-xl border border-card bg-surface p-4">
-      <h3 className="mb-2 text-sm font-semibold text-text-primary">Cotas — {titulo}</h3>
-      <ul className="space-y-1.5 text-sm">
+    <TseCard titulo={`Cotas — ${titulo}`}>
+      <ul className="mt-3 space-y-2 text-[13px]">
         {cotas.map((c) => (
-          <li key={c.perfil} className="flex justify-between gap-2">
-            <span className="text-secondary">{c.perfil}</span>
-            <span className="font-medium text-text-primary">
-              {c.meta} <span className="text-xs text-text-muted">({c.pct}%)</span>
-            </span>
+          <li key={c.perfil}>
+            <div className="flex justify-between gap-2">
+              <span>{c.perfil}</span>
+              <span className="font-bold tabular-nums">
+                {c.meta} <span className="text-[11px] font-normal text-[var(--tse-muted)]">({c.pct}%)</span>
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#EEEEEE]">
+              <div className="h-full rounded-full bg-[var(--tse-green)]" style={{ width: `${(c.pct / max) * 100}%` }} />
+            </div>
           </li>
         ))}
       </ul>
-    </section>
+    </TseCard>
   )
 }
 
 function ListaRegras({ titulo, itens }: { titulo: string; itens: string[] }) {
   return (
-    <section className="rounded-xl border border-card bg-surface p-4">
-      <h3 className="mb-2 text-sm font-semibold text-text-primary">{titulo}</h3>
-      <ol className="list-decimal space-y-1.5 pl-4 text-xs text-secondary leading-relaxed">
+    <TseCard titulo={titulo}>
+      <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-[12px] leading-relaxed text-[var(--tse-muted)]">
         {itens.map((item, i) => (
           <li key={i}>{item}</li>
         ))}
       </ol>
-    </section>
+    </TseCard>
   )
 }

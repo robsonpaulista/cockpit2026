@@ -1,0 +1,261 @@
+/**
+ * Sidebar e header das páginas — padrão do portal de resultados do TSE: topo amarelo com texto
+ * branco (zona da logo + header), corpo da sidebar branco, item ativo em amarelo-claro.
+ * Ancorado em #cockpit-sidebar / #cockpit-topbar para prevalecer sobre os temas legados com !important
+ * (obsidian glass, war-room-clean, ipt, home-glass), que usam só classes/atributos.
+ */
+
+/* Preenchimento do topo (zona da logo + header) */
+:root {
+  --cockpit-top-h: 52px;
+  --cockpit-top-bg: #ebb402;
+  --cockpit-top-line: #d9a502;
+  --cockpit-top-x: #333333;
+}
+
+#cockpit-sidebar {
+  --sb-bg: #ffffff;
+  --sb-yellow: #ebb402;
+  --sb-gold-text: #b8960b;
+  --sb-hover: #f4f4f2;
+  --sb-active-bg: #fff8d6;
+  --sb-active-text: #333333;
+  --sb-text: #333333;
+  --sb-muted: #717171;
+  --sb-line: #e6e6e3;
+
+  background: var(--sb-bg) !important;
+  background-image: none !important;
+  color: var(--sb-text) !important;
+  border-right: 1px solid var(--sb-line) !important;
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#cockpit-sidebar > div,
+#cockpit-sidebar > div > div {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+#cockpit-sidebar :is(.border-t, .border-b, .border-r, nav hr):not(.user-menu-dropdown *) {
+  border-color: var(--sb-line) !important;
+}
+
+#cockpit-sidebar :is(.bg-white\/10, .bg-white\/\[0\.08\]):not(a, button) {
+  background-color: var(--sb-line) !important;
+}
+
+/* Texto */
+#cockpit-sidebar [class*='text-white']:not(.user-menu-dropdown *, .bg-status-danger) {
+  color: inherit !important;
+}
+
+#cockpit-sidebar :is([class*='tracking-[0.18em]'], .uppercase.tracking-\[0\.18em\]) {
+  color: var(--sb-muted) !important;
+}
+
+/* Logomarca fora do topo (ex.: sidebar recolhida): COCKPIT grafite + X amarelo */
+#cockpit-sidebar [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+  color: var(--sb-text) !important;
+}
+
+#cockpit-sidebar [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+  color: var(--sb-yellow) !important;
+  text-shadow: none !important;
+}
+
+#cockpit-sidebar [data-brand-wordmark='cockpit-x'] > span + span {
+  color: var(--sb-muted) !important;
+}
+
+/* Itens de navegação */
+#cockpit-sidebar :is(a, button):not(.user-menu-dropdown *) {
+  color: var(--sb-text) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  font-weight: 500;
+}
+
+#cockpit-sidebar :is(a, button):not(.user-menu-dropdown *):hover {
+  color: var(--sb-text) !important;
+  background: var(--sb-hover) !important;
+}
+
+#cockpit-sidebar :is(a, button):not(.user-menu-dropdown *) :is(span, p):not(.bg-status-danger) {
+  color: inherit !important;
+}
+
+#cockpit-sidebar :is(svg, .cockpit-icon):not(.user-menu-dropdown *) {
+  color: var(--sb-muted) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+#cockpit-sidebar :is(a, button):not(.user-menu-dropdown *):hover :is(svg, .cockpit-icon) {
+  color: var(--sb-gold-text) !important;
+}
+
+/* Ativo: fundo amarelo-claro + barra amarela à esquerda */
+#cockpit-sidebar :is(a[aria-current='page'], button[data-active='true']):not(.user-menu-dropdown *),
+#cockpit-sidebar :is(a[aria-current='page'], button[data-active='true']):not(.user-menu-dropdown *):hover {
+  background: var(--sb-active-bg) !important;
+  color: var(--sb-active-text) !important;
+  border-color: transparent !important;
+  border-left: 3px solid var(--sb-yellow) !important;
+  font-weight: 700 !important;
+}
+
+#cockpit-sidebar :is(a[aria-current='page'], button[data-active='true']) :is(svg, .cockpit-icon) {
+  color: var(--sb-gold-text) !important;
+}
+
+/* Foco */
+#cockpit-sidebar :focus-visible {
+  --tw-ring-color: rgba(235, 180, 2, 0.45) !important;
+  --tw-ring-offset-color: #ffffff !important;
+}
+
+/* Avatar do rodapé */
+#cockpit-sidebar .user-avatar-patch,
+#cockpit-sidebar .user-avatar-patch * {
+  background-color: var(--sb-yellow) !important;
+  color: #ffffff !important;
+}
+
+/* Topo da sidebar (logo): faixa contínua com o header */
+#cockpit-sidebar [data-sidebar-brand-zone] {
+  background: var(--cockpit-top-bg) !important;
+  background-image: none !important;
+  border-bottom: 1px solid var(--cockpit-top-line) !important;
+}
+
+/* Mesma altura do header (`#cockpit-topbar > div`); recolhida, só a faixa do logo */
+#cockpit-sidebar [data-sidebar-brand-zone='expanded'],
+#cockpit-sidebar [data-sidebar-brand-zone='collapsed'] > :first-child {
+  box-sizing: border-box !important;
+  height: var(--cockpit-top-h) !important;
+  min-height: var(--cockpit-top-h) !important;
+  max-height: var(--cockpit-top-h) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+  color: #ffffff !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+  color: var(--cockpit-top-x) !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] > span + span {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] button,
+#cockpit-sidebar [data-sidebar-brand-zone] :is(svg, .cockpit-icon) {
+  color: #ffffff !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone] button:hover :is(svg, .cockpit-icon) {
+  color: #ffffff !important;
+}
+
+/* Tooltip da sidebar recolhida */
+body .sidebar-nav-tooltip {
+  background: #ffffff !important;
+  color: #333333 !important;
+  border: 1px solid #dddddd !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Header das páginas — continua o topo da sidebar, texto branco */
+#cockpit-topbar {
+  background: var(--cockpit-top-bg) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid var(--cockpit-top-line) !important;
+  box-shadow: none !important;
+}
+
+/* Altura no próprio header: war-room-clean.css fixa `header.sticky` em 4rem */
+#cockpit-topbar {
+  box-sizing: border-box !important;
+  height: var(--cockpit-top-h) !important;
+  min-height: var(--cockpit-top-h) !important;
+  max-height: var(--cockpit-top-h) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#cockpit-topbar > div {
+  box-sizing: border-box !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+/* Mesma tipografia da logomarca da sidebar (Michroma tem peso único: 400) */
+#cockpit-topbar :is(.wr-topbar-clean__title, h1) {
+  font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+#cockpit-topbar .wr-topbar-clean__title,
+#cockpit-topbar h1 {
+  color: #ffffff !important;
+}
+
+#cockpit-topbar :is(.wr-topbar-clean__sep, .text-border-card\/70) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+#cockpit-topbar [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+  color: #ffffff !important;
+}
+
+#cockpit-topbar [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+  color: var(--cockpit-top-x) !important;
+  text-shadow: none !important;
+}
+
+#cockpit-topbar button[aria-haspopup='menu'] :is(p, span, svg) {
+  color: #ffffff !important;
+}
+
+#cockpit-topbar button[aria-haspopup='menu']:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Avatar no header: invertido para não sumir no fundo do topo */
+#cockpit-topbar button[aria-haspopup='menu'] .user-avatar-patch,
+#cockpit-topbar button[aria-haspopup='menu'] .user-avatar-patch :is(p, span, svg) {
+  background-color: #ffffff !important;
+  color: var(--cockpit-top-x) !important;
+}
+
+/* Botão do menu no mobile */
+#cockpit-sidebar-toggle {
+  background: #ffffff !important;
+  border: 1px solid #dddddd !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+#cockpit-sidebar-toggle svg {
+  color: #333333 !important;
+}

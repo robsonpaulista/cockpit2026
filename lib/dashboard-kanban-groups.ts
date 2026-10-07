@@ -16,7 +16,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'eleicoes',
     label: 'Eleições',
-    itemIds: ['chapas', 'chapas-estaduais', 'pesquisa', 'resumo-eleicoes-secao'],
+    itemIds: ['resultado-2026', 'chapas', 'chapas-estaduais', 'pesquisa', 'resumo-eleicoes-secao'],
   },
   {
     id: 'atendimentos',

@@ -2,8 +2,15 @@
 
 import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronUp, Loader2, MapPin, X, ArrowUpRight } from 'lucide-react'
+import { MapPin, X, ArrowUpRight } from 'lucide-react'
 import { TabelaMatrizVotacaoSecao } from '@/components/tabela-matriz-votacao-secao'
+import {
+  TseCarregando,
+  TseVazio,
+  tseCampoClass,
+  tseLinkAcaoClass,
+  tseRotuloCampoClass,
+} from '@/components/tse/tse-ui'
 import { SeletorCandidatoComBusca } from '@/components/seletor-candidato-com-busca'
 import type { DistribuicaoCandidatoBweb } from '@/lib/candidato-distribuicao-bweb'
 import { chaveMatchFromResumo, encontrarIdCandidatoMatriz, resumoTemVotacaoSecao } from '@/lib/candidato-votacao-secao-match'
@@ -45,7 +52,7 @@ import {
   type AtendimentoMetaTerritorioMap,
 } from '@/lib/atendimento-meta-territorio'
 import {
-  resumoEleicoesHubHref,
+  resumoEleicoesHref,
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
 
@@ -82,7 +89,7 @@ function urlSecaoCandidato(
   }
 
   if (distribuicao.chave.dsCargo === CARGO_VEREADOR) {
-    return resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
+    return resumoEleicoesHref(RESUMO_ELEICOES_TAB_SECAO, {
       ...base,
       anos: ANOS_COMPARACAO_VEREADOR_TRIPLA.join(','),
       modo: 'comparar',
@@ -90,7 +97,7 @@ function urlSecaoCandidato(
     })
   }
 
-  return resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, base)
+  return resumoEleicoesHref(RESUMO_ELEICOES_TAB_SECAO, base)
 }
 
 type Props = {
@@ -137,8 +144,8 @@ export function BotaoNomeCandidatoDistribuicao({
       className={cn(
         'group inline-flex max-w-full items-baseline text-left',
         ativo
-          ? 'font-semibold text-accent-gold underline decoration-accent-gold/60'
-          : 'hover:underline',
+          ? 'font-bold text-[var(--tse-olive)] underline decoration-[var(--tse-yellow)] decoration-2 underline-offset-2'
+          : 'hover:text-[var(--tse-olive)] hover:underline',
       )}
       title={
         ativo
@@ -522,111 +529,92 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
     return (
       <section
         ref={ref}
-        className="mt-4 scroll-mt-4 rounded-2xl border border-accent-gold/35 bg-surface shadow-card"
+        className="mt-4 scroll-mt-4 rounded-2xl bg-white shadow-sm"
         aria-label="Votação por seção do candidato"
       >
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-card px-4 py-3">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EEEEEE] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-text-secondary">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
               Votação por seção
               {compararComReferentes && (jadyelNome || depEstadualSelecionado) ? ' · comparativo' : ''}
             </p>
-            <h2 className="truncate text-base font-semibold text-text-primary">
+            <h2 className="truncate text-[17px] font-bold">
               {nomeCandidatoResumoExibicao(candidato.nomeUrnaCandidato, candidato.numeroUrna)}
             </h2>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-secondary">
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[var(--tse-muted)]">
               <span>
                 {chave?.dsCargo ?? candidato.cargo} · {chave?.ano ?? candidato.anoEleicao}
               </span>
-              <span className="font-mono">nº {candidato.numeroUrna}</span>
+              <span className="tabular-nums">nº {candidato.numeroUrna}</span>
               <span className="inline-flex items-center gap-0.5">
-                <MapPin className="h-3 w-3" />
+                <MapPin className="h-3 w-3 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" />
                 {municipioResolvido}
               </span>
             </p>
             {(jadyelNome || depEstadualSelecionado) && compararComReferentes && (
-              <p className="mt-1 text-[11px] text-text-secondary">
+              <p className="mt-1 text-[11px] text-[var(--tse-muted)]">
                 Comparando com{' '}
                 {jadyelNome ? (
                   <>
-                    <strong className="text-text-primary">{jadyelNome}</strong> (Dep. Federal 2022)
+                    <strong className="text-[var(--tse-text)]">{jadyelNome}</strong> (Dep. Federal 2022)
                   </>
                 ) : null}
                 {jadyelNome && depEstadualSelecionado ? ' · ' : null}
                 {depEstadualSelecionado ? (
                   <>
-                    <strong className="text-text-primary">{depEstadualSelecionado.nmVotavel}</strong>{' '}
+                    <strong className="text-[var(--tse-text)]">{depEstadualSelecionado.nmVotavel}</strong>{' '}
                     (Dep. Estadual 2022)
                   </>
                 ) : null}
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
             {!loading && distribuicao?.encontrado && (
-              <Link
-                href={urlSecaoCandidato(municipioResolvido, distribuicao)}
-                className="inline-flex items-center gap-1 rounded border border-card bg-background px-2.5 py-1.5 text-[11px] text-text-primary hover:bg-surface"
-              >
+              <Link href={urlSecaoCandidato(municipioResolvido, distribuicao)} className={tseLinkAcaoClass}>
                 Página completa
-                <ArrowUpRight className="h-3.5 w-3.5" />
+                <ArrowUpRight className="ml-0.5 inline h-3.5 w-3.5" />
               </Link>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1 rounded border border-card bg-background px-2.5 py-1.5 text-[11px] text-text-secondary hover:bg-surface hover:text-text-primary"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-              Ocultar
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-card p-1.5 text-text-secondary hover:bg-background"
+              className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
               aria-label="Fechar painel"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </header>
 
-        <div className="px-4 py-3">
+        <div className="px-5 py-4">
           {loading && (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {compararComReferentes
-                ? 'Carregando comparação com Jadyel e dep. estadual da liderança…'
-                : 'Carregando matriz por seção…'}
-            </div>
+            <TseCarregando
+              className="min-h-[160px]"
+              texto={
+                compararComReferentes
+                  ? 'Carregando comparação com Jadyel e dep. estadual da liderança…'
+                  : 'Carregando matriz por seção…'
+              }
+            />
           )}
 
-          {!loading && error && (
-            <p className="rounded-lg border border-dashed border-card bg-background/60 px-3 py-4 text-sm text-text-secondary">
-              {error}
-            </p>
-          )}
+          {!loading && error && <TseVazio>{error}</TseVazio>}
 
           {!loading && !error && distribuicao && (
             <>
-              <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="mb-3 grid grid-cols-2 gap-x-5 gap-y-3 rounded-xl bg-[var(--tse-bar)] px-4 py-3 sm:grid-cols-5">
                 <StatBox rotulo="Resumo (planilha)" valor={formatVotos(votosResumo)} />
                 <StatBox rotulo="Bweb (seções)" valor={formatVotos(distribuicao.totalVotos)} />
-                <StatBox
-                  rotulo="Seções c/ voto"
-                  valor={String(distribuicao.totalSecoesComVoto)}
-                />
-                <StatBox
-                  rotulo="Seções no município"
-                  valor={String(totalSecoes || matriz?.linhas.length || 0)}
-                />
+                <StatBox rotulo="Seções c/ voto" valor={String(distribuicao.totalSecoesComVoto)} />
+                <StatBox rotulo="Seções no município" valor={String(totalSecoes || matriz?.linhas.length || 0)} />
                 <StatBox rotulo="Bairros" valor={String(distribuicao.bairros.length)} />
               </div>
 
               {distribuicao.diferencaResumo != null && distribuicao.diferencaResumo !== 0 && (
-                <p className="mb-3 rounded-lg border border-card bg-background/70 px-2 py-1.5 text-[11px] text-text-secondary">
+                <p className="mb-3 text-[11px] text-[var(--tse-muted)]">
                   Diferença resumo × bweb:{' '}
-                  <strong className="text-text-primary">
+                  <strong className="text-[var(--tse-text)]">
                     {distribuicao.diferencaResumo > 0 ? '+' : ''}
                     {formatVotos(distribuicao.diferencaResumo)}
                   </strong>{' '}
@@ -635,138 +623,131 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
               )}
 
               {!distribuicao.encontrado && (
-                <p className="mb-3 rounded-lg border border-dashed border-card bg-background/60 px-3 py-4 text-sm text-text-secondary">
-                  Nenhum voto encontrado na base por seção para nº {candidato.numeroUrna} em{' '}
-                  {municipioResolvido}.
-                </p>
-              )}
-
-              {compararComReferentes && liderancasDetalhe.length > 0 && (
-                <div className="mb-3 rounded-lg border border-card bg-background/60 px-3 py-2.5">
-                  <label
-                    htmlFor="lideranca-expectativa-comparativo"
-                    className="mb-1.5 block text-[11px] font-medium text-text-secondary"
-                  >
-                    Liderança ({labelExpectativa})
-                  </label>
-                  <select
-                    id="lideranca-expectativa-comparativo"
-                    value={liderancaSelecionadaKey}
-                    onChange={(e) => setLiderancaSelecionadaKey(e.target.value)}
-                    className="h-9 w-full max-w-xl rounded-lg border border-card bg-surface px-2.5 text-xs text-text-primary"
-                  >
-                    <option value="">Sem coluna de expectativa</option>
-                    {liderancasDetalhe.map((l) => {
-                      const key = chaveLideranca(l)
-                      const votos = expectativaVotosLideranca(l, cenarioVotos)
-                      return (
-                        <option key={key} value={key}>
-                          {l.nome} — {votos.toLocaleString('pt-BR')} votos ({labelExpectativa})
-                        </option>
-                      )
-                    })}
-                  </select>
-                  {liderancaSelecionada && vereadorId && expectativaResult.totalMapaEleitoral > 0 && (
-                    <p className="mt-1.5 text-[10px] text-text-secondary">
-                      Coluna <strong className="text-text-primary">Exp. 2026</strong> projeta o
-                      território pelas urnas de 2024 do vereador
-                      {depEstadualSelecionadoId ? (
-                        <span>
-                          {' '}
-                          (com ajuste onde vereador × dep. estadual divergem no bairro)
-                        </span>
-                      ) : null}
-                      . Total do mapa:{' '}
-                      <strong className="text-text-primary">
-                        {expectativaResult.totalMapaEleitoral.toLocaleString('pt-BR')} votos
-                      </strong>
-                      {expectativaResult.totalReferenciaPlanilha > 0 ? (
-                        <span>
-                          {' '}
-                          · referência na planilha:{' '}
-                          <strong className="text-text-primary">
-                            {expectativaResult.totalReferenciaPlanilha.toLocaleString('pt-BR')}
-                          </strong>
-                          {expectativaResult.totalMapaEleitoral !==
-                          expectativaResult.totalReferenciaPlanilha ? (
-                            <span>
-                              {' '}
-                              (diferença:{' '}
-                              {expectativaResult.totalMapaEleitoral -
-                                expectativaResult.totalReferenciaPlanilha >
-                              0
-                                ? '+'
-                                : ''}
-                              {(
-                                expectativaResult.totalMapaEleitoral -
-                                expectativaResult.totalReferenciaPlanilha
-                              ).toLocaleString('pt-BR')}
-                              )
-                            </span>
-                          ) : null}
-                        </span>
-                      ) : null}
-                      {' '}
-                      · clique no valor Exp. 2026 para ver como chegamos no número
-                      {liderancaMatchInicial &&
-                      chaveLideranca(liderancaMatchInicial) !== liderancaSelecionadaKey ? (
-                        <span> · substituída manualmente</span>
-                      ) : liderancaMatchInicial ? (
-                        <span> · match automático (Marcar)</span>
-                      ) : null}
-                    </p>
-                  )}
+                <div className="mb-3">
+                  <TseVazio>
+                    Nenhum voto encontrado na base por seção para nº {candidato.numeroUrna} em {municipioResolvido}.
+                  </TseVazio>
                 </div>
               )}
 
-              {compararComReferentes && depEstaduaisOpcoes.length > 0 && (
-                <div className="mb-3 rounded-lg border border-card bg-background/60 px-3 py-2.5">
-                  <SeletorCandidatoComBusca
-                    id="dep-estadual-comparativo"
-                    label="Dep. Estadual 2022 (comparativo)"
-                    value={depEstadualSelecionadoId}
-                    onChange={setDepEstadualSelecionadoId}
-                    opcoes={depEstaduaisOpcoes}
-                    emptyOption={{
-                      id: '',
-                      label: 'Nenhum (só vereador e Jadyel)',
-                    }}
-                    placeholderBusca="Buscar dep. estadual por nome ou número…"
-                  />
-                  {nomeDepEstadualPlanilha && (
-                    <p className="mt-1.5 text-[10px] text-text-secondary">
-                      Planilha (liderança):{' '}
-                      <span className="text-text-primary">{nomeDepEstadualPlanilha}</span>
-                      {depPlanilhaNaoEncontrado ? (
-                        <span className="text-status-warning"> — não encontrado; escolha na lista</span>
-                      ) : depEstadualSelecionado &&
-                        depPlanilhaMatch &&
-                        depEstadualSelecionado.id !== depPlanilhaMatch.id ? (
-                        <span> — substituído manualmente</span>
-                      ) : null}
-                    </p>
+              {compararComReferentes && (liderancasDetalhe.length > 0 || depEstaduaisOpcoes.length > 0) && (
+                <div className="mb-3 grid gap-3 lg:grid-cols-2">
+                  {liderancasDetalhe.length > 0 && (
+                    <div className="min-w-0">
+                      <label htmlFor="lideranca-expectativa-comparativo" className={tseRotuloCampoClass}>
+                        Liderança ({labelExpectativa})
+                      </label>
+                      <select
+                        id="lideranca-expectativa-comparativo"
+                        value={liderancaSelecionadaKey}
+                        onChange={(e) => setLiderancaSelecionadaKey(e.target.value)}
+                        className={tseCampoClass}
+                      >
+                        <option value="">Sem coluna de expectativa</option>
+                        {liderancasDetalhe.map((l) => {
+                          const key = chaveLideranca(l)
+                          const votos = expectativaVotosLideranca(l, cenarioVotos)
+                          return (
+                            <option key={key} value={key}>
+                              {l.nome} — {votos.toLocaleString('pt-BR')} votos ({labelExpectativa})
+                            </option>
+                          )
+                        })}
+                      </select>
+                      {liderancaSelecionada && vereadorId && expectativaResult.totalMapaEleitoral > 0 && (
+                        <p className="mt-1.5 text-[10px] text-[var(--tse-muted)]">
+                          Coluna <strong className="text-[var(--tse-text)]">Exp. 2026</strong> projeta o território
+                          pelas urnas de 2024 do vereador
+                          {depEstadualSelecionadoId ? (
+                            <span> (com ajuste onde vereador × dep. estadual divergem no bairro)</span>
+                          ) : null}
+                          . Total do mapa:{' '}
+                          <strong className="text-[var(--tse-text)]">
+                            {expectativaResult.totalMapaEleitoral.toLocaleString('pt-BR')} votos
+                          </strong>
+                          {expectativaResult.totalReferenciaPlanilha > 0 ? (
+                            <span>
+                              {' '}
+                              · referência na planilha:{' '}
+                              <strong className="text-[var(--tse-text)]">
+                                {expectativaResult.totalReferenciaPlanilha.toLocaleString('pt-BR')}
+                              </strong>
+                              {expectativaResult.totalMapaEleitoral !== expectativaResult.totalReferenciaPlanilha ? (
+                                <span>
+                                  {' '}
+                                  (diferença:{' '}
+                                  {expectativaResult.totalMapaEleitoral - expectativaResult.totalReferenciaPlanilha > 0
+                                    ? '+'
+                                    : ''}
+                                  {(
+                                    expectativaResult.totalMapaEleitoral - expectativaResult.totalReferenciaPlanilha
+                                  ).toLocaleString('pt-BR')}
+                                  )
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : null}{' '}
+                          · clique no valor Exp. 2026 para ver como chegamos no número
+                          {liderancaMatchInicial && chaveLideranca(liderancaMatchInicial) !== liderancaSelecionadaKey ? (
+                            <span> · substituída manualmente</span>
+                          ) : liderancaMatchInicial ? (
+                            <span> · match automático (Marcar)</span>
+                          ) : null}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {depEstaduaisOpcoes.length > 0 && (
+                    <div className="min-w-0">
+                      <SeletorCandidatoComBusca
+                        id="dep-estadual-comparativo"
+                        label="Dep. Estadual 2022 (comparativo)"
+                        value={depEstadualSelecionadoId}
+                        onChange={setDepEstadualSelecionadoId}
+                        opcoes={depEstaduaisOpcoes}
+                        emptyOption={{
+                          id: '',
+                          label: 'Nenhum (só vereador e Jadyel)',
+                        }}
+                        placeholderBusca="Buscar dep. estadual por nome ou número…"
+                      />
+                      {nomeDepEstadualPlanilha && (
+                        <p className="mt-1.5 text-[10px] text-[var(--tse-muted)]">
+                          Planilha (liderança):{' '}
+                          <span className="text-[var(--tse-text)]">{nomeDepEstadualPlanilha}</span>
+                          {depPlanilhaNaoEncontrado ? (
+                            <span className="font-bold text-red-700"> — não encontrado; escolha na lista</span>
+                          ) : depEstadualSelecionado &&
+                            depPlanilhaMatch &&
+                            depEstadualSelecionado.id !== depPlanilhaMatch.id ? (
+                            <span> — substituído manualmente</span>
+                          ) : null}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
 
               {compararComReferentes && !jadyelNome && distribuicao.encontrado && (
-                <p className="mb-3 rounded-lg border border-dashed border-card bg-background/60 px-3 py-3 text-xs text-text-secondary">
+                <p className="mb-3 text-[12px] text-[var(--tse-muted)]">
                   Jadyel Alencar (Dep. Federal 2022) não encontrado na base por seção deste município.
                 </p>
               )}
 
               {habilitarMetaManual && metaSetupRequired ? (
-                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p className="mb-3 rounded-xl bg-[var(--tse-yellow-soft)] px-3 py-2 text-[12px]">
                   Para salvar metas no banco, execute{' '}
-                  <code className="rounded bg-white/80 px-1">database/create-atendimento-meta-territorio.sql</code>{' '}
-                  no Supabase.
+                  <code className="rounded bg-white/80 px-1">database/create-atendimento-meta-territorio.sql</code> no
+                  Supabase.
                 </p>
               ) : null}
               {habilitarMetaManual && metaSaveError ? (
-                <p className="mb-3 text-xs text-status-danger">{metaSaveError}</p>
+                <p className="mb-3 text-[12px] text-red-700">{metaSaveError}</p>
               ) : null}
               {habilitarMetaManual && metaSaving ? (
-                <p className="mb-2 text-[11px] text-text-secondary">Salvando meta de {vereadorNomeMeta}…</p>
+                <p className="mb-2 text-[11px] text-[var(--tse-muted)]">Salvando meta de {vereadorNomeMeta}…</p>
               ) : null}
 
               {matriz && matriz.candidatos.length > 0 && (
@@ -795,9 +776,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
               )}
 
               {distribuicao.encontrado && !matriz?.candidatos.length && (
-                <p className="rounded-lg border border-dashed border-card bg-background/60 px-3 py-4 text-sm text-text-secondary">
-                  Candidato encontrado na planilha, mas não foi possível montar a matriz por seção.
-                </p>
+                <TseVazio>Candidato encontrado na planilha, mas não foi possível montar a matriz por seção.</TseVazio>
               )}
             </>
           )}
@@ -809,9 +788,9 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
 
 function StatBox({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
-    <div className="rounded-lg border border-card bg-background/60 px-2 py-1.5">
-      <p className="text-[10px] text-text-secondary">{rotulo}</p>
-      <p className="text-sm font-semibold tabular-nums text-text-primary">{valor}</p>
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</p>
+      <p className="text-[17px] font-bold tabular-nums">{valor}</p>
     </div>
   )
 }

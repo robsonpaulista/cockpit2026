@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef, useCallback, type MouseEvent as ReactMouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, ArrowUp, ArrowDown, FileText, Loader2, MapPinned, Target } from 'lucide-react'
+import { RefreshCw, Crown, BarChart3, FileText, Loader2, MapPin, MapPinned } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -12,14 +13,16 @@ import type { AIAgentPageContext } from '@/components/ai-agent'
 import { consumeJarvisResumoPendingBusca } from '@/lib/jarvis-resumo-pending'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { cn } from '@/lib/utils'
-import { useTheme } from '@/contexts/theme-context'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import {
   BotaoNomeCandidatoDistribuicao,
   PainelVotacaoCandidatoResumo,
   isMesmoCandidatoResumo,
 } from '@/components/painel-votacao-candidato-resumo'
-import { nomeCandidatoResumoExibicao, isSituacaoEleito } from '@/lib/resumo-eleicoes-dados'
+import {
+  nomeCandidatoResumoExibicao,
+  isSituacaoEleito,
+  type ResultadoEleicao,
+} from '@/lib/resumo-eleicoes-dados'
 import {
   RESUMO_TODAS_CIDADES,
   RESUMO_TODAS_CIDADES_LABEL,
@@ -30,60 +33,37 @@ import {
   readResumoEleicoesHubPersist,
 } from '@/lib/resumo-eleicoes-hub-persist'
 import {
-  resumoEleicoesHubHref,
+  resumoEleicoesHref,
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
 import { ResumoLiderancasCrudModal, type LiderancaFormPrefill } from '@/components/resumo-eleicoes/resumo-liderancas-crud-modal'
 import {
-  resumoTrZebra,
-  resumoTrSelecionado,
-  resumoTrDestaqueForte,
-  resumoTrDestaquePetrol,
-  resumoTableFooterClass,
-  resumoKpiValueClass,
-  resumoKpiLabelClass,
-  resumoKpiMetaClass,
-  resumoKpiLinkClass,
-  resumoKpiCardClass,
-  resumoKpiHeaderClass,
-  resumoKpiIconClass,
-  resumoKpiIconWrapClass,
-  resumoKpiBarTrackClass,
-  resumoKpiBarCombClass,
-  resumoKpiBarTickClass,
-  resumoKpiBarLabelClass,
-  resumoWrCardClass,
-  resumoWrCardGlassClass,
-} from '@/lib/resumo-eleicoes-table-styles'
-import {
   ResumoEleicoesCidadesTabela,
   type ResumoEleicoesCidadeLinha,
 } from '@/components/resumo-eleicoes/resumo-eleicoes-cidades-tabela'
-import '@/app/dashboard/shared/resumo-eleicoes-wr-cards.css'
-
-interface ResultadoEleicao {
-  uf: string
-  municipio: string
-  codigoCargo: string
-  cargo: string
-  numeroUrna: string
-  nomeCandidato: string
-  nomeUrnaCandidato: string
-  partido: string
-  coligacao: string
-  turno: string
-  situacao: string
-  dataUltimaTotalizacao: string
-  ue: string
-  sequencialCandidato: string
-  tipoDestinacaoVotos: string
-  sequencialEleicao: string
-  anoEleicao: string
-  regiao: string
-  percentualVotosValidos: string
-  quantidadeVotosNominais: string
-  quantidadeVotosConcorrentes: string
-}
+import {
+  AtendimentoDadosGerais,
+  QuadroCandidatos,
+  QuadroPartidos,
+} from '@/components/resumo-eleicoes/atendimento-quadros'
+import {
+  TseCarregando,
+  TseErro,
+  TseFilterBar,
+  TseModal,
+  TsePage,
+  TsePillSelect,
+  TseSelectGrande,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoNeutroClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseLinkAcaoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 
 interface PartidoResumo {
   partido: string
@@ -318,57 +298,11 @@ function labelPartidoCurto(partido?: string | null): string {
   return label || '-'
 }
 
-function Pagination({
-  totalItems,
-  currentPage,
-  onPageChange,
-}: {
-  totalItems: number
-  currentPage: number
-  onPageChange: (page: number) => void
-}) {
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
-  if (totalPages <= 1) return null
-
-  return (
-    <div className="mt-3 flex items-center justify-center gap-2">
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
-      >
-        Anterior
-      </button>
-      <span className="text-xs text-text-secondary">
-        Pág {currentPage}/{totalPages}
-      </span>
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages}
-        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
-      >
-        Próxima
-      </button>
-    </div>
-  )
-}
-
 export function ResumoEleicoesAtendimentoPanel() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { theme } = useTheme()
   const autoBuscaPersistRef = useRef(false)
-  const isCockpit = false
-  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
-  const sectionShellClass = isCockpit
-    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : resumoWrCardGlassClass('p-4')
-  const innerPanelClass = isCockpit
-    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : resumoWrCardClass('p-3')
-  const [cidade, setCidade] = useState('')
+  const [cidade, setCidade] = useState<string>('')
   const [cidades, setCidades] = useState<string[]>([])
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
   /** Filtro interno na visão “Todas as cidades” (clique na tabela; não altera o dropdown). */
@@ -1719,11 +1653,6 @@ export function ResumoEleicoesAtendimentoPanel() {
     [resumoCidade?.liderancasDetalhe],
   )
 
-  const paginated = <T,>(list: T[], page: number): T[] => {
-    const start = (page - 1) * ITEMS_PER_PAGE
-    return list.slice(start, start + ITEMS_PER_PAGE)
-  }
-
   const scoreCorrespondencia = (nomeCandidato: string, alvo: string): number => {
     const candidato = normalizeText(nomeCandidato)
     if (!candidato) return 0
@@ -2055,16 +1984,6 @@ export function ResumoEleicoesAtendimentoPanel() {
     resumoCidade && resumoCidade.votacaoFinal2022 > 0
       ? (diferencaCenarioVs2022 / resumoCidade.votacaoFinal2022) * 100
       : null
-  const deltaAbsVs2022Fmt =
-    diferencaCenarioVs2022 > 0
-      ? `+${diferencaCenarioVs2022.toLocaleString('pt-BR')}`
-      : diferencaCenarioVs2022 < 0
-        ? diferencaCenarioVs2022.toLocaleString('pt-BR')
-        : '0'
-  const crescimentoPctFmt =
-    percentualCrescimentoVs2022 !== null
-      ? `${percentualCrescimentoVs2022 > 0 ? '+' : ''}${percentualCrescimentoVs2022.toFixed(1).replace('.', ',')}%`
-      : null
   const percentualAlcance =
     eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
       ? (votosCenarioAtivo / eleitoresMunicipioAtivo) * 100
@@ -2182,809 +2101,226 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
-  const summaryCardBaseClass = resumoKpiCardClass()
-  const kpiHeaderClass = resumoKpiHeaderClass()
-  const kpiIconWrapClass = resumoKpiIconWrapClass()
-  const kpiIconClass = resumoKpiIconClass()
-  const kpiLabelClass = resumoKpiLabelClass()
-  const kpiValueClass = resumoKpiValueClass()
-  const kpiMetaClass = resumoKpiMetaClass()
-  const kpiLinkClass = resumoKpiLinkClass()
-  const kpiBarTrackClass = resumoKpiBarTrackClass()
-  const kpiBarCombClass = resumoKpiBarCombClass()
-  const kpiBarLabelClass = resumoKpiBarLabelClass()
-  const alcancePctFmt =
-    percentualAlcance !== null ? percentualAlcance.toFixed(1).replace('.', ',') : null
-  const alcanceBarWidth =
-    percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : 0
-  const alcanceSegments = 28
-  const alcanceFilled = Math.round((alcanceBarWidth / 100) * alcanceSegments)
-  const expectativaCrescimentoBarWidth =
-    percentualCrescimentoVs2022 !== null
-      ? Math.min(100, Math.max(0, Math.abs(percentualCrescimentoVs2022)))
-      : 0
-  const expectativaCrescimentoFilled = Math.round(
-    (expectativaCrescimentoBarWidth / 100) * alcanceSegments,
+  const historicoHref = `/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`
+  const secaoHref = resumoEleicoesHref(RESUMO_ELEICOES_TAB_SECAO, {
+    cidade: cidade && !visaoTodasCidades ? cidade : undefined,
+  })
+  const nomeCandidato = (item: ResultadoEleicao) => (
+    <BotaoNomeCandidatoDistribuicao
+      item={item}
+      candidatoAtivo={candidatoDistribuicao}
+      onVerDistribuicao={alternarDistribuicaoCandidato}
+      habilitado={Boolean(municipioAtivo)}
+    />
   )
+  const quadroProps = (tabela: Exclude<TableKey, 'partido_2024'>) => ({
+    chaveTabela: tabela,
+    pagina: currentPage[tabela],
+    porPagina: ITEMS_PER_PAGE,
+    onPagina: (pagina: number) => setPage(tabela, pagina),
+    selecao: selectedVotes[tabela],
+    onAlternar: (rowId: string, votos: number) => toggleSelection(tabela, rowId, votos),
+    onLimpar: () => clearTableSelection(tabela),
+    onIncluirLideranca: (event: ReactMouseEvent, item: ResultadoEleicao, votos: number) =>
+      abrirMenuIncluirLideranca(event, { table: tabela, nome: item.nomeUrnaCandidato, situacao: item.situacao, votos }),
+    renderNome: nomeCandidato,
+    formatarPartido: labelPartidoCurto,
+  })
+  const ehPresidente = (item: ResultadoEleicao) =>
+    Boolean(presidenteCamaraNome) &&
+    item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
 
   return (
-    <div className="w-full min-w-0">
-        <div className="resumo-cx-filter-strip mb-4">
-          <div className="min-w-0 flex-1">
-            <label className="resumo-cx-field-label">Cidade</label>
-              <select
-                value={cidade}
-                onChange={(e) => {
-                  const next = e.target.value
-                  setCidade(next)
-                  setCidadeFiltroLista(null)
-                  setDadosCidadeFiltro([])
-                  syncCidadeHub(next)
-                }}
-                disabled={loadingCidades}
-                className="resumo-cx-select"
-              >
-                <option value="">
-                  {loadingCidades ? 'Carregando municípios...' : 'Selecione um município...'}
-                </option>
-                <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
-                {cidades.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full md:w-[300px]">
-              <label className="resumo-cx-field-label">Visão de Votos 2026</label>
-              <select
-                value={cenarioVotos}
-                onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                className="resumo-cx-select"
-              >
-                <option value="legado_anterior">Anterior / Legado (Expectativa de Votos 2026)</option>
-                <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
-                <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={buscarDados}
-              disabled={!cidade || loadingDados}
-              className="resumo-cx-btn-primary"
-            >
-              <RefreshCw
-                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin')}
-                aria-hidden
-              />
-              Buscar
-            </button>
-            <button
-              type="button"
-              onClick={prepararFiltroDemandas}
-              disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
-              className="resumo-cx-btn-ghost"
-            >
-              <FileText className="h-4 w-4 shrink-0" aria-hidden />
-              Demandas
-            </button>
-            <Link
-              href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
-              className="resumo-cx-btn-ghost"
-            >
-              <BarChart3 className="h-4 w-4" aria-hidden />
-              Histórico
-            </Link>
-            <Link
-              href={resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
-                cidade: cidade && !visaoTodasCidades ? cidade : undefined,
-              })}
-              className="resumo-cx-btn-ghost"
-            >
-              <MapPinned className="h-4 w-4" aria-hidden />
-              Por seção
-            </Link>
+    <TsePage>
+      <TseFilterBar>
+        <TseSelectGrande
+          icone={MapPin}
+          rotulo="Cidade"
+          value={cidade}
+          onChange={(e) => {
+            const next = e.target.value
+            setCidade(next)
+            setCidadeFiltroLista(null)
+            setDadosCidadeFiltro([])
+            syncCidadeHub(next)
+          }}
+          disabled={loadingCidades}
+        >
+          <option value="">{loadingCidades ? 'Carregando municípios…' : 'Selecione um município'}</option>
+          <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
+          {cidades.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </TseSelectGrande>
+        <TsePillSelect
+          rotulo="Visão de votos 2026"
+          value={cenarioVotos}
+          onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+        >
+          <option value="legado_anterior">Anterior / Legado</option>
+          <option value="aferido_jadyel">Aferido (Jadyel)</option>
+          <option value="promessa_lideranca">Prometido (liderança)</option>
+        </TsePillSelect>
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <button
+            type="button"
+            onClick={buscarDados}
+            disabled={!cidade || loadingDados}
+            className={tseBotaoPrimarioClass}
+          >
+            <RefreshCw className={cn('h-4 w-4', loadingDados && 'animate-spin')} aria-hidden />
+            Buscar
+          </button>
+          <button
+            type="button"
+            onClick={prepararFiltroDemandas}
+            disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
+            className={tseBotaoCinzaClass}
+          >
+            <FileText className={tseBotaoIconeClass} aria-hidden />
+            Demandas
+          </button>
+          <Link href={historicoHref} className={tseBotaoCinzaClass}>
+            <BarChart3 className={tseBotaoIconeClass} aria-hidden />
+            Histórico
+          </Link>
+          <Link href={secaoHref} className={tseBotaoCinzaClass}>
+            <MapPinned className={tseBotaoIconeClass} aria-hidden />
+            Por seção
+          </Link>
         </div>
+      </TseFilterBar>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl border border-status-danger/30 bg-status-danger/10 text-status-danger text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            {error}
-          </div>
-        )}
+      {error ? (
+        <div className="mt-4">
+          <TseErro>{error}</TseErro>
+        </div>
+      ) : null}
 
-        {buscaIniciada && !loadingDados && dados.length === 0 && !error && (
-          <div className={cn(sectionShellClass, 'text-sm text-text-secondary')}>
-            {visaoTodasCidades
-              ? 'Nenhum resultado agregado disponível.'
-              : `Nenhum resultado encontrado para ${cidade}.`}
-          </div>
-        )}
+      {loadingDados && dados.length === 0 ? (
+        <TseCarregando
+          className="min-h-[30vh]"
+          texto={visaoTodasCidades ? 'Consolidando dados de todas as cidades…' : 'Carregando resultados…'}
+        />
+      ) : null}
 
-        {loadingDados && (
-          <div className={cn(sectionShellClass, 'mb-4 flex items-center gap-2 text-sm text-text-secondary')}>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            {visaoTodasCidades ? 'Consolidando dados de todas as cidades…' : 'Carregando resultados…'}
-          </div>
-        )}
+      {!loadingDados && !error && dados.length === 0 ? (
+        <div className="mt-4">
+          <TseVazio>
+            {buscaIniciada
+              ? visaoTodasCidades
+                ? 'Nenhum resultado agregado disponível.'
+                : `Nenhum resultado encontrado para ${cidade}.`
+              : 'Escolha um município (ou todas as cidades) e clique em Buscar para montar o atendimento.'}
+          </TseVazio>
+        </div>
+      ) : null}
 
-        {dados.length > 0 && (
-          <>
-          {resumoCidade && (
-            <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4">
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <span className={kpiIconWrapClass}>
-                    <Users className={kpiIconClass} aria-hidden />
-                  </span>
-                  <p className={kpiLabelClass}>Eleitores</p>
-                </div>
-                <p className={kpiValueClass}>
-                  {eleitoresMunicipioAtivo !== null
-                    ? eleitoresMunicipioAtivo.toLocaleString('pt-BR')
-                    : '-'}
-                </p>
-                {alcancePctFmt !== null ? (
-                  <div
-                    className={kpiBarTrackClass}
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(alcanceBarWidth)}
-                    aria-label={`Alcance do eleitorado: ${alcancePctFmt}%`}
-                    title={`${alcancePctFmt}% alcance`}
-                  >
-                    <div className={kpiBarCombClass} aria-hidden>
-                      {Array.from({ length: alcanceSegments }, (_, i) => (
-                        <span
-                          key={i}
-                          className={resumoKpiBarTickClass(i < alcanceFilled)}
-                        />
-                      ))}
-                    </div>
-                    <span className={kpiBarLabelClass}>{alcancePctFmt}%</span>
-                  </div>
+      {dados.length > 0 ? (
+        <>
+          {resumoCidade ? (
+            <AtendimentoDadosGerais
+              fonte={`${visaoTodasCidades ? 'Todas as cidades' : municipioAtivo || cidade} · ${labelCenarioAtivo}`}
+              eleitores={eleitoresMunicipioAtivo}
+              alcancePct={percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : null}
+              votos2022={resumoCidade.votacaoFinal2022}
+              rotuloCenario={labelCenarioAtivo}
+              votosCenario={votosCenarioAtivo}
+              crescimentoPct={percentualCrescimentoVs2022}
+              diferencaVs2022={diferencaCenarioVs2022}
+              liderancas={resumoCidade.liderancas}
+              acoesLiderancas={
+                visaoTodasCidades ? (
+                  <span className="text-[11px] text-[var(--tse-muted)]">Total cadastrado</span>
                 ) : (
-                  <p className={kpiMetaClass}>—</p>
-                )}
-              </div>
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <span className={kpiIconWrapClass}>
-                    <Vote className={kpiIconClass} aria-hidden />
-                  </span>
-                  <p className={kpiLabelClass}>Votos 2022</p>
-                </div>
-                <p className={kpiValueClass}>{resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}</p>
-                <p className={kpiMetaClass}>Referência federal</p>
-              </div>
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <span className={kpiIconWrapClass}>
-                    <Target className={kpiIconClass} aria-hidden />
-                  </span>
-                  <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
-                </div>
-                <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
-                {crescimentoPctFmt !== null ? (
-                  <div
-                    className={kpiBarTrackClass}
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(expectativaCrescimentoBarWidth)}
-                    aria-label={`${labelCenarioAtivo}: ${crescimentoPctFmt} vs. 2022`}
-                    title={`${crescimentoPctFmt} vs. 2022`}
-                  >
-                    <div className={kpiBarCombClass} aria-hidden>
-                      {Array.from({ length: alcanceSegments }, (_, i) => (
-                        <span
-                          key={i}
-                          className={resumoKpiBarTickClass(i < expectativaCrescimentoFilled)}
-                        />
-                      ))}
-                    </div>
-                    <span className={kpiBarLabelClass}>{crescimentoPctFmt}</span>
-                  </div>
-                ) : (
-                  <p className={kpiMetaClass}>Sem base 2022</p>
-                )}
-                <div className="mt-1 flex w-full flex-col items-center gap-0.5">
-                  <p
-                    className={cn(
-                      'flex items-center gap-0.5 text-[11px] font-semibold leading-none tabular-nums',
-                      diferencaCenarioVs2022 > 0
-                        ? 'text-status-success'
-                        : diferencaCenarioVs2022 < 0
-                          ? 'text-status-danger'
-                          : 'text-[var(--palette-aux)]',
-                    )}
-                  >
-                    {diferencaCenarioVs2022 > 0 ? (
-                      <ArrowUp className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
-                    ) : diferencaCenarioVs2022 < 0 ? (
-                      <ArrowDown className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
-                    ) : null}
-                    <span>{deltaAbsVs2022Fmt}</span>
-                    <span className="font-medium text-[var(--palette-petrol)]/55">vs.</span>
-                    <span>2022</span>
-                  </p>
-                </div>
-              </div>
-              <div className={summaryCardBaseClass}>
-                <div className={kpiHeaderClass}>
-                  <span className={kpiIconWrapClass}>
-                    <Crown className={kpiIconClass} aria-hidden />
-                  </span>
-                  <p className={kpiLabelClass}>Lideranças</p>
-                </div>
-                <p className={kpiValueClass}>{resumoCidade.liderancas.toLocaleString('pt-BR')}</p>
-                {!visaoTodasCidades ? (
-                  <p className={cn(kpiMetaClass, 'flex flex-wrap items-center justify-center gap-x-1.5')}>
-                    <button type="button" onClick={marcarLiderancasDoCard} className={kpiLinkClass}>
+                  <>
+                    <button type="button" onClick={marcarLiderancasDoCard} className={tseLinkAcaoClass}>
                       Marcar
                     </button>
-                    <span className="text-[var(--palette-aux)]/45">·</span>
-                    <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={kpiLinkClass}>
+                    <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={tseLinkAcaoClass}>
                       Detalhes
                     </button>
-                  </p>
-                ) : (
-                  <p className={kpiMetaClass}>Total cadastrado</p>
-                )}
-              </div>
-            </div>
-          )}
-          {visaoTodasCidades && buscaIniciada && dados.length > 0 ? (
+                  </>
+                )
+              }
+            />
+          ) : null}
+
+          {visaoTodasCidades && buscaIniciada ? (
             <ResumoEleicoesCidadesTabela
               linhas={linhasCidadesResumo}
               cidadeAtiva={cidadeFiltroLista}
               labelExpectativa={labelCenarioAtivo}
-              panelClassName={innerPanelClass}
               onSelecionarCidade={selecionarCidadeDaLista}
               onAbrirLiderancas={(nome) => void abrirLiderancasCidade(nome)}
             />
           ) : null}
-          {mostrarFeedbackMarcacao && feedbackMarcacao && (
-            <div className={cn(resumoWrCardClass(), 'mb-3 px-3 py-2 text-xs text-text-primary')}>
+
+          {mostrarFeedbackMarcacao && feedbackMarcacao ? (
+            <p role="status" className="mt-3 rounded-xl bg-[var(--tse-yellow-soft)] px-4 py-2.5 text-[13px]">
               {feedbackMarcacao}
-            </div>
-          )}
-          <div className="resumo-cx-sim-toolbar">
-            <span className="resumo-cx-sim-toolbar__meta">
-              Simulação de vereadores:{' '}
-              <strong>{vereadoresMapeadosCount}</strong> de{' '}
-              <strong>{vereador2024Completo.length}</strong> mapeados
-            </span>
-            <div className="resumo-cx-sim-toolbar__actions">
-              <Link
-                href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
-                className="resumo-cx-btn-ghost-sm"
-              >
-                Histórico
-              </Link>
-              <Link
-                href={resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
-                  cidade: cidade && !visaoTodasCidades ? cidade : undefined,
-                  cargo: cidade && !visaoTodasCidades ? 'Prefeito' : undefined,
-                })}
-                className="resumo-cx-btn-ghost-sm"
-              >
-                Por seção
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowSimulacaoModal(true)}
-                disabled={visaoTodasCidades}
-                className="resumo-cx-btn-cta-sm"
-              >
-                Abrir simulador
-              </button>
-            </div>
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[12px] text-[var(--tse-muted)]">
+              Simulação de vereadores: <strong className="text-[var(--tse-text)]">{vereadoresMapeadosCount}</strong> de{' '}
+              <strong className="text-[var(--tse-text)]">{vereador2024Completo.length}</strong> mapeados · clique no nome
+              para ver a votação por seção · botão direito na caixa inclui como liderança
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSimulacaoModal(true)}
+              disabled={visaoTodasCidades}
+              className={cn(tseLinkAcaoClass, 'disabled:opacity-40 disabled:no-underline')}
+            >
+              Abrir simulador
+            </button>
           </div>
+
           <div
             key={chaveTabelasResultado}
-            className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2"
+            className="mt-3 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.3fr)_minmax(0,0.95fr)]"
           >
-            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
-              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Estadual 2022</h3>
-              <table className="w-full table-fixed text-xs">
-                <thead>
-                  <tr>
-                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
-                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
-                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated(deputadoEstadual2022, currentPage.deputado_estadual).map((item, rowIndex) => {
-                    const rowId = `deputado_estadual:${item.nomeUrnaCandidato}:${item.numeroUrna}`
-                    const votes = parseVotos(item.quantidadeVotosNominais)
-                    const isSelected = selectedVotes.deputado_estadual[rowId] !== undefined
-                    return (
-                      <tr
-                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={cn(
-                          'border-b border-card text-text-primary transition-colors',
-                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
-                        )}
-                      >
-                        <td className="py-1 px-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelection('deputado_estadual', rowId, votes)}
-                            onContextMenu={(event) =>
-                              abrirMenuIncluirLideranca(event, {
-                                table: 'deputado_estadual',
-                                nome: item.nomeUrnaCandidato,
-                                situacao: item.situacao,
-                                votos: votes,
-                              })
-                            }
-                            title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#e8a825]"
-                          />
-                        </td>
-                        <td className="min-w-0 py-1 px-1">
-                          <BotaoNomeCandidatoDistribuicao
-                            item={item}
-                            candidatoAtivo={candidatoDistribuicao}
-                            onVerDistribuicao={alternarDistribuicaoCandidato}
-                            habilitado={Boolean(municipioAtivo)}
-                          />
-                        </td>
-                        <td
-                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
-                          title={labelPartidoCurto(item.partido)}
-                        >
-                          {labelPartidoCurto(item.partido)}
-                        </td>
-                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1 text-right tabular-nums">
-                      {deputadoEstadual2022
-                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
-                        .toLocaleString('pt-BR')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className={resumoTableFooterClass()}>
-                <span>
-                  Selecionados: <strong>{getSelectedCount('deputado_estadual')}</strong> | Votos:{' '}
-                  <strong>{getSelectedTotal('deputado_estadual').toLocaleString('pt-BR')}</strong>
-                </span>
-                {getSelectedCount('deputado_estadual') > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => clearTableSelection('deputado_estadual')}
-                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-              <Pagination
-                totalItems={deputadoEstadual2022.length}
-                currentPage={currentPage.deputado_estadual}
-                onPageChange={(page) => setPage('deputado_estadual', page)}
-              />
-            </div>
-
-            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
-              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Federal 2022</h3>
-              <table className="w-full table-fixed text-xs">
-                <thead>
-                  <tr>
-                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
-                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
-                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated(deputadoFederal2022, currentPage.deputado_federal).map((item, rowIndex) => {
-                    const isJadyel = item.nomeUrnaCandidato?.trim().toUpperCase() === CANDIDATO_FEDERAL_FIXO
-                    const rowId = `deputado_federal:${item.nomeUrnaCandidato}:${item.numeroUrna}`
-                    const votes = parseVotos(item.quantidadeVotosNominais)
-                    const isSelected = selectedVotes.deputado_federal[rowId] !== undefined
-                    return (
-                      <tr
-                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={cn(
-                          'border-b border-card transition-colors',
-                          isJadyel && resumoTrDestaquePetrol(),
-                          !isJadyel && isSelected && resumoTrSelecionado(),
-                          !isJadyel && !isSelected && resumoTrZebra(rowIndex),
-                          !isJadyel && 'text-text-primary',
-                        )}
-                      >
-                        <td className="py-1 px-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelection('deputado_federal', rowId, votes)}
-                            onContextMenu={(event) =>
-                              abrirMenuIncluirLideranca(event, {
-                                table: 'deputado_federal',
-                                nome: item.nomeUrnaCandidato,
-                                situacao: item.situacao,
-                                votos: votes,
-                              })
-                            }
-                            title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#e8a825]"
-                          />
-                        </td>
-                        <td className="min-w-0 py-1 px-1">
-                          <BotaoNomeCandidatoDistribuicao
-                            item={item}
-                            candidatoAtivo={candidatoDistribuicao}
-                            onVerDistribuicao={alternarDistribuicaoCandidato}
-                            habilitado={Boolean(municipioAtivo)}
-                          />
-                        </td>
-                        <td
-                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
-                          title={labelPartidoCurto(item.partido)}
-                        >
-                          {labelPartidoCurto(item.partido)}
-                        </td>
-                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1 text-right tabular-nums">
-                      {deputadoFederal2022
-                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
-                        .toLocaleString('pt-BR')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className={resumoTableFooterClass()}>
-                <span>
-                  Selecionados: <strong>{getSelectedCount('deputado_federal')}</strong> | Votos:{' '}
-                  <strong>{getSelectedTotal('deputado_federal').toLocaleString('pt-BR')}</strong>
-                </span>
-                {getSelectedCount('deputado_federal') > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => clearTableSelection('deputado_federal')}
-                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-              <Pagination
-                totalItems={deputadoFederal2022.length}
-                currentPage={currentPage.deputado_federal}
-                onPageChange={(page) => setPage('deputado_federal', page)}
-              />
-            </div>
-
-            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
-              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Prefeito 2024</h3>
-              <table className="w-full table-fixed text-xs">
-                <thead>
-                  <tr>
-                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
-                    <th className="w-[4.25rem] resumo-cx-th px-1 py-1.5 text-left">Partido</th>
-                    <th className="w-14 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated(prefeito2024, currentPage.prefeito_2024).map((item, rowIndex) => {
-                    const rowId = `prefeito_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
-                    const votes = parseVotos(item.quantidadeVotosNominais)
-                    const isSelected = selectedVotes.prefeito_2024[rowId] !== undefined
-                    return (
-                      <tr
-                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={cn(
-                          'border-b border-card text-text-primary transition-colors',
-                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
-                        )}
-                      >
-                        <td className="py-1 px-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelection('prefeito_2024', rowId, votes)}
-                            onContextMenu={(event) =>
-                              abrirMenuIncluirLideranca(event, {
-                                table: 'prefeito_2024',
-                                nome: item.nomeUrnaCandidato,
-                                situacao: item.situacao,
-                                votos: votes,
-                              })
-                            }
-                            title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#e8a825]"
-                          />
-                        </td>
-                        <td className="min-w-0 py-1 px-1">
-                          <BotaoNomeCandidatoDistribuicao
-                            item={item}
-                            candidatoAtivo={candidatoDistribuicao}
-                            onVerDistribuicao={alternarDistribuicaoCandidato}
-                            habilitado={Boolean(municipioAtivo)}
-                          />
-                        </td>
-                        <td
-                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
-                          title={labelPartidoCurto(item.partido)}
-                        >
-                          {labelPartidoCurto(item.partido)}
-                        </td>
-                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1 text-right tabular-nums">
-                      {prefeito2024
-                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
-                        .toLocaleString('pt-BR')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className={resumoTableFooterClass()}>
-                <span>
-                  Selecionados: <strong>{getSelectedCount('prefeito_2024')}</strong> | Votos:{' '}
-                  <strong>{getSelectedTotal('prefeito_2024').toLocaleString('pt-BR')}</strong>
-                </span>
-                {getSelectedCount('prefeito_2024') > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => clearTableSelection('prefeito_2024')}
-                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-              <Pagination
-                totalItems={prefeito2024.length}
-                currentPage={currentPage.prefeito_2024}
-                onPageChange={(page) => setPage('prefeito_2024', page)}
-              />
-            </div>
-
-            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[280px]')}>
-              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Vereador 2024</h3>
-              <table className="w-full table-fixed text-xs">
-                <thead>
-                  <tr>
-                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-left" title="Candidato">Cand.</th>
-                    <th className="w-[3.75rem] resumo-cx-th px-0.5 py-1.5 text-left">Partido</th>
-                    <th className="w-12 resumo-cx-th px-1 py-1.5 text-right">Votos</th>
-                    <th className="w-[4.5rem] resumo-cx-th px-0.5 py-1.5 text-center">Situação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated(vereador2024, currentPage.vereador_2024).map((item, rowIndex) => {
-                    const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
-                    const votes = parseVotos(item.quantidadeVotosNominais)
-                    const isSelected = selectedVotes.vereador_2024[rowId] !== undefined
-                    const isPresidente =
-                      item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
-                    const isEleito = isSituacaoEleito(item.situacao)
-                    return (
-                      <tr
-                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
-                        title="Dê duplo clique para definir como Presidente da Câmara"
-                        className={cn(
-                          'border-b border-card transition-colors',
-                          isPresidente && 'select-none',
-                          isPresidente && resumoTrDestaquePetrol(),
-                          !isPresidente &&
-                            isSelected &&
-                            resumoTrSelecionado(),
-                          !isPresidente && !isSelected && resumoTrZebra(rowIndex),
-                          !isPresidente && 'text-text-primary',
-                        )}
-                      >
-                        <td className="px-1 py-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelection('vereador_2024', rowId, votes)}
-                            onContextMenu={(event) =>
-                              abrirMenuIncluirLideranca(event, {
-                                table: 'vereador_2024',
-                                nome: item.nomeUrnaCandidato,
-                                situacao: item.situacao,
-                                votos: votes,
-                              })
-                            }
-                            title="Botão direito: incluir como liderança"
-                            className="h-3.5 w-3.5 accent-[#e8a825]"
-                          />
-                        </td>
-                        <td className="min-w-0 px-1 py-1">
-                          <span className="inline-flex max-w-full items-center gap-1">
-                            <BotaoNomeCandidatoDistribuicao
-                              item={item}
-                              candidatoAtivo={candidatoDistribuicao}
-                              onVerDistribuicao={alternarDistribuicaoCandidato}
-                              habilitado={Boolean(municipioAtivo)}
-                            />
-                            {isPresidente && (
-                              <Crown
-                                className="h-3 w-3 shrink-0 text-white"
-                                aria-hidden
-                              />
-                            )}
-                          </span>
-                        </td>
-                        <td
-                          className="truncate px-0.5 py-1 text-left text-[11px] text-text-secondary"
-                          title={labelPartidoCurto(item.partido)}
-                        >
-                          {labelPartidoCurto(item.partido)}
-                        </td>
-                        <td className="px-1 py-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
-                        <td className="px-0.5 py-1 text-center">
-                          <span
-                            className={cn(
-                              'inline-flex max-w-full truncate rounded-full px-1.5 py-0.5 text-[10px]',
-                              isPresidente &&
-                                'border border-[#e8a825]/50 bg-[rgba(232,168,37,0.12)] font-medium text-[#8a6410]',
-                              !isPresidente &&
-                                isEleito &&
-                                'bg-[rgba(232,168,37,0.18)] font-medium text-[#8a6410]',
-                              !isPresidente &&
-                                !isEleito &&
-                                'bg-background text-text-secondary',
-                            )}
-                          >
-                            {item.situacao || '-'}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-0.5 py-1"></td>
-                    <td className="px-1 py-1 text-right tabular-nums">
-                      {vereador2024
-                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
-                        .toLocaleString('pt-BR')}
-                    </td>
-                    <td className="px-0.5 py-1 text-center text-[11px]">
-                      {vereador2024.filter((item) => isSituacaoEleito(item.situacao)).length} eleitos
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className={resumoTableFooterClass()}>
-                <span>
-                  Selecionados: <strong>{getSelectedCount('vereador_2024')}</strong> | Votos:{' '}
-                  <strong>{getSelectedTotal('vereador_2024').toLocaleString('pt-BR')}</strong>
-                </span>
-                {getSelectedCount('vereador_2024') > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => clearTableSelection('vereador_2024')}
-                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-              <Pagination
-                totalItems={vereador2024.length}
-                currentPage={currentPage.vereador_2024}
-                onPageChange={(page) => setPage('vereador_2024', page)}
-              />
-            </div>
-
-            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
-              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Votação por Partido 2024</h3>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr>
-                    <th className="w-8 resumo-cx-th px-1 py-1.5 text-center">Sel.</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-left">Partido</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-right">Votos</th>
-                    <th className="resumo-cx-th px-1 py-1.5 text-right">Eleitos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated(partido2024, currentPage.partido_2024).map((item, rowIndex) => {
-                    const rowId = `partido_2024:${item.partido}`
-                    const isSelected = selectedVotes.partido_2024[rowId] !== undefined
-                    const isPartidoAtivo = partidosIguais(item.partido, filtroPartidoAtivo)
-                    return (
-                      <tr
-                        key={item.partido}
-                        title="Dê duplo clique no partido para filtrar as demais tabelas"
-                        className={cn(
-                          'border-b border-card transition-colors',
-                          isPartidoAtivo && resumoTrDestaqueForte(),
-                          !isPartidoAtivo && isSelected && resumoTrSelecionado(),
-                          !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),
-                          !isPartidoAtivo && 'text-text-primary',
-                        )}
-                      >
-                        <td className="px-1 py-1 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelection('partido_2024', rowId, item.votos)}
-                            className="h-3.5 w-3.5 accent-[#e8a825]"
-                          />
-                        </td>
-                        <td
-                          className="cursor-pointer px-1 py-1"
-                          onDoubleClick={() => toggleFiltroPartido(item.partido)}
-                        >
-                          {item.partido}
-                        </td>
-                        <td className="px-1 py-1 text-right">{item.votos.toLocaleString('pt-BR')}</td>
-                        <td className="px-1 py-1 text-right">{item.eleitos}</td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                    <td className="px-1 py-1"></td>
-                    <td className="px-1 py-1">TOTAL</td>
-                    <td className="py-1 px-1 text-right">
-                      {partido2024.reduce((acc, item) => acc + item.votos, 0).toLocaleString('pt-BR')}
-                    </td>
-                    <td className="py-1 px-1 text-right">
-                      {partido2024.reduce((acc, item) => acc + item.eleitos, 0)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className={resumoTableFooterClass()}>
-                <span>
-                  Selecionados: <strong>{getSelectedCount('partido_2024')}</strong> | Votos:{' '}
-                  <strong>{getSelectedTotal('partido_2024').toLocaleString('pt-BR')}</strong>
-                </span>
-                {getSelectedCount('partido_2024') > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => clearTableSelection('partido_2024')}
-                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
-              </div>
-              <Pagination
-                totalItems={partido2024.length}
-                currentPage={currentPage.partido_2024}
-                onPageChange={(page) => setPage('partido_2024', page)}
-              />
-            </div>
+            <QuadroCandidatos titulo="Deputado Estadual 2022" itens={deputadoEstadual2022} {...quadroProps('deputado_estadual')} />
+            <QuadroCandidatos
+              titulo="Deputado Federal 2022"
+              itens={deputadoFederal2022}
+              destacar={(item) => item.nomeUrnaCandidato?.trim().toUpperCase() === CANDIDATO_FEDERAL_FIXO}
+              {...quadroProps('deputado_federal')}
+            />
+            <QuadroCandidatos titulo="Prefeito 2024" itens={prefeito2024} {...quadroProps('prefeito_2024')} />
+            <QuadroCandidatos
+              titulo="Vereador 2024"
+              itens={vereador2024}
+              mostrarSituacao
+              destacar={ehPresidente}
+              iconeDestaque={
+                <Crown
+                  className="h-3.5 w-3.5 shrink-0 fill-[var(--tse-yellow)] text-[var(--tse-gold-text)]"
+                  aria-label="Presidente da Câmara"
+                />
+              }
+              onDuploClique={(item) => definirPresidenteCamara(item.nomeUrnaCandidato)}
+              dicaLinha="Duplo clique define o presidente da Câmara"
+              {...quadroProps('vereador_2024')}
+            />
+            <QuadroPartidos
+              itens={partido2024}
+              pagina={currentPage.partido_2024}
+              porPagina={ITEMS_PER_PAGE}
+              onPagina={(pagina) => setPage('partido_2024', pagina)}
+              selecao={selectedVotes.partido_2024}
+              onAlternar={(rowId, votos) => toggleSelection('partido_2024', rowId, votos)}
+              onLimpar={() => clearTableSelection('partido_2024')}
+              ativo={(partido) => partidosIguais(partido, filtroPartidoAtivo)}
+              onFiltrar={toggleFiltroPartido}
+            />
           </div>
 
-          {candidatoDistribuicao && municipioAtivo && (
+          {candidatoDistribuicao && municipioAtivo ? (
             <PainelVotacaoCandidatoResumo
               ref={painelSecaoRef}
               candidato={candidatoDistribuicao}
@@ -2995,205 +2331,159 @@ export function ResumoEleicoesAtendimentoPanel() {
               labelExpectativa={labelCenarioAtivo}
               onClose={() => setCandidatoDistribuicao(null)}
             />
-          )}
-          </>
-        )}
+          ) : null}
+        </>
+      ) : null}
 
-      {showSimulacaoModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="w-full max-w-6xl max-h-[88vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary">
-                  Simulação de Votos por Vereador
-                </h3>
-                <p className="text-xs text-text-secondary">
-                  Base: Vereador 2024 | Cidade: {cidade}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSimulacaoModal(false)}
-                className="rounded p-1.5 transition-colors hover:bg-background"
-              >
-                <X className="h-4 w-4 text-text-secondary" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 overflow-auto">
-              <div className="rounded-lg border border-card">
-                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
-                  Mapeamento Vereador ➜ Federal / Estadual ({vereadoresMapeadosCount}/
-                  {vereador2024Completo.length})
-                </div>
-                <div className="max-h-[52vh] overflow-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr>
-                        <th className="resumo-cx-th px-2 py-2 text-left">
-                          Vereador 2024
-                        </th>
-                        <th className="resumo-cx-th px-2 py-2 text-right">
-                          Votos
-                        </th>
-                        <th className="resumo-cx-th px-2 py-2 text-right">
-                          Expec. 2026
-                        </th>
-                        <th className="resumo-cx-th px-2 py-2 text-left">
-                          Federal
-                        </th>
-                        <th className="resumo-cx-th px-2 py-2 text-left">
-                          Dep. Estadual
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {vereador2024Completo.map((vereador, rowIndex) => {
-                        const vereadorKey = vereadorSimulacaoKey(vereador)
-                        const entry = simulacaoMapeamento[vereadorKey] || entrySimulacaoVazia()
-                        const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
-                        return (
-                          <tr
-                            key={vereadorKey}
-                            className={cn(
-                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
-                              resumoTrZebra(rowIndex),
-                            )}
-                          >
-                            <td className="px-2 py-1.5">
-                              {nomeCandidatoResumoExibicao(
-                                vereador.nomeUrnaCandidato,
-                                vereador.numeroUrna,
-                              )}
-                            </td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">
-                              {votosVereador.toLocaleString('pt-BR')}
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={entry.expec2026 == null ? '' : String(entry.expec2026)}
-                                onChange={(event) =>
-                                  atualizarMapeamentoVereador(vereadorKey, {
-                                    expec2026: parseExpec2026Simulacao(event.target.value),
-                                  })
-                                }
-                                placeholder="0"
-                                className="h-8 w-full min-w-[4.5rem] rounded border border-card bg-surface px-2 text-right text-xs text-text-primary tabular-nums"
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                value={entry.federal}
-                                onChange={(event) =>
-                                  atualizarMapeamentoVereador(vereadorKey, {
-                                    federal: event.target.value,
-                                  })
-                                }
-                                placeholder="Ex.: JADYEL ALENCAR"
-                                className="h-8 w-full min-w-[7rem] rounded border border-card bg-surface px-2 text-xs text-text-primary"
-                              />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <input
-                                value={entry.depEstadual}
-                                onChange={(event) =>
-                                  atualizarMapeamentoVereador(vereadorKey, {
-                                    depEstadual: event.target.value,
-                                  })
-                                }
-                                placeholder="Ex.: nome do estadual"
-                                className="h-8 w-full min-w-[7rem] rounded border border-card bg-surface px-2 text-xs text-text-primary"
-                              />
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-card">
-                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
-                  Ranking Geral (usa Expec. 2026 quando preenchida; senão votos 2024)
-                </div>
-                <div className="max-h-[52vh] overflow-auto p-2">
-                  {rankingSimulacaoFederal.length === 0 ? (
-                    <p className="text-xs text-text-secondary py-4 text-center">
-                      Nenhum vereador mapeado ainda.
-                    </p>
-                  ) : (
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr>
-                          <th className="resumo-cx-th px-2 py-2 text-left">Federal</th>
-                          <th className="resumo-cx-th px-2 py-2 text-right">Vereadores</th>
-                          <th className="resumo-cx-th px-2 py-2 text-right">Votos estimados</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rankingSimulacaoFederal.map((item, rowIndex) => (
-                          <tr
-                            key={item.nome}
-                            className={cn(
-                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
-                              resumoTrZebra(rowIndex),
-                            )}
-                          >
-                            <td className="px-2 py-1.5">{item.nome}</td>
-                            <td className="px-2 py-1.5 text-right">{item.vereadores}</td>
-                            <td className="px-2 py-1.5 text-right font-semibold">
-                              {item.votosEstimados.toLocaleString('pt-BR')}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                          <td className="py-1.5 px-2">TOTAL</td>
-                          <td className="py-1.5 px-2 text-right">
-                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
-                          </td>
-                          <td className="py-1.5 px-2 text-right">
-                            {rankingSimulacaoFederal
-                              .reduce((acc, item) => acc + item.votosEstimados, 0)
-                              .toLocaleString('pt-BR')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-between gap-2">
-              <div className="text-xs text-text-secondary">
-                {loadingSimulacao
-                  ? 'Carregando simulação salva...'
-                  : 'Persistência ativa por cidade no Supabase.'}
-              </div>
+      {showSimulacaoModal ? (
+        <TseModal
+          id="atendimento-simulacao-titulo"
+          titulo="Simulação de votos por vereador"
+          subtitulo={`Base: Vereador 2024 · ${cidade}`}
+          largura="max-w-6xl"
+          onClose={() => setShowSimulacaoModal(false)}
+          rodape={
+            <>
+              <span className="text-[12px] text-[var(--tse-muted)]">
+                {loadingSimulacao ? 'Carregando simulação salva…' : 'Salva por cidade no Supabase.'}
+              </span>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={limparSimulacao}
-                  className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
-                >
+                <button type="button" onClick={limparSimulacao} className={tseBotaoNeutroClass}>
                   Limpar mapeamento
                 </button>
                 <button
                   type="button"
                   onClick={salvarSimulacaoCidade}
                   disabled={savingSimulacao || !cidade}
-                  className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
+                  className={tseBotaoPrimarioClass}
                 >
-                  {savingSimulacao ? 'Salvando...' : 'Salvar simulação'}
+                  {savingSimulacao ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Salvar simulação
                 </button>
               </div>
-            </div>
+            </>
+          }
+        >
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <section className="min-w-0 overflow-hidden rounded-xl bg-white shadow-sm">
+              <p className="px-4 pt-3 text-[13px] font-bold">
+                Vereador → Federal / Estadual{' '}
+                <span className="font-semibold text-[var(--tse-muted)]">
+                  ({vereadoresMapeadosCount}/{vereador2024Completo.length})
+                </span>
+              </p>
+              <div className="mt-2 max-h-[52vh] overflow-auto">
+                <table className={tseTabela.table} data-tse-tabela>
+                  <thead className={cn(tseTabela.thead, 'sticky top-0 z-10')}>
+                    <tr>
+                      <th className={tseTabela.th}>Vereador 2024</th>
+                      <th className={cn(tseTabela.th, 'text-right')}>Votos</th>
+                      <th className={cn(tseTabela.th, 'text-right')}>Expec. 2026</th>
+                      <th className={tseTabela.th}>Federal</th>
+                      <th className={tseTabela.th}>Dep. Estadual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vereador2024Completo.map((vereador) => {
+                      const vereadorKey = vereadorSimulacaoKey(vereador)
+                      const entry = simulacaoMapeamento[vereadorKey] || entrySimulacaoVazia()
+                      return (
+                        <tr key={vereadorKey} className={tseTabela.tr}>
+                          <td className={cn(tseTabela.td, 'text-[12px] font-semibold')}>
+                            {nomeCandidatoResumoExibicao(vereador.nomeUrnaCandidato, vereador.numeroUrna)}
+                          </td>
+                          <td className={cn(tseTabela.td, 'text-right tabular-nums')}>
+                            {parseVotos(vereador.quantidadeVotosNominais).toLocaleString('pt-BR')}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={entry.expec2026 == null ? '' : String(entry.expec2026)}
+                              onChange={(event) =>
+                                atualizarMapeamentoVereador(vereadorKey, {
+                                  expec2026: parseExpec2026Simulacao(event.target.value),
+                                })
+                              }
+                              placeholder="0"
+                              aria-label={`Expectativa 2026 de ${vereador.nomeUrnaCandidato}`}
+                              className={cn(tseCampoClass, 'h-8 min-w-[4.5rem] text-right tabular-nums')}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              value={entry.federal}
+                              onChange={(event) => atualizarMapeamentoVereador(vereadorKey, { federal: event.target.value })}
+                              placeholder="Ex.: JADYEL ALENCAR"
+                              aria-label={`Federal apoiado por ${vereador.nomeUrnaCandidato}`}
+                              className={cn(tseCampoClass, 'h-8 min-w-[7rem]')}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              value={entry.depEstadual}
+                              onChange={(event) =>
+                                atualizarMapeamentoVereador(vereadorKey, { depEstadual: event.target.value })
+                              }
+                              placeholder="Nome do estadual"
+                              aria-label={`Dep. estadual apoiado por ${vereador.nomeUrnaCandidato}`}
+                              className={cn(tseCampoClass, 'h-8 min-w-[7rem]')}
+                            />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="min-w-0 overflow-hidden rounded-xl bg-white shadow-sm">
+              <p className="px-4 pt-3 text-[13px] font-bold">Ranking dos federais</p>
+              <p className="px-4 text-[11px] text-[var(--tse-muted)]">
+                Usa a Expec. 2026 quando preenchida; senão, os votos de 2024
+              </p>
+              <div className="mt-2 max-h-[52vh] overflow-auto">
+                {rankingSimulacaoFederal.length === 0 ? (
+                  <p className="px-4 pb-4 text-[12px] text-[var(--tse-muted)]">Nenhum vereador mapeado ainda.</p>
+                ) : (
+                  <table className={tseTabela.table} data-tse-tabela>
+                    <thead className={cn(tseTabela.thead, 'sticky top-0 z-10')}>
+                      <tr>
+                        <th className={tseTabela.th}>Federal</th>
+                        <th className={cn(tseTabela.th, 'text-right')}>Vereadores</th>
+                        <th className={cn(tseTabela.th, 'text-right')}>Votos estimados</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankingSimulacaoFederal.map((item) => (
+                        <tr key={item.nome} className={tseTabela.tr}>
+                          <td className={cn(tseTabela.td, 'font-semibold')}>{item.nome}</td>
+                          <td className={cn(tseTabela.td, 'text-right tabular-nums')}>{item.vereadores}</td>
+                          <td className={cn(tseTabela.td, 'text-right font-bold tabular-nums')}>
+                            {item.votosEstimados.toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-[#DDDDDD] bg-[var(--tse-bar)] font-bold">
+                        <td className={cn(tseTabela.td, 'text-[11px] uppercase tracking-wide')}>Total</td>
+                        <td className={cn(tseTabela.td, 'text-right tabular-nums')}>
+                          {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
+                        </td>
+                        <td className={cn(tseTabela.td, 'text-right tabular-nums')}>
+                          {rankingSimulacaoFederal
+                            .reduce((acc, item) => acc + item.votosEstimados, 0)
+                            .toLocaleString('pt-BR')}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
           </div>
-        </div>
-      )}
+        </TseModal>
+      ) : null}
 
       {showLiderancasModal && cidadeLiderancasModal ? (
         <ResumoLiderancasCrudModal
@@ -3207,135 +2497,109 @@ export function ResumoEleicoesAtendimentoPanel() {
         />
       ) : null}
 
-      {menuIncluirLideranca ? (
-        <>
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            className="fixed inset-0 z-[60] cursor-default bg-transparent"
-            onClick={() => setMenuIncluirLideranca(null)}
-            onContextMenu={(event) => {
-              event.preventDefault()
-              setMenuIncluirLideranca(null)
-            }}
-          />
-          <div
-            className="fixed z-[70] min-w-[11.5rem] overflow-hidden rounded-lg border border-card bg-surface py-1 shadow-[0_10px_30px_rgba(15,23,42,0.18)]"
-            style={{ left: menuIncluirLideranca.x, top: menuIncluirLideranca.y }}
-            role="menu"
-          >
+      {menuIncluirLideranca && typeof document !== 'undefined'
+        ? createPortal(
+            <div style={TSE_TOKENS}>
+              <button
+                type="button"
+                aria-label="Fechar menu"
+                className="fixed inset-0 z-[1200] cursor-default bg-transparent"
+                onClick={() => setMenuIncluirLideranca(null)}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  setMenuIncluirLideranca(null)
+                }}
+              />
+              <div
+                className="fixed z-[1210] min-w-[11.5rem] overflow-hidden rounded-lg bg-white py-1 text-[var(--tse-text)] shadow-xl ring-1 ring-black/5"
+                style={{ left: menuIncluirLideranca.x, top: menuIncluirLideranca.y }}
+                role="menu"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={confirmarIncluirComoLideranca}
+                  className="block w-full px-3 py-2 text-left text-[13px] font-semibold hover:bg-[var(--tse-yellow-soft)]"
+                >
+                  Incluir como liderança
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {showDemandsLeaderSelector ? (
+        <TseModal
+          id="atendimento-demandas-titulo"
+          titulo="Filtrar demandas por liderança"
+          subtitulo={`Cidade: ${cidade}`}
+          largura="max-w-2xl"
+          onClose={fecharSeletorDemandas}
+          rodape={
+            <>
+              <span className="text-[12px] text-[var(--tse-muted)]">
+                {loadingDemandasLiderancas
+                  ? 'Pré-carregando lideranças…'
+                  : `${selectedDemandasLiderancas.length} de ${liderancasDisponiveisDemandas.length} selecionadas`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={fecharSeletorDemandas} className={tseBotaoNeutroClass}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => abrirModalDemandasFiltrado()}
+                  disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+                  className={tseBotaoPrimarioClass}
+                >
+                  Ver demandas
+                </button>
+              </div>
+            </>
+          }
+        >
+          <div className="flex items-center justify-end gap-4">
             <button
               type="button"
-              role="menuitem"
-              onClick={confirmarIncluirComoLideranca}
-              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[rgba(232,168,37,0.1)]"
+              onClick={selecionarTodasLiderancasDemanda}
+              disabled={loadingDemandasLiderancas || liderancasDisponiveisDemandas.length === 0}
+              className={cn(tseLinkAcaoClass, 'disabled:opacity-40')}
             >
-              Incluir como liderança
+              Selecionar todas
+            </button>
+            <button
+              type="button"
+              onClick={limparLiderancasDemanda}
+              disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+              className={cn(tseLinkAcaoClass, 'disabled:opacity-40')}
+            >
+              Limpar
             </button>
           </div>
-        </>
+          {loadingDemandasLiderancas ? (
+            <TseCarregando texto="Carregando lideranças…" className="min-h-[120px]" />
+          ) : liderancasDisponiveisDemandas.length === 0 ? (
+            <TseVazio>Nenhuma liderança disponível para esta cidade.</TseVazio>
+          ) : (
+            <ul className="divide-y divide-[#EEEEEE] overflow-hidden rounded-xl bg-white shadow-sm">
+              {liderancasDisponiveisDemandas.map((nome) => (
+                <li key={nome}>
+                  <label className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-[var(--tse-bar)]">
+                    <input
+                      type="checkbox"
+                      checked={selectedDemandasLiderancas.includes(nome)}
+                      onChange={() => toggleLiderancaDemanda(nome)}
+                      className="h-4 w-4 accent-[var(--tse-olive)]"
+                    />
+                    {nome}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </TseModal>
       ) : null}
-
-      {showDemandsLeaderSelector && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary">
-                  Filtrar demandas por liderança
-                </h3>
-                <p className="text-xs text-text-secondary">
-                  Cidade: {cidade}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fecharSeletorDemandas}
-                className="rounded p-1.5 transition-colors hover:bg-background"
-              >
-                <X className="h-4 w-4 text-text-secondary" />
-              </button>
-            </div>
-
-            <div className="p-3 border-b border-card flex items-center justify-between gap-2">
-              <div className="text-xs text-text-secondary">
-                {loadingDemandasLiderancas
-                  ? 'Pré-carregando lideranças...'
-                  : `${selectedDemandasLiderancas.length} selecionada(s) de ${liderancasDisponiveisDemandas.length}`}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={selecionarTodasLiderancasDemanda}
-                  disabled={loadingDemandasLiderancas || liderancasDisponiveisDemandas.length === 0}
-                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
-                >
-                  Selecionar todas
-                </button>
-                <button
-                  type="button"
-                  onClick={limparLiderancasDemanda}
-                  disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
-                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
-                >
-                  Limpar
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-3">
-              {loadingDemandasLiderancas ? (
-                <div className="flex items-center justify-center py-8 text-sm text-text-secondary">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Carregando lideranças...
-                </div>
-              ) : liderancasDisponiveisDemandas.length === 0 ? (
-                <p className="text-sm text-text-secondary py-6 text-center">
-                  Nenhuma liderança disponível para esta cidade.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {liderancasDisponiveisDemandas.map((nome) => {
-                    const checked = selectedDemandasLiderancas.includes(nome)
-                    return (
-                      <label
-                        key={nome}
-                        className="flex items-center gap-2 p-2 rounded border border-card hover:bg-background cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleLiderancaDemanda(nome)}
-                          className="h-3.5 w-3.5 accent-[#e8a825]"
-                        />
-                        <span className="text-sm text-text-primary">{nome}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={fecharSeletorDemandas}
-                className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => abrirModalDemandasFiltrado()}
-                disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
-                className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
-              >
-                Ver demandas selecionadas
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <CityDemandsModal
         isOpen={showCityDemands}
@@ -3354,7 +2618,6 @@ export function ResumoEleicoesAtendimentoPanel() {
         cidadeNome={cidade}
         cidadeId={cidadePesquisaIdAtual}
       />
-
-    </div>
+    </TsePage>
   )
 }

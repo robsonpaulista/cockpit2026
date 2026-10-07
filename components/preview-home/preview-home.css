@@ -1,5 +1,5 @@
 /**
- * Prévia da futura home — full-bleed video + marca.
+ * Tela de descanso do dashboard — full-bleed video/imagem + marca.
  * Tokens alinhados à paleta Cockpit 2026.
  */
 
@@ -75,10 +75,6 @@
   opacity: 0.28;
 }
 
-.preview-home--still.preview-home--login .preview-home__scrim {
-  opacity: 0.5;
-}
-
 .preview-home__fallback {
   width: 100%;
   height: 100%;
@@ -128,17 +124,6 @@
     opacity 0.35s ease,
     visibility 0.35s ease,
     transform 0.35s ease;
-}
-
-.preview-home--login .preview-home__content {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-8px);
-}
-
-.preview-home--login .preview-home__scrim {
-  opacity: 0.45;
 }
 
 .preview-home__brand {
@@ -311,20 +296,6 @@ body[data-war-room-clean] .preview-home .preview-home__btn,
   z-index: 200;
   min-height: 100dvh;
   min-height: 100vh;
-}
-
-/* Home autenticada — preenche a área de conteúdo (sidebar + topbar) */
-.preview-home--dashboard {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
-}
-
-.preview-home--dashboard .preview-home__content {
-  min-height: 100%;
 }
 
 .preview-home__ai-credit {

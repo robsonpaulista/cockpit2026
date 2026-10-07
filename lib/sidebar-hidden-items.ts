@@ -3,13 +3,13 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'home',
   'territorio',
   'pesquisa',
-  'chapas-menu',
   'resumo-eleicoes-menu',
   'conteudo-menu',
   'agenda',
   'gestao-pesquisas-menu',
   'material-campanha',
   'war-room',
+  'resultado-2026',
 ])
 
 export function isSidebarMenuItemHidden(id: string): boolean {

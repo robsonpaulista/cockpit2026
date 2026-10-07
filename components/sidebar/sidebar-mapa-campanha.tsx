@@ -15,10 +15,7 @@ import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sideba
 import { JARVIS_SIDEBAR_DIVIDER } from '@/lib/jarvis-sidebar-styles'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 import { resolveSidebarLucideIcon, SidebarLucideIcon } from '@/lib/sidebar-lucide-icons'
-import {
-  TERRITORIO_CAMPO_TAB_PANORAMA,
-  territorioCampoHref,
-} from '@/lib/territorio-campo-route'
+import { territorioCampoHref } from '@/lib/territorio-campo-route'
 
 type CampanhaLink = {
   id: string
@@ -39,7 +36,7 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
   },
   {
     id: 'base-eleitoral',
-    href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
+    href: territorioCampoHref(),
     label: 'Lideranças',
     icon: 'MapPin',
     pageKey: 'territorio',
@@ -142,6 +139,7 @@ export function SidebarMapaCampanhaBlock({
                 href={href}
                 onClick={() => onNavigate(href)}
                 aria-label={link.label}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
                   sidebarNavItemClass(active),
                   sidebarItemIconOnlyClass(collapsed, mobileOpen),

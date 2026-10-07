@@ -1,14 +1,5 @@
 import type { Metadata } from 'next'
-import { Outfit } from 'next/font/google'
-import { PreviewHomeScreen } from '@/components/preview-home/preview-home-screen'
-import '@/app/dashboard/war-room/war-room-fonts.css'
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  display: 'swap',
-  variable: '--font-preview-home',
-})
+import { CockpitHome } from '@/components/home/cockpit-home'
 
 export const metadata: Metadata = {
   title: 'Entrar',
@@ -18,9 +9,5 @@ export const metadata: Metadata = {
 
 /** Alias da home pública — preferir `/`. */
 export default function PreviewHomePage() {
-  return (
-    <div className={outfit.variable} style={{ fontFamily: 'var(--font-preview-home), Outfit, sans-serif' }}>
-      <PreviewHomeScreen />
-    </div>
-  )
+  return <CockpitHome />
 }

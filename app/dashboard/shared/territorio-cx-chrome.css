@@ -195,7 +195,7 @@ body[data-territorio-cx] .territorio-cx-city-group > div:first-child {
 }
 
 /* Table headers — no amber fill */
-body[data-territorio-cx] table thead th {
+body[data-territorio-cx] table:not([data-tse-tabela]) thead th {
   background: transparent !important;
   color: #686865 !important;
   font-weight: 600 !important;

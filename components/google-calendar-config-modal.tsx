@@ -1,108 +1,79 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Save, ExternalLink, Info, Calendar } from 'lucide-react'
+import { ExternalLink, Info, Loader2, Save, X } from 'lucide-react'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
+import {
+  tseBotaoCinzaClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseLinkAcaoClass,
+  tseRotuloCampoClass,
+} from '@/components/tse/tse-ui'
+import {
+  testAgendaCalendarConnection,
+  type AgendaCalendarConfig,
+  type AgendaCalendarConfigInput,
+} from '@/lib/services/agenda-google-client'
 import { cn } from '@/lib/utils'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface GoogleCalendarConfigModalProps {
   onClose: () => void
-  onSave: (config: {
-    calendarId: string
-    serviceAccountEmail: string
-    credentials?: string
-    subjectUser?: string
-  }) => Promise<void> | void
-  currentConfig?: {
-    calendarId: string
-    serviceAccountEmail?: string
-    subjectUser?: string
-    hasServerCredentials?: boolean
-  }
+  onSave: (config: AgendaCalendarConfigInput) => Promise<void>
+  currentConfig?: AgendaCalendarConfig
 }
 
-export function GoogleCalendarConfigModal({
-  onClose,
-  onSave,
-  currentConfig,
-}: GoogleCalendarConfigModalProps) {
-  const [formData, setFormData] = useState({
+interface FormState {
+  calendarId: string
+  serviceAccountEmail: string
+  credentials: string
+  subjectUser: string
+}
+
+type ResultadoTeste = { success: boolean; message: string }
+
+export function GoogleCalendarConfigModal({ onClose, onSave, currentConfig }: GoogleCalendarConfigModalProps) {
+  const [formData, setFormData] = useState<FormState>({
     calendarId: currentConfig?.calendarId || '',
     serviceAccountEmail: currentConfig?.serviceAccountEmail || '',
     credentials: '',
     subjectUser: currentConfig?.subjectUser || '',
   })
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-  const isCockpit = false
+  const [testing, setTesting] = useState<boolean>(false)
+  const [saving, setSaving] = useState<boolean>(false)
+  const [testResult, setTestResult] = useState<ResultadoTeste | null>(null)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
   const serverAlreadyHasCredentials = Boolean(currentConfig?.hasServerCredentials)
 
-  const handleTest = async () => {
-    if (!formData.calendarId) {
-      setTestResult({ success: false, message: 'ID do Calendário é obrigatório' })
-      return
-    }
-    if (!formData.subjectUser) {
-      setTestResult({
-        success: false,
-        message: 'Email do usuário Workspace (subjectUser) é obrigatório',
-      })
-      return
-    }
+  const atualizar = (campo: keyof FormState, valor: string) => setFormData((prev) => ({ ...prev, [campo]: valor }))
 
+  const handleTest = async () => {
+    if (!formData.calendarId || !formData.subjectUser) {
+      setTestResult({ success: false, message: 'ID do calendário e e-mail Workspace são obrigatórios.' })
+      return
+    }
     setTesting(true)
     setTestResult(null)
-
     try {
-      // Teste só no servidor — não envia private_key pelo browser
-      const response = await fetch('/api/agenda/google-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calendarId: formData.calendarId,
-          subjectUser: formData.subjectUser,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setTestResult({
-          success: true,
-          message: `Conexão ok — ${data.events?.length || data.total || 0} eventos.`,
-        })
-      } else {
-        setTestResult({
-          success: false,
-          message: data.error || 'Falha no teste',
-        })
-      }
-    } catch (error: unknown) {
-      setTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Erro ao testar',
-      })
+      // O teste roda no servidor; a private_key nunca passa pelo navegador.
+      const total = await testAgendaCalendarConnection(formData.calendarId, formData.subjectUser)
+      setTestResult({ success: true, message: `Conexão ok — ${total} eventos.` })
+    } catch (error) {
+      setTestResult({ success: false, message: error instanceof Error ? error.message : 'Erro ao testar' })
     } finally {
       setTesting(false)
     }
   }
 
+  const canSave =
+    Boolean(formData.calendarId && formData.subjectUser) &&
+    (serverAlreadyHasCredentials || Boolean(formData.credentials.trim()) || Boolean(formData.serviceAccountEmail))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.calendarId || !formData.subjectUser) {
-      alert('ID do Calendário e e-mail Workspace são obrigatórios')
-      return
-    }
-    if (!serverAlreadyHasCredentials && !formData.credentials.trim() && !formData.serviceAccountEmail) {
-      // Sem credenciais no servidor: precisa JSON ou pelo menos e-mail SA + env no backend
-      if (!formData.credentials.trim()) {
-        alert(
-          'Cole o JSON da Service Account ou configure GOOGLE_SERVICE_ACCOUNT_* no ambiente do servidor.',
-        )
-        return
-      }
-    }
-
+    if (!canSave) return
+    setSaving(true)
+    setErroSalvar(null)
     try {
       await onSave({
         calendarId: formData.calendarId,
@@ -112,157 +83,146 @@ export function GoogleCalendarConfigModal({
       })
       onClose()
     } catch (error) {
-      console.error('Erro ao salvar configuração:', error)
+      setErroSalvar(error instanceof Error ? error.message : 'Erro ao salvar configuração.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const canSave =
-    Boolean(formData.calendarId && formData.subjectUser) &&
-    (serverAlreadyHasCredentials || Boolean(formData.credentials.trim()) || Boolean(formData.serviceAccountEmail))
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl border border-card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-card">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-accent-gold-soft">
-              <Calendar className="w-5 h-5 text-accent-gold" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">Configurar Google Calendar</h2>
-              <p className="text-xs text-secondary mt-0.5">
-                A chave fica só no servidor (env/banco). Só admin salva.
-              </p>
-            </div>
+    <div style={TSE_TOKENS} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gcal-config-title"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-[var(--tse-text)] shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[#EEEEEE] px-6 py-4">
+          <div>
+            <h2 id="gcal-config-title" className="text-[17px] font-bold">
+              Configurar Google Calendar
+            </h2>
+            <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">
+              A chave fica só no servidor (env/banco). Só admin salva.
+            </p>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-background transition-colors">
-            <X className="w-5 h-5 text-secondary" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="bg-accent-gold-soft border border-accent-gold/20 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-2 text-sm text-secondary">
-                <p>
-                  Preferência: `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `PRIVATE_KEY` no Vercel / `.env.local`.
-                  Aqui você define o calendário e o e-mail Workspace (impersonação).
-                </p>
-                {serverAlreadyHasCredentials ? (
-                  <p className="text-status-success">Credenciais já disponíveis no servidor.</p>
-                ) : null}
-                <p>
-                  <a
-                    href="/CONFIGURAR_GOOGLE_CALENDAR.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-gold hover:underline inline-flex items-center gap-1"
-                  >
-                    Ver guia <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </p>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+          <div className="flex gap-3 rounded-xl bg-[var(--tse-yellow-soft)] p-4 text-[13px]">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--tse-gold-text)]" aria-hidden />
+            <div className="space-y-1.5">
+              <p>
+                Preferência: <code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code> + <code>PRIVATE_KEY</code> no Vercel /{' '}
+                <code>.env.local</code>. Aqui você define o calendário e o e-mail Workspace (impersonação).
+              </p>
+              {serverAlreadyHasCredentials ? (
+                <p className="font-semibold text-[var(--tse-olive)]">Credenciais já disponíveis no servidor.</p>
+              ) : null}
+              <a
+                href="/CONFIGURAR_GOOGLE_CALENDAR.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(tseLinkAcaoClass, 'inline-flex items-center gap-1')}
+              >
+                Ver guia <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              ID do Calendário <span className="text-status-error">*</span>
-            </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>ID do calendário *</span>
             <input
               type="text"
-              value={formData.calendarId}
-              onChange={(e) => setFormData({ ...formData, calendarId: e.target.value })}
-              placeholder="primary ou email@exemplo.com"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               required
+              value={formData.calendarId}
+              onChange={(e) => atualizar('calendarId', e.target.value)}
+              placeholder="primary ou email@exemplo.com"
+              className={tseCampoClass}
             />
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Email do Service Account
-            </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>E-mail do service account</span>
             <input
               type="email"
               value={formData.serviceAccountEmail}
-              onChange={(e) => setFormData({ ...formData, serviceAccountEmail: e.target.value })}
+              onChange={(e) => atualizar('serviceAccountEmail', e.target.value)}
               placeholder="service-account@projeto.iam.gserviceaccount.com"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className={tseCampoClass}
             />
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Credenciais JSON (opcional se já estiver no env)
-            </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Credenciais JSON (opcional se já estiver no env)</span>
             <textarea
+              rows={6}
               value={formData.credentials}
-              onChange={(e) => setFormData({ ...formData, credentials: e.target.value })}
+              onChange={(e) => atualizar('credentials', e.target.value)}
               placeholder={
                 serverAlreadyHasCredentials
                   ? 'Deixe em branco para manter as credenciais do servidor'
                   : '{"type": "service_account", "private_key": "...", "client_email": "..."}'
               }
-              rows={6}
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className={cn(tseCampoClass, 'h-auto py-2 font-mono text-[12px]')}
             />
-            <p className="mt-1.5 text-xs text-secondary">
-              Se colar JSON aqui, ele é gravado no banco pelo servidor — não fica no localStorage.
-            </p>
-          </div>
+            <span className="mt-1 block text-[11px] text-[var(--tse-muted)]">
+              Se colar o JSON aqui, ele é gravado no banco pelo servidor — não fica no navegador.
+            </span>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Email do Usuário Real (Workspace) <span className="text-status-error">*</span>
-            </label>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>E-mail do usuário real (Workspace) *</span>
             <input
               type="email"
-              value={formData.subjectUser}
-              onChange={(e) => setFormData({ ...formData, subjectUser: e.target.value })}
-              placeholder="agenda@seudominio.com.br"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               required
+              value={formData.subjectUser}
+              onChange={(e) => atualizar('subjectUser', e.target.value)}
+              placeholder="agenda@seudominio.com.br"
+              className={tseCampoClass}
             />
-          </div>
+          </label>
 
           <div>
             <button
               type="button"
               onClick={() => void handleTest()}
               disabled={testing || !formData.calendarId || !formData.subjectUser}
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-background text-text-primary hover:bg-accent-gold-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(tseBotaoCinzaClass, 'h-9 w-full justify-center')}
             >
-              {testing ? 'Testando...' : 'Testar Conexão (servidor)'}
+              {testing ? <Loader2 className="h-4 w-4 animate-spin text-[var(--tse-yellow)]" /> : null}
+              {testing ? 'Testando…' : 'Testar conexão (servidor)'}
             </button>
             {testResult ? (
-              <div
-                className={`mt-3 p-3 rounded-lg text-sm ${
-                  testResult.success
-                    ? 'bg-status-success/10 text-status-success border border-status-success/30'
-                    : 'bg-status-error/10 text-status-error border border-status-error/30'
-                }`}
+              <p
+                className={cn(
+                  'mt-2 rounded-md px-3 py-2 text-[13px] font-semibold',
+                  testResult.success ? 'bg-[var(--tse-bar)] text-[var(--tse-olive)]' : 'bg-red-50 text-red-700',
+                )}
               >
                 {testResult.message}
-              </div>
+              </p>
             ) : null}
           </div>
 
-          <div className="flex items-center gap-3 pt-4 border-t border-card">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-card rounded-lg text-text-primary hover:bg-background transition-colors"
-            >
+          {erroSalvar ? (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-[13px] font-semibold text-red-700">{erroSalvar}</p>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2 border-t border-[#EEEEEE] pt-4">
+            <button type="button" onClick={onClose} className={tseBotaoCinzaClass}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={!canSave}
-              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1 py-2.5')}
-            >
-              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
+            <button type="submit" disabled={!canSave || saving} className={tseBotaoPrimarioClass}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar
             </button>
           </div>

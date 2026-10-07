@@ -19,11 +19,6 @@ export type PollFeedbackLinha = {
   cities?: { name?: string | null }
 }
 
-export type FeedbackDesempenhoCandidato = {
-  bullets: string[]
-  avisos: string[]
-}
-
 const PP_RELEVANTE = 1.5
 
 export function dataPesquisaNormalizada(data: string): string {
@@ -59,18 +54,6 @@ function formatDataCurta(data: string): string {
 
 function tipoLabel(t: 'estimulada' | 'espontanea'): string {
   return t === 'estimulada' ? 'estimulada' : 'espontânea'
-}
-
-function media(nums: number[]): number {
-  if (nums.length === 0) return 0
-  return nums.reduce((a, b) => a + b, 0) / nums.length
-}
-
-function desvioAmostral(nums: number[]): number {
-  if (nums.length < 2) return 0
-  const m = media(nums)
-  const s = nums.reduce((acc, x) => acc + (x - m) ** 2, 0) / (nums.length - 1)
-  return Math.sqrt(s)
 }
 
 /** Candidatos que entram no ranking de posição (exclui branco/nulo e não sabe/não opina). */
@@ -125,118 +108,6 @@ export function rankeamentoNasOndasOrdenadoPorData(
   }
 
   return linhas.sort((a, b) => a.dataMs - b.dataMs)
-}
-
-export function gerarFeedbackDesempenhoCandidato(
-  candidatoNome: string,
-  linhasDoCandidato: PollFeedbackLinha[],
-  todosParaRanking: PollFeedbackLinha[]
-): FeedbackDesempenhoCandidato {
-  const bullets: string[] = []
-  const avisos: string[] = []
-
-  const ordenadas = [...linhasDoCandidato].sort((a, b) => toDateMs(a.data) - toDateMs(b.data))
-  if (ordenadas.length === 0) {
-    return { bullets: [], avisos: [] }
-  }
-
-  const ints = ordenadas.map((p) => p.intencao || 0)
-  const rejs = ordenadas.map((p) => p.rejeicao || 0)
-  const primeira = ordenadas[0]
-  const ultima = ordenadas[ordenadas.length - 1]
-
-  const tipos = new Set(ordenadas.map((p) => p.tipo))
-  if (tipos.size > 1) {
-    avisos.push(
-      'A série mistura pesquisa estimulada e espontânea: compare principalmente dentro do mesmo tipo, pois os níveis de intenção costumam ser incomparáveis entre eles.'
-    )
-  }
-
-  if (ordenadas.length === 1) {
-    const p = primeira
-    const onde = p.cities?.name ? ` em ${p.cities.name}` : ''
-    bullets.push(
-      `Único registro no filtro atual (${formatDataCurta(p.data)}${onde}, ${p.instituto}, ${tipoLabel(p.tipo)}): intenção ${(p.intencao || 0).toFixed(1)}% e rejeição ${(p.rejeicao || 0).toFixed(1)}%. Inclua mais leituras para avaliar tendência.`
-    )
-    return { bullets, avisos }
-  }
-
-  const delta = (ultima.intencao || 0) - (primeira.intencao || 0)
-  const deltaRej = (ultima.rejeicao || 0) - (primeira.rejeicao || 0)
-
-  if (Math.abs(delta) < PP_RELEVANTE) {
-    bullets.push(
-      `Entre a primeira leitura (${formatDataCurta(primeira.data)}) e a mais recente (${formatDataCurta(ultima.data)}), a intenção permaneceu estável em torno de ${(ultima.intencao || 0).toFixed(1)}% (variação líquida ${delta >= 0 ? '+' : ''}${delta.toFixed(1)} p.p.).`
-    )
-  } else if (delta > 0) {
-    bullets.push(
-      `Tendência de intenção em alta: de ${(primeira.intencao || 0).toFixed(1)}% (${formatDataCurta(primeira.data)}) para ${(ultima.intencao || 0).toFixed(1)}% (${formatDataCurta(ultima.data)}), ganho líquido de ${delta.toFixed(1)} p.p.`
-    )
-  } else {
-    bullets.push(
-      `Tendência de intenção em queda: de ${(primeira.intencao || 0).toFixed(1)}% (${formatDataCurta(primeira.data)}) para ${(ultima.intencao || 0).toFixed(1)}% (${formatDataCurta(ultima.data)}), perda líquida de ${Math.abs(delta).toFixed(1)} p.p.`
-    )
-  }
-
-  if (ordenadas.length >= 3) {
-    const sd = desvioAmostral(ints)
-    const amplitude = Math.max(...ints) - Math.min(...ints)
-    if (sd >= 4) {
-      avisos.push(
-        `Oscilação relevante entre leituras (desvio ~${sd.toFixed(1)} p.p.): confira se mudou instituto, tipo de pergunta, cidade ou universo — comparações diretas nem sempre são equivalentes.`
-      )
-    } else if (amplitude >= 8 && sd < 4) {
-      bullets.push(
-        `Há picos e vales na série (amplitude ${amplitude.toFixed(1)} p.p.); a média no período ficou em ${media(ints).toFixed(1)}%.`
-      )
-    }
-  }
-
-  if (ordenadas.length >= 2) {
-    const semUltima = ints.slice(0, -1)
-    const mediaAnt = media(semUltima)
-    const ult = ultima.intencao || 0
-    const vsMedia = ult - mediaAnt
-    if (Math.abs(vsMedia) >= PP_RELEVANTE) {
-      bullets.push(
-        vsMedia > 0
-          ? `A última leitura (${ult.toFixed(1)}%) está acima da média das anteriores (${mediaAnt.toFixed(1)}%).`
-          : `A última leitura (${ult.toFixed(1)}%) está abaixo da média das anteriores (${mediaAnt.toFixed(1)}%).`
-      )
-    }
-  }
-
-  if (Math.abs(deltaRej) >= PP_RELEVANTE) {
-    bullets.push(
-      deltaRej > 0
-        ? `Rejeição subiu ${deltaRej.toFixed(1)} p.p. no período (de ${(primeira.rejeicao || 0).toFixed(1)}% para ${(ultima.rejeicao || 0).toFixed(1)}%).`
-        : `Rejeição caiu ${Math.abs(deltaRej).toFixed(1)} p.p. no período (de ${(primeira.rejeicao || 0).toFixed(1)}% para ${(ultima.rejeicao || 0).toFixed(1)}%).`
-    )
-  } else {
-    bullets.push(
-      `Rejeição média no período: ${media(rejs).toFixed(1)}%, com variação líquida modesta entre primeira e última leitura.`
-    )
-  }
-
-  const ranks = rankeamentoNasOndasOrdenadoPorData(candidatoNome, todosParaRanking)
-  const comConcorrencia = ranks.filter((r) => r.total > 1)
-  if (comConcorrencia.length > 0) {
-    const primeiros = comConcorrencia.filter((r) => r.rank === 1).length
-    const ultimoR = comConcorrencia[comConcorrencia.length - 1]
-    bullets.push(
-      `Nas ondas com mais de um candidato no mesmo recorte (${comConcorrencia.length} leitura(s)), ficou em 1º lugar em ${primeiros} delas. Na mais recente (${ultimoR.dataFmt}, ${ultimoR.instituto}, ${ultimoR.tipo}${ultimoR.cidade ? `, ${ultimoR.cidade}` : ''}): posição ${ultimoR.rank}º de ${ultimoR.total} com ${ultimoR.intencao.toFixed(1)}%.`
-    )
-  } else if (ranks.length > 0) {
-    avisos.push(
-      'Não há outro candidato cadastrado na mesma data/instituto/cidade/tipo: o ranking relativo só aparece quando existem pares na mesma onda.'
-    )
-  }
-
-  if (ordenadas.length < 3) {
-    avisos.push('Poucos pontos na série: o feedback ganha robustez com mais pesquisas ao longo do tempo.')
-  }
-
-  return { bullets, avisos }
 }
 
 function parsePctValorGrafico(raw: unknown): number | null {

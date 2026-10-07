@@ -1,30 +1,31 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import {
-  Calendar,
-  CheckCircle2,
-  ChevronRight,
-  ChevronUp,
-  Clock3,
-  Filter,
-  Loader2,
-  Pencil,
-  Plus,
-  Save,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Loader2, Plus, Save, X } from 'lucide-react'
 import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
-import { CampoResumoWidget } from '@/components/campo/campo-resumo-widget'
+import { useTerritorioMunicipio } from '@/components/territorio-campo/territorio-municipio-context'
 import { cn, formatDate, monthBucketKey, parseDateOnlyLocal } from '@/lib/utils'
 import {
-  territorioCxBtnGhostClass,
-  territorioCxBtnPrimaryClass,
-} from '@/lib/territorio-base-styles'
-import { useTheme } from '@/contexts/theme-context'
+  TseBarraRotulo,
+  TseBusca,
+  TseCard,
+  TseCarregando,
+  TseCarregarMais,
+  TseDado,
+  TseDados,
+  TseErro,
+  TseListaFiltro,
+  TseStatus,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseCardClass,
+  tseControleClass,
+  tseLinkAcaoClass,
+  tseRotuloCampoClass,
+} from '@/components/tse/tse-ui'
 
 interface Agenda {
   id: string
@@ -52,11 +53,13 @@ interface City {
   state: string
 }
 
+type StatusAgenda = 'planejada' | 'concluida' | 'cancelada'
+
 interface AgendaFormData {
   date: string
   city_id: string
   type: 'visita' | 'evento' | 'reuniao' | 'outro'
-  status: 'planejada' | 'concluida' | 'cancelada'
+  status: StatusAgenda
   description: string
 }
 
@@ -68,41 +71,56 @@ const emptyForm: AgendaFormData = {
   description: '',
 }
 
+const PAGE_SIZE = 30
+const TOTAL_MUNICIPIOS_PI = 224
+
+const STATUS: Array<{ id: StatusAgenda; label: string; cor: string }> = [
+  { id: 'planejada', label: 'Planejadas', cor: 'var(--tse-yellow)' },
+  { id: 'concluida', label: 'Concluídas', cor: 'var(--tse-green)' },
+  { id: 'cancelada', label: 'Canceladas', cor: 'var(--tse-zero)' },
+]
+
+const ROTULO_STATUS: Record<string, string> = {
+  planejada: 'Planejada',
+  concluida: 'Concluída',
+  cancelada: 'Cancelada',
+}
+
+const ROTULO_TIPO: Record<string, string> = {
+  visita: 'Visita',
+  evento: 'Evento',
+  reuniao: 'Reunião',
+  outro: 'Outro',
+}
+
+const corStatus = (status: string): string => STATUS.find((s) => s.id === status)?.cor ?? 'var(--tse-zero)'
+const tempo = (agenda: Agenda): number => parseDateOnlyLocal(agenda.date)?.getTime() ?? 0
+const fmt = (n: number): string => n.toLocaleString('pt-BR')
+const fmtPct = (n: number): string => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+
 export function CampoVisitasPanel() {
-  const { appearance } = useTheme()
-  const isDarkAppearance = appearance === 'dark'
-  /** Campo Command: painel claro hairline; dark mantém glass. */
-  const sectionShellClass = isDarkAppearance
-    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'territorio-cx-panel border-[#e8e8e6] bg-white shadow-none'
-  const innerPanelClass = isDarkAppearance
-    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-[#e8e8e6] bg-[#f7f7f6]'
-  const metricTrackClass = isDarkAppearance ? 'bg-white/10' : 'bg-[#e8e8e6]'
-  const premiumPrimaryBarClass = isDarkAppearance
-    ? 'bg-[linear-gradient(135deg,rgba(45,212,191,0.95)_0%,rgba(14,165,183,0.95)_100%)]'
-    : 'bg-[#e8a825]'
+  const { municipio, noMunicipio } = useTerritorioMunicipio()
   const [agendas, setAgendas] = useState<Agenda[]>([])
   const [cities, setCities] = useState<City[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [saving, setSaving] = useState<boolean>(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null)
+  const [formAberto, setFormAberto] = useState<boolean>(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formData, setFormData] = useState<AgendaFormData>(emptyForm)
-  const [query, setQuery] = useState('')
-  const [filterCity, setFilterCity] = useState('all')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'planejada' | 'concluida' | 'cancelada'>('all')
-  const [showAllAgendas, setShowAllAgendas] = useState(false)
+  const [query, setQuery] = useState<string>('')
+  const [filterStatus, setFilterStatus] = useState<StatusAgenda | null>(null)
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null)
-  const [novaAgendaExpandida, setNovaAgendaExpandida] = useState<boolean>(false)
+  const [limite, setLimite] = useState<number>(PAGE_SIZE)
+
   const contextoAgenteCampo = useMemo<AIAgentPageContext>(
     () => ({
       kind: 'campo',
       cidades: cities.map((city) => city.name),
       totalAgendas: agendas.length,
     }),
-    [agendas.length, cities]
+    [agendas.length, cities],
   )
 
   useRegisterJarvisHostProps({
@@ -111,26 +129,18 @@ export function CampoVisitasPanel() {
     kpisCount: agendas.length,
   })
 
-  useEffect(() => {
-    void Promise.all([fetchAgendas(), fetchCities()])
-  }, [])
-
-  useEffect(() => {
-    if (editingAgendaId) setNovaAgendaExpandida(true)
-  }, [editingAgendaId])
-
-  const fetchCities = async () => {
+  const fetchCities = useCallback(async () => {
     try {
       const response = await fetch('/api/campo/cities')
       if (!response.ok) return
       const data = (await response.json()) as City[]
-      setCities([...data].sort((a, b) => a.name.localeCompare(b.name)))
+      setCities([...data].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')))
     } catch (error) {
       console.error('Erro ao buscar cidades:', error)
     }
-  }
+  }, [])
 
-  const fetchAgendas = async () => {
+  const fetchAgendas = useCallback(async () => {
     try {
       const response = await fetch('/api/campo/agendas')
       if (!response.ok) return
@@ -141,13 +151,29 @@ export function CampoVisitasPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void Promise.all([fetchAgendas(), fetchCities()])
+  }, [fetchAgendas, fetchCities])
+
+  useEffect(() => {
+    setLimite(PAGE_SIZE)
+  }, [municipio, filterStatus, selectedMonthKey])
 
   const resetForm = () => {
     setEditingAgendaId(null)
     setFormError(null)
     setFormData(emptyForm)
-    setNovaAgendaExpandida(false)
+    setFormAberto(false)
+  }
+
+  const abrirNovaAgenda = () => {
+    const cidadeDoFiltro = municipio ? cities.find((c) => noMunicipio(c.name)) : undefined
+    setEditingAgendaId(null)
+    setFormError(null)
+    setFormData({ ...emptyForm, city_id: cidadeDoFiltro?.id ?? '' })
+    setFormAberto(true)
   }
 
   const startEditAgenda = (agenda: Agenda) => {
@@ -157,9 +183,10 @@ export function CampoVisitasPanel() {
       date: agenda.date,
       city_id: agenda.city_id ?? '',
       type: (agenda.type as AgendaFormData['type']) ?? 'visita',
-      status: (agenda.status as AgendaFormData['status']) ?? 'planejada',
+      status: (agenda.status as StatusAgenda) ?? 'planejada',
       description: agenda.description ?? '',
     })
+    setFormAberto(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,7 +196,6 @@ export function CampoVisitasPanel() {
     try {
       const isEditing = Boolean(editingAgendaId)
       const url = isEditing ? `/api/campo/agendas/${editingAgendaId}` : '/api/campo/agendas'
-      const method = isEditing ? 'PUT' : 'POST'
       const payload = isEditing
         ? { ...formData, city_id: formData.city_id || undefined }
         : {
@@ -179,7 +205,7 @@ export function CampoVisitasPanel() {
             description: formData.description,
           }
       const response = await fetch(url, {
-        method,
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
@@ -196,15 +222,16 @@ export function CampoVisitasPanel() {
     }
   }
 
-  const handleDelete = async (agendaId: string) => {
-    setDeletingId(agendaId)
+  const handleDelete = async (agenda: Agenda) => {
+    if (!window.confirm(`Excluir a agenda de ${agenda.cities?.name ?? 'cidade não informada'}?`)) return
+    setDeletingId(agenda.id)
     try {
-      const response = await fetch(`/api/campo/agendas/${agendaId}`, { method: 'DELETE' })
+      const response = await fetch(`/api/campo/agendas/${agenda.id}`, { method: 'DELETE' })
       if (!response.ok) {
         const data = (await response.json()) as { error?: string }
         throw new Error(data.error ?? 'Erro ao excluir agenda')
       }
-      if (editingAgendaId === agendaId) resetForm()
+      if (editingAgendaId === agenda.id) resetForm()
       await fetchAgendas()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Erro ao excluir agenda')
@@ -226,317 +253,322 @@ export function CampoVisitasPanel() {
     }
   }
 
-  const agendasOrdenadasDesc = [...agendas].sort(
-    (a, b) =>
-      (parseDateOnlyLocal(b.date)?.getTime() ?? 0) - (parseDateOnlyLocal(a.date)?.getTime() ?? 0),
+  const agendasEscopo = agendas.filter((agenda) => noMunicipio(agenda.cities?.name))
+  const concluidas = agendasEscopo.filter((agenda) => agenda.status === 'concluida')
+  const ultimaConcluida = concluidas.reduce<Agenda | null>(
+    (maisRecente, agenda) => (!maisRecente || tempo(agenda) > tempo(maisRecente) ? agenda : maisRecente),
+    null,
   )
-  const agendasConcluidas = agendas.filter((agenda) => agenda.status === 'concluida')
-  const ultimasRealizadas = [...agendasConcluidas]
-    .sort(
-      (a, b) =>
-        (parseDateOnlyLocal(b.date)?.getTime() ?? 0) - (parseDateOnlyLocal(a.date)?.getTime() ?? 0)
-    )
-    .slice(0, 4)
-  const cityPresenceMap = agendasConcluidas.reduce<Record<string, { name: string; count: number }>>((acc, agenda) => {
-    if (!agenda.cities?.name) return acc
-    const key = agenda.cities.id ?? agenda.cities.name
-    const previous = acc[key]
-    acc[key] = { name: agenda.cities.name, count: (previous?.count ?? 0) + 1 }
-    return acc
-  }, {})
-  const cityPresence = Object.values(cityPresenceMap).sort((a, b) => b.count - a.count)
-  const cityMaisPresenca = cityPresence[0] ?? null
-  const cityMenosPresenca = cityPresence[cityPresence.length - 1] ?? null
-  const pipelineDistribuicao: Array<{
-    label: string
-    value: number
-    tone: 'planejada' | 'concluida' | 'cancelada'
-  }> = [
-    { label: 'Planejadas', value: agendas.filter((a) => a.status === 'planejada').length, tone: 'planejada' },
-    { label: 'Concluídas', value: agendas.filter((a) => a.status === 'concluida').length, tone: 'concluida' },
-    { label: 'Canceladas', value: agendas.filter((a) => a.status === 'cancelada').length, tone: 'cancelada' },
-  ]
-  const pipelineBarClass = (tone: 'planejada' | 'concluida' | 'cancelada') => {
-    if (tone === 'concluida') {
-      return isDarkAppearance
-        ? 'bg-[linear-gradient(135deg,rgba(52,211,153,0.95)_0%,rgba(16,185,129,0.95)_100%)]'
-        : 'bg-[linear-gradient(135deg,rgb(var(--success))_0%,rgba(21,128,61,1)_100%)]'
-    }
-    if (tone === 'cancelada') {
-      return isDarkAppearance
-        ? 'bg-[linear-gradient(135deg,rgba(251,191,36,0.95)_0%,rgba(245,158,11,0.95)_100%)]'
-        : 'bg-[linear-gradient(135deg,rgb(var(--warning))_0%,rgba(180,122,16,1)_100%)]'
-    }
-    return premiumPrimaryBarClass
+  const contagemStatus = STATUS.map((s) => ({
+    ...s,
+    valor: agendasEscopo.filter((agenda) => agenda.status === s.id).length,
+  }))
+  const taxaConclusao = agendasEscopo.length ? (concluidas.length / agendasEscopo.length) * 100 : 0
+
+  const presencaPorCidade = new Map<string, number>()
+  for (const agenda of concluidas) {
+    const nome = agenda.cities?.name
+    if (nome) presencaPorCidade.set(nome, (presencaPorCidade.get(nome) ?? 0) + 1)
   }
-  const totalPipeline = pipelineDistribuicao.reduce((sum, item) => sum + item.value, 0)
-  const cityBars = cityPresence.slice(0, 5)
-  const agendasFiltradas = agendasOrdenadasDesc.filter((agenda) => {
-    const matchCity = filterCity === 'all' || agenda.city_id === filterCity
-    const matchStatus = filterStatus === 'all' || agenda.status === filterStatus
-    const cityName = agenda.cities?.name?.toLowerCase() ?? ''
-    const description = agenda.description?.toLowerCase() ?? ''
-    const matchQuery = query.trim() === '' || cityName.includes(query.toLowerCase()) || description.includes(query.toLowerCase())
-    const matchMonth = selectedMonthKey === null || monthBucketKey(agenda.date) === selectedMonthKey
-    return matchCity && matchStatus && matchQuery && matchMonth
-  })
-  const agendasListadas = showAllAgendas ? agendasFiltradas : agendasFiltradas.slice(0, 8)
-  const statusBadgeClass = (status: Agenda['status']) => {
-    if (status === 'concluida') return 'bg-status-success/10 text-status-success'
-    if (status === 'cancelada') return 'bg-status-danger/10 text-status-danger'
-    return 'bg-bg-app text-text-secondary'
-  }
-  const completionRate = agendas.length > 0 ? Math.round((agendasConcluidas.length / agendas.length) * 100) : 0
-  const quickCityOptions = cities
-  const monthBuckets = Array.from({ length: 6 }).map((_, idx) => {
+  const cidadesVisitadas = presencaPorCidade.size
+  const universo = municipio ? 1 : TOTAL_MUNICIPIOS_PI
+  const topCidades = [...presencaPorCidade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const maxTopCidade = topCidades[0]?.[1] ?? 0
+
+  const meses = Array.from({ length: 6 }).map((_, idx) => {
     const d = new Date()
     // Normaliza no dia 1 para evitar salto de mês em datas como 30/31.
     d.setDate(1)
     d.setMonth(d.getMonth() - (5 - idx))
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const label = d.toLocaleDateString('pt-BR', { month: 'short' })
-    return { key, label, value: 0, monthIndex: d.getMonth(), year: d.getFullYear() }
+    return {
+      id: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+      valor: 0,
+      cor: 'var(--tse-green)',
+    }
   })
-  agendasConcluidas.forEach((agenda) => {
-    const key = monthBucketKey(agenda.date)
-    const bucket = monthBuckets.find((m) => m.key === key)
-    if (bucket) bucket.value += 1
-  })
-  const monthMax = Math.max(...monthBuckets.map((m) => m.value), 1)
-  const selectedMonthMeta = selectedMonthKey
-    ? monthBuckets.find((month) => month.key === selectedMonthKey) ?? null
-    : null
-  const selectedMonthLabel = selectedMonthMeta?.label ?? null
-  const selectedMonthYear = selectedMonthKey?.split('-')[0] ?? null
+  for (const agenda of concluidas) {
+    const mes = meses.find((m) => m.id === monthBucketKey(agenda.date))
+    if (mes) mes.valor += 1
+  }
+  const mesSelecionado = meses.find((m) => m.id === selectedMonthKey) ?? null
+
+  const termo = query.trim().toLowerCase()
+  const agendasFiltradas = agendasEscopo
+    .filter((agenda) => {
+      const matchStatus = !filterStatus || agenda.status === filterStatus
+      const matchQuery =
+        !termo ||
+        (agenda.cities?.name ?? '').toLowerCase().includes(termo) ||
+        (agenda.description ?? '').toLowerCase().includes(termo)
+      const matchMonth = !selectedMonthKey || monthBucketKey(agenda.date) === selectedMonthKey
+      return matchStatus && matchQuery && matchMonth
+    })
+    .sort((a, b) => tempo(b) - tempo(a))
+
+  const escopoLabel = municipio ?? 'Piauí'
+
+  if (loading && agendas.length === 0) return <TseCarregando texto="Carregando Campo & Agenda…" />
 
   return (
-    <div className="flex flex-col gap-4">
-        <section className="animate-reveal">
-          <div className={cn('rounded-xl border p-5', sectionShellClass)}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-[#2b2d31]">{editingAgendaId ? 'Editar agenda na própria página' : 'Nova agenda estratégica'}</h2>
-              <div className="flex items-center gap-2">
-                {!editingAgendaId ? (
-                  <button
-                    type="button"
-                    onClick={() => setNovaAgendaExpandida((prev) => !prev)}
-                    className={cn(
-                      territorioCxBtnGhostClass,
-                      'h-9 w-9 !px-0',
-                      novaAgendaExpandida && 'bg-[#f7f7f6]',
-                    )}
-                    aria-expanded={novaAgendaExpandida}
-                    title={novaAgendaExpandida ? 'Recolher formulário' : 'Expandir formulário'}
-                  >
-                    {novaAgendaExpandida ? <ChevronUp className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-                  </button>
-                ) : null}
-                {editingAgendaId ? (
-                  <button type="button" onClick={resetForm} className={territorioCxBtnGhostClass}>
-                    <X className="h-4 w-4" />
-                    Cancelar edição
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            {(editingAgendaId !== null || novaAgendaExpandida) ? (
-              <>
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-                  <div className="xl:col-span-3">
-                    <label className="territorio-cx-field-label">Data</label>
-                    <input type="date" required value={formData.date} onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))} className="territorio-cx-input w-full" />
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+      <aside className="space-y-4">
+        <section className={tseCardClass}>
+          <h2 className="text-xl font-bold">Dados Gerais</h2>
+          <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">Campo &amp; Agenda · {escopoLabel}</p>
+          <TseDados>
+            <TseDado rotulo="Agendas" valor={fmt(agendasEscopo.length)} />
+            <TseDado rotulo="Cidades visitadas" valor={fmt(cidadesVisitadas)} sufixo={`/ ${fmt(universo)}`} />
+            <TseDado rotulo="Última visita" valor={ultimaConcluida ? formatDate(ultimaConcluida.date) : '—'} />
+          </TseDados>
+          <TseBarraRotulo pct={taxaConclusao} rotulo={fmtPct(taxaConclusao)} />
+          <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Agendas concluídas</p>
+        </section>
+
+        <TseListaFiltro titulo="Status" itens={contagemStatus} ativo={filterStatus} onChange={setFilterStatus} />
+
+        <TseListaFiltro
+          titulo="Visitas concluídas por mês"
+          itens={meses}
+          ativo={selectedMonthKey}
+          onChange={setSelectedMonthKey}
+        />
+
+        {!municipio && topCidades.length > 0 ? (
+          <section className={tseCardClass}>
+            <h2 className="text-[15px] font-bold">Cidades mais visitadas</h2>
+            <ul className="mt-3 space-y-2.5 text-[13px]">
+              {topCidades.map(([nome, total]) => (
+                <li key={nome}>
+                  <div className="flex justify-between gap-2">
+                    <span className="truncate uppercase">{nome}</span>
+                    <strong className="tabular-nums">{fmt(total)}</strong>
                   </div>
-                  <div className="xl:col-span-3">
-                    <label className="territorio-cx-field-label">Cidade</label>
-                    <select value={formData.city_id} onChange={(e) => setFormData((prev) => ({ ...prev, city_id: e.target.value }))} className="territorio-cx-select w-full" required>
-                      <option value="">Selecione uma cidade</option>
-                      {quickCityOptions.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#EEEEEE]">
+                    <div
+                      className="h-full bg-[var(--tse-green)]"
+                      style={{ width: `${maxTopCidade ? (total / maxTopCidade) * 100 : 0}%` }}
+                    />
                   </div>
-                  <div className="xl:col-span-2">
-                    <label className="territorio-cx-field-label">Tipo</label>
-                    <select value={formData.type} onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as AgendaFormData['type'] }))} className="territorio-cx-select w-full">
-                      <option value="visita">Visita</option>
-                      <option value="evento">Evento</option>
-                      <option value="reuniao">Reunião</option>
-                      <option value="outro">Outro</option>
-                    </select>
-                  </div>
-                  <div className="xl:col-span-2">
-                    <label className="territorio-cx-field-label">Status</label>
-                    <select value={formData.status} onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as AgendaFormData['status'] }))} className="territorio-cx-select w-full">
-                      <option value="planejada">Planejada</option>
-                      <option value="concluida">Concluída</option>
-                      <option value="cancelada">Cancelada</option>
-                    </select>
-                  </div>
-                  <div className="xl:col-span-2">
-                    <label className="territorio-cx-field-label">Ação</label>
-                    <button type="submit" disabled={saving} className={cn(territorioCxBtnPrimaryClass, 'h-10 w-full')}>
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      {editingAgendaId ? 'Atualizar' : 'Salvar'}
-                    </button>
-                  </div>
-                  <div className="xl:col-span-12">
-                    <label className="territorio-cx-field-label">Descrição</label>
-                    <textarea rows={2} value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} placeholder="Detalhes da agenda, objetivos e observações." className="w-full rounded-[10px] border border-[#e8e8e6] bg-white px-3 py-2 text-sm text-[#2b2d31] outline-none focus:border-[#e8a825]/55 focus:ring-2 focus:ring-[#e8a825]/18" />
-                  </div>
-                </form>
-                {formError ? (
-                  <div className="mt-4 rounded-lg border border-status-danger/30 bg-status-danger/10 p-3 text-sm text-status-danger">{formError}</div>
-                ) : null}
-              </>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </aside>
+
+      <main className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={filterStatus ?? ''}
+              onChange={(e) => setFilterStatus((e.target.value || null) as StatusAgenda | null)}
+              className={tseControleClass}
+              aria-label="Filtrar por status"
+            >
+              <option value="">Todos os status</option>
+              {STATUS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {ROTULO_STATUS[s.id]}
+                </option>
+              ))}
+            </select>
+            {mesSelecionado ? (
+              <button
+                type="button"
+                onClick={() => setSelectedMonthKey(null)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-2.5 text-[13px] font-semibold"
+              >
+                Mês: {mesSelecionado.label}
+                <X className="h-3.5 w-3.5" />
+              </button>
             ) : null}
           </div>
-        </section>
+          <div className="flex flex-wrap items-center gap-2">
+            <TseBusca value={query} onChange={setQuery} placeholder="Buscar cidade ou descrição" />
+            <button type="button" onClick={abrirNovaAgenda} className={tseBotaoPrimarioClass}>
+              <Plus className="h-4 w-4" />
+              Nova agenda
+            </button>
+          </div>
+        </div>
 
-        <section className="mb-6 animate-reveal animate-reveal-2">
-          <CampoResumoWidget
-            totalAgendas={agendas.length}
-            cityBars={cityBars}
-            recentAgendas={ultimasRealizadas.slice(0, 3).map((agenda) => ({
-              id: agenda.id,
-              date: agenda.date,
-              type: agenda.type,
-              cityName: agenda.cities?.name ?? 'Cidade não informada',
-            }))}
-            monthBuckets={monthBuckets}
-          />
-        </section>
-
-        <section className="animate-reveal animate-reveal-3">
-          <div className={cn('rounded-xl border p-5', sectionShellClass)}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-[#2b2d31]">Agenda inteligente</h2>
-              <div className="flex items-center gap-2 text-xs text-[#686865]">
-                <Filter className="h-3.5 w-3.5" />
-                <span>{agendasFiltradas.length} agendas encontradas</span>
-              </div>
-            </div>
-            <div className="territorio-cx-filter-strip mb-4">
-              <div className="relative min-w-0 flex-1 basis-[12rem]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#969692]" />
-                <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por cidade ou descrição" className="territorio-cx-input w-full !bg-white pl-9" />
-              </div>
-              <select value={filterCity} onChange={(e) => setFilterCity(e.target.value)} className="territorio-cx-select min-w-[10rem] flex-1 !bg-white">
-                <option value="all">Todas as cidades</option>
-                {cities.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)} className="territorio-cx-select min-w-[10rem] flex-1 !bg-white">
-                <option value="all">Todos os status</option>
-                <option value="planejada">Planejada</option>
-                <option value="concluida">Concluída</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
-              <button type="button" onClick={() => setShowAllAgendas((prev) => !prev)} className={cn(territorioCxBtnGhostClass, 'shrink-0')}>
-                {showAllAgendas ? 'Mostrar menos' : 'Ver todas'}
-                <ChevronRight className={cn('h-4 w-4 transition-transform', showAllAgendas && 'rotate-90')} />
+        {formAberto ? (
+          <TseCard
+            className="mt-4"
+            titulo={editingAgendaId ? 'Editar agenda' : 'Nova agenda'}
+            acao={
+              <button type="button" onClick={resetForm} className={tseLinkAcaoClass}>
+                Cancelar
               </button>
-            </div>
-            {selectedMonthLabel ? (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-card bg-bg-app/50 px-3 py-2 text-xs text-text-secondary">
-                <span>
-                  Filtrando agendas de{' '}
-                  <strong className="uppercase text-text-primary">
-                    {selectedMonthLabel}
-                    {selectedMonthYear ? ` de ${selectedMonthYear}` : ''}
-                  </strong>
-                  .
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonthKey(null)}
-                  className="rounded-md border border-border-card px-2 py-1 text-xs font-medium text-text-primary transition-colors hover:bg-bg-surface"
+            }
+          >
+            <form onSubmit={handleSubmit} className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
+              <label className="xl:col-span-3">
+                <span className={tseRotuloCampoClass}>Data</span>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
+                  className={tseCampoClass}
+                />
+              </label>
+              <label className="xl:col-span-3">
+                <span className={tseRotuloCampoClass}>Cidade</span>
+                <select
+                  value={formData.city_id}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, city_id: e.target.value }))}
+                  className={tseCampoClass}
+                  required
                 >
-                  Limpar período
+                  <option value="">Selecione uma cidade</option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="xl:col-span-2">
+                <span className={tseRotuloCampoClass}>Tipo</span>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as AgendaFormData['type'] }))}
+                  className={tseCampoClass}
+                >
+                  {Object.entries(ROTULO_TIPO).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="xl:col-span-2">
+                <span className={tseRotuloCampoClass}>Status</span>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as StatusAgenda }))}
+                  className={tseCampoClass}
+                >
+                  {STATUS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {ROTULO_STATUS[s.id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-end xl:col-span-2">
+                <button type="submit" disabled={saving} className={cn(tseBotaoPrimarioClass, 'h-9 w-full')}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {editingAgendaId ? 'Atualizar' : 'Salvar'}
                 </button>
               </div>
-            ) : null}
-            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-              {pipelineDistribuicao.map((item) => {
-                const pct = totalPipeline > 0 ? (item.value / totalPipeline) * 100 : 0
-                return (
-                  <div key={item.label} className={cn('rounded-xl border p-3', innerPanelClass)}>
-                    <div className="mb-2 flex items-center justify-between text-xs text-text-secondary">
-                      <span>{item.label}</span>
-                      <span>{item.value}</span>
-                    </div>
-                    <div className={cn('h-2 overflow-hidden rounded-full', metricTrackClass)}>
-                      <div className={cn('h-full rounded-full transition-all duration-700', pipelineBarClass(item.tone))} style={{ width: `${pct}%` }} />
+              <label className="md:col-span-2 xl:col-span-12">
+                <span className={tseRotuloCampoClass}>Descrição</span>
+                <textarea
+                  rows={2}
+                  value={formData.description}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Detalhes da agenda, objetivos e observações."
+                  className={cn(tseCampoClass, 'h-auto py-2')}
+                />
+              </label>
+            </form>
+          </TseCard>
+        ) : null}
+
+        {formError ? (
+          <div className="mt-3">
+            <TseErro>{formError}</TseErro>
+          </div>
+        ) : null}
+
+        <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+          <div className="min-w-[180px] flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xl font-bold uppercase">Agenda de campo</p>
+              <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                {escopoLabel}
+              </span>
+            </div>
+            <p className="text-[15px] text-[var(--tse-muted)]">
+              {fmt(agendasEscopo.length)} agendas · {fmt(cidadesVisitadas)}{' '}
+              {cidadesVisitadas === 1 ? 'cidade visitada' : 'cidades visitadas'}
+            </p>
+          </div>
+          {contagemStatus
+            .filter((s) => s.id !== 'cancelada')
+            .map((s) => (
+              <div key={s.id} className="text-right">
+                <p className="text-3xl font-black">{fmt(s.valor)}</p>
+                <p className="text-[13px] lowercase text-[var(--tse-muted)]">{s.label}</p>
+              </div>
+            ))}
+        </section>
+
+        <p className="mt-4 text-[12px] text-[var(--tse-muted)]">
+          {fmt(agendasFiltradas.length)} {agendasFiltradas.length === 1 ? 'agenda' : 'agendas'}
+          {filterStatus || selectedMonthKey || termo ? ' com os filtros aplicados' : ''} · mais recentes primeiro
+        </p>
+
+        {agendasFiltradas.length === 0 ? (
+          <div className="mt-3">
+            <TseVazio>
+              {municipio && agendasEscopo.length === 0
+                ? `Nenhuma agenda registrada em ${municipio}.`
+                : 'Nenhuma agenda encontrada para os filtros selecionados.'}
+            </TseVazio>
+          </div>
+        ) : (
+          <>
+            <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 min-[1600px]:grid-cols-3">
+              {agendasFiltradas.slice(0, limite).map((agenda) => (
+                <article key={agenda.id} className="flex flex-col rounded-xl bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="line-clamp-2 text-[15px] font-bold uppercase leading-tight">
+                      {agenda.cities?.name ?? 'Cidade não informada'}
+                    </p>
+                    <span className="shrink-0 text-[13px] tabular-nums">{formatDate(agenda.date)}</span>
+                  </div>
+                  <p className="mt-1 text-[12px] text-[var(--tse-muted)]">{ROTULO_TIPO[agenda.type] ?? agenda.type}</p>
+                  {agenda.description ? (
+                    <p className="mt-2 line-clamp-3 break-words text-[13px] leading-relaxed">{agenda.description}</p>
+                  ) : null}
+                  {agenda.status === 'concluida' && agenda.visits?.[0] ? (
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--tse-olive)]">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Check-in registrado
+                    </p>
+                  ) : null}
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+                    <TseStatus cor={corStatus(agenda.status)}>{ROTULO_STATUS[agenda.status] ?? agenda.status}</TseStatus>
+                    <div className="flex items-center gap-3">
+                      {agenda.status === 'planejada' ? (
+                        <button type="button" onClick={() => void handleCheckin(agenda.id)} className={tseLinkAcaoClass}>
+                          Check-in
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => startEditAgenda(agenda)} className={tseLinkAcaoClass}>
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(agenda)}
+                        disabled={deletingId === agenda.id}
+                        className="text-[12px] font-bold uppercase tracking-wide text-[var(--tse-muted)] hover:text-red-600 disabled:opacity-60"
+                      >
+                        {deletingId === agenda.id ? 'Excluindo…' : 'Excluir'}
+                      </button>
                     </div>
                   </div>
-                )
-              })}
+                </article>
+              ))}
             </div>
-            {loading ? (
-              <div className="grid grid-cols-1 gap-3">
-                {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-24 animate-pulse rounded-xl bg-bg-app" />
-                ))}
-              </div>
-            ) : agendasListadas.length === 0 ? (
-              <div className="rounded-xl border border-border-card bg-bg-app/60 p-6 text-center text-sm text-text-secondary">
-                Nenhuma agenda encontrada para os filtros selecionados.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {agendasListadas.map((agenda) => (
-                  <article key={agenda.id} className={cn('group rounded-xl border p-4 transition-colors', innerPanelClass)}>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                      <div className="min-w-0 w-full flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className={cn('rounded-lg px-2 py-1 text-xs font-semibold', statusBadgeClass(agenda.status))}>{agenda.status}</span>
-                          <span className="inline-flex items-center gap-1 text-xs text-[#686865]">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {formatDate(agenda.date)}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs text-[#686865]">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            {agenda.type}
-                          </span>
-                        </div>
-                        <h3 className="break-words text-sm font-semibold text-[#2b2d31] sm:truncate">{agenda.cities?.name ?? 'Cidade não informada'}</h3>
-                        {agenda.description ? (
-                          <p className="mt-1 break-words text-sm leading-relaxed text-[#686865]">{agenda.description}</p>
-                        ) : null}
-                        {agenda.status === 'concluida' && agenda.visits?.[0] ? (
-                          <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-status-success/10 px-2 py-1 text-xs text-status-success">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Check-in registrado
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:justify-start">
-                        <button type="button" onClick={() => startEditAgenda(agenda)} className={territorioCxBtnGhostClass}>
-                          <Pencil className="h-3.5 w-3.5" />
-                          Editar
-                        </button>
-                        {agenda.status === 'planejada' ? (
-                          <button type="button" onClick={() => handleCheckin(agenda.id)} className="inline-flex h-9 items-center gap-1 rounded-[10px] bg-status-success/90 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-status-success">
-                            <Plus className="h-3.5 w-3.5" />
-                            Check-in
-                          </button>
-                        ) : null}
-                        <button type="button" onClick={() => handleDelete(agenda.id)} disabled={deletingId === agenda.id} className="inline-flex h-9 items-center gap-1 rounded-[10px] border border-status-danger/40 px-2.5 text-xs font-medium text-status-danger transition-colors hover:bg-status-danger/10 disabled:opacity-60">
-                          {deletingId === agenda.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                          Excluir
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+            <TseCarregarMais restantes={agendasFiltradas.length - limite} onClick={() => setLimite((n) => n + PAGE_SIZE)} />
+          </>
+        )}
+      </main>
     </div>
   )
 }

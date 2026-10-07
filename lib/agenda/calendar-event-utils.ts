@@ -14,7 +14,7 @@ export function getCalendarEventDate(event: CalendarEventRow): Date | null {
   return null
 }
 
-/** Mesma regra de Atendimento > Agenda (`agenda-panel` getEventDate). */
+/** Dia inteiro vira meia-noite UTC (dia anterior no fuso local); para agrupar por dia use `getCalendarEventDate`. */
 export function getAgendaPanelEventDate(event: CalendarEventRow): Date | null {
   if (event.start?.dateTime) return new Date(event.start.dateTime)
   if (event.start?.date) return new Date(event.start.date)
