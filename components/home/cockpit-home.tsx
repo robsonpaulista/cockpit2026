@@ -32,9 +32,9 @@ const TRACOS_MOSTRADOR: Traco[] = Array.from({ length: 72 }, (_, i) => {
 })
 
 const campoClass =
-  'h-11 w-full rounded-lg border border-[var(--tse-border)] bg-white px-3.5 text-[15px] text-[var(--tse-text)] outline-none transition placeholder:text-[var(--tse-zero)] focus:border-[var(--tse-text)] focus:ring-4 focus:ring-[var(--tse-yellow-soft)]'
+  'h-9 w-full rounded-lg border border-[var(--tse-border)] bg-white px-3 text-[13px] text-[var(--tse-text)] outline-none transition placeholder:text-[var(--tse-zero)] focus:border-[var(--tse-text)] focus:ring-4 focus:ring-[var(--tse-yellow-soft)]'
 const rotuloClass =
-  'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--tse-muted)]'
+  'mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--tse-muted)]'
 
 function useRelogioBrasilia(): string | null {
   const [hora, setHora] = useState<string | null>(null)
@@ -131,17 +131,17 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
       </div>
 
       <motion.header
-        className="relative z-10 flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-6"
+        className="relative z-10 flex items-center justify-between px-5 pt-4 sm:px-7 sm:pt-5"
         initial={inicial({ opacity: 0, y: -8 })}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.2, duration: 0.6, ease: EASE }}
       >
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--tse-text)] backdrop-blur-sm">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--tse-text)] backdrop-blur-sm">
           <span className="ch-home__pulso" aria-hidden />
           Sistema online
         </span>
         {hora ? (
-          <span className="text-[13px] font-semibold tabular-nums tracking-[0.06em] text-[var(--tse-text)]">
+          <span className="text-xs font-semibold tabular-nums tracking-[0.06em] text-[var(--tse-text)]">
             {hora} <span className="font-medium opacity-60">· Brasília</span>
           </span>
         ) : null}
@@ -187,7 +187,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
           />
 
           <motion.p
-            className="mt-6 text-[clamp(1rem,2.2vw,1.25rem)] font-semibold tracking-[-0.005em] text-[var(--tse-text)]"
+            className="mt-3 text-[clamp(0.8125rem,1.2vw,0.875rem)] font-semibold tracking-[-0.005em] text-[var(--tse-text)]"
             initial={inicial({ opacity: 0, y: 10 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.35, duration: 0.7, ease: EASE }}
@@ -195,7 +195,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
             Assuma o controle do seu mandato.
           </motion.p>
           <motion.p
-            className="mt-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--ch-tinta-suave)]"
+            className="mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--ch-tinta-suave)]"
             initial={inicial({ opacity: 0, y: 8 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.5, duration: 0.7, ease: EASE }}
@@ -204,28 +204,28 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
           </motion.p>
         </motion.div>
 
-        <div className="mt-9 flex w-full flex-col items-center">
+        <div className="mt-5 flex w-full flex-col items-center">
           <AnimatePresence mode="wait" initial={!reduzir}>
             {loginAberto ? (
               <motion.form
                 key="login"
                 onSubmit={enviar}
                 aria-labelledby={tituloId}
-                className="w-full max-w-[24rem] rounded-2xl bg-white p-6 text-left shadow-[0_28px_70px_-28px_rgba(51,51,51,0.55)]"
+                className="w-full max-w-[19rem] rounded-xl bg-white p-4 text-left shadow-[0_28px_70px_-28px_rgba(51,51,51,0.55)]"
                 initial={{ opacity: 0, y: 18, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: atrasoAcoes, duration: 0.5, ease: EASE } }}
                 exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.18 } }}
               >
-                <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="mb-3.5 flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--tse-yellow-soft)] text-[var(--tse-gold-text)]">
-                      <Lock className="h-4 w-4" strokeWidth={2} aria-hidden />
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--tse-yellow-soft)] text-[var(--tse-gold-text)]">
+                      <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
                     </span>
                     <div>
-                      <p id={tituloId} className="text-[15px] font-semibold leading-tight text-[var(--tse-text)]">
+                      <p id={tituloId} className="text-[13px] font-semibold leading-tight text-[var(--tse-text)]">
                         Acesso restrito
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--tse-muted)]">Entre com a sua conta da equipe.</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">Entre com a sua conta da equipe.</p>
                     </div>
                   </div>
                   <button
@@ -238,7 +238,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <label htmlFor={`${tituloId}-email`} className={rotuloClass}>
                       E-mail
@@ -281,7 +281,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
                     </div>
                   </div>
 
-                  <label className="flex cursor-pointer select-none items-start gap-2.5 text-[13px] text-[var(--tse-muted)]">
+                  <label className="flex cursor-pointer select-none items-start gap-2 text-[11px] text-[var(--tse-muted)]">
                     <input
                       type="checkbox"
                       checked={login.lembrar}
@@ -296,7 +296,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
                       <motion.p
                         key="erro"
                         role="alert"
-                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-700"
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
@@ -309,7 +309,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
                   <button
                     type="submit"
                     disabled={login.carregando}
-                    className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--tse-text)] text-[15px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+                    className="group inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[var(--tse-text)] text-[13px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {login.carregando ? (
                       <>
@@ -330,15 +330,15 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
                 key="cta"
                 type="button"
                 onClick={() => setLoginAberto(true)}
-                className="group inline-flex h-12 items-center gap-3 rounded-full bg-[var(--tse-text)] pl-7 pr-2 text-[15px] font-semibold text-white shadow-[0_18px_40px_-18px_rgba(51,51,51,0.7)] transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                className="group inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tse-text)] pl-4 pr-1 text-[13px] font-semibold text-white shadow-[0_18px_40px_-18px_rgba(51,51,51,0.7)] transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0, transition: { delay: atrasoAcoes, duration: 0.55, ease: EASE } }}
                 exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
                 whileTap={{ scale: 0.97 }}
               >
                 Entrar
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--tse-yellow)] text-[var(--tse-text)] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:rotate-[-45deg]">
-                  <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--tse-yellow)] text-[var(--tse-text)] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:rotate-[-45deg]">
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                 </span>
               </motion.button>
             )}
@@ -346,7 +346,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
 
           <motion.a
             href="/pesquisador/login"
-            className="mt-5 text-[13px] font-medium text-[var(--ch-tinta-suave)] underline decoration-[var(--ch-tinta-linha)] underline-offset-4 transition hover:text-[var(--tse-text)] hover:decoration-[var(--tse-text)]"
+            className="mt-3 text-[11px] font-medium text-[var(--ch-tinta-suave)] underline decoration-[var(--ch-tinta-linha)] underline-offset-4 transition hover:text-[var(--tse-text)] hover:decoration-[var(--tse-text)]"
             initial={inicial({ opacity: 0 })}
             animate={{ opacity: 1 }}
             transition={{ delay: FIM_REVELACAO + 0.25, duration: 0.6 }}
@@ -357,7 +357,7 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
       </div>
 
       <motion.footer
-        className="relative z-10 flex items-center justify-center px-5 pb-5 text-[11px] font-medium tracking-[0.08em] text-[var(--ch-tinta-fraca)] sm:pb-6"
+        className="relative z-10 flex items-center justify-center px-5 pb-4 text-[10px] font-medium tracking-[0.08em] text-[var(--ch-tinta-fraca)] sm:pb-6"
         initial={inicial({ opacity: 0 })}
         animate={{ opacity: 1 }}
         transition={{ delay: FIM_REVELACAO + 0.4, duration: 0.6 }}
