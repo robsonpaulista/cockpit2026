@@ -13,15 +13,27 @@ export type JadyelFederal2022PorMunicipioResultado = {
   totalVotos: number
 }
 
+/** Nome de urna do Jadyel no arquivo de candidatos TSE 2026. */
+export const JADYEL_URNA_DEP_FEDERAL_2026 = 'JADYEL'
+
 /**
  * Votos nominais de Jadyel (Dep. Federal 2022) por município do PI.
  * Chave do mapa: `normalizeMunicipioNome` do nome do município retornado pela API.
  */
-export async function fetchJadyelFederal2022VotosPorMunicipioPI(): Promise<JadyelFederal2022PorMunicipioResultado | null> {
-  const params = new URLSearchParams({
-    totals: 'federal2022PorMunicipio',
-    candidato: JADYEL_URNA_DEP_FEDERAL_2022,
-  })
+export function fetchJadyelFederal2022VotosPorMunicipioPI(): Promise<JadyelFederal2022PorMunicipioResultado | null> {
+  return fetchJadyelFederalVotosPorMunicipioPI('federal2022PorMunicipio', JADYEL_URNA_DEP_FEDERAL_2022)
+}
+
+/** Votos nominais de Jadyel (Dep. Federal 2026, TSE) por município do PI — mesma chave do mapa de 2022. */
+export function fetchJadyelFederal2026VotosPorMunicipioPI(): Promise<JadyelFederal2022PorMunicipioResultado | null> {
+  return fetchJadyelFederalVotosPorMunicipioPI('federal2026PorMunicipio', JADYEL_URNA_DEP_FEDERAL_2026)
+}
+
+async function fetchJadyelFederalVotosPorMunicipioPI(
+  totals: 'federal2022PorMunicipio' | 'federal2026PorMunicipio',
+  candidato: string,
+): Promise<JadyelFederal2022PorMunicipioResultado | null> {
+  const params = new URLSearchParams({ totals, candidato })
   const res = await fetch(`/api/resumo-eleicoes?${params}`)
   if (!res.ok) return null
   const data = (await res.json()) as {

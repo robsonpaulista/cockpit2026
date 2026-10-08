@@ -21,13 +21,19 @@ import {
 import {
   nomeCandidatoResumoExibicao,
   isSituacaoEleito,
+  movimentosCandidatos,
+  type MovimentosCandidatos,
   type ResultadoEleicao,
 } from '@/lib/resumo-eleicoes-dados'
 import {
   RESUMO_TODAS_CIDADES,
   RESUMO_TODAS_CIDADES_LABEL,
 } from '@/lib/resumo-eleicoes-aggregate'
-import { fetchJadyelFederal2022VotosPorMunicipioPI } from '@/lib/jadyel-federal-2022-pi-votos'
+import { fetchCandidatos2026ComHistorico } from '@/lib/services/candidatos-historico-2026'
+import {
+  fetchJadyelFederal2022VotosPorMunicipioPI,
+  fetchJadyelFederal2026VotosPorMunicipioPI,
+} from '@/lib/jadyel-federal-2022-pi-votos'
 import {
   persistResumoEleicoesCidade,
   readResumoEleicoesHubPersist,
@@ -44,6 +50,7 @@ import {
 import {
   AtendimentoDadosGerais,
   QuadroCandidatos,
+  QuadroMovimentosCandidatos,
   QuadroPartidos,
 } from '@/components/resumo-eleicoes/atendimento-quadros'
 import {
@@ -138,10 +145,11 @@ type TableKey =
   | 'deputado_federal'
   | 'prefeito_2024'
   | 'vereador_2024'
-  | 'partido_2024'
+  | 'partido_2026'
 
 const ITEMS_PER_PAGE = 10
 const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
+const CANDIDATO_FEDERAL_NUMERO_2026 = '1000'
 const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
 const RESUMO_CIDADES_CACHE_KEY = 'resumo_eleicoes_cidades_cache_v1'
 
@@ -150,7 +158,7 @@ const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   deputado_federal: {},
   prefeito_2024: {},
   vereador_2024: {},
-  partido_2024: {},
+  partido_2026: {},
 }
 
 /** Rola até o elemento no ancestral scrollável do hub (DashboardPageContent). */
@@ -278,6 +286,18 @@ function normalizeCityName(city: string): string {
     .trim()
 }
 
+/** Votos de um município num mapa indexado por nome normalizado; aceita grafias parciais. */
+function votosNoMapaMunicipio(mapa: Record<string, number>, municipio: string): number {
+  const key = normalizeCityName(municipio)
+  if (!key) return 0
+  if (Object.prototype.hasOwnProperty.call(mapa, key)) return mapa[key] ?? 0
+  let soma = 0
+  for (const [k, v] of Object.entries(mapa)) {
+    if (k.includes(key) || key.includes(k)) soma += v
+  }
+  return soma
+}
+
 function normalizarPartidoLabel(value?: string | null): string {
   return String(value || '')
     .trim()
@@ -321,6 +341,9 @@ export function ResumoEleicoesAtendimentoPanel() {
   /** Votos nominais TSE Dep. Federal 2022 (Jadyel) — mesma base da tabela Federal. */
   const [votosTse2022PorCidade, setVotosTse2022PorCidade] = useState<Record<string, number>>({})
   const [votosTse2022Total, setVotosTse2022Total] = useState<number | null>(null)
+  const [votosTse2026PorCidade, setVotosTse2026PorCidade] = useState<Record<string, number>>({})
+  const [votosTse2026Total, setVotosTse2026Total] = useState<number | null>(null)
+  const [candidatos2026ComHistorico, setCandidatos2026ComHistorico] = useState<Set<string> | null>(null)
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
   const [cidadeLiderancasModal, setCidadeLiderancasModal] = useState<string | null>(null)
   const [prefillLiderancaModal, setPrefillLiderancaModal] = useState<LiderancaFormPrefill | null>(null)
@@ -351,7 +374,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     deputado_federal: 1,
     prefeito_2024: 1,
     vereador_2024: 1,
-    partido_2024: 1,
+    partido_2026: 1,
   })
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
   const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
@@ -502,7 +525,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       deputado_federal: 1,
       prefeito_2024: 1,
       vereador_2024: 1,
-      partido_2024: 1,
+      partido_2026: 1,
     }))
   }
 
@@ -1192,7 +1215,29 @@ export function ResumoEleicoesAtendimentoPanel() {
       }
     }
 
+    const preloadVotosTse2026 = async () => {
+      try {
+        const result = await fetchJadyelFederal2026VotosPorMunicipioPI()
+        if (!active || !result) return
+        setVotosTse2026PorCidade(Object.fromEntries(result.mapaNormalizado))
+        setVotosTse2026Total(result.totalVotos)
+      } catch {
+        // sem resultado 2026 o card mostra "—"
+      }
+    }
+
     void preloadVotosTse2022()
+    const preloadHistoricoCandidatos2026 = async () => {
+      try {
+        const chaves = await fetchCandidatos2026ComHistorico()
+        if (active && chaves) setCandidatos2026ComHistorico(chaves)
+      } catch {
+        // sem o histórico do estado a lista de estreantes fica vazia
+      }
+    }
+
+    void preloadVotosTse2026()
+    void preloadHistoricoCandidatos2026()
     return () => {
       active = false
     }
@@ -1212,22 +1257,7 @@ export function ResumoEleicoesAtendimentoPanel() {
 
     const alvo = municipioAtivo
     if (!alvo) return
-    const key = normalizeCityName(alvo)
-    const votos =
-      key && Object.prototype.hasOwnProperty.call(votosTse2022PorCidade, key)
-        ? (votosTse2022PorCidade[key] ?? 0)
-        : (() => {
-            if (!key) return 0
-            let s = 0
-            let found = false
-            for (const [k, v] of Object.entries(votosTse2022PorCidade)) {
-              if (k.includes(key) || key.includes(k)) {
-                s += v
-                found = true
-              }
-            }
-            return found ? s : 0
-          })()
+    const votos = votosNoMapaMunicipio(votosTse2022PorCidade, alvo)
     setResumoCidade((prev) => {
       if (!prev || prev.votacaoFinal2022 === votos) return prev
       return { ...prev, votacaoFinal2022: votos }
@@ -1376,7 +1406,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       deputado_federal: 1,
       prefeito_2024: 1,
       vereador_2024: 1,
-      partido_2024: 1,
+      partido_2026: 1,
     })
 
     try {
@@ -1419,7 +1449,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       deputado_federal: 1,
       prefeito_2024: 1,
       vereador_2024: 1,
-      partido_2024: 1,
+      partido_2026: 1,
     })
 
     try {
@@ -1464,7 +1494,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       deputado_federal: 1,
       prefeito_2024: 1,
       vereador_2024: 1,
-      partido_2024: 1,
+      partido_2026: 1,
     })
 
     try {
@@ -1511,18 +1541,18 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const chaveTabelasResultado = `${cidadeFiltroLista ?? cidade}|${filtroPartidoAtivo ?? 'todos'}|${dadosAtivos.length}`
 
-  const deputadoEstadual2022 = useMemo(
+  const deputadoEstadual2026 = useMemo(
     () =>
       dadosFiltradosPorPartido
-        .filter((item) => includesNormalized(item.cargo, 'estadual') && item.anoEleicao === '2022')
+        .filter((item) => includesNormalized(item.cargo, 'estadual') && item.anoEleicao === '2026')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
     [dadosFiltradosPorPartido]
   )
 
-  const deputadoFederal2022 = useMemo(
+  const deputadoFederal2026 = useMemo(
     () =>
       dadosFiltradosPorPartido
-        .filter((item) => includesNormalized(item.cargo, 'federal') && item.anoEleicao === '2022')
+        .filter((item) => includesNormalized(item.cargo, 'federal') && item.anoEleicao === '2026')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
     [dadosFiltradosPorPartido]
   )
@@ -1552,15 +1582,23 @@ export function ResumoEleicoesAtendimentoPanel() {
     [dadosAtivos]
   )
 
-  const partido2024 = useMemo<PartidoResumo[]>(() => {
+  const movimentosMunicipio = useMemo<MovimentosCandidatos | null>(
+    () =>
+      municipioAtivo
+        ? movimentosCandidatos(dadosAtivos, { jaDisputaramNoEstado: candidatos2026ComHistorico })
+        : null,
+    [municipioAtivo, dadosAtivos, candidatos2026ComHistorico],
+  )
+
+  const partido2026 = useMemo<PartidoResumo[]>(() => {
     const grouped = new Map<string, PartidoResumo>()
 
     for (const item of dadosAtivos) {
-      if (item.anoEleicao !== '2024') continue
+      if (item.anoEleicao !== '2026' || !includesNormalized(item.cargo, 'deputado')) continue
       const key = item.partido || '-'
       const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
       current.votos += parseVotos(item.quantidadeVotosNominais)
-      // Prefeito e vereador entram — só eleitos de fato (exclui "Não eleito").
+      // Deputado estadual e federal entram — só eleitos de fato (exclui "Não eleito" e suplentes).
       if (isSituacaoEleito(item.situacao)) {
         current.eleitos += 1
       }
@@ -1786,7 +1824,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       }
 
       if (tabelasAlvo.includes('deputado_estadual')) {
-        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2026, alvos.deputado_estadual)
         if (melhor) {
           const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.deputado_estadual[rowId] === undefined) {
@@ -1877,7 +1915,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       let marcacoesDaLideranca = 0
 
       if (tabelasAlvo.includes('deputado_estadual')) {
-        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2026, alvos.deputado_estadual)
         if (melhor) {
           const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.deputado_estadual[rowId] === undefined) {
@@ -1979,11 +2017,23 @@ export function ResumoEleicoesAtendimentoPanel() {
       : cenarioVotos === 'legado_anterior'
         ? 'Expectativa 2026'
         : 'Aferido 2026'
-  const diferencaCenarioVs2022 = resumoCidade ? votosCenarioAtivo - resumoCidade.votacaoFinal2022 : 0
-  const percentualCrescimentoVs2022 =
-    resumoCidade && resumoCidade.votacaoFinal2022 > 0
-      ? (diferencaCenarioVs2022 / resumoCidade.votacaoFinal2022) * 100
-      : null
+  // Calculado na renderização: o resumo da cidade pode chegar antes do mapa TSE e ficar com o valor do banco.
+  const votosJadyel2022: number =
+    votosTse2022Total === null
+      ? (resumoCidade?.votacaoFinal2022 ?? 0)
+      : visaoTodasCidades && !cidadeFiltroLista
+        ? votosTse2022Total
+        : municipioAtivo
+          ? votosNoMapaMunicipio(votosTse2022PorCidade, municipioAtivo)
+          : (resumoCidade?.votacaoFinal2022 ?? 0)
+  const votosJadyel2026: number | null =
+    votosTse2026Total === null
+      ? null
+      : visaoTodasCidades && !cidadeFiltroLista
+        ? votosTse2026Total
+        : municipioAtivo
+          ? votosNoMapaMunicipio(votosTse2026PorCidade, municipioAtivo)
+          : null
   const percentualAlcance =
     eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
       ? (votosCenarioAtivo / eleitoresMunicipioAtivo) * 100
@@ -2113,7 +2163,7 @@ export function ResumoEleicoesAtendimentoPanel() {
       habilitado={Boolean(municipioAtivo)}
     />
   )
-  const quadroProps = (tabela: Exclude<TableKey, 'partido_2024'>) => ({
+  const quadroProps = (tabela: Exclude<TableKey, 'partido_2026'>) => ({
     chaveTabela: tabela,
     pagina: currentPage[tabela],
     porPagina: ITEMS_PER_PAGE,
@@ -2225,11 +2275,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               fonte={`${visaoTodasCidades ? 'Todas as cidades' : municipioAtivo || cidade} · ${labelCenarioAtivo}`}
               eleitores={eleitoresMunicipioAtivo}
               alcancePct={percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : null}
-              votos2022={resumoCidade.votacaoFinal2022}
+              votos2022={votosJadyel2022}
+              votos2026={votosJadyel2026}
               rotuloCenario={labelCenarioAtivo}
               votosCenario={votosCenarioAtivo}
-              crescimentoPct={percentualCrescimentoVs2022}
-              diferencaVs2022={diferencaCenarioVs2022}
               liderancas={resumoCidade.liderancas}
               acoesLiderancas={
                 visaoTodasCidades ? (
@@ -2282,13 +2331,19 @@ export function ResumoEleicoesAtendimentoPanel() {
 
           <div
             key={chaveTabelasResultado}
-            className="mt-3 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.3fr)_minmax(0,0.95fr)]"
+            className="mt-3 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.8fr)]"
           >
-            <QuadroCandidatos titulo="Deputado Estadual 2022" itens={deputadoEstadual2022} {...quadroProps('deputado_estadual')} />
             <QuadroCandidatos
-              titulo="Deputado Federal 2022"
-              itens={deputadoFederal2022}
-              destacar={(item) => item.nomeUrnaCandidato?.trim().toUpperCase() === CANDIDATO_FEDERAL_FIXO}
+              titulo="Deputado Estadual 2026"
+              itens={deputadoEstadual2026}
+              mostrarSituacao
+              {...quadroProps('deputado_estadual')}
+            />
+            <QuadroCandidatos
+              titulo="Deputado Federal 2026"
+              itens={deputadoFederal2026}
+              mostrarSituacao
+              destacar={(item) => item.numeroUrna?.trim() === CANDIDATO_FEDERAL_NUMERO_2026}
               {...quadroProps('deputado_federal')}
             />
             <QuadroCandidatos titulo="Prefeito 2024" itens={prefeito2024} {...quadroProps('prefeito_2024')} />
@@ -2308,17 +2363,21 @@ export function ResumoEleicoesAtendimentoPanel() {
               {...quadroProps('vereador_2024')}
             />
             <QuadroPartidos
-              itens={partido2024}
-              pagina={currentPage.partido_2024}
+              itens={partido2026}
+              pagina={currentPage.partido_2026}
               porPagina={ITEMS_PER_PAGE}
-              onPagina={(pagina) => setPage('partido_2024', pagina)}
-              selecao={selectedVotes.partido_2024}
-              onAlternar={(rowId, votos) => toggleSelection('partido_2024', rowId, votos)}
-              onLimpar={() => clearTableSelection('partido_2024')}
+              onPagina={(pagina) => setPage('partido_2026', pagina)}
+              selecao={selectedVotes.partido_2026}
+              onAlternar={(rowId, votos) => toggleSelection('partido_2026', rowId, votos)}
+              onLimpar={() => clearTableSelection('partido_2026')}
               ativo={(partido) => partidosIguais(partido, filtroPartidoAtivo)}
               onFiltrar={toggleFiltroPartido}
             />
           </div>
+
+          {movimentosMunicipio && municipioAtivo ? (
+            <QuadroMovimentosCandidatos municipio={municipioAtivo} movimentos={movimentosMunicipio} />
+          ) : null}
 
           {candidatoDistribuicao && municipioAtivo ? (
             <PainelVotacaoCandidatoResumo

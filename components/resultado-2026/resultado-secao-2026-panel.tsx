@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Download, FileText, MapPin, User, X } from "lucide-react";
+import { ChevronRight, Download, FileText, MapPin, Plus, User, X } from "lucide-react";
 import {
   TseBarraRotulo,
   TseBarraValor,
@@ -51,6 +51,7 @@ import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
 import type { ModoPdfResultado } from "./resultado-pdf-2026";
 import {
+  CANDIDATO_CORES,
   abreviarCargo,
   baixarCsv,
   corCandidato,
@@ -68,14 +69,17 @@ type Ordem = "votos" | "alfabetica";
 
 const PAGE_SIZE = 30;
 
-/** Referência fixa dos comparativos (Deputado Federal); os demais são parceiros de dobradinha. */
+/** Referência padrão dos comparativos (Deputado Federal); os demais marcados são parceiros de dobradinha. */
 function indiceGeral(candidatos: ResultadoSecao2026Payload["candidatos"]): number {
   const i = candidatos.findIndex((c) => c.comparativo && /federal/i.test(c.cargo));
   return i >= 0 ? i : 0;
 }
 
-const ehParceiro = (candidatos: ResultadoSecao2026Payload["candidatos"], i: number): boolean =>
+const ehDobradinha = (candidatos: ResultadoSecao2026Payload["candidatos"], i: number): boolean =>
   i !== indiceGeral(candidatos) && Boolean(candidatos[i]?.comparativo);
+
+/** Os gráficos dos comparativos têm uma cor por candidato (referência + parceiros). */
+const MAX_PARCEIROS = CANDIDATO_CORES.length - 1;
 
 const VISOES: { id: Visao; label: string }[] = [
   { id: "municipios", label: "Municípios" },
@@ -102,7 +106,9 @@ export function ResultadoSecao2026Panel() {
   const [limite, setLimite] = useState<number>(PAGE_SIZE);
   const [localSel, setLocalSel] = useState<number | null>(null);
   const [candidatoIdx, setCandidatoIdx] = useState<number>(0);
+  const [referenciaIdx, setReferenciaIdx] = useState<number>(0);
   const [parceiros, setParceiros] = useState<number[]>([]);
+  const [cargoParceiro, setCargoParceiro] = useState<string>("");
   const [gerandoPdf, setGerandoPdf] = useState<ModoPdfResultado | null>(null);
 
   useEffect(() => {
@@ -113,8 +119,10 @@ export function ResultadoSecao2026Panel() {
         setPayload(data);
         const geral = indiceGeral(data.candidatos);
         setCandidatoIdx(geral);
-        const primeiroParceiro = data.candidatos.findIndex((_, i) => ehParceiro(data.candidatos, i));
+        setReferenciaIdx(geral);
+        const primeiroParceiro = data.candidatos.findIndex((_, i) => ehDobradinha(data.candidatos, i));
         setParceiros(primeiroParceiro >= 0 ? [primeiroParceiro] : []);
+        setCargoParceiro(data.candidatos[primeiroParceiro]?.cargo ?? data.candidatos[geral]?.cargo ?? "");
       })
       .catch((e: unknown) => {
         if (ativo)
@@ -239,11 +247,8 @@ export function ResultadoSecao2026Panel() {
   }, [secoesDetalhe, termo, ordem]);
 
   const comparar = useMemo<number[]>(
-    () =>
-      payload && parceiros.length
-        ? [indiceGeral(payload.candidatos), ...parceiros]
-        : [],
-    [payload, parceiros],
+    () => (parceiros.length ? [referenciaIdx, ...parceiros] : []),
+    [referenciaIdx, parceiros],
   );
 
   const maxVotosSecao = useMemo(
@@ -281,16 +286,24 @@ export function ResultadoSecao2026Panel() {
   };
 
   const trocarCandidato = (i: number) => {
-    if (ehComparativo(visao)) {
-      if (!payload || !ehParceiro(payload.candidatos, i)) return;
-      setParceiros((prev) => {
-        if (!prev.includes(i)) return [...prev, i].sort((a, b) => a - b);
-        return prev.length > 1 ? prev.filter((p) => p !== i) : prev;
-      });
-      return;
-    }
     setCandidatoIdx(i);
     setLimite(PAGE_SIZE);
+  };
+
+  const trocarReferencia = (i: number) => {
+    setReferenciaIdx(i);
+    setParceiros((prev) => prev.filter((p) => p !== i));
+  };
+
+  const adicionarParceiro = (i: number) => {
+    if (i === referenciaIdx) return;
+    setParceiros((prev) =>
+      prev.includes(i) || prev.length >= MAX_PARCEIROS ? prev : [...prev, i],
+    );
+  };
+
+  const removerParceiro = (i: number) => {
+    setParceiros((prev) => prev.filter((p) => p !== i));
   };
 
   const abrirSecoesDoLocal = (l: LocalResumo2026) => {
@@ -331,18 +344,32 @@ export function ResultadoSecao2026Panel() {
   const { meta } = payload;
   const candidato = payload.candidatos[candidatoIdx];
   const emComparativo = ehComparativo(visao);
-  const geralIdx = indiceGeral(payload.candidatos);
-  const geralCandidato = payload.candidatos[geralIdx];
+  const referencia = payload.candidatos[referenciaIdx] ?? payload.candidatos[0];
   const cargos = [...new Set(payload.candidatos.map((c) => c.cargo))];
-  const candidatosDoCargo = payload.candidatos
-    .map((c, i) => ({ c, i }))
-    .filter(({ c }) => c.cargo === candidato.cargo)
-    .sort((a, b) => a.c.nome.localeCompare(b.c.nome, "pt-BR"));
+  const candidatosDe = (cargo: string) =>
+    payload.candidatos
+      .map((c, i) => ({ c, i }))
+      .filter(({ c }) => c.cargo === cargo)
+      .sort((a, b) => a.c.nome.localeCompare(b.c.nome, "pt-BR"));
+  const primeiroDoCargo = (cargo: string) => payload.candidatos.findIndex((c) => c.cargo === cargo);
+  const candidatosDoCargo = candidatosDe(candidato.cargo);
   const trocarCargo = (cargo: string) => {
     if (cargo === candidato.cargo) return;
-    const i = payload.candidatos.findIndex((c) => c.cargo === cargo);
+    const i = primeiroDoCargo(cargo);
     if (i >= 0) trocarCandidato(i);
   };
+  const trocarCargoReferencia = (cargo: string) => {
+    if (cargo === referencia.cargo) return;
+    const i = primeiroDoCargo(cargo);
+    if (i >= 0) trocarReferencia(i);
+  };
+  const parceirosDisponiveis = candidatosDe(cargoParceiro || referencia.cargo).filter(
+    ({ i }) => i !== referenciaIdx && !parceiros.includes(i),
+  );
+  const sugestoesDobradinha = payload.candidatos
+    .map((c, i) => ({ c, i }))
+    .filter(({ i }) => ehDobradinha(payload.candidatos, i) && i !== referenciaIdx && !parceiros.includes(i));
+  const podeAdicionar = parceiros.length < MAX_PARCEIROS;
   const pctSecoesComVoto = geral.secoes
     ? (geral.secoesComVoto / geral.secoes) * 100
     : 0;
@@ -436,7 +463,34 @@ export function ResultadoSecao2026Panel() {
             </TsePillSelect>
           )}
 
-          {!emComparativo && (
+          {emComparativo ? (
+            <>
+              <TsePillSelect
+                rotulo="Cargo"
+                value={referencia.cargo}
+                onChange={(e) => trocarCargoReferencia(e.target.value)}
+              >
+                {cargos.map((cargo) => (
+                  <option key={cargo} value={cargo}>
+                    {cargo}
+                  </option>
+                ))}
+              </TsePillSelect>
+
+              <TseSelectGrande
+                icone={User}
+                rotulo="Referência"
+                value={referenciaIdx}
+                onChange={(e) => trocarReferencia(Number(e.target.value))}
+              >
+                {candidatosDe(referencia.cargo).map(({ c, i }) => (
+                  <option key={c.id} value={i}>
+                    {nomeProprio(c.nome)}
+                  </option>
+                ))}
+              </TseSelectGrande>
+            </>
+          ) : (
             <>
               <TsePillSelect
                 rotulo="Cargo"
@@ -473,53 +527,95 @@ export function ResultadoSecao2026Panel() {
             <span
               className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-[14px] font-bold uppercase tracking-wide text-white"
               style={{ backgroundColor: corCandidato(0), borderColor: corCandidato(0) }}
-              title="Referência fixa dos comparativos"
+              title="Referência dos comparativos"
             >
-              {geralCandidato.nome}
-              <span className="rounded bg-white/25 px-1.5 py-px text-[10px] font-black">
-                GERAL
+              {referencia.nome}
+              <span className="text-[11px] font-semibold normal-case opacity-80">
+                {abreviarCargo(referencia.cargo)}
               </span>
+              <span className="rounded bg-white/25 px-1.5 py-px text-[10px] font-black">REF.</span>
             </span>
             <span className="text-[18px] font-black text-[var(--tse-muted)]" aria-hidden>
               +
             </span>
-            {payload.candidatos.map((c, i) => {
-              if (!ehParceiro(payload.candidatos, i)) return null;
-              const pos = comparar.indexOf(i);
-              const ativo = pos > 0;
-              const ultimo = ativo && parceiros.length === 1;
+            {parceiros.map((i, n) => {
+              const c = payload.candidatos[i];
+              if (!c) return null;
+              const cor = corCandidato(n + 1);
               return (
-                <button
+                <span
                   key={c.id}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={ativo}
-                  onClick={() => trocarCandidato(i)}
-                  title={ultimo ? "Mantenha ao menos um parceiro marcado" : undefined}
-                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-[14px] font-bold uppercase tracking-wide transition ${
-                    ativo
-                      ? "text-white"
-                      : "border-[#CFCFCF] bg-[var(--tse-bar)] text-[var(--tse-text)] hover:border-[var(--tse-olive)]"
-                  }`}
-                  style={
-                    ativo
-                      ? { backgroundColor: corCandidato(pos), borderColor: corCandidato(pos) }
-                      : undefined
-                  }
+                  className="inline-flex items-center gap-2 rounded-md border py-2 pl-4 pr-2 text-[14px] font-bold uppercase tracking-wide text-white"
+                  style={{ backgroundColor: cor, borderColor: cor }}
                 >
-                  <span className="flex h-4 w-4 items-center justify-center rounded-sm border border-current">
-                    {ativo && <Check className="h-3 w-3" />}
-                  </span>
                   {c.nome}
                   <span className="text-[11px] font-semibold normal-case opacity-80">
                     {abreviarCargo(c.cargo)}
                   </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => removerParceiro(i)}
+                    aria-label={`Remover ${nomeProprio(c.nome)}`}
+                    className="rounded p-0.5 hover:bg-white/25"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
               );
             })}
-            <span className="text-[12px] text-[var(--tse-muted)]">
-              {nomeProprio(geralCandidato.nome)} é a referência; marque um ou mais parceiros
-            </span>
+
+            {podeAdicionar ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={cargoParceiro || referencia.cargo}
+                  onChange={(e) => setCargoParceiro(e.target.value)}
+                  className={tseControleClass}
+                  aria-label="Cargo do parceiro"
+                >
+                  {cargos.map((cargo) => (
+                    <option key={cargo} value={cargo}>
+                      {cargo}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) adicionarParceiro(Number(e.target.value));
+                  }}
+                  className={tseControleClass}
+                  aria-label="Adicionar parceiro"
+                >
+                  <option value="">Adicionar candidato…</option>
+                  {parceirosDisponiveis.map(({ c, i }) => (
+                    <option key={c.id} value={i}>
+                      {nomeProprio(c.nome)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span className="text-[12px] text-[var(--tse-muted)]">
+                Máximo de {MAX_PARCEIROS} parceiros
+              </span>
+            )}
+
+            {podeAdicionar && sugestoesDobradinha.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+                <span className="text-[var(--tse-muted)]">Dobradinha:</span>
+                {sugestoesDobradinha.map(({ c, i }) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => adicionarParceiro(i)}
+                    className="inline-flex items-center gap-1 rounded-full border border-[#CFCFCF] bg-white px-2.5 py-0.5 font-semibold hover:border-[var(--tse-olive)]"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {nomeProprio(c.nome)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -529,6 +625,7 @@ export function ResultadoSecao2026Panel() {
           <div className="mt-5">
             {comparar.length >= 2 && visao === "comparativo-secao" ? (
               <ComparativoSecoes2026
+                key={comparar.join("-")}
                 payload={payload}
                 secoes={secoesEscopoMulti}
                 indices={comparar}
@@ -536,6 +633,7 @@ export function ResultadoSecao2026Panel() {
               />
             ) : comparar.length >= 2 ? (
               <ComparativoLocais2026
+                key={comparar.join("-")}
                 payload={payload}
                 secoes={secoesEscopoMulti}
                 indices={comparar}
@@ -548,8 +646,8 @@ export function ResultadoSecao2026Panel() {
               />
             ) : (
               <TseVazio>
-                Nenhum parceiro carregado para cruzar com{" "}
-                {nomeProprio(geralCandidato.nome)}.
+                Adicione ao menos um candidato para cruzar com{" "}
+                {nomeProprio(referencia.nome)}.
               </TseVazio>
             )}
           </div>

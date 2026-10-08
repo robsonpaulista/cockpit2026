@@ -119,7 +119,7 @@ export function montarComparativoSecoesPdf2026(o: OpcoesSecoesPdf2026): jsPDF {
     doc.rect(x + 2, y + 0.3, wCand - 4, 1.2, 'F')
     fonte(8.5, 'bold')
     tinta(COR.text)
-    doc.text(`${c.nome.toUpperCase()}${i === 0 ? '  (GERAL)' : ''}`, x + 3.5, y + 6.5)
+    doc.text(`${c.nome.toUpperCase()}${i === 0 ? '  (REFERÊNCIA)' : ''}`, x + 3.5, y + 6.5)
     fonte(6.5)
     tinta(COR.muted)
     doc.text(`${c.cargo} – ${c.numero}`, x + 3.5, y + 10.5)

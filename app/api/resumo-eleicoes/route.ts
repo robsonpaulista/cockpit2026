@@ -10,6 +10,7 @@ import {
 } from '@/lib/piaui-territorio-desenvolvimento'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import { agregarResultadosEleicao } from '@/lib/resumo-eleicoes-aggregate'
+import { carregarVotacaoDeputados2026 } from '@/lib/services/votacao-deputados-2026-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -196,14 +197,25 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
   }
 
   const values = response.data.values || []
-  const dataRows = values.slice(1)
+  const deputados2026 = await carregarVotacaoDeputados2026()
+  const ehDeputado2026 = (r: ResultadoEleicao) => r.anoEleicao === '2026' && /deputado/i.test(r.cargo)
+  const planilha = values
+    .slice(1)
+    .map(toResultado)
+    .filter((r) => deputados2026.length === 0 || !ehDeputado2026(r))
+
+  const chaveSolta = (municipio: string) => normalizeCity(municipio).replace(/[^A-Z0-9]/g, '')
+  const nomePlanilhaPorChaveSolta = new Map(planilha.map((r) => [chaveSolta(r.municipio), r.municipio]))
+  const deputados2026NaGrafiaDaPlanilha = deputados2026.map((r) => {
+    const nome = nomePlanilhaPorChaveSolta.get(chaveSolta(r.municipio))
+    return nome && nome !== r.municipio ? { ...r, municipio: nome } : r
+  })
 
   const cityIndex = new Map<string, ResultadoEleicao[]>()
   const cityDisplayByKey = new Map<string, string>()
   const allResultados: ResultadoEleicao[] = []
 
-  for (const row of dataRows) {
-    const resultado = toResultado(row)
+  for (const resultado of [...planilha, ...deputados2026NaGrafiaDaPlanilha]) {
     allResultados.push(resultado)
     const key = normalizeCity(resultado.municipio)
     if (!key) continue
@@ -499,7 +511,24 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (totals === 'federal2022PorMunicipio') {
+    /** Candidatos de 2026 (nome civil normalizado) que já disputaram qualquer eleição anterior, em qualquer município. */
+    if (totals === 'candidatos2026ComHistorico') {
+      const de2026 = new Set<string>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao === '2026') de2026.add(normalizeCandidatoMatch(item.nomeCandidato || item.nomeUrnaCandidato))
+      }
+      const comHistorico = new Set<string>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao >= '2026') continue
+        const chave = normalizeCandidatoMatch(item.nomeCandidato || item.nomeUrnaCandidato)
+        if (de2026.has(chave)) comHistorico.add(chave)
+      }
+      return NextResponse.json({ chaves: Array.from(comHistorico).sort() })
+    }
+
+    const anoFederalPorMunicipio =
+      totals === 'federal2022PorMunicipio' ? '2022' : totals === 'federal2026PorMunicipio' ? '2026' : null
+    if (anoFederalPorMunicipio) {
       const candidato = (request.nextUrl.searchParams.get('candidato') || '').trim()
       const nomeCivil = (request.nextUrl.searchParams.get('nomeCivil') || '').trim()
       if (!candidato && !nomeCivil) {
@@ -513,7 +542,7 @@ export async function GET(request: NextRequest) {
       if (nomeCivil) keys.add(normalizeCandidatoMatch(nomeCivil))
       const byMun = new Map<string, number>()
       for (const item of cachedAllResultados) {
-        if (item.anoEleicao !== '2022') continue
+        if (item.anoEleicao !== anoFederalPorMunicipio) continue
         if (String(item.uf || '').toUpperCase() !== 'PI') continue
         if (!/federal/i.test(item.cargo || '')) continue
         const urn = normalizeCandidatoMatch(item.nomeUrnaCandidato || '')
@@ -537,7 +566,7 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => b.votos - a.votos || a.municipio.localeCompare(b.municipio, 'pt-BR'))
       const totalVotos = pontos.reduce((s, p) => s + p.votos, 0)
       return NextResponse.json({
-        ano: 2022,
+        ano: Number(anoFederalPorMunicipio),
         escopo: 'PI',
         pontos,
         totalVotos,

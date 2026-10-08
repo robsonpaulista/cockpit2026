@@ -1,4 +1,4 @@
-/** Resultado por seção 2026 (SISTOT/TRE-PI) — gerado por `scripts/build-resultado-secao-2026.mjs`. */
+/** Resultado por seção 2026 (TSE · Deputado Federal e Estadual) — gerado por `scripts/build-resultado-secao-2026.mjs`. */
 
 export type ResultadoSecao2026Meta = {
   eleicao: string

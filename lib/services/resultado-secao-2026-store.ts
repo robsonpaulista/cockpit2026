@@ -8,6 +8,12 @@ const DATA_PATH = path.join(process.cwd(), 'data', 'resultado-secao-2026.json')
 let cache: { mtimeMs: number; payload: ResultadoSecao2026Payload } | null = null
 let cacheVotosJadyel: { mtimeMs: number; porMunicipio: Map<string, number> } | null = null
 
+/** Identificador da versão atual do arquivo (muda a cada regeneração), usado como ETag. */
+export async function versaoResultadoSecao2026(): Promise<string> {
+  const { mtimeMs, size } = await fs.stat(DATA_PATH)
+  return `"r2026-${Math.round(mtimeMs)}-${size}"`
+}
+
 /** Lê `data/resultado-secao-2026.json`, recarregando só quando o arquivo muda. */
 export async function carregarResultadoSecao2026(): Promise<ResultadoSecao2026Payload> {
   const { mtimeMs } = await fs.stat(DATA_PATH)

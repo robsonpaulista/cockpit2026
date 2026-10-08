@@ -35,3 +35,4 @@ Tokens: `app/design-tokens-copiloto.css` · Sidebar: `app/sidebar-tse.css`
 4. Accent coral só em ênfase pontual; botões recorrentes usam azul institucional.
 5. Padrão TSE em migração para todas as telas (já em Resultado 2026, Território, Instagram Pessoal, Agenda, Radar Eleitoral, Atendimento, Pesquisas e Emendas): montar com `components/tse/tse-ui.tsx` (`TsePage`, `TseFilterBar`, `TseTabs`, cards, `tseTabela` com `data-tse-tabela`) e tokens `TSE_TOKENS`, sem redefinir hex por página. Telas ainda não migradas seguem o core acima.
 6. Home pública (`/`, `/login`, `/preview-home`): `components/home/cockpit-home.tsx`. É toda amarela, com a logomarca COCKPIT X animada e o login em cartão branco.
+7. Nunca usar ícone de estrelas/brilho (`Sparkles` do lucide, ✨): é a marca visual associada a IA. Preferir ícones que digam o conteúdo (ex.: `UserPlus` para estreantes).
