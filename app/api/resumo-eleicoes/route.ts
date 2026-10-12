@@ -11,6 +11,7 @@ import {
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import { agregarResultadosEleicao } from '@/lib/resumo-eleicoes-aggregate'
 import { carregarVotacaoDeputados2026 } from '@/lib/services/votacao-deputados-2026-store'
+import { corridaFederalNoMunicipio, vencedoresFederais2022x2026 } from '@/lib/corrida-territorial'
 
 export const dynamic = 'force-dynamic'
 
@@ -524,6 +525,16 @@ export async function GET(request: NextRequest) {
         if (de2026.has(chave)) comHistorico.add(chave)
       }
       return NextResponse.json({ chaves: Array.from(comHistorico).sort() })
+    }
+
+    if (totals === 'corridaFederal2022x2026') {
+      return NextResponse.json({ municipios: vencedoresFederais2022x2026(cachedAllResultados) })
+    }
+
+    if (totals === 'corridaFederalMunicipio') {
+      const municipio = (request.nextUrl.searchParams.get('municipio') || '').trim()
+      if (!municipio) return NextResponse.json({ error: 'Informe o município.' }, { status: 400 })
+      return NextResponse.json(corridaFederalNoMunicipio(cachedAllResultados, municipio))
     }
 
     const anoFederalPorMunicipio =

@@ -9,28 +9,31 @@ export function corCandidato(posicao: number): string {
   return CANDIDATO_CORES[posicao % CANDIDATO_CORES.length]
 }
 
-/** Cores do mapa de domínio territorial, na ordem de quem venceu em mais municípios. */
+/**
+ * Cores do mapa de domínio territorial, na ordem da legenda (votos no estado).
+ * Base: cores de máximo contraste de Kelly; matizes vizinhos ficam afastados na ordem.
+ */
 export const TERRITORIO_CORES = [
-  '#005B8F',
-  '#9EB737',
-  '#EBB402',
-  '#FF4860',
-  '#7B5EA7',
-  '#2BA59B',
-  '#5D8AA7',
-  '#D46A9F',
-  '#4E6E2E',
-  '#8A6D3B',
-  '#1F3A93',
-  '#A93226',
-  '#17A589',
-  '#6C3483',
-  '#48C9B0',
-  '#E6B0AA',
-  '#2E4053',
-  '#7DCEA0',
-  '#AF7AC5',
-  '#85C1E9',
+  '#0067A5',
+  '#BE0032',
+  '#F3C300',
+  '#008856',
+  '#875692',
+  '#F38400',
+  '#A1CAF1',
+  '#E68FAC',
+  '#8DB600',
+  '#654522',
+  '#00A3A3',
+  '#C2B280',
+  '#1B1F3B',
+  '#848482',
+  '#B3446C',
+  '#F99379',
+  '#882D17',
+  '#D4B9DA',
+  '#DCD300',
+  '#2B3D26',
 ] as const
 
 /**
@@ -70,7 +73,17 @@ export function corTerritorio(i: number): string {
   const fixa = TERRITORIO_CORES[i]
   if (fixa) return fixa
   const k = i - TERRITORIO_CORES.length
-  return `hsl(${Math.round((k * 137.5 + 20) % 360)} ${k % 2 ? 45 : 60}% ${k % 3 === 0 ? 38 : 52}%)`
+  return hslParaHex((k * 137.5 + 20) % 360, k % 2 ? 45 : 60, k % 3 === 0 ? 38 : 52)
+}
+
+function hslParaHex(h: number, s: number, l: number): string {
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100)
+  const canal = (n: number) => {
+    const k = (n + h / 30) % 12
+    const v = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+    return Math.round(v * 255).toString(16).padStart(2, '0')
+  }
+  return `#${canal(0)}${canal(8)}${canal(4)}`
 }
 
 export const NIVEL_ARVORE_ROTULO: Record<NivelArvore2026, string> = {

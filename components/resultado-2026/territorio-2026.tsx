@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import {
   TseCarregando,
   TseErro,
   TseSegmentado,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
   tseCardClass,
   tseLinkAcaoClass,
 } from "@/components/tse/tse-ui";
@@ -20,6 +22,14 @@ import {
   type VencedorMunicipio2026,
 } from "@/lib/resultado-secao-2026";
 import { fetchMalhaMunicipiosPI } from "@/lib/services/malha-pi";
+import { fetchCorridaFederal2022x2026 } from "@/lib/services/corrida-territorial";
+import {
+  conquistasPorVencedor2026,
+  montarCorridaTerritorial,
+  type CorridaTerritorial,
+} from "@/lib/corrida-territorial";
+import type { ConquistaTerritorioPdf } from "./territorio-pdf-2026";
+import { CorridaTerritorial2026 } from "./corrida-territorial-2026";
 import { CORES_PARTIDOS, abreviarCargo, corTerritorio, nomeProprio } from "./tse-ui";
 
 type ModoCor = "candidato" | "partido";
@@ -98,8 +108,33 @@ function projetar(malha: MalhaMapaPIPayload): { formas: Forma[]; altura: number 
   return { formas, altura: Math.ceil((maxLat - minLat) * escala) };
 }
 
-/** Cor mais forte quanto maior a fatia do vencedor (50% ou mais = cor cheia). */
-const opacidadeDominio = (pct: number): number => 0.35 + 0.65 * Math.min(1, pct / 50);
+const COR_SEM_PARTIDO = "#9CA3AF";
+
+function conquistasParaPdf(
+  corrida: CorridaTerritorial,
+  corDoVencedor: (urna: string, partido: string) => string,
+): ConquistaTerritorioPdf[] {
+  const pessoas = new Map(corrida.participantes.map((p) => [p.chave, p]));
+  return conquistasPorVencedor2026(corrida).map((g) => {
+    const p = pessoas.get(g.chave);
+    return {
+      vencedor: nomeProprio(p?.nome ?? g.chave),
+      detalhe: p?.partido ?? "",
+      cor: p ? corDoVencedor(p.nome, p.partido) : COR_SEM_PARTIDO,
+      mantidas: g.mantidas,
+      origens: g.origens.map((o) => {
+        const de = pessoas.get(o.de);
+        const partido = de ? (de.partido2022 ?? de.partido) : "";
+        return {
+          de: nomeProprio(de?.nome ?? o.de),
+          detalhe: partido,
+          cor: CORES_PARTIDOS[partido] ?? COR_SEM_PARTIDO,
+          cidades: o.cidades,
+        };
+      }),
+    };
+  });
+}
 
 export function Territorio2026({
   payload,
@@ -116,7 +151,11 @@ export function Territorio2026({
   const [destaque, setDestaque] = useState<string | null>(null);
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [hover, setHover] = useState<{ chave: string; x: number; y: number } | null>(null);
+  const [gerandoPdf, setGerandoPdf] = useState<boolean>(false);
+  const [municipioCorrida, setMunicipioCorrida] = useState<string>("");
   const mapaRef = useRef<HTMLDivElement>(null);
+  const corridaRef = useRef<HTMLDivElement>(null);
+  const ehFederal = cargo === "Deputado Federal";
 
   useEffect(() => {
     let ativo = true;
@@ -190,6 +229,59 @@ export function Territorio2026({
     setDestaque(null);
   };
 
+  const exportarPdf = async () => {
+    setGerandoPdf(true);
+    try {
+      const { exportarTerritorioPdf2026 } = await import("./territorio-pdf-2026");
+      const corrida = ehFederal
+        ? await fetchCorridaFederal2022x2026()
+            .then(montarCorridaTerritorial)
+            .catch(() => null)
+        : null;
+      const corDoVencedor = (urna: string, partido: string): string =>
+        (modo === "candidato"
+          ? grupos.find((g) => g.rotulo === nomeProprio(urna))?.cor
+          : corPorChave.get(partido)) ??
+        CORES_PARTIDOS[partido] ??
+        COR_SEM_PARTIDO;
+      exportarTerritorioPdf2026({
+        conquistas: corrida ? conquistasParaPdf(corrida, corDoVencedor) : undefined,
+        meta: payload.meta,
+        fonteDados: payload.candidatos[0]?.fonte ?? "",
+        cargo,
+        modo,
+        totalMunicipios: vencedores.length,
+        grupos: grupos.map((g) => ({
+          rotulo: g.rotulo,
+          detalhe: g.detalhe,
+          cor: g.cor,
+          votosEstado: g.votosEstado,
+          municipios: vencedores
+            .filter((v) => chaveVencedor(v) === g.chave)
+            .sort((a, b) => (b.ranking[0]?.votos ?? 0) - (a.ranking[0]?.votos ?? 0))
+            .map((v) => {
+              const [primeiro, segundo] = v.ranking;
+              return {
+                nome: v.nome,
+                vencedor: nomeProprio(payload.candidatos[primeiro.idx]?.nome ?? ""),
+                votos: primeiro.votos,
+                pctMunicipio: primeiro.pct,
+                pctTotal: g.votosEstado ? (primeiro.votos / g.votosEstado) * 100 : 0,
+                segundo: segundo
+                  ? `${nomeProprio(payload.candidatos[segundo.idx]?.nome ?? "")} (${
+                      payload.candidatos[segundo.idx]?.partido ?? ""
+                    })`
+                  : "",
+                vantagem: segundo ? primeiro.votos - segundo.votos : null,
+              };
+            }),
+        })),
+      });
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
   const moverMouse = (e: ReactMouseEvent, chave: string) => {
     const caixa = mapaRef.current?.getBoundingClientRect();
     if (!caixa) return;
@@ -204,104 +296,136 @@ export function Territorio2026({
   const vencedorSel = selecionado ? porMunicipio.get(selecionado) : undefined;
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className={`${tseCardClass} relative`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-[15px] font-bold">Domínio territorial · {cargo}</h2>
-            <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">
-              Mais votado em cada município · cor mais forte = maior fatia dos votos do cargo
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-[12px] text-[var(--tse-muted)]">
-            Colorir por
-            <TseSegmentado opcoes={MODOS} valor={modo} onChange={trocarModo} />
-          </div>
-        </div>
-
-        <div ref={mapaRef} className="relative mt-3" onMouseLeave={() => setHover(null)}>
-          <svg
-            viewBox={`0 0 ${LARGURA} ${mapa.altura}`}
-            className="mx-auto block h-[min(78vh,880px)] w-auto max-w-full"
-            role="img"
-            aria-label={`Mapa do Piauí com o mais votado para ${cargo} em cada município`}
-          >
-            {mapa.formas.map((f) => {
-              const v = porMunicipio.get(f.chave);
-              const chave = chaveVencedor(v);
-              const apagado = destaque != null && chave !== destaque;
-              const cor = (chave && corPorChave.get(chave)) || "#EEEEEE";
-              const sel = selecionado === f.chave;
-              return (
-                <path
-                  key={f.chave}
-                  d={f.d}
-                  fill={apagado ? "#EDEDED" : cor}
-                  fillOpacity={apagado ? 1 : opacidadeDominio(v?.ranking[0]?.pct ?? 0)}
-                  stroke={sel ? "#333333" : "#FFFFFF"}
-                  strokeWidth={sel ? 2.5 : 0.8}
-                  className="cursor-pointer transition-[fill,fill-opacity] duration-200"
-                  onMouseMove={(e) => moverMouse(e, f.chave)}
-                  onClick={() => setSelecionado(sel ? null : f.chave)}
-                />
-              );
-            })}
-          </svg>
-
-          {hover && vencedorHover ? (
-            <div
-              className="pointer-events-none absolute z-10 rounded-lg bg-white p-3 text-[12px] shadow-lg ring-1 ring-black/5"
-              style={{ left: hover.x, top: hover.y, width: LARGURA_DICA - 10 }}
-            >
-              <ResumoMunicipio payload={payload} vencedor={vencedorHover} compacto />
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className={`${tseCardClass} relative`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-bold">Domínio territorial · {cargo}</h2>
+              <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">
+                Mais votado em cada município · passe o mouse para ver votos e fatia do vencedor
+              </p>
             </div>
-          ) : null}
-        </div>
-      </section>
+            <div className="flex items-center gap-2 text-[12px] text-[var(--tse-muted)]">
+              Colorir por
+              <TseSegmentado opcoes={MODOS} valor={modo} onChange={trocarModo} />
+            </div>
+          </div>
 
-      <aside className="space-y-4">
-        <section className={tseCardClass}>
-          <h3 className="text-[13px] font-bold">
-            {modo === "candidato" ? "Vencedores por votos no estado" : "Partidos vencedores por votos no estado"}
-          </h3>
-          <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">
-            {grupos.length} {modo === "candidato" ? "candidatos" : "partidos"} com ao menos um município · clique
-            para destacar no mapa
-          </p>
-          <ul className="mt-3 max-h-[min(70vh,760px)] space-y-1 overflow-y-auto pr-1">
-            {grupos.map((g) => (
-              <ItemLegenda
-                key={g.chave}
-                grupo={g}
-                ativo={destaque === g.chave}
-                onClick={() => setDestaque((d) => (d === g.chave ? null : g.chave))}
-              />
-            ))}
-          </ul>
+          <div ref={mapaRef} className="relative mt-3" onMouseLeave={() => setHover(null)}>
+            <svg
+              viewBox={`0 0 ${LARGURA} ${mapa.altura}`}
+              className="mx-auto block h-[min(78vh,880px)] w-auto max-w-full"
+              role="img"
+              aria-label={`Mapa do Piauí com o mais votado para ${cargo} em cada município`}
+            >
+              {mapa.formas.map((f) => {
+                const v = porMunicipio.get(f.chave);
+                const chave = chaveVencedor(v);
+                const apagado = destaque != null && chave !== destaque;
+                const cor = (chave && corPorChave.get(chave)) || "#EEEEEE";
+                const sel = selecionado === f.chave;
+                return (
+                  <path
+                    key={f.chave}
+                    d={f.d}
+                    fill={apagado ? "#EDEDED" : cor}
+                    stroke={sel ? "#333333" : "#FFFFFF"}
+                    strokeWidth={sel ? 2.5 : 0.8}
+                    className="cursor-pointer transition-[fill] duration-200"
+                    onMouseMove={(e) => moverMouse(e, f.chave)}
+                    onClick={() => setSelecionado(sel ? null : f.chave)}
+                  />
+                );
+              })}
+            </svg>
+
+            {hover && vencedorHover ? (
+              <div
+                className="pointer-events-none absolute z-10 rounded-lg bg-white p-3 text-[12px] shadow-lg ring-1 ring-black/5"
+                style={{ left: hover.x, top: hover.y, width: LARGURA_DICA - 10 }}
+              >
+                <ResumoMunicipio payload={payload} vencedor={vencedorHover} compacto />
+              </div>
+            ) : null}
+          </div>
         </section>
 
-        <section className={tseCardClass}>
-          {vencedorSel ? (
-            <>
-              <ResumoMunicipio payload={payload} vencedor={vencedorSel} />
-              {vencedorSel.ranking[0] ? (
-                <button
-                  type="button"
-                  onClick={() => onAbrirMunicipio(vencedorSel.codigo, vencedorSel.ranking[0].idx)}
-                  className={`${tseLinkAcaoClass} mt-3 inline-flex items-center gap-1`}
-                >
-                  Ver locais e seções
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-[12px] text-[var(--tse-muted)]">
-              Clique em um município no mapa para ver os três mais votados.
+        <aside className="space-y-4">
+          <section className={tseCardClass}>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-[13px] font-bold">
+                {modo === "candidato" ? "Vencedores por votos no estado" : "Partidos vencedores por votos no estado"}
+              </h3>
+              <button
+                type="button"
+                onClick={exportarPdf}
+                disabled={gerandoPdf || grupos.length === 0}
+                className={`${tseBotaoCinzaClass} shrink-0`}
+                title="Exportar a lista com os municípios de cada vencedor"
+              >
+                <FileText className={tseBotaoIconeClass} />
+                {gerandoPdf ? "Gerando…" : "PDF"}
+              </button>
+            </div>
+            <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">
+              {grupos.length} {modo === "candidato" ? "candidatos" : "partidos"} com ao menos um município · clique
+              para destacar no mapa
             </p>
-          )}
-        </section>
-      </aside>
+            <ul className="mt-3 max-h-[min(70vh,760px)] space-y-1 overflow-y-auto pr-1">
+              {grupos.map((g) => (
+                <ItemLegenda
+                  key={g.chave}
+                  grupo={g}
+                  ativo={destaque === g.chave}
+                  onClick={() => setDestaque((d) => (d === g.chave ? null : g.chave))}
+                />
+              ))}
+            </ul>
+          </section>
+
+          <section className={tseCardClass}>
+            {vencedorSel ? (
+              <>
+                <ResumoMunicipio payload={payload} vencedor={vencedorSel} />
+                {vencedorSel.ranking[0] ? (
+                  <button
+                    type="button"
+                    onClick={() => onAbrirMunicipio(vencedorSel.codigo, vencedorSel.ranking[0].idx)}
+                    className={`${tseLinkAcaoClass} mt-3 inline-flex items-center gap-1`}
+                  >
+                    Ver locais e seções
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+                {ehFederal ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMunicipioCorrida(vencedorSel.nome);
+                      corridaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className={`${tseLinkAcaoClass} mt-1.5 flex items-center gap-1`}
+                  >
+                    Ver corrida 2022 → 2026 neste município
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-[12px] text-[var(--tse-muted)]">
+                Clique em um município no mapa para ver os três mais votados.
+              </p>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      {ehFederal ? (
+        <div ref={corridaRef} className="scroll-mt-4">
+          <CorridaTerritorial2026 municipio={municipioCorrida} onTrocarMunicipio={setMunicipioCorrida} />
+        </div>
+      ) : null}
     </div>
   );
 }
