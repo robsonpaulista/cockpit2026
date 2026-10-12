@@ -13,6 +13,8 @@ export type ResultadoSecao2026Candidato = {
   nome: string
   numero: string
   cargo: string
+  /** Sigla do partido (consulta de candidatos TSE); ausente em arquivos gerados antes dela. */
+  partido?: string
   fonte: string
   totalVotos: number
   secoesNoRelatorio: number
@@ -222,6 +224,49 @@ export function resumirMunicipios2026(
     pctTotal: total ? (c.votos / total) * 100 : 0,
     mediaSecao: c.secoes ? c.votos / c.secoes : 0,
   }))
+}
+
+export type ColocadoMunicipio2026 = { idx: number; votos: number; pct: number }
+
+export type VencedorMunicipio2026 = {
+  codigo: string
+  nome: string
+  /** Votos nominais de todos os candidatos do cargo no município. */
+  totalCargo: number
+  /** Os mais votados do cargo no município, do 1º em diante. */
+  ranking: ColocadoMunicipio2026[]
+}
+
+/** Votos de cada candidato no estado inteiro (ordem de `candidatos`). */
+export function totaisPorCandidato2026(payload: ResultadoSecao2026Payload): number[] {
+  const totais = new Array<number>(payload.candidatos.length).fill(0)
+  for (const s of payload.secoes) for (let i = 0; i < totais.length; i++) totais[i] += s.v[i] ?? 0
+  return totais
+}
+
+/** Mais votados de um cargo em cada município (domínio territorial). */
+export function vencedoresPorMunicipio2026(
+  payload: ResultadoSecao2026Payload,
+  cargo: string,
+  colocados = 3,
+): VencedorMunicipio2026[] {
+  const indices = payload.candidatos.flatMap((c, i) => (c.cargo === cargo ? [i] : []))
+  const somas = new Map<string, number[]>()
+  for (const s of payload.secoes) {
+    const soma = somas.get(s.m) ?? new Array<number>(indices.length).fill(0)
+    for (let k = 0; k < indices.length; k++) soma[k] += s.v[indices[k]] ?? 0
+    somas.set(s.m, soma)
+  }
+  const nomes = nomesMunicipio(payload)
+  return [...somas.entries()].map(([codigo, soma]) => {
+    const totalCargo = soma.reduce((a, b) => a + b, 0)
+    const ranking = soma
+      .map((votos, k) => ({ idx: indices[k], votos, pct: totalCargo ? (votos / totalCargo) * 100 : 0 }))
+      .filter((c) => c.votos > 0)
+      .sort((a, b) => b.votos - a.votos)
+      .slice(0, colocados)
+    return { codigo, nome: nomes.get(codigo) ?? codigo, totalCargo, ranking }
+  })
 }
 
 export function resumirLocais2026(

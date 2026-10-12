@@ -183,6 +183,7 @@ async function main() {
       nome: c.urna,
       numero: c.numero,
       cargo: c.cargo,
+      partido: c.partido,
       fonte,
       totalVotos: c.total,
       secoesNoRelatorio: secoesPorCargo(c.cargo),

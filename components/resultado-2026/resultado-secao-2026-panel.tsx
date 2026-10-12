@@ -49,6 +49,7 @@ import {
 import { fetchResultadoSecao2026 } from "@/lib/services/resultado-secao-2026";
 import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
+import { Territorio2026 } from "./territorio-2026";
 import type { ModoPdfResultado } from "./resultado-pdf-2026";
 import {
   CANDIDATO_CORES,
@@ -64,7 +65,8 @@ type Visao =
   | "locais"
   | "secoes"
   | "comparativo"
-  | "comparativo-secao";
+  | "comparativo-secao"
+  | "territorio";
 type Ordem = "votos" | "alfabetica";
 
 const PAGE_SIZE = 30;
@@ -87,6 +89,7 @@ const VISOES: { id: Visao; label: string }[] = [
   { id: "secoes", label: "Seções" },
   { id: "comparativo", label: "Comparativo por local" },
   { id: "comparativo-secao", label: "Comparativo por seção" },
+  { id: "territorio", label: "Território" },
 ];
 
 const ehComparativo = (v: Visao): boolean =>
@@ -109,6 +112,7 @@ export function ResultadoSecao2026Panel() {
   const [referenciaIdx, setReferenciaIdx] = useState<number>(0);
   const [parceiros, setParceiros] = useState<number[]>([]);
   const [cargoParceiro, setCargoParceiro] = useState<string>("");
+  const [cargoTerritorio, setCargoTerritorio] = useState<string>("");
   const [gerandoPdf, setGerandoPdf] = useState<ModoPdfResultado | null>(null);
 
   useEffect(() => {
@@ -370,6 +374,17 @@ export function ResultadoSecao2026Panel() {
     .map((c, i) => ({ c, i }))
     .filter(({ i }) => ehDobradinha(payload.candidatos, i) && i !== referenciaIdx && !parceiros.includes(i));
   const podeAdicionar = parceiros.length < MAX_PARCEIROS;
+  const emTerritorio = visao === "territorio";
+  const cargoTerritorioAtivo = cargoTerritorio || cargos[0] || "";
+  const abrirMunicipioDoTerritorio = (codigo: string, idx: number) => {
+    setMunicipio(codigo);
+    setZona(null);
+    setLocalSel(null);
+    setCandidatoIdx(idx);
+    setBusca("");
+    setLimite(PAGE_SIZE);
+    setVisao("locais");
+  };
   const pctSecoesComVoto = geral.secoes
     ? (geral.secoesComVoto / geral.secoes) * 100
     : 0;
@@ -430,21 +445,35 @@ export function ResultadoSecao2026Panel() {
   return (
     <TsePage>
         <TseFilterBar>
-          <TseSelectGrande
-            icone={MapPin}
-            rotulo="Município"
-            value={municipio ?? ""}
-            onChange={(e) => trocarMunicipio(e.target.value || null)}
-          >
-            <option value="">Piauí</option>
-            {municipiosOrdenados.map((m) => (
-              <option key={m.codigo} value={m.codigo}>
-                {nomeProprio(m.nome)}
-              </option>
-            ))}
-          </TseSelectGrande>
+          {emTerritorio ? (
+            <TsePillSelect
+              rotulo="Cargo"
+              value={cargoTerritorioAtivo}
+              onChange={(e) => setCargoTerritorio(e.target.value)}
+            >
+              {cargos.map((cargo) => (
+                <option key={cargo} value={cargo}>
+                  {cargo}
+                </option>
+              ))}
+            </TsePillSelect>
+          ) : (
+            <TseSelectGrande
+              icone={MapPin}
+              rotulo="Município"
+              value={municipio ?? ""}
+              onChange={(e) => trocarMunicipio(e.target.value || null)}
+            >
+              <option value="">Piauí</option>
+              {municipiosOrdenados.map((m) => (
+                <option key={m.codigo} value={m.codigo}>
+                  {nomeProprio(m.nome)}
+                </option>
+              ))}
+            </TseSelectGrande>
+          )}
 
-          {zonasMunicipio.length > 1 && (
+          {!emTerritorio && zonasMunicipio.length > 1 && (
             <TsePillSelect
               rotulo="Zona"
               value={zona ?? ""}
@@ -463,7 +492,7 @@ export function ResultadoSecao2026Panel() {
             </TsePillSelect>
           )}
 
-          {emComparativo ? (
+          {emTerritorio ? null : emComparativo ? (
             <>
               <TsePillSelect
                 rotulo="Cargo"
@@ -621,7 +650,15 @@ export function ResultadoSecao2026Panel() {
 
         <TseTabs className="mt-5" abas={VISOES} ativa={visao} onChange={trocarVisao} />
 
-        {emComparativo ? (
+        {emTerritorio ? (
+          <div className="mt-5">
+            <Territorio2026
+              payload={payload}
+              cargo={cargoTerritorioAtivo}
+              onAbrirMunicipio={abrirMunicipioDoTerritorio}
+            />
+          </div>
+        ) : emComparativo ? (
           <div className="mt-5">
             {comparar.length >= 2 && visao === "comparativo-secao" ? (
               <ComparativoSecoes2026
