@@ -28,7 +28,7 @@ import {
   montarCorridaTerritorial,
   type CorridaTerritorial,
 } from "@/lib/corrida-territorial";
-import type { ConquistaTerritorioPdf } from "./territorio-pdf-2026";
+import type { ConquistaTerritorioPdf, PodioTerritorioPdf } from "./territorio-pdf-2026";
 import { CorridaTerritorial2026 } from "./corrida-territorial-2026";
 import { CORES_PARTIDOS, abreviarCargo, corTerritorio, nomeProprio } from "./tse-ui";
 
@@ -229,6 +229,45 @@ export function Territorio2026({
     setDestaque(null);
   };
 
+  const montarPodio = (): PodioTerritorioPdf[] => {
+    const podio = new Map<string, PodioTerritorioPdf>();
+    for (const v of vencedores) {
+      v.ranking.forEach((r, posicao) => {
+        const c = payload.candidatos[r.idx];
+        const chave = modo === "candidato" ? String(r.idx) : c?.partido || "Sem partido";
+        const item = podio.get(chave) ?? {
+          rotulo: modo === "candidato" ? nomeProprio(c?.nome ?? "") : chave,
+          detalhe: modo === "candidato" ? (c?.partido ?? "") : "",
+          cor: corPorChave.get(chave) ?? null,
+          primeiros: 0,
+          segundos: 0,
+          terceiros: 0,
+          votosEstado:
+            modo === "candidato"
+              ? (totais[r.idx] ?? 0)
+              : payload.candidatos.reduce(
+                  (soma, outro, i) =>
+                    outro.cargo === cargo && (outro.partido || "Sem partido") === chave
+                      ? soma + (totais[i] ?? 0)
+                      : soma,
+                  0,
+                ),
+        };
+        if (posicao === 0) item.primeiros += 1;
+        else if (posicao === 1) item.segundos += 1;
+        else item.terceiros += 1;
+        podio.set(chave, item);
+      });
+    }
+    return [...podio.values()].sort(
+      (a, b) =>
+        b.primeiros - a.primeiros ||
+        b.segundos - a.segundos ||
+        b.terceiros - a.terceiros ||
+        b.votosEstado - a.votosEstado,
+    );
+  };
+
   const exportarPdf = async () => {
     setGerandoPdf(true);
     try {
@@ -246,6 +285,7 @@ export function Territorio2026({
         COR_SEM_PARTIDO;
       exportarTerritorioPdf2026({
         conquistas: corrida ? conquistasParaPdf(corrida, corDoVencedor) : undefined,
+        podio: montarPodio(),
         meta: payload.meta,
         fonteDados: payload.candidatos[0]?.fonte ?? "",
         cargo,
@@ -260,19 +300,21 @@ export function Territorio2026({
             .filter((v) => chaveVencedor(v) === g.chave)
             .sort((a, b) => (b.ranking[0]?.votos ?? 0) - (a.ranking[0]?.votos ?? 0))
             .map((v) => {
-              const [primeiro, segundo] = v.ranking;
+              const [primeiro, segundo, terceiro] = v.ranking;
+              const rotuloColocado = (idx: number | undefined) => {
+                const c = idx == null ? undefined : payload.candidatos[idx];
+                return c ? `${nomeProprio(c.nome)} (${c.partido ?? ""})` : "";
+              };
               return {
                 nome: v.nome,
                 vencedor: nomeProprio(payload.candidatos[primeiro.idx]?.nome ?? ""),
                 votos: primeiro.votos,
                 pctMunicipio: primeiro.pct,
                 pctTotal: g.votosEstado ? (primeiro.votos / g.votosEstado) * 100 : 0,
-                segundo: segundo
-                  ? `${nomeProprio(payload.candidatos[segundo.idx]?.nome ?? "")} (${
-                      payload.candidatos[segundo.idx]?.partido ?? ""
-                    })`
-                  : "",
-                vantagem: segundo ? primeiro.votos - segundo.votos : null,
+                segundo: rotuloColocado(segundo?.idx),
+                votosSegundo: segundo?.votos ?? null,
+                terceiro: rotuloColocado(terceiro?.idx),
+                votosTerceiro: terceiro?.votos ?? null,
               };
             }),
         })),

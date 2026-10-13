@@ -23,7 +23,9 @@ export type MunicipioTerritorioPdf = {
   /** Fatia do total do candidato/partido no estado que veio deste município. */
   pctTotal: number
   segundo: string
-  vantagem: number | null
+  votosSegundo: number | null
+  terceiro: string
+  votosTerceiro: number | null
 }
 
 export type GrupoTerritorioPdf = {
@@ -42,6 +44,17 @@ export type ConquistaTerritorioPdf = {
   origens: { de: string; detalhe: string; cor: string; cidades: string[] }[]
 }
 
+export type PodioTerritorioPdf = {
+  rotulo: string
+  detalhe: string
+  /** Cor no mapa; só quem venceu algum município tem. */
+  cor: string | null
+  primeiros: number
+  segundos: number
+  terceiros: number
+  votosEstado: number
+}
+
 export type OpcoesTerritorioPdf2026 = {
   meta: ResultadoSecao2026Meta
   fonteDados: string
@@ -49,6 +62,8 @@ export type OpcoesTerritorioPdf2026 = {
   modo: 'candidato' | 'partido'
   grupos: GrupoTerritorioPdf[]
   totalMunicipios: number
+  /** Quantas vezes cada um ficou em 1º, 2º e 3º nos municípios. */
+  podio: PodioTerritorioPdf[]
   /** Vencedores de 2026 e de quem tomaram cidades em relação a 2022 (só Deputado Federal). */
   conquistas?: ConquistaTerritorioPdf[]
 }
@@ -65,21 +80,37 @@ export function montarTerritorioPdf2026(o: OpcoesTerritorioPdf2026): jsPDF {
     `Vencedores por votos no estado · colorido por ${o.modo}`,
     `${o.grupos.length} ${porPartido ? 'partidos' : 'candidatos'} venceram em ${o.totalMunicipios} municípios`,
   ].join('  ·  ')
-  const y = desenharCabecalho(doc, { titulo: 'Domínio territorial', descricao, fonteDados: o.fonteDados, meta: o.meta })
+  const yCabecalho = desenharCabecalho(doc, {
+    titulo: 'Domínio territorial',
+    descricao,
+    fonteDados: o.fonteDados,
+    meta: o.meta,
+  })
+  const yPodio = o.podio.length ? desenharPodio(doc, o, yCabecalho) : yCabecalho
+  const y = tituloSecao(doc, o, 'Municípios de cada vencedor', yPodio)
 
+  const wVotosColocado = porPartido ? 14 : 15
   const colunas: { titulo: string; largura: number; direita?: boolean }[] = [
-    { titulo: 'MUNICÍPIO', largura: porPartido ? 44 : 58 },
-    ...(porPartido ? [{ titulo: 'VENCEDOR', largura: 34 }] : []),
-    { titulo: 'VOTOS', largura: porPartido ? 18 : 22, direita: true },
-    { titulo: '% NO MUNICÍPIO', largura: porPartido ? 22 : 26, direita: true },
-    { titulo: `% DO TOTAL DO ${sujeito}`, largura: porPartido ? 24 : 28, direita: true },
+    { titulo: 'MUNICÍPIO', largura: porPartido ? 36 : 43 },
+    ...(porPartido ? [{ titulo: 'VENCEDOR', largura: 26 }] : []),
+    { titulo: 'VOTOS', largura: porPartido ? 15 : 16, direita: true },
+    { titulo: '% NO MUNICÍPIO', largura: 16, direita: true },
+    { titulo: `% DO TOTAL DO ${sujeito}`, largura: porPartido ? 18 : 19, direita: true },
   ]
-  const usado = colunas.reduce((a, c) => a + c.largura, 0)
-  const wVantagem = 18
+  const wColocado = (sw - colunas.reduce((a, c) => a + c.largura, 0) - 2 * wVotosColocado) / 2
   colunas.push(
-    { titulo: '2º COLOCADO', largura: sw - usado - wVantagem },
-    { titulo: 'VANTAGEM', largura: wVantagem, direita: true },
+    { titulo: '2º COLOCADO', largura: wColocado },
+    { titulo: 'VOTOS DO 2º', largura: wVotosColocado, direita: true },
+    { titulo: '3º COLOCADO', largura: wColocado },
+    { titulo: 'VOTOS DO 3º', largura: wVotosColocado, direita: true },
   )
+  const colocado = (nome: string, votos: number | null): CellDef[] => [
+    { content: nome || '—', styles: { fontSize: 6.8, textColor: nome ? COR.text : COR.muted } },
+    {
+      content: votos == null ? '—' : formatarVotos2026(votos),
+      styles: { halign: 'right', textColor: votos == null ? COR.muted : COR.text },
+    },
+  ]
 
   const head: RowInput[] = [
     colunas.map((c): CellDef => ({ content: c.titulo, styles: { halign: c.direita ? 'right' : 'left' } })),
@@ -116,11 +147,8 @@ export function montarTerritorioPdf2026(o: OpcoesTerritorioPdf2026): jsPDF {
         { content: formatarVotos2026(m.votos), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: formatarPct2026(m.pctMunicipio, 1), styles: { halign: 'right' } },
         { content: formatarPct2026(m.pctTotal, 1), styles: { halign: 'right' } },
-        { content: m.segundo || '—', styles: { textColor: m.segundo ? COR.text : COR.muted } },
-        {
-          content: m.vantagem == null ? '—' : `+${formatarVotos2026(m.vantagem)}`,
-          styles: { halign: 'right', textColor: COR.muted },
-        },
+        ...colocado(m.segundo, m.votosSegundo),
+        ...colocado(m.terceiro, m.votosTerceiro),
       ])
     }
   }
@@ -174,6 +202,118 @@ export function montarTerritorioPdf2026(o: OpcoesTerritorioPdf2026): jsPDF {
 
   numerarPaginas(doc, `Resultado 2026 · Território · ${o.cargo}`)
   return doc
+}
+
+const fimDaUltimaTabela = (doc: jsPDF, padrao: number): number =>
+  (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? padrao
+
+/** Título de seção; abre página nova se não couber ao menos o começo de uma tabela. */
+function tituloSecao(doc: jsPDF, o: OpcoesTerritorioPdf2026, texto: string, y: number): number {
+  const { tinta, fonte } = ferramentasPdf(doc)
+  let topo = y
+  if (topo > doc.internal.pageSize.getHeight() - 40) {
+    doc.addPage()
+    desenharFaixaSuperior(doc, o.fonteDados, o.meta)
+    topo = 14
+  }
+  fonte(10, 'bold')
+  tinta(COR.text)
+  doc.text(texto, MARGEM, topo + 3.5)
+  return topo + 6
+}
+
+function desenharPodio(doc: jsPDF, o: OpcoesTerritorioPdf2026, y: number): number {
+  const { preencher } = ferramentasPdf(doc)
+  const sw = doc.internal.pageSize.getWidth() - 2 * MARGEM
+  const sujeito = o.modo === 'partido' ? 'PARTIDO' : 'CANDIDATO'
+  const topo = tituloSecao(doc, o, 'Quadro-resumo: colocações nos municípios', y)
+
+  const wNum = 18
+  const wVotos = 26
+  const wPos = 8
+  const wNome = sw - wPos - 4 * wNum - wVotos
+  const cores = new Map<number, Rgb>()
+  const numero = (n: number, destaque = false): CellDef => ({
+    content: n ? formatarVotos2026(n) : '—',
+    styles: {
+      halign: 'right',
+      fontStyle: destaque && n ? 'bold' : 'normal',
+      textColor: n ? COR.text : COR.muted,
+    },
+  })
+  const body: RowInput[] = o.podio.map((p, i) => {
+    if (p.cor) cores.set(i, rgb(p.cor))
+    return [
+      { content: `${i + 1}º`, styles: { textColor: COR.muted } },
+      {
+        content: `${p.rotulo.toUpperCase()}${p.detalhe ? `  (${p.detalhe})` : ''}`,
+        styles: { fontStyle: 'bold', cellPadding: { top: 1.1, bottom: 1.1, left: 7, right: 2 } },
+      },
+      numero(p.primeiros, true),
+      numero(p.segundos),
+      numero(p.terceiros),
+      numero(p.primeiros + p.segundos + p.terceiros),
+      { content: formatarVotos2026(p.votosEstado), styles: { halign: 'right', textColor: COR.muted } },
+    ]
+  })
+
+  autoTable(doc, {
+    startY: topo,
+    margin: { left: MARGEM, right: MARGEM, top: 12, bottom: 12 },
+    head: [
+      [
+        { content: '#' },
+        { content: sujeito },
+        { content: '1º LUGAR', styles: { halign: 'right' } },
+        { content: '2º LUGAR', styles: { halign: 'right' } },
+        { content: '3º LUGAR', styles: { halign: 'right' } },
+        { content: 'NO PÓDIO', styles: { halign: 'right' } },
+        { content: 'VOTOS NO ESTADO', styles: { halign: 'right' } },
+      ],
+    ],
+    body,
+    theme: 'plain',
+    rowPageBreak: 'avoid',
+    tableLineColor: COR.trilho,
+    tableLineWidth: 0.6,
+    styles: {
+      font: 'helvetica',
+      fontSize: 7.3,
+      textColor: COR.text,
+      valign: 'middle',
+      cellPadding: { top: 1.1, bottom: 1.1, left: 2, right: 2 },
+      lineColor: COR.trilho,
+      lineWidth: { top: 0.2 },
+    },
+    headStyles: {
+      fillColor: COR.bar,
+      textColor: COR.muted,
+      fontStyle: 'bold',
+      fontSize: 6.5,
+      lineWidth: 0,
+      cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
+    },
+    columnStyles: {
+      0: { cellWidth: wPos },
+      1: { cellWidth: wNome },
+      2: { cellWidth: wNum },
+      3: { cellWidth: wNum },
+      4: { cellWidth: wNum },
+      5: { cellWidth: wNum },
+      6: { cellWidth: wVotos },
+    },
+    willDrawPage: (d) => {
+      if (d.pageNumber > 1) desenharFaixaSuperior(doc, o.fonteDados, o.meta)
+    },
+    didDrawCell: (d) => {
+      if (d.section !== 'body' || d.column.index !== 1) return
+      const cor = cores.get(d.row.index)
+      if (!cor) return
+      preencher(cor)
+      doc.roundedRect(d.cell.x + 2, d.cell.y + d.cell.height / 2 - 1.4, 2.8, 2.8, 0.5, 0.5, 'F')
+    },
+  })
+  return fimDaUltimaTabela(doc, topo) + 7
 }
 
 function desenharConquistas(doc: jsPDF, o: OpcoesTerritorioPdf2026, conquistas: ConquistaTerritorioPdf[]): void {

@@ -244,6 +244,22 @@ export function totaisPorCandidato2026(payload: ResultadoSecao2026Payload): numb
   return totais
 }
 
+/** Todos os candidatos de um cargo com voto nas seções dadas, do mais ao menos votado. */
+export function rankingCandidatos2026(
+  payload: ResultadoSecao2026Payload,
+  secoes: ResultadoSecao2026SecaoMulti[],
+  cargo: string,
+): ColocadoMunicipio2026[] {
+  const indices = payload.candidatos.flatMap((c, i) => (c.cargo === cargo ? [i] : []))
+  const soma = new Array<number>(indices.length).fill(0)
+  for (const s of secoes) for (let k = 0; k < indices.length; k++) soma[k] += s.v[indices[k]] ?? 0
+  const total = soma.reduce((a, b) => a + b, 0)
+  return soma
+    .map((votos, k) => ({ idx: indices[k], votos, pct: total ? (votos / total) * 100 : 0 }))
+    .filter((c) => c.votos > 0)
+    .sort((a, b) => b.votos - a.votos)
+}
+
 /** Mais votados de um cargo em cada município (domínio territorial). */
 export function vencedoresPorMunicipio2026(
   payload: ResultadoSecao2026Payload,

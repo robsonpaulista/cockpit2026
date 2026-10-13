@@ -36,11 +36,13 @@ import {
   formatarSecao2026,
   formatarVotos2026,
   formatarZona2026,
+  rankingCandidatos2026,
   resumirLocais2026,
   resumirMunicipios2026,
   resumoGeral2026,
   secoesDoCandidato2026,
   secoesParaCsv2026,
+  vencedoresPorMunicipio2026,
   type LocalResumo2026,
   type MunicipioResumo2026,
   type ResultadoSecao2026Payload,
@@ -50,6 +52,12 @@ import { fetchResultadoSecao2026 } from "@/lib/services/resultado-secao-2026";
 import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
 import { Territorio2026 } from "./territorio-2026";
+import {
+  CandidatosTodosTabela,
+  MunicipiosTodosTabela,
+  type LinhaCandidatoTodos2026,
+  type LinhaMunicipioTodos2026,
+} from "./todos-candidatos-2026";
 import type { ModoPdfResultado } from "./resultado-pdf-2026";
 import {
   CANDIDATO_CORES,
@@ -70,6 +78,9 @@ type Visao =
 type Ordem = "votos" | "alfabetica";
 
 const PAGE_SIZE = 30;
+
+/** Valor da opção "Todos os candidatos" no seletor (só na aba Municípios). */
+const TODOS = "todos";
 
 /** Referência padrão dos comparativos (Deputado Federal); os demais marcados são parceiros de dobradinha. */
 function indiceGeral(candidatos: ResultadoSecao2026Payload["candidatos"]): number {
@@ -109,6 +120,7 @@ export function ResultadoSecao2026Panel() {
   const [limite, setLimite] = useState<number>(PAGE_SIZE);
   const [localSel, setLocalSel] = useState<number | null>(null);
   const [candidatoIdx, setCandidatoIdx] = useState<number>(0);
+  const [todos, setTodos] = useState<boolean>(false);
   const [referenciaIdx, setReferenciaIdx] = useState<number>(0);
   const [parceiros, setParceiros] = useState<number[]>([]);
   const [cargoParceiro, setCargoParceiro] = useState<string>("");
@@ -250,6 +262,44 @@ export function ResultadoSecao2026Panel() {
     );
   }, [secoesDetalhe, termo, ordem]);
 
+  const todosAtivo = todos && visao === "municipios";
+  const cargoAtual = payload?.candidatos[candidatoIdx]?.cargo ?? "";
+
+  const candidatosTodos = useMemo<LinhaCandidatoTodos2026[]>(() => {
+    if (!payload || !todosAtivo || !municipio) return [];
+    const lista = rankingCandidatos2026(payload, secoesEscopoMulti, cargoAtual).map((r, i) => ({
+      ...r,
+      posicao: i + 1,
+    }));
+    const filtrada = termo
+      ? lista.filter((r) => {
+          const c = payload.candidatos[r.idx];
+          return normalizar(`${c?.nome ?? ""} ${c?.partido ?? ""} ${c?.numero ?? ""}`).includes(termo);
+        })
+      : lista;
+    const nome = (r: LinhaCandidatoTodos2026) => payload.candidatos[r.idx]?.nome ?? "";
+    return ordem === "votos"
+      ? filtrada
+      : [...filtrada].sort((a, b) => nome(a).localeCompare(nome(b), "pt-BR"));
+  }, [payload, todosAtivo, municipio, secoesEscopoMulti, cargoAtual, termo, ordem]);
+
+  const municipiosTodos = useMemo<LinhaMunicipioTodos2026[]>(() => {
+    if (!payload || !todosAtivo || municipio) return [];
+    const lista = vencedoresPorMunicipio2026(payload, cargoAtual, 1)
+      .sort((a, b) => b.totalCargo - a.totalCargo || a.nome.localeCompare(b.nome, "pt-BR"))
+      .map((v, i) => ({
+        codigo: v.codigo,
+        nome: v.nome,
+        posicao: i + 1,
+        totalCargo: v.totalCargo,
+        lider: v.ranking[0] ?? null,
+      }));
+    const filtrada = termo ? lista.filter((m) => normalizar(m.nome).includes(termo)) : lista;
+    return ordem === "votos"
+      ? filtrada
+      : [...filtrada].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [payload, todosAtivo, municipio, cargoAtual, termo, ordem]);
+
   const comparar = useMemo<number[]>(
     () => (parceiros.length ? [referenciaIdx, ...parceiros] : []),
     [referenciaIdx, parceiros],
@@ -260,8 +310,11 @@ export function ResultadoSecao2026Panel() {
     [secoesVisiveis],
   );
 
-  const totalVisao =
-    visao === "municipios"
+  const totalVisao = todosAtivo
+    ? municipio
+      ? candidatosTodos.length
+      : municipiosTodos.length
+    : visao === "municipios"
       ? municipiosVisiveis.length
       : visao === "locais"
         ? locaisVisiveis.length
@@ -280,7 +333,7 @@ export function ResultadoSecao2026Panel() {
     setZona(null);
     setLocalSel(null);
     setLimite(PAGE_SIZE);
-    if (codigo && visao === "municipios") setVisao("locais");
+    if (codigo && visao === "municipios" && !todos) setVisao("locais");
   };
 
   const trocarVisao = (v: Visao) => {
@@ -292,6 +345,25 @@ export function ResultadoSecao2026Panel() {
   const trocarCandidato = (i: number) => {
     setCandidatoIdx(i);
     setLimite(PAGE_SIZE);
+  };
+
+  const escolherCandidato = (valor: string) => {
+    setLimite(PAGE_SIZE);
+    if (valor === TODOS) {
+      setTodos(true);
+      return;
+    }
+    setTodos(false);
+    setCandidatoIdx(Number(valor));
+  };
+
+  const abrirCandidatoDoMunicipio = (i: number) => {
+    setTodos(false);
+    setCandidatoIdx(i);
+    setLocalSel(null);
+    setBusca("");
+    setLimite(PAGE_SIZE);
+    setVisao("locais");
   };
 
   const trocarReferencia = (i: number) => {
@@ -394,6 +466,14 @@ export function ResultadoSecao2026Panel() {
   const escopoLabel = nomeMunicipioSel
     ? `${nomeProprio(nomeMunicipioSel)}${zona != null ? ` · Zona ${formatarZona2026(zona)}` : ""}`
     : "Piauí";
+
+  const indicesDoCargo = candidatosDoCargo.map(({ i }) => i);
+  const votosDoCargo = todosAtivo
+    ? secoesEscopoMulti.reduce(
+        (soma, s) => soma + indicesDoCargo.reduce((parcial, i) => parcial + (s.v[i] ?? 0), 0),
+        0,
+      )
+    : 0;
 
   const linhasPdf = (modoPdf: ModoPdfResultado) => (modoPdf === "completo" ? Infinity : limite);
 
@@ -536,9 +616,12 @@ export function ResultadoSecao2026Panel() {
               <TseSelectGrande
                 icone={User}
                 rotulo="Candidato"
-                value={candidatoIdx}
-                onChange={(e) => trocarCandidato(Number(e.target.value))}
+                value={todosAtivo ? TODOS : candidatoIdx}
+                onChange={(e) => escolherCandidato(e.target.value)}
               >
+                {visao === "municipios" ? (
+                  <option value={TODOS}>Todos os candidatos</option>
+                ) : null}
                 {candidatosDoCargo.map(({ c, i }) => (
                   <option key={c.id} value={i}>
                     {nomeProprio(c.nome)}
@@ -689,85 +772,91 @@ export function ResultadoSecao2026Panel() {
             )}
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
-            <aside className="space-y-4">
-              <section className={tseCardClass}>
-                <h2 className="text-xl font-bold">Dados Gerais</h2>
-                <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">
-                  Última atualização {candidato.fonte.split("·").pop()?.trim()}{" "}
-                  (Horário local)
-                </p>
-                <TseDados>
-                  <TseDado
-                    rotulo="Municípios com voto"
-                    valor={formatarVotos2026(geral.municipiosComVoto)}
-                    sufixo={`/ ${formatarVotos2026(geral.municipios)}`}
-                  />
-                  <TseDado rotulo="Locais de votação" valor={formatarVotos2026(geral.locais)} />
-                  <TseDado rotulo="Total de seções" valor={formatarVotos2026(geral.secoes)} />
-                  <TseDado rotulo="Seções com voto" valor={formatarVotos2026(geral.secoesComVoto)} />
-                </TseDados>
-                <TseBarraRotulo pct={pctSecoesComVoto} rotulo={formatarPct2026(pctSecoesComVoto)} />
-              </section>
+          <div
+            className={
+              todosAtivo ? "mt-5" : "mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]"
+            }
+          >
+            {todosAtivo ? null : (
+              <aside className="space-y-4">
+                <section className={tseCardClass}>
+                  <h2 className="text-xl font-bold">Dados Gerais</h2>
+                  <p className="mt-2 text-[10px] font-semibold text-[var(--tse-muted)]">
+                    Última atualização {candidato.fonte.split("·").pop()?.trim()}{" "}
+                    (Horário local)
+                  </p>
+                  <TseDados>
+                    <TseDado
+                      rotulo="Municípios com voto"
+                      valor={formatarVotos2026(geral.municipiosComVoto)}
+                      sufixo={`/ ${formatarVotos2026(geral.municipios)}`}
+                    />
+                    <TseDado rotulo="Locais de votação" valor={formatarVotos2026(geral.locais)} />
+                    <TseDado rotulo="Total de seções" valor={formatarVotos2026(geral.secoes)} />
+                    <TseDado rotulo="Seções com voto" valor={formatarVotos2026(geral.secoesComVoto)} />
+                  </TseDados>
+                  <TseBarraRotulo pct={pctSecoesComVoto} rotulo={formatarPct2026(pctSecoesComVoto)} />
+                </section>
 
-              <section className={tseCardClass}>
-                <h2 className="text-[15px] font-bold">Votação</h2>
-                <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-[var(--tse-zero)]">
-                  <div
-                    className="bg-[var(--tse-green)]"
-                    style={{ width: `${pctSecoesComVoto}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-[12px] font-bold">
-                  {formatarVotos2026(geral.votos)} votos
-                </p>
-                <ul className="mt-3 space-y-2 text-[13px]">
-                  <li className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <span className="h-3 w-3 bg-[var(--tse-green)]" /> Seções
-                      com voto
-                    </span>
-                    <strong>{formatarVotos2026(geral.secoesComVoto)}</strong>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <span className="h-3 w-3 bg-[var(--tse-zero)]" /> Seções
-                      sem voto
-                    </span>
-                    <strong>{formatarVotos2026(geral.secoesSemVoto)}</strong>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <span className="h-3 w-3 bg-[var(--tse-yellow)]" /> Média
-                      por seção
-                    </span>
-                    <strong>
-                      {geral.mediaSecao.toLocaleString("pt-BR", {
-                        maximumFractionDigits: 1,
-                      })}
-                    </strong>
-                  </li>
-                </ul>
-                {geral.maiorSecao && (
-                  <div className="mt-4 rounded-lg bg-[var(--tse-bar)] p-3 text-[12px]">
-                    <p className="font-bold">Seção mais votada</p>
-                    <p className="mt-1">
-                      {nomeProprio(geral.maiorSecao.municipioNome)} · Zona{" "}
-                      {formatarZona2026(geral.maiorSecao.z)} · Seção{" "}
-                      {formatarSecao2026(geral.maiorSecao.s)}
-                    </p>
-                    {geral.maiorSecao.local && (
-                      <p className="text-[var(--tse-muted)]">
-                        {geral.maiorSecao.local.nome}
-                      </p>
-                    )}
-                    <p className="mt-1 text-[14px] font-bold">
-                      {formatarVotos2026(geral.maiorSecao.v)} votos
-                    </p>
+                <section className={tseCardClass}>
+                  <h2 className="text-[15px] font-bold">Votação</h2>
+                  <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-[var(--tse-zero)]">
+                    <div
+                      className="bg-[var(--tse-green)]"
+                      style={{ width: `${pctSecoesComVoto}%` }}
+                    />
                   </div>
-                )}
-              </section>
-            </aside>
+                  <p className="mt-1 text-[12px] font-bold">
+                    {formatarVotos2026(geral.votos)} votos
+                  </p>
+                  <ul className="mt-3 space-y-2 text-[13px]">
+                    <li className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className="h-3 w-3 bg-[var(--tse-green)]" /> Seções
+                        com voto
+                      </span>
+                      <strong>{formatarVotos2026(geral.secoesComVoto)}</strong>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className="h-3 w-3 bg-[var(--tse-zero)]" /> Seções
+                        sem voto
+                      </span>
+                      <strong>{formatarVotos2026(geral.secoesSemVoto)}</strong>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span className="h-3 w-3 bg-[var(--tse-yellow)]" /> Média
+                        por seção
+                      </span>
+                      <strong>
+                        {geral.mediaSecao.toLocaleString("pt-BR", {
+                          maximumFractionDigits: 1,
+                        })}
+                      </strong>
+                    </li>
+                  </ul>
+                  {geral.maiorSecao && (
+                    <div className="mt-4 rounded-lg bg-[var(--tse-bar)] p-3 text-[12px]">
+                      <p className="font-bold">Seção mais votada</p>
+                      <p className="mt-1">
+                        {nomeProprio(geral.maiorSecao.municipioNome)} · Zona{" "}
+                        {formatarZona2026(geral.maiorSecao.z)} · Seção{" "}
+                        {formatarSecao2026(geral.maiorSecao.s)}
+                      </p>
+                      {geral.maiorSecao.local && (
+                        <p className="text-[var(--tse-muted)]">
+                          {geral.maiorSecao.local.nome}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[14px] font-bold">
+                        {formatarVotos2026(geral.maiorSecao.v)} votos
+                      </p>
+                    </div>
+                  )}
+                </section>
+              </aside>
+            )}
 
             <main className="min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -787,73 +876,102 @@ export function ResultadoSecao2026Panel() {
                       setLimite(PAGE_SIZE);
                     }}
                     placeholder={
-                      visao === "municipios"
+                      todosAtivo && municipio
+                        ? "Buscar candidato, partido ou número"
+                        : visao === "municipios"
                         ? "Buscar município"
                         : visao === "locais"
                           ? "Buscar local ou bairro"
                           : "Buscar seção, local ou bairro"
                     }
                   />
-                  <button type="button" onClick={exportar} className={tseBotaoCinzaClass}>
-                    <Download className={tseBotaoIconeClass} />
-                    Exportar seções
-                  </button>
-                  <TseMenu
-                    icone={FileText}
-                    rotulo="Exportar PDF"
-                    ocupado={gerandoPdf != null}
-                    rotuloOcupado="Gerando PDF…"
-                  >
-                    {(fechar) => (
-                      <>
-                        <TseMenuItem
-                          titulo="Como está na tela"
-                          descricao={`Card do candidato e as ${formatarVotos2026(Math.min(limite, totalVisao))} linhas carregadas`}
-                          onClick={() => {
-                            fechar();
-                            void exportarPdf("tela");
-                          }}
-                        />
-                        <TseMenuItem
-                          titulo="Lista completa"
-                          descricao={`${formatarVotos2026(totalVisao)} linhas${totalVisao > 4000 ? " (arquivo grande, pode demorar)" : ""}`}
-                          onClick={() => {
-                            fechar();
-                            void exportarPdf("completo");
-                          }}
-                        />
-                      </>
-                    )}
-                  </TseMenu>
+                  {todosAtivo ? null : (
+                    <>
+                    <button type="button" onClick={exportar} className={tseBotaoCinzaClass}>
+                      <Download className={tseBotaoIconeClass} />
+                      Exportar seções
+                    </button>
+                    <TseMenu
+                      icone={FileText}
+                      rotulo="Exportar PDF"
+                      ocupado={gerandoPdf != null}
+                      rotuloOcupado="Gerando PDF…"
+                    >
+                      {(fechar) => (
+                        <>
+                          <TseMenuItem
+                            titulo="Como está na tela"
+                            descricao={`Card do candidato e as ${formatarVotos2026(Math.min(limite, totalVisao))} linhas carregadas`}
+                            onClick={() => {
+                              fechar();
+                              void exportarPdf("tela");
+                            }}
+                          />
+                          <TseMenuItem
+                            titulo="Lista completa"
+                            descricao={`${formatarVotos2026(totalVisao)} linhas${totalVisao > 4000 ? " (arquivo grande, pode demorar)" : ""}`}
+                            onClick={() => {
+                              fechar();
+                              void exportarPdf("completo");
+                            }}
+                          />
+                        </>
+                      )}
+                    </TseMenu>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <section className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-white px-5 py-4 shadow-sm">
-                <div className="min-w-[180px] flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-xl font-bold uppercase">
-                      {candidato.nome}
-                    </p>
-                    <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
-                      {escopoLabel}
-                    </span>
+              {todosAtivo ? (
+                <section className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-white px-5 py-4 shadow-sm">
+                  <div className="min-w-[180px] flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-xl font-bold uppercase">Todos os candidatos</div>
+                      <div className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                        {escopoLabel}
+                      </div>
+                    </div>
+                    <div className="text-[15px] text-[var(--tse-muted)]">
+                      {candidato.cargo}
+                      {municipio
+                        ? " · clique num candidato para ver os locais de votação dele"
+                        : " · clique num município para ver todos os votados"}
+                    </div>
                   </div>
-                  <p className="text-[15px] text-[var(--tse-muted)]">
-                    {candidato.cargo} – {candidato.numero}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-black">
-                    {formatarVotos2026(geral.votos)}
-                  </p>
-                  <p className="text-[13px] text-[var(--tse-muted)]">
-                    votos
-                    {nomeMunicipioSel
-                      ? ` · ${formatarPct2026(pctDoCandidato)} do total do candidato`
-                      : " no estado"}
-                  </p>
-                </div>
-              </section>
+                  <div className="text-right">
+                    <div className="text-3xl font-black">{formatarVotos2026(votosDoCargo)}</div>
+                    <div className="text-[13px] text-[var(--tse-muted)]">votos nominais do cargo</div>
+                  </div>
+                </section>
+              ) : (
+                <section className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-white px-5 py-4 shadow-sm">
+                  <div className="min-w-[180px] flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xl font-bold uppercase">
+                        {candidato.nome}
+                      </p>
+                      <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+                        {escopoLabel}
+                      </span>
+                    </div>
+                    <p className="text-[15px] text-[var(--tse-muted)]">
+                      {candidato.cargo} – {candidato.numero}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-black">
+                      {formatarVotos2026(geral.votos)}
+                    </p>
+                    <p className="text-[13px] text-[var(--tse-muted)]">
+                      votos
+                      {nomeMunicipioSel
+                        ? ` · ${formatarPct2026(pctDoCandidato)} do total do candidato`
+                        : " no estado"}
+                    </p>
+                  </div>
+                </section>
+              )}
 
               {visao === "secoes" && localSelInfo && (
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-[13px]">
@@ -871,7 +989,11 @@ export function ResultadoSecao2026Panel() {
 
               <p className="mt-4 text-[12px] text-[var(--tse-muted)]">
                 {formatarVotos2026(totalVisao)}{" "}
-                {visao === "municipios"
+                {todosAtivo && municipio
+                  ? totalVisao === 1
+                    ? "candidato votado"
+                    : "candidatos votados"
+                  : visao === "municipios"
                   ? "municípios"
                   : visao === "locais"
                     ? "locais de votação"
@@ -879,7 +1001,24 @@ export function ResultadoSecao2026Panel() {
                 {termo ? " encontrados" : ""}
               </p>
 
-              {visao === "municipios" && (
+              {todosAtivo && municipio ? (
+                <CandidatosTodosTabela
+                  linhas={candidatosTodos.slice(0, limite)}
+                  candidatos={payload.candidatos}
+                  destaqueIdx={candidatoIdx}
+                  onSelect={abrirCandidatoDoMunicipio}
+                />
+              ) : null}
+
+              {todosAtivo && !municipio ? (
+                <MunicipiosTodosTabela
+                  linhas={municipiosTodos.slice(0, limite)}
+                  candidatos={payload.candidatos}
+                  onSelect={(codigo) => trocarMunicipio(codigo)}
+                />
+              ) : null}
+
+              {visao === "municipios" && !todosAtivo && (
                 <MunicipiosTabela
                   linhas={municipiosVisiveis.slice(0, limite)}
                   rank={rankMunicipio}
