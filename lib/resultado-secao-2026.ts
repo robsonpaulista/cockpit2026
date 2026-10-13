@@ -285,6 +285,51 @@ export function vencedoresPorMunicipio2026(
   })
 }
 
+export type LinhaQuadroMunicipio2026 = {
+  codigo: string
+  nome: string
+  /** Votos nominais de todos os candidatos do cargo no município. */
+  total: number
+  /** Alinhado a `QuadroMunicipios2026.indices`. */
+  votos: number[]
+  /** Posições (em `indices`) dos candidatos com voto, do 1º colocado no município em diante. */
+  ranking: number[]
+}
+
+export type QuadroMunicipios2026 = {
+  /** Candidatos do cargo, do mais ao menos votado no estado. */
+  indices: number[]
+  totais: number[]
+  linhas: LinhaQuadroMunicipio2026[]
+}
+
+/** Matriz município × colocação de um cargo: base do quadro-resumo do Território. */
+export function quadroMunicipios2026(payload: ResultadoSecao2026Payload, cargo: string): QuadroMunicipios2026 {
+  const doCargo = payload.candidatos.flatMap((c, i) => (c.cargo === cargo ? [i] : []))
+  const somas = new Map<string, number[]>()
+  const totaisCargo = new Array<number>(doCargo.length).fill(0)
+  for (const s of payload.secoes) {
+    const soma = somas.get(s.m) ?? new Array<number>(doCargo.length).fill(0)
+    for (let k = 0; k < doCargo.length; k++) {
+      const v = s.v[doCargo[k]] ?? 0
+      soma[k] += v
+      totaisCargo[k] += v
+    }
+    somas.set(s.m, soma)
+  }
+  const ordem = doCargo.map((_, k) => k).sort((a, b) => totaisCargo[b] - totaisCargo[a] || a - b)
+  const nomes = nomesMunicipio(payload)
+  const linhas = [...somas.entries()].map(([codigo, soma]) => {
+    const votos = ordem.map((k) => soma[k])
+    const total = votos.reduce((a, b) => a + b, 0)
+    const ranking = votos
+      .flatMap((v, p) => (v > 0 ? [p] : []))
+      .sort((a, b) => votos[b] - votos[a] || a - b)
+    return { codigo, nome: nomes.get(codigo) ?? codigo, total, votos, ranking }
+  })
+  return { indices: ordem.map((k) => doCargo[k]), totais: ordem.map((k) => totaisCargo[k]), linhas }
+}
+
 export function resumirLocais2026(
   payload: ResultadoSecao2026Payload,
   secoes: ResultadoSecao2026Secao[],
@@ -346,6 +391,15 @@ function liderDe(votos: number[]): number | null {
 }
 
 /** Uma linha por local de votação — base dos indicadores do comparativo. */
+/** Candidatos do mais votado ao menos votado nas seções dadas; empate mantém a ordem recebida. */
+export function ordenarPorVotos2026(secoes: ResultadoSecao2026SecaoMulti[], indices: number[]): number[] {
+  const totais = indices.map((idx) => secoes.reduce((acc, s) => acc + (s.v[idx] ?? 0), 0))
+  return indices
+    .map((idx, k) => ({ idx, k }))
+    .sort((a, b) => totais[b.k] - totais[a.k] || a.k - b.k)
+    .map(({ idx }) => idx)
+}
+
 export function compararCandidatos2026(
   payload: ResultadoSecao2026Payload,
   secoes: ResultadoSecao2026SecaoMulti[],

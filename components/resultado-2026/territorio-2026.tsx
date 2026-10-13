@@ -30,6 +30,7 @@ import {
 } from "@/lib/corrida-territorial";
 import type { ConquistaTerritorioPdf, PodioTerritorioPdf } from "./territorio-pdf-2026";
 import { CorridaTerritorial2026 } from "./corrida-territorial-2026";
+import { QuadroMunicipios2026 } from "./quadro-municipios-2026";
 import { CORES_PARTIDOS, abreviarCargo, corTerritorio, nomeProprio } from "./tse-ui";
 
 type ModoCor = "candidato" | "partido";
@@ -339,6 +340,8 @@ export function Territorio2026({
 
   return (
     <div className="space-y-5">
+      <QuadroMunicipios2026 payload={payload} cargo={cargo} onAbrirMunicipio={onAbrirMunicipio} />
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className={`${tseCardClass} relative`}>
           <div className="flex flex-wrap items-center justify-between gap-3">

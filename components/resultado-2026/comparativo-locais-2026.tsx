@@ -9,6 +9,7 @@ import {
   formatarPct2026,
   formatarVotos2026,
   montarArvore2026,
+  ordenarPorVotos2026,
   resumirComparativo2026,
   type NivelArvore2026,
   type NoArvore2026,
@@ -92,7 +93,12 @@ function coletarChaves(nos: NoArvore2026[], niveis: ReadonlySet<NivelArvore2026>
   return out
 }
 
-export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, onSelecionarMunicipio }: Props) {
+export function ComparativoLocais2026({ payload, secoes, indices: selecionados, escopoLabel, onSelecionarMunicipio }: Props) {
+  const indices = useMemo(() => ordenarPorVotos2026(secoes, selecionados), [secoes, selecionados])
+  const cores = useMemo(
+    () => indices.map((idx) => corCandidato(selecionados.indexOf(idx))),
+    [indices, selecionados],
+  )
   const [ordem, setOrdem] = useState<OrdemComparativo>('total')
   const [busca, setBusca] = useState<string>('')
   const [limite, setLimite] = useState<number>(PAGE_SIZE)
@@ -157,6 +163,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
       exportarComparativoPdf2026({
         meta: payload.meta,
         candidatos,
+        cores,
         resumo,
         linhas: achatarArvore2026(visivel, modo === 'completo' ? () => true : (no) => abertos.has(no.key)),
         escopoLabel,
@@ -232,7 +239,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
                 <div className="h-2 w-20 overflow-hidden rounded-full bg-[#EEEEEE]">
                   <div
                     className="h-full"
-                    style={{ width: `${maxIrmaos ? (v / maxIrmaos) * 100 : 0}%`, backgroundColor: corCandidato(i) }}
+                    style={{ width: `${maxIrmaos ? (v / maxIrmaos) * 100 : 0}%`, backgroundColor: cores[i] }}
                   />
                 </div>
                 <span
@@ -250,7 +257,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
               {no.votos.map((v, i) => (
                 <div
                   key={candidatos[i].id}
-                  style={{ width: `${no.total ? (v / no.total) * 100 : 0}%`, backgroundColor: corCandidato(i) }}
+                  style={{ width: `${no.total ? (v / no.total) * 100 : 0}%`, backgroundColor: cores[i] }}
                 />
               ))}
             </div>
@@ -258,7 +265,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
           {candidatos.length === 2 && (
             <td className="px-3 py-1.5 text-right font-bold tabular-nums">
               {no.lider != null ? (
-                <span style={{ color: corCandidato(no.lider) }}>
+                <span style={{ color: cores[no.lider] }}>
                   +{formatarVotos2026(Math.abs(no.votos[0] - no.votos[1]))}
                 </span>
               ) : (
@@ -289,11 +296,11 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
             key={c.id}
             className="relative overflow-hidden rounded-xl bg-white p-4 shadow-sm"
           >
-            <span className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: corCandidato(i) }} />
+            <span className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: cores[i] }} />
             <div className="flex items-start justify-between gap-3">
               <div
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-[3px] bg-white text-xl font-black"
-                style={{ borderColor: corCandidato(i), color: corCandidato(i) }}
+                style={{ borderColor: cores[i], color: cores[i] }}
               >
                 {c.nome.slice(0, 1)}
               </div>
@@ -309,7 +316,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
               {c.cargo} – {c.numero}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
-              <span className="rounded-full px-3 py-0.5 font-bold text-white" style={{ backgroundColor: corCandidato(i) }}>
+              <span className="rounded-full px-3 py-0.5 font-bold text-white" style={{ backgroundColor: cores[i] }}>
                 Lidera em {formatarVotos2026(resumo.vitorias[i])} locais
               </span>
               <span className="rounded-full bg-[var(--tse-bar)] px-3 py-0.5 font-semibold text-[var(--tse-muted)]">
@@ -325,7 +332,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
           {resumo.totais.map((t, i) => (
             <div
               key={candidatos[i].id}
-              style={{ width: `${totalGeral ? (t / totalGeral) * 100 : 0}%`, backgroundColor: corCandidato(i) }}
+              style={{ width: `${totalGeral ? (t / totalGeral) * 100 : 0}%`, backgroundColor: cores[i] }}
             />
           ))}
         </div>
@@ -498,7 +505,7 @@ export function ComparativoLocais2026({ payload, secoes, indices, escopoLabel, o
               {candidatos.map((c, i) => (
                 <th key={c.id} className="min-w-[150px] px-3 py-2.5">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: corCandidato(i) }} />
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cores[i] }} />
                     {nomeProprio(c.nome)}
                     <span className="font-normal normal-case">({abreviarCargo(c.cargo)})</span>
                   </span>

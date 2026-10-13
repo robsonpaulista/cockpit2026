@@ -115,6 +115,53 @@ export function abreviarCargo(cargo: string): string {
   return cargo.replace(/^Deputad[oa]\s+/i, 'Dep. ')
 }
 
+/** FED / EST para cabeçalhos curtos (FED 1, FED 2…). */
+export function siglaCargo(cargo: string): string {
+  if (/federal/i.test(cargo)) return 'FED'
+  if (/estadual/i.test(cargo)) return 'EST'
+  return abreviarCargo(cargo)
+}
+
+const TITULOS_NOME: Record<string, string> = {
+  delegado: 'Del.',
+  delegada: 'Del.',
+  doutor: 'Dr.',
+  doutora: 'Dra.',
+  'dr.': 'Dr.',
+  dr: 'Dr.',
+  'dra.': 'Dra.',
+  dra: 'Dra.',
+  coronel: 'Cel.',
+  cel: 'Cel.',
+  'cel.': 'Cel.',
+  professor: 'Prof.',
+  professora: 'Profa.',
+  'prof.': 'Prof.',
+  'profa.': 'Profa.',
+  pastor: 'Pr.',
+  pastora: 'Pra.',
+  sargento: 'Sgt.',
+  capitao: 'Cap.',
+  capitão: 'Cap.',
+}
+
+const CONECTIVOS_NOME = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
+
+/** Nome de urna curto para células estreitas: "Delegado Charles" → "Del. Charles", "Julio Arcoverde" → "Julio A.". */
+export function abreviarNomeCandidato(nome: string, limite = 14): string {
+  const palavras = nomeProprio(nome.trim()).split(/\s+/).filter(Boolean)
+  const titulo = palavras.length > 1 ? TITULOS_NOME[palavras[0].toLowerCase()] : undefined
+  const resto = (titulo ? palavras.slice(1) : palavras).filter(
+    (p, _i, todas) => todas.length === 1 || !CONECTIVOS_NOME.has(p.toLowerCase()),
+  )
+  const limiteCorpo = titulo ? limite - titulo.length - 1 : limite
+  const corpo =
+    resto.length > 1 && resto.join(' ').length > limiteCorpo
+      ? `${resto[0]} ${resto[resto.length - 1].charAt(0)}.`
+      : resto.join(' ')
+  return titulo ? `${titulo} ${corpo}` : corpo
+}
+
 export function baixarCsv(nome: string, conteudo: string) {
   const blob = new Blob([`\ufeff${conteudo}`], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)

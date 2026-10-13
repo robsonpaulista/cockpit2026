@@ -20,13 +20,15 @@ import {
   slugEscopo,
   type Rgb,
 } from './pdf-base-2026'
-import { NIVEL_ARVORE_ROTULO, abreviarCargo, corCandidato, nomeProprio, rotuloCorrelacao } from './tse-ui'
+import { NIVEL_ARVORE_ROTULO, abreviarCargo, nomeProprio, rotuloCorrelacao } from './tse-ui'
 
 export type ModoPdfComparativo = 'tela' | 'completo'
 
 export type OpcoesComparativoPdf2026 = {
   meta: ResultadoSecao2026Meta
   candidatos: ResultadoSecao2026Candidato[]
+  /** Hex por candidato, na mesma ordem de `candidatos`. */
+  cores: string[]
   resumo: ResumoComparativo2026
   linhas: LinhaArvore2026[]
   escopoLabel: string
@@ -73,7 +75,7 @@ export function montarComparativoPdf2026(o: OpcoesComparativoPdf2026): jsPDF {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true })
   const W = doc.internal.pageSize.getWidth()
   const n = o.candidatos.length
-  const cores = o.candidatos.map((_, i) => rgb(corCandidato(i)))
+  const cores = o.cores.map(rgb)
   const totalGeral = o.resumo.totais.reduce((a, b) => a + b, 0)
   const fonteDados = o.candidatos[0]?.fonte ?? ''
   const { preencher, contorno, tinta, fonte, pilula, barra, barraEmpilhada: empilhada } = ferramentasPdf(doc)
