@@ -1193,7 +1193,6 @@ body[data-war-room-clean] header.wr-topbar-clean {
 
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav .my-2,
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav .mb-1,
-  body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-mapa-campanha > .mb-1,
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav [class*='uppercase'][class*='tracking'],
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav .h-px,
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav hr {
@@ -1201,7 +1200,6 @@ body[data-war-room-clean] header.wr-topbar-clean {
   }
 
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 nav ul,
-  body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-mapa-campanha .flex.flex-col,
   body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-quick-access .flex.flex-col {
     display: flex;
     flex-direction: column;
@@ -1212,8 +1210,7 @@ body[data-war-room-clean] header.wr-topbar-clean {
     padding: 0;
   }
 
-  body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-quick-access,
-  body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-mapa-campanha {
+  body[data-war-room-clean] aside[data-sidebar-shell].lg\:w-14 .sidebar-quick-access {
     width: 100%;
     padding: 0 !important;
     border: 0 !important;

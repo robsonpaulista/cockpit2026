@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
 import {
+  hrefSidebarQuickAccess,
   isSidebarQuickAccessActive,
   SIDEBAR_QUICK_ACCESS_ITEMS,
-  type SidebarQuickAccessItem,
 } from '@/lib/sidebar-quick-access'
 import {
   sidebarNavIconClass,
@@ -82,13 +82,14 @@ export function SidebarQuickAccess({
         {items.map((item) => {
           const active = isSidebarQuickAccessActive(item, pathname)
           const iconClass = sidebarNavIconClass(active)
+          const href = hrefSidebarQuickAccess(item, canAccess)
 
           return (
             <li key={item.id} className="group relative">
               <Link
-                href={item.href}
+                href={href}
                 aria-current={active ? 'page' : undefined}
-                onClick={() => onNavigate(item.href)}
+                onClick={() => onNavigate(href)}
                 className={cn(
                   sidebarNavItemClass(active),
                   sidebarItemIconOnlyClass(collapsed, mobileOpen),

@@ -4,8 +4,8 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, UserPlus } from 'lucide-react'
 import { TsePill, tseLinkAcaoClass } from '@/components/tse/tse-ui'
 import {
-  isSituacaoEleito,
   parseVotosEleicao,
+  siglaSituacao,
   type EstreanteCandidato,
   type MovimentoCandidato,
   type MovimentosCandidatos,
@@ -15,16 +15,6 @@ import {
 import { cn } from '@/lib/utils'
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
-
-type SiglaSituacao = { sigla: 'E' | 'S' | 'N' | '—'; tom: 'amarelo' | 'verde' | 'neutro' }
-
-function siglaSituacao(situacao: string): SiglaSituacao {
-  if (isSituacaoEleito(situacao)) return { sigla: 'E', tom: 'amarelo' }
-  const texto = situacao.trim()
-  if (/suplente/i.test(texto)) return { sigla: 'S', tom: 'verde' }
-  if (!texto || texto.startsWith('#')) return { sigla: '—', tom: 'neutro' }
-  return { sigla: 'N', tom: 'neutro' }
-}
 
 /* Dados Gerais (faixa horizontal) */
 

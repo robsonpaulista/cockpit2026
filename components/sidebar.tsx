@@ -32,7 +32,6 @@ import {
 } from '@/lib/premium-ui-classes'
 import { AppBrandHeader, AppBrandWordmark, SidebarBrandMark } from '@/components/app-brand-title'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
-import { SidebarMapaCampanhaBlock } from '@/components/sidebar/sidebar-mapa-campanha'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import {
   resolveSidebarTablerIcon,
@@ -606,12 +605,8 @@ export function Sidebar() {
   useEffect(() => {
     if (pathname.startsWith('/dashboard/gestao-pesquisas')) {
       setOpenSubmenuId('gestao-pesquisas-menu')
-    } else if (pathname.startsWith('/dashboard/chapas')) {
-      setOpenSubmenuId('chapas-menu')
     } else if (pathname.startsWith('/dashboard/resumo-eleicoes')) {
       setOpenSubmenuId('resumo-eleicoes-menu')
-    } else if (pathname.startsWith('/dashboard/mobilizacao')) {
-      setOpenSubmenuId('mobilizacao-menu')
     } else if (pathname.startsWith('/dashboard/conteudo')) {
       setOpenSubmenuId('conteudo-menu')
     }
@@ -638,9 +633,6 @@ export function Sidebar() {
             if (item.id === 'usuarios') return isAdmin
             if (item.id === 'backup') return isAdmin
             if (item.id === 'log-system') return isAdmin
-            if (item.id === 'ficha-atendimento') {
-              return canAccess('ficha-atendimento')
-            }
             if (item.id === 'territorio') {
               return canAccessSidebarItem(canAccess, 'territorio')
             }
@@ -896,17 +888,6 @@ export function Sidebar() {
             }}
           />
 
-          <SidebarMapaCampanhaBlock
-            collapsed={navCollapsed}
-            mobileOpen={navMobileOpen}
-            isGradientHome={isGradientHome}
-            searchKey={searchKey}
-            onNavigate={(href) => {
-              if (href !== pathname) setNavigating(true)
-              setMobileOpen(false)
-            }}
-          />
-
           {/* Menu Items */}
           <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(navCollapsed, navMobileOpen))}>
             <ul className="space-y-0.5">
@@ -921,12 +902,10 @@ export function Sidebar() {
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href, searchKey)))
-                  : item.id === 'ficha-atendimento'
-                      ? pathname.startsWith('/dashboard/ficha-atendimento')
-                      : item.id === 'noticias-menu'
-                        ? pathname.startsWith('/dashboard/noticias') ||
-                          pathname.startsWith('/dashboard/radar-224')
-                        : pathname === item.href
+                  : item.id === 'noticias-menu'
+                    ? pathname.startsWith('/dashboard/noticias') ||
+                      pathname.startsWith('/dashboard/radar-224')
+                    : pathname === item.href
 
                 return (
                   <SidebarNavItem

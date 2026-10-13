@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { TseCarregando } from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
 import {
   CANDIDATO_FEDERAL_DESTAQUE,
@@ -12,6 +13,8 @@ import {
   filtrarEmendasPorMunicipio,
   type EmendaRegistro,
 } from '@/lib/emendas-filtro'
+import { fetchEmendas } from '@/lib/services/emendas-client'
+import { fetchFotosCandidatos, fetchResultadosEleicaoCidade } from '@/lib/services/ficha-atendimento-client'
 import type { PropostaFns } from '@/lib/fns-tetos-saldo'
 import type { LimitesMunicipioResponse } from '@/lib/limites-tetos-types'
 import type { ClassificacaoSuas } from '@/lib/suas-porte'
@@ -54,10 +57,9 @@ function CelulaDupla({
 }
 
 export interface FichaLiderancaResumoProps {
-  open: boolean
   onClose: () => void
   municipio: string
-  candidato: ResultadoEleicao | null
+  candidato: ResultadoEleicao
   cargo: CargoFotoCandidato
   foto?: CandidatoFotoDivulgacand | null
   limitesDb: LimitesMunicipioResponse | null
@@ -71,7 +73,6 @@ export interface FichaLiderancaResumoProps {
 }
 
 export function FichaLiderancaResumo({
-  open,
   onClose,
   municipio,
   candidato,
@@ -86,7 +87,7 @@ export function FichaLiderancaResumo({
   autoPrint = false,
   onPrinted,
 }: FichaLiderancaResumoProps) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
   const [resultadosEleicao, setResultadosEleicao] = useState<ResultadoEleicao[]>([])
   const [emendasTodas, setEmendasTodas] = useState<EmendaRegistro[]>([])
   const [fotoDb, setFotoDb] = useState<CandidatoFotoDivulgacand | null>(null)
@@ -94,58 +95,45 @@ export function FichaLiderancaResumo({
   const carregarExtra = useCallback(async () => {
     if (!municipio.trim()) return
     setLoading(true)
-    try {
-      const [resEleicoes, resEmendas] = await Promise.all([
-        fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(municipio)}`),
-        fetch('/api/emendas'),
-      ])
-      const jsonE = await resEleicoes.json().catch(() => ({}))
-      const jsonM = await resEmendas.json().catch(() => ({}))
-      setResultadosEleicao(resEleicoes.ok && Array.isArray(jsonE.resultados) ? jsonE.resultados : [])
-      setEmendasTodas(resEmendas.ok && Array.isArray(jsonM.emendas) ? jsonM.emendas : [])
-    } catch {
-      setResultadosEleicao([])
-      setEmendasTodas([])
-    } finally {
-      setLoading(false)
-    }
+    const [eleicao, emendas] = await Promise.all([
+      fetchResultadosEleicaoCidade(municipio).catch(() => null),
+      fetchEmendas().catch(() => []),
+    ])
+    setResultadosEleicao(eleicao?.resultados ?? [])
+    setEmendasTodas(emendas)
+    setLoading(false)
   }, [municipio])
 
   useEffect(() => {
-    if (!open || !candidato || !municipio) {
+    if (!municipio) {
       setFotoDb(null)
       return
     }
+    let ativo = true
     const cargoFoto = resolverCargoFotoCandidato(candidato, cargo)
     const key = candidatoFotoLookupKey(cargoFoto, candidato)
-    fetch(
-      `/api/candidatos-foto-divulgacand?municipio=${encodeURIComponent(municipio)}&cargo=${cargoFoto}&ano=2024`,
-    )
-      .then((r) => r.json())
-      .then((json) => {
-        const fotos = Array.isArray(json.fotos) ? json.fotos : []
-        const found = fotos.find(
-          (f: CandidatoFotoDivulgacand) =>
-            candidatoFotoLookupKey(f.cargo, {
-              numeroUrna: f.numero_urna,
-              nomeUrnaCandidato: f.nome_urna,
-            }) === key,
-        )
-        setFotoDb(found ?? null)
-      })
-      .catch(() => setFotoDb(null))
-  }, [open, municipio, candidato, cargo])
+    void fetchFotosCandidatos(municipio, cargoFoto).then((fotos) => {
+      if (!ativo) return
+      const found = fotos.find(
+        (f) => candidatoFotoLookupKey(f.cargo, { numeroUrna: f.numero_urna, nomeUrnaCandidato: f.nome_urna }) === key,
+      )
+      setFotoDb(found ?? null)
+    })
+    return () => {
+      ativo = false
+    }
+  }, [municipio, candidato, cargo])
 
   useEffect(() => {
-    if (open && municipio) void carregarExtra()
-  }, [open, municipio, carregarExtra])
+    if (municipio) void carregarExtra()
+  }, [municipio, carregarExtra])
 
   const totalSuasPropostas = emendasSuas.reduce((acc, e) => acc + (e.valor_proposta || 0), 0)
   const totalSuasPagar = emendasSuas.reduce((acc, e) => acc + (e.valor_pagar || 0), 0)
 
-  const dados = useMemo(() => {
-    if (!candidato) return null
-    return montarDadosFichaLideranca({
+  const dados = useMemo(
+    () =>
+      montarDadosFichaLideranca({
       resultadosEleicao,
       limitesDb,
       propostasFns,
@@ -155,9 +143,8 @@ export function FichaLiderancaResumo({
       exercicioAtivo,
       totalSuasPropostas,
       totalSuasPagar,
-    })
-  }, [
-    candidato,
+      }),
+    [
     resultadosEleicao,
     limitesDb,
     propostasFns,
@@ -171,58 +158,54 @@ export function FichaLiderancaResumo({
   ])
 
   useEffect(() => {
-    if (!autoPrint || loading || !dados || !open || !candidato) return
+    if (!autoPrint || loading) return
     const t = window.setTimeout(() => {
       window.print()
       onPrinted?.()
     }, 400)
     return () => window.clearTimeout(t)
-  }, [autoPrint, loading, dados, open, candidato, onPrinted])
-
-  if (!open || !candidato) return null
+  }, [autoPrint, loading, onPrinted])
 
   const cargoEfetivo = resolverCargoFotoCandidato(candidato, cargo)
   const tituloCargo = rotuloCargoFicha(cargoEfetivo, candidato)
-  const listaCargo =
-    cargoEfetivo === 'prefeito' ? dados?.prefeitos ?? [] : dados?.vereadores ?? []
+  const listaCargo = cargoEfetivo === 'prefeito' ? dados.prefeitos : dados.vereadores
   const votos = parseVotosEleicao(candidato.quantidadeVotosNominais)
   const pct = percentualVotosCandidato(candidato, listaCargo)
   const situacao = situacaoEleicaoCandidato(candidato)
-  const depFed = dados?.depFederal[0]
-  const depEst1 = dados?.depEstadual[0]
-  const depEst2 = dados?.depEstadual[1]
-  const exFns = dados?.exercicioAtivo ?? exercicioAtivo ?? 2025
-  const emendasPorExercicio = dados?.totaisEmendasPorExercicio ?? []
-  const propostasExAtivo = dados?.linhasFns ?? []
+  const depFed = dados.depFederal[0]
+  const depEst1 = dados.depEstadual[0]
+  const depEst2 = dados.depEstadual[1]
+  const depFedEhDestaque = Boolean(
+    depFed?.nomeUrnaCandidato?.toUpperCase().includes(CANDIDATO_FEDERAL_DESTAQUE.split(' ')[0]),
+  )
+  const exFns = dados.exercicioAtivo ?? exercicioAtivo ?? 2025
+  const emendasPorExercicio = dados.totaisEmendasPorExercicio
+  const propostasExAtivo = dados.linhasFns
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static">
-      <div className="relative my-2 flex w-full max-w-4xl flex-col rounded-xl border border-card bg-white shadow-2xl print:my-0 print:max-w-none print:border-0 print:shadow-none">
-        <div className="flex items-center justify-between gap-2 border-b border-card px-4 py-3 print:hidden">
-          <h2 className="text-sm font-semibold text-text-primary truncate">
-            Ficha de liderança — {tituloCargo}
-          </h2>
+    <div className="fixed inset-0 z-[1200] flex items-start justify-center overflow-y-auto bg-black/50 p-2 sm:p-4 print:static print:bg-white print:p-0">
+      <div className="relative my-2 flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white text-[var(--tse-text)] shadow-xl print:my-0 print:max-w-none print:rounded-none print:shadow-none">
+        <div className="flex items-start justify-between gap-3 border-b border-[#EEEEEE] px-6 py-4 print:hidden">
+          <div className="min-w-0">
+            <h2 className="truncate text-[17px] font-bold">Ficha de liderança · {tituloCargo}</h2>
+            <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">{municipio}</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-secondary hover:bg-background"
+            className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
             aria-label="Fechar"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
-            <Loader2 className="h-6 w-6 animate-spin text-accent-gold" />
-            Montando ficha…
-          </div>
-        )}
-
-        {!loading && dados && (
-          <div id="ficha-lideranca-print" className="p-4 sm:p-6 text-slate-900 font-sans">
+        {loading ? (
+          <TseCarregando texto="Montando ficha…" className="min-h-[16rem]" />
+        ) : (
+          <div id="ficha-lideranca-print" className="p-4 font-sans text-slate-900 sm:p-6">
             {/* Cabeçalho município */}
-            <div className="mb-4 border-2 border-slate-800 bg-emerald-100/80 px-4 py-3 text-center">
+            <div className="mb-4 border-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-3 text-center">
               <h1 className="text-xl sm:text-2xl font-bold tracking-wide uppercase">
                 {municipio}
               </h1>
@@ -322,15 +305,10 @@ export function FichaLiderancaResumo({
                     </tr>
                     <tr>
                       <td className={cn(cell, 'font-medium bg-slate-50')}>Dep. Federal 2022</td>
-                      <td className={cell}>
+                      <td className={cn(cell, depFedEhDestaque && 'font-bold')}>
                         {depFed
                           ? `${depFed.nomeUrnaCandidato} (${depFed.partido || '—'})`
                           : '—'}
-                        {depFed?.nomeUrnaCandidato?.toUpperCase().includes(
-                          CANDIDATO_FEDERAL_DESTAQUE.split(' ')[0],
-                        )
-                          ? ' ★'
-                          : ''}
                       </td>
                     </tr>
                     <tr>
@@ -355,7 +333,7 @@ export function FichaLiderancaResumo({
             {/* Propostas FNS */}
             {propostasExAtivo.length > 0 && (
               <div className="mb-4">
-                <h3 className="text-xs font-bold uppercase bg-sky-100 border border-slate-300 px-2 py-1.5 mb-1">
+                <h3 className="text-xs font-bold uppercase bg-[var(--tse-yellow-soft)] border border-slate-300 px-2 py-1.5 mb-1">
                   Propostas FNS ({exFns}) — MAC / PAP
                 </h3>
                 <table className="w-full border-collapse">
@@ -413,7 +391,7 @@ function SecaoRecursosEmendasExercicio({ bloco }: { bloco: TotaisEmendaExercicio
 
   return (
     <div className="mb-4">
-      <h3 className="text-xs font-bold uppercase bg-sky-100 border border-slate-300 px-2 py-1.5">
+      <h3 className="text-xs font-bold uppercase bg-[var(--tse-yellow-soft)] border border-slate-300 px-2 py-1.5">
         Recursos destinados em {bloco.exercicio} (emendas mandato)
       </h3>
       <table className="w-full border-collapse">

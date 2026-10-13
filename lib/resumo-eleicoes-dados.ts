@@ -87,6 +87,17 @@ export function isSituacaoEleito(situacao: string): boolean {
   return /\beleito\b/.test(n)
 }
 
+export type SiglaSituacao = { sigla: 'E' | 'S' | 'N' | '—'; tom: 'amarelo' | 'verde' | 'neutro' }
+
+/** Situação em uma letra (E eleito · S suplente · N não eleito), para quadros estreitos. */
+export function siglaSituacao(situacao: string): SiglaSituacao {
+  if (isSituacaoEleito(situacao)) return { sigla: 'E', tom: 'amarelo' }
+  const texto = situacao.trim()
+  if (/suplente/i.test(texto)) return { sigla: 'S', tom: 'verde' }
+  if (!texto || texto.startsWith('#')) return { sigla: '—', tom: 'neutro' }
+  return { sigla: 'N', tom: 'neutro' }
+}
+
 export function filtrarDeputadoEstadual2022(dados: ResultadoEleicao[]): ResultadoEleicao[] {
   return dados
     .filter((item) => includesNormalizedCargo(item.cargo, 'estadual') && item.anoEleicao === '2022')
