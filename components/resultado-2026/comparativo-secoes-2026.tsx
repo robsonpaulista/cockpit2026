@@ -1,7 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, FileText, Loader2, Search, X } from 'lucide-react'
+import {
+  CheckSquare,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  FileText,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react'
 import {
   FAIXAS_DIFERENCA_2026,
   compararSecoes2026,
@@ -11,6 +21,7 @@ import {
   formatarVotos2026,
   formatarZona2026,
   parNaFaixa2026,
+  parSecao2026,
   razaoPct2026,
   secoesComparadasParaCsv2026,
   valorFaixa2026,
@@ -38,8 +49,51 @@ type FiltroPar = {
   ativo: boolean
 }
 
-const PAGE_SIZE = 50
+/** Bairro com as seções que passaram nos filtros, na ordem escolhida. */
+type GrupoBairro = {
+  key: string
+  municipioNome: string
+  bairro: string
+  zonas: number[]
+  secoes: LinhaSecaoComparada2026[]
+  votos: number[]
+  pares: ParSecao2026[]
+}
+
+/** Bairros por página. */
+const PAGE_SIZE = 30
 const ORDEM_PADRAO: OrdemSecoes = 'dif-asc-1'
+
+const somarVotos = (linhas: LinhaSecaoComparada2026[], n: number): number[] => {
+  const votos = Array.from({ length: n }, () => 0)
+  for (const l of linhas) l.votos.forEach((v, i) => (votos[i] += v))
+  return votos
+}
+
+const paresDe = (votos: number[]): ParSecao2026[] => votos.slice(1).map((v) => parSecao2026(votos[0] ?? 0, v))
+
+/** Agrupa por município + bairro mantendo a ordem em que os bairros aparecem nas seções ordenadas. */
+function agruparPorBairro(linhas: LinhaSecaoComparada2026[], n: number): GrupoBairro[] {
+  const mapa = new Map<string, LinhaSecaoComparada2026[]>()
+  for (const l of linhas) {
+    const key = `${l.municipioCodigo}|${l.bairro}`
+    const lista = mapa.get(key)
+    if (lista) lista.push(l)
+    else mapa.set(key, [l])
+  }
+  return [...mapa.entries()].map(([key, secoes]) => {
+    const votos = somarVotos(secoes, n)
+    return {
+      key,
+      municipioNome: secoes[0].municipioNome,
+      bairro: secoes[0].bairro,
+      zonas: [...new Set(secoes.map((s) => s.zona))].sort((a, b) => a - b),
+      secoes,
+      votos,
+      pares: paresDe(votos),
+    }
+  })
+}
 
 type Props = {
   payload: ResultadoSecao2026Payload
@@ -121,6 +175,10 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
   const [limite, setLimite] = useState<number>(PAGE_SIZE)
   const [menuPdf, setMenuPdf] = useState<boolean>(false)
   const [gerandoPdf, setGerandoPdf] = useState<ModoPdfSecoes | null>(null)
+  const [abertos, setAbertos] = useState<Set<string>>(() => new Set())
+  /** Chaves das seções marcadas (`LinhaSecaoComparada2026.key`). */
+  const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set())
+  const [somenteMarcadasSel, setSomenteMarcadas] = useState<boolean>(false)
 
   const candidatos = useMemo(() => indices.map((i) => payload.candidatos[i]), [indices, payload])
   const n = candidatos.length
@@ -136,15 +194,17 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
   const unidade = modo === 'votos' ? 'votos de diferença' : modo === 'pct' ? '% de diferença' : `% dos votos de ${nomeGeral}`
 
   const termo = normalizarTexto(busca.trim())
+  const somenteMarcadas = somenteMarcadasSel && marcadas.size > 0
   const base = useMemo(
     () =>
       linhas.filter(
         (l) =>
+          (!somenteMarcadas || marcadas.has(l.key)) &&
           passaLider(l, filtroLider) &&
           (!termo ||
             normalizarTexto(`${l.municipioNome} ${l.bairro} ${formatarSecao2026(l.secao)} ${l.secao}`).includes(termo)),
       ),
-    [linhas, termo, filtroLider],
+    [linhas, termo, filtroLider, somenteMarcadas, marcadas],
   )
 
   const filtrosPar = useMemo<FiltroPar[]>(
@@ -187,14 +247,49 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
     [base, filtrosPar, modo],
   )
   const ordenadas = useMemo(() => ordenar(filtradas, ordem), [filtradas, ordem])
+  const grupos = useMemo(() => agruparPorBairro(ordenadas, n), [ordenadas, n])
+
+  const marcadasLinhas = useMemo(() => linhas.filter((l) => marcadas.has(l.key)), [linhas, marcadas])
+  const marcadasVotos = useMemo(() => somarVotos(marcadasLinhas, n), [marcadasLinhas, n])
+  const marcadasPares = paresDe(marcadasVotos)
+
+  const autoAbrir = termo !== '' || somenteMarcadas
+  const estaAberto = (key: string) => autoAbrir || abertos.has(key)
+
+  const alternarGrupo = (key: string) =>
+    setAbertos((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const alternarSecao = (key: string) =>
+    setMarcadas((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const alternarBairro = (g: GrupoBairro) =>
+    setMarcadas((prev) => {
+      const next = new Set(prev)
+      const todas = g.secoes.every((s) => next.has(s.key))
+      for (const s of g.secoes) {
+        if (todas) next.delete(s.key)
+        else next.add(s.key)
+      }
+      return next
+    })
+
+  const limparMarcadas = () => {
+    setMarcadas(new Set())
+    setSomenteMarcadas(false)
+  }
 
   const resumo = useMemo(() => {
-    const votos = Array.from({ length: n }, () => 0)
-    for (const l of filtradas) {
-      l.votos.forEach((v, i) => {
-        votos[i] += v
-      })
-    }
+    const votos = somarVotos(filtradas, n)
     const porPar = parceiros.map((p) => {
       let geralFrente = 0
       let parceiroFrente = 0
@@ -287,6 +382,48 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
     return `${sentido} ${oque} (${primeiroNome(Number(ps))})`
   }
 
+  const secoesCarregadas = grupos.slice(0, limite).flatMap((g) => g.secoes)
+
+  const celulasPares = (pares: ParSecao2026[], chave: string) =>
+    pares.map((par, k) => {
+      const p = k + 1
+      const supera = par.razaoPct != null && par.razaoPct >= 100
+      return [
+        <td
+          key={`${chave}-v${p}`}
+          className={`border-l border-[#EEEEEE] px-3 py-1.5 text-right tabular-nums ${
+            par.parceiro ? 'font-semibold' : 'text-[var(--tse-muted)]'
+          }`}
+        >
+          {formatarVotos2026(par.parceiro)}
+        </td>,
+        <td key={`${chave}-d${p}`} className="whitespace-nowrap px-3 py-1.5 text-right font-bold tabular-nums">
+          {!par.total ? (
+            <span className="font-normal text-[var(--tse-muted)]">—</span>
+          ) : par.lider == null ? (
+            <span className="font-normal text-[var(--tse-muted)]">empate</span>
+          ) : (
+            <span style={{ color: corCandidato(par.lider === 0 ? 0 : p) }}>
+              {par.saldo > 0 ? '+' : '−'}
+              {formatarVotos2026(par.diferenca)}
+              {modo === 'pct' && (
+                <span className="ml-1 text-[10px] font-normal text-[var(--tse-muted)]">
+                  {formatarPct2026(par.margemPct, 0)}
+                </span>
+              )}
+            </span>
+          )}
+        </td>,
+        <td
+          key={`${chave}-r${p}`}
+          className={`px-3 py-1.5 text-right tabular-nums ${supera ? 'font-black' : 'font-semibold'}`}
+          style={supera ? { color: corCandidato(p) } : undefined}
+        >
+          {formatarRazao(par.razaoPct)}
+        </td>,
+      ]
+    })
+
   const exportarPdf = async (modoPdf: ModoPdfSecoes) => {
     setMenuPdf(false)
     setGerandoPdf(modoPdf)
@@ -317,7 +454,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
         blocos,
         votos: resumo.votos,
         porPar: resumo.porPar,
-        linhas: modoPdf === 'completo' ? ordenadas : ordenadas.slice(0, limite),
+        linhas: modoPdf === 'completo' ? ordenadas : secoesCarregadas,
         totalFiltro: filtradas.length,
         totalEscopo: linhas.length,
         escopoLabel,
@@ -573,7 +710,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
                   >
                     <span className="block text-[13px] font-bold">Como está na tela</span>
                     <span className="block text-[11px] text-[var(--tse-muted)]">
-                      Faixas, resumo e as {formatarVotos2026(Math.min(limite, ordenadas.length))} seções carregadas
+                      Faixas, resumo e as {formatarVotos2026(secoesCarregadas.length)} seções dos bairros carregados
                     </span>
                   </button>
                   <button
@@ -647,27 +784,116 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
         </div>
       </section>
 
-      <p className="text-[12px] text-[var(--tse-muted)]">
-        {formatarVotos2026(ordenadas.length)} seções · {escopoLabel} · diferença positiva = {nomeGeral} à frente
-      </p>
+      {marcadas.size > 0 && (
+        <section className="rounded-2xl border-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-[15px] font-bold">
+              <CheckSquare className="h-5 w-5 text-[var(--tse-gold-text)]" />
+              {formatarVotos2026(marcadas.size)} {marcadas.size === 1 ? 'seção marcada' : 'seções marcadas'}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-pressed={somenteMarcadas}
+                onClick={() => {
+                  setSomenteMarcadas((v) => !v)
+                  resetPagina()
+                }}
+                className={`h-8 rounded-md px-3 text-[13px] font-semibold ${
+                  somenteMarcadas ? 'bg-[var(--tse-yellow-strong)]' : 'bg-white hover:bg-[var(--tse-bar)]'
+                }`}
+              >
+                {somenteMarcadas ? 'Mostrando só as marcadas' : 'Ver só as marcadas'}
+              </button>
+              <button
+                type="button"
+                onClick={limparMarcadas}
+                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-semibold text-[var(--tse-olive)] hover:underline"
+              >
+                <X className="h-4 w-4" />
+                Limpar seleção
+              </button>
+            </div>
+          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-4 text-[13px] md:grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">
+            {candidatos.map((c, i) => (
+              <div key={c.id}>
+                <dt className="flex items-center gap-1.5 text-[var(--tse-muted)]">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: corCandidato(i) }} />
+                  {nomeProprio(c.nome)}
+                </dt>
+                <dd className="text-lg font-bold">
+                  {formatarVotos2026(marcadasVotos[i])}
+                  <span className="ml-1 text-[12px] font-normal text-[var(--tse-muted)]">votos</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+            {marcadasPares.map((par, k) => {
+              const p = k + 1
+              return (
+                <div key={p} className="tabular-nums">
+                  <span className="font-semibold">
+                    {nomeGeral} × {primeiroNome(p)}:
+                  </span>{' '}
+                  {!par.total ? (
+                    <span className="text-[var(--tse-muted)]">sem votos</span>
+                  ) : par.lider == null ? (
+                    <span className="text-[var(--tse-muted)]">empate</span>
+                  ) : (
+                    <span className="font-bold" style={{ color: corCandidato(par.lider === 0 ? 0 : p) }}>
+                      {primeiroNome(par.lider === 0 ? 0 : p)} +{formatarVotos2026(par.diferenca)}
+                    </span>
+                  )}
+                  <span className="text-[var(--tse-muted)]">
+                    {' '}
+                    · {primeiroNome(p)} = {formatarRazao(par.razaoPct)} de {nomeGeral}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-[var(--tse-muted)]">
+          {formatarVotos2026(grupos.length)} bairros · {formatarVotos2026(ordenadas.length)} seções · {escopoLabel} ·
+          diferença positiva = {nomeGeral} à frente · marque seções para somar
+        </p>
+        <div className="flex flex-wrap items-center gap-2 text-[12px] font-bold uppercase tracking-wide">
+          <button
+            type="button"
+            onClick={() => setAbertos(new Set(grupos.map((g) => g.key)))}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+          >
+            <ChevronsUpDown className="h-4 w-4 text-[var(--tse-gold-text)]" />
+            Expandir tudo
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbertos(new Set())}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+          >
+            <ChevronsDownUp className="h-4 w-4 text-[var(--tse-gold-text)]" />
+            Recolher tudo
+          </button>
+        </div>
+      </div>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full text-[13px]">
           <thead className="bg-[var(--tse-bar)] text-left text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
             <tr>
-              {comMunicipio && (
-                <th rowSpan={2} className="px-3 py-2.5 align-bottom">
-                  Município
-                </th>
-              )}
+              <th rowSpan={2} className="w-8 px-3 py-2.5 align-bottom">
+                <span className="sr-only">Marcar</span>
+              </th>
               <th rowSpan={2} className="px-3 py-2.5 align-bottom">
-                Bairro
+                {comMunicipio ? 'Município › ' : ''}Bairro › Seção
               </th>
               <th rowSpan={2} className="px-3 py-2.5 text-right align-bottom">
                 Zona
-              </th>
-              <th rowSpan={2} className="px-3 py-2.5 text-right align-bottom">
-                Seção
               </th>
               <th rowSpan={2} className="px-3 py-2.5 text-right align-bottom">
                 <span className="inline-flex items-center gap-1.5">
@@ -700,59 +926,76 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
             </tr>
           </thead>
           <tbody>
-            {ordenadas.slice(0, limite).map((l) => (
-              <tr key={l.key} className="border-t border-[#EEEEEE] hover:bg-[#FDFDF8]">
-                {comMunicipio && <td className="px-3 py-1.5 font-semibold uppercase">{l.municipioNome}</td>}
-                <td className="px-3 py-1.5 uppercase">{l.bairro}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{formatarZona2026(l.zona)}</td>
-                <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{formatarSecao2026(l.secao)}</td>
-                <td className="px-3 py-1.5 text-right font-bold tabular-nums">{formatarVotos2026(l.votos[0] ?? 0)}</td>
-                {l.pares.map((par, k) => {
-                  const p = k + 1
-                  const supera = par.razaoPct != null && par.razaoPct >= 100
-                  return [
-                    <td
-                      key={`v${p}`}
-                      className={`border-l border-[#EEEEEE] px-3 py-1.5 text-right tabular-nums ${
-                        par.parceiro ? 'font-semibold' : 'text-[var(--tse-muted)]'
-                      }`}
+            {grupos.slice(0, limite).map((g) => {
+              const aberto = estaAberto(g.key)
+              const qtdMarcadas = g.secoes.filter((s) => marcadas.has(s.key)).length
+              const todasMarcadas = qtdMarcadas === g.secoes.length
+              return [
+                <tr key={g.key} className="border-t border-[#E2E2DC] bg-[#FBFAF3] font-bold">
+                  <td className="px-3 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={todasMarcadas}
+                      ref={(el) => {
+                        if (el) el.indeterminate = qtdMarcadas > 0 && !todasMarcadas
+                      }}
+                      onChange={() => alternarBairro(g)}
+                      aria-label={`Marcar todas as seções de ${g.bairro}`}
+                      className="h-4 w-4 cursor-pointer accent-[var(--tse-yellow)]"
+                    />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <button
+                      type="button"
+                      aria-expanded={aberto}
+                      onClick={() => alternarGrupo(g.key)}
+                      className="flex items-center gap-1.5 text-left uppercase hover:text-[var(--tse-olive)]"
                     >
-                      {formatarVotos2026(par.parceiro)}
-                    </td>,
-                    <td key={`d${p}`} className="whitespace-nowrap px-3 py-1.5 text-right font-bold tabular-nums">
-                      {!par.total ? (
-                        <span className="font-normal text-[var(--tse-muted)]">—</span>
-                      ) : par.lider == null ? (
-                        <span className="font-normal text-[var(--tse-muted)]">empate</span>
-                      ) : (
-                        <span style={{ color: corCandidato(par.lider === 0 ? 0 : p) }}>
-                          {par.saldo > 0 ? '+' : '−'}
-                          {formatarVotos2026(par.diferenca)}
-                          {modo === 'pct' && (
-                            <span className="ml-1 text-[10px] font-normal text-[var(--tse-muted)]">
-                              {formatarPct2026(par.margemPct, 0)}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </td>,
-                    <td
-                      key={`r${p}`}
-                      className={`px-3 py-1.5 text-right tabular-nums ${supera ? 'font-black' : 'font-semibold'}`}
-                      style={supera ? { color: corCandidato(p) } : undefined}
-                    >
-                      {formatarRazao(par.razaoPct)}
-                    </td>,
-                  ]
-                })}
-              </tr>
-            ))}
+                      <ChevronRight
+                        className={`h-4 w-4 shrink-0 text-[var(--tse-gold-text)] transition-transform ${aberto ? 'rotate-90' : ''}`}
+                      />
+                      {comMunicipio ? `${g.municipioNome} › ` : ''}
+                      {g.bairro}
+                      <span className="rounded bg-[var(--tse-bar)] px-1.5 py-px text-[10px] font-semibold normal-case text-[var(--tse-muted)]">
+                        {formatarVotos2026(g.secoes.length)} {g.secoes.length === 1 ? 'seção' : 'seções'}
+                      </span>
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right font-normal tabular-nums">
+                    {g.zonas.map(formatarZona2026).join(' · ')}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-black tabular-nums">{formatarVotos2026(g.votos[0] ?? 0)}</td>
+                  {celulasPares(g.pares, `g${g.key}`)}
+                </tr>,
+                ...(aberto
+                  ? g.secoes.map((l) => (
+                      <tr
+                        key={l.key}
+                        className={`border-t border-[#EEEEEE] ${marcadas.has(l.key) ? 'bg-[var(--tse-yellow-soft)]' : 'hover:bg-[#FDFDF8]'}`}
+                      >
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={marcadas.has(l.key)}
+                            onChange={() => alternarSecao(l.key)}
+                            aria-label={`Marcar seção ${formatarSecao2026(l.secao)}`}
+                            className="h-4 w-4 cursor-pointer accent-[var(--tse-yellow)]"
+                          />
+                        </td>
+                        <td className="py-1.5 pl-10 pr-3 font-semibold tabular-nums">Seção {formatarSecao2026(l.secao)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{formatarZona2026(l.zona)}</td>
+                        <td className="px-3 py-1.5 text-right font-bold tabular-nums">
+                          {formatarVotos2026(l.votos[0] ?? 0)}
+                        </td>
+                        {celulasPares(l.pares, l.key)}
+                      </tr>
+                    ))
+                  : []),
+              ]
+            })}
             {ordenadas.length === 0 && (
               <tr>
-                <td
-                  colSpan={4 + 3 * parceiros.length + (comMunicipio ? 1 : 0)}
-                  className="px-3 py-8 text-center text-[var(--tse-muted)]"
-                >
+                <td colSpan={4 + 3 * parceiros.length} className="px-3 py-8 text-center text-[var(--tse-muted)]">
                   Nenhuma seção nessa combinação de filtros.
                 </td>
               </tr>
@@ -761,14 +1004,14 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
         </table>
       </div>
 
-      {ordenadas.length > limite && (
+      {grupos.length > limite && (
         <div className="flex justify-center">
           <button
             type="button"
             onClick={() => setLimite((v) => v + PAGE_SIZE)}
             className="rounded-md border border-[var(--tse-olive)] bg-white px-5 py-2 text-[13px] font-bold uppercase tracking-wide text-[var(--tse-olive)] hover:bg-[var(--tse-olive)] hover:text-white"
           >
-            Carregar mais ({formatarVotos2026(ordenadas.length - limite)} restantes)
+            Carregar mais ({formatarVotos2026(grupos.length - limite)} bairros restantes)
           </button>
         </div>
       )}

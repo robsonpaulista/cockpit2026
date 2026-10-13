@@ -103,6 +103,8 @@ const VISOES: { id: Visao; label: string }[] = [
   { id: "territorio", label: "Território" },
 ];
 
+const chaveSecao = (s: { m: string; z: number; s: number }): string => `${s.m}-${s.z}-${s.s}`;
+
 const ehComparativo = (v: Visao): boolean =>
   v === "comparativo" || v === "comparativo-secao";
 
@@ -126,6 +128,9 @@ export function ResultadoSecao2026Panel() {
   const [cargoParceiro, setCargoParceiro] = useState<string>("");
   const [cargoTerritorio, setCargoTerritorio] = useState<string>("");
   const [gerandoPdf, setGerandoPdf] = useState<ModoPdfResultado | null>(null);
+  /** Seções marcadas na aba Seções (`chaveSecao`); valem para qualquer candidato. */
+  const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set());
+  const [somenteMarcadasSel, setSomenteMarcadas] = useState<boolean>(false);
 
   useEffect(() => {
     let ativo = true;
@@ -206,14 +211,22 @@ export function ResultadoSecao2026Panel() {
     [payload, secoesEscopo],
   );
 
+  const somenteMarcadas = somenteMarcadasSel && marcadas.size > 0;
+
+  const secoesMarcadas = useMemo(
+    () => secoesEscopo.filter((s) => marcadas.has(chaveSecao(s))),
+    [secoesEscopo, marcadas],
+  );
+
   const secoesDetalhe = useMemo(() => {
     if (!payload) return [];
-    const base =
-      localSel != null
+    const base = somenteMarcadas
+      ? secoesMarcadas
+      : localSel != null
         ? secoesEscopo.filter((s) => s.l === localSel)
         : secoesEscopo;
     return detalharSecoes2026(payload, base);
-  }, [payload, secoesEscopo, localSel]);
+  }, [payload, secoesEscopo, localSel, somenteMarcadas, secoesMarcadas]);
 
   const termo = normalizar(busca.trim());
 
@@ -303,6 +316,36 @@ export function ResultadoSecao2026Panel() {
     () => secoesVisiveis.reduce((m, s) => Math.max(m, s.v), 0),
     [secoesVisiveis],
   );
+  const votosSecoesVisiveis = useMemo(
+    () => secoesVisiveis.reduce((soma, s) => soma + s.v, 0),
+    [secoesVisiveis],
+  );
+  const votosMarcadas = secoesMarcadas.reduce((soma, s) => soma + s.v, 0);
+  const qtdVisiveisMarcadas = secoesVisiveis.filter((s) => marcadas.has(chaveSecao(s))).length;
+
+  const alternarMarcada = (chave: string) =>
+    setMarcadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(chave)) next.delete(chave);
+      else next.add(chave);
+      return next;
+    });
+
+  const alternarTodasVisiveis = () =>
+    setMarcadas((prev) => {
+      const next = new Set(prev);
+      const todas = secoesVisiveis.every((s) => next.has(chaveSecao(s)));
+      for (const s of secoesVisiveis) {
+        if (todas) next.delete(chaveSecao(s));
+        else next.add(chaveSecao(s));
+      }
+      return next;
+    });
+
+  const limparMarcadas = () => {
+    setMarcadas(new Set());
+    setSomenteMarcadas(false);
+  };
 
   const totalVisao = todosAtivo
     ? municipio
@@ -942,6 +985,17 @@ export function ResultadoSecao2026Panel() {
                     ? "locais de votação"
                     : "seções"}
                 {termo ? " encontrados" : ""}
+                {visao === "secoes" && !todosAtivo ? (
+                  <>
+                    {" · "}
+                    <strong className="text-[var(--tse-text)]">
+                      {formatarVotos2026(votosSecoesVisiveis)} votos
+                    </strong>
+                    {geral.votos && (termo || localSel != null)
+                      ? ` · ${formatarPct2026((votosSecoesVisiveis / geral.votos) * 100)} dos votos em ${escopoLabel}`
+                      : ""}
+                  </>
+                ) : null}
               </p>
 
               {todosAtivo && municipio ? (
@@ -983,11 +1037,60 @@ export function ResultadoSecao2026Panel() {
                 </div>
               )}
 
+              {visao === "secoes" && marcadas.size > 0 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-2.5">
+                  <div className="flex flex-wrap items-baseline gap-x-3 text-[13px]">
+                    <strong className="text-[15px]">
+                      {formatarVotos2026(secoesMarcadas.length)}{" "}
+                      {secoesMarcadas.length === 1 ? "seção marcada" : "seções marcadas"}
+                    </strong>
+                    <span>
+                      <strong className="text-[15px] font-black">{formatarVotos2026(votosMarcadas)}</strong>{" "}
+                      votos de {nomeProprio(candidato.nome)}
+                    </span>
+                    {secoesMarcadas.length < marcadas.size ? (
+                      <span className="text-[12px] text-[var(--tse-muted)]">
+                        ({formatarVotos2026(marcadas.size - secoesMarcadas.length)} fora de {escopoLabel})
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={somenteMarcadas}
+                      onClick={() => {
+                        setSomenteMarcadas((v) => !v);
+                        setLimite(PAGE_SIZE);
+                      }}
+                      className={`h-8 rounded-md px-3 text-[13px] font-semibold ${
+                        somenteMarcadas ? "bg-[var(--tse-yellow-strong)]" : "bg-white hover:bg-[var(--tse-bar)]"
+                      }`}
+                    >
+                      {somenteMarcadas ? "Mostrando só as marcadas" : "Ver só as marcadas"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={limparMarcadas}
+                      className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-semibold text-[var(--tse-olive)] hover:underline"
+                    >
+                      <X className="h-4 w-4" />
+                      Limpar seleção
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {visao === "secoes" && (
                 <SecoesTabela
                   linhas={secoesVisiveis.slice(0, limite)}
                   maxVotos={maxVotosSecao}
                   mostrarMunicipio={!municipio}
+                  totalSecoes={secoesVisiveis.length}
+                  totalVotos={votosSecoesVisiveis}
+                  marcadas={marcadas}
+                  qtdFiltroMarcadas={qtdVisiveisMarcadas}
+                  onAlternar={alternarMarcada}
+                  onAlternarTodas={alternarTodasVisiveis}
                 />
               )}
 
@@ -1135,16 +1238,44 @@ function SecoesTabela({
   linhas,
   maxVotos,
   mostrarMunicipio,
+  totalSecoes,
+  totalVotos,
+  marcadas,
+  qtdFiltroMarcadas,
+  onAlternar,
+  onAlternarTodas,
 }: {
   linhas: SecaoDetalhe2026[];
   maxVotos: number;
   mostrarMunicipio: boolean;
+  /** Todas as seções do filtro, inclusive as ainda não carregadas. */
+  totalSecoes: number;
+  totalVotos: number;
+  marcadas: Set<string>;
+  /** Quantas seções do filtro (todas, não só as carregadas) estão marcadas. */
+  qtdFiltroMarcadas: number;
+  onAlternar: (chave: string) => void;
+  onAlternarTodas: () => void;
 }) {
+  const todasMarcadas = totalSecoes > 0 && qtdFiltroMarcadas === totalSecoes;
   return (
     <div className={`mt-3 ${tseTabela.container}`}>
       <table className={tseTabela.table}>
         <thead className={tseTabela.thead}>
           <tr>
+            <th className="w-8 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={todasMarcadas}
+                ref={(el) => {
+                  if (el) el.indeterminate = qtdFiltroMarcadas > 0 && !todasMarcadas;
+                }}
+                onChange={onAlternarTodas}
+                aria-label="Marcar todas as seções do filtro"
+                title="Marcar todas as seções do filtro"
+                className="h-4 w-4 cursor-pointer accent-[var(--tse-yellow)]"
+              />
+            </th>
             {mostrarMunicipio && <th className="px-3 py-2.5">Município</th>}
             <th className="px-3 py-2.5">Zona</th>
             <th className="px-3 py-2.5">Seção</th>
@@ -1154,37 +1285,65 @@ function SecoesTabela({
           </tr>
         </thead>
         <tbody>
-          {linhas.map((s) => (
-            <tr
-              key={`${s.m}-${s.z}-${s.s}`}
-              className="border-t border-[#EEEEEE]"
-            >
-              {mostrarMunicipio && (
-                <td className="px-3 py-2 font-semibold">
-                  {nomeProprio(s.municipioNome)}
+          {linhas.map((s) => {
+            const chave = chaveSecao(s);
+            const marcada = marcadas.has(chave);
+            return (
+              <tr
+                key={chave}
+                className={`border-t border-[#EEEEEE] ${marcada ? "bg-[var(--tse-yellow-soft)]" : ""}`}
+              >
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={marcada}
+                    onChange={() => onAlternar(chave)}
+                    aria-label={`Marcar seção ${formatarSecao2026(s.s)}`}
+                    className="h-4 w-4 cursor-pointer accent-[var(--tse-yellow)]"
+                  />
                 </td>
-              )}
-              <td className="px-3 py-2 tabular-nums">
-                {formatarZona2026(s.z)}
+                {mostrarMunicipio && (
+                  <td className="px-3 py-2 font-semibold">
+                    {nomeProprio(s.municipioNome)}
+                  </td>
+                )}
+                <td className="px-3 py-2 tabular-nums">
+                  {formatarZona2026(s.z)}
+                </td>
+                <td className="px-3 py-2 font-semibold tabular-nums">
+                  {formatarSecao2026(s.s)}
+                </td>
+                <td className="px-3 py-2">{s.local?.nome ?? "—"}</td>
+                <td className="px-3 py-2 text-[var(--tse-muted)]">
+                  {s.local?.bairro ?? "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <TseBarraValor
+                    valor={s.v}
+                    max={maxVotos}
+                    formatado={formatarVotos2026(s.v)}
+                    larguraNumero="w-10"
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        {totalSecoes > 0 ? (
+          <tfoot>
+            <tr className="border-t-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] font-bold">
+              <td colSpan={mostrarMunicipio ? 6 : 5} className="px-3 py-2.5 uppercase">
+                Total do filtro
+                <span className="ml-2 text-[12px] font-semibold normal-case text-[var(--tse-muted)]">
+                  {formatarVotos2026(totalSecoes)} {totalSecoes === 1 ? "seção" : "seções"}
+                </span>
               </td>
-              <td className="px-3 py-2 font-semibold tabular-nums">
-                {formatarSecao2026(s.s)}
-              </td>
-              <td className="px-3 py-2">{s.local?.nome ?? "—"}</td>
-              <td className="px-3 py-2 text-[var(--tse-muted)]">
-                {s.local?.bairro ?? "—"}
-              </td>
-              <td className="px-3 py-2">
-                <TseBarraValor
-                  valor={s.v}
-                  max={maxVotos}
-                  formatado={formatarVotos2026(s.v)}
-                  larguraNumero="w-10"
-                />
+              <td className="px-3 py-2.5 text-right text-[15px] font-black tabular-nums">
+                {formatarVotos2026(totalVotos)}
               </td>
             </tr>
-          ))}
-        </tbody>
+          </tfoot>
+        ) : null}
       </table>
     </div>
   );
