@@ -44,7 +44,7 @@ export const ARENA_BADGES: ArenaBadge[] = [
 export const SCORING_RULES = [
   {
     id: 'comentario',
-    action: 'Comentário',
+    action: 'Comentário (+2 com 5+ palavras, +2 se curtido; até 3 por post)',
     points: '10–14 pts',
     source: 'API oficial do Instagram',
     sourceKind: 'api_oficial' as const,
@@ -58,7 +58,7 @@ export const SCORING_RULES = [
   },
   {
     id: 'curtida',
-    action: 'Curtida no post',
+    action: 'Curtida no post (coleta ainda não ativa)',
     points: '+3 pts',
     source: 'Verificação periódica (scraper)',
     sourceKind: 'scraper' as const,

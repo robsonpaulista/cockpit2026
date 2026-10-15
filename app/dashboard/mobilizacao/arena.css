@@ -495,7 +495,8 @@
   gap: 4px;
 }
 
-.arena-field label {
+.arena-field label,
+.arena-field__rotulo {
   font-size: 0.65rem;
   font-weight: 650;
   letter-spacing: 0.1em;

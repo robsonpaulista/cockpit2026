@@ -78,6 +78,7 @@ database/restore-from-backup-public-data-extracted.sql
 /*.pdf
 /*.csv
 /*.csv.zip
+/data/ranking-*.csv
 /database/*.xlsx
 /scripts/*.pdf
 /scripts/*.xlsx

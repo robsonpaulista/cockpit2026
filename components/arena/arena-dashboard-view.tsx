@@ -1,118 +1,215 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { ArenaShell, ArenaSourcePill, formatPts } from '@/components/arena/arena-shell'
 import { ArenaBreakdownRow } from '@/components/arena/arena-icons'
-import { ArenaPodium } from '@/components/arena/arena-podium'
-import { ArenaInteractionsChart } from '@/components/arena/arena-charts'
+import { ArenaPodium, type ArenaPodiumItem } from '@/components/arena/arena-podium'
 import { ArenaCommentsSyncPanel } from '@/components/arena/arena-comments-sync-panel'
+import { ArenaFiltroPeriodo } from '@/components/arena/arena-filtro-periodo'
 import { SCORING_RULES } from '@/lib/arena/constants'
+import { ENGAJA_LEADERS } from '@/lib/arena/engaja-leaders'
 import {
-  ARENA_LEADERS,
-  getArenaScores,
-  interactionsByDay,
-  leaderName,
-  memberById,
-  todayStats,
-} from '@/lib/arena/mock-data'
-import type { ArenaViewerRole } from '@/lib/arena/types'
+  resumoPorNivel,
+  resumoPorRegiao,
+  somaComentarios,
+  somaPontos,
+  type GrupoResumo,
+} from '@/lib/arena/perfis-resumo'
+import { hrefPainelArena, useArenaPerfis, useArenaPeriodo } from '@/hooks/use-arena-perfis'
+
+const LIDERADOS_POR_HANDLE = new Map(
+  ENGAJA_LEADERS.map((l) => [l.instagram.toLowerCase(), l.lideradosCount]),
+)
+
+function ListaResumo({
+  grupos,
+  medida,
+  rotulo,
+}: {
+  grupos: GrupoResumo[]
+  medida: 'perfis' | 'pontos'
+  rotulo: (g: GrupoResumo) => string
+}) {
+  const maior = Math.max(1, ...grupos.map((g) => g[medida]))
+  return (
+    <ul className="m-0 grid list-none gap-3 p-0">
+      {grupos.map((g) => (
+        <li key={g.chave}>
+          <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
+            <span className="font-semibold">{g.chave}</span>
+            <span className="arena-mono text-xs text-[var(--cx-muted,#686865)]">{rotulo(g)}</span>
+          </div>
+          <div className="arena-progress">
+            <span style={{ width: `${Math.round((g[medida] / maior) * 100)}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export function ArenaDashboardView() {
-  const [role, setRole] = useState<ArenaViewerRole>('admin')
-  const leaderFilter = role === 'lideranca' ? ARENA_LEADERS[0]!.id : null
+  const filtro = useArenaPeriodo()
+  const estado = useArenaPerfis(filtro.intervalo)
 
-  const { scores, leaderRanking } = useMemo(
-    () => getArenaScores(leaderFilter),
-    [leaderFilter],
-  )
-  const stats = useMemo(() => todayStats(leaderFilter), [leaderFilter])
-  const chart = useMemo(() => interactionsByDay(14), [])
+  const dados = useMemo(() => {
+    if (estado.status !== 'ok') return null
+    const liderados = estado.perfis.filter((p) => p.papel === 'liderado')
+    const liderancas = estado.perfis.filter((p) => p.papel === 'lideranca')
+    const podio: ArenaPodiumItem[] = liderancas
+      .filter((l) => l.pontos > 0)
+      .map((l) => {
+        const indicados = LIDERADOS_POR_HANDLE.get(l.instagram)
+        return {
+          id: l.id,
+          nome: l.nome,
+          cidade: l.cidade,
+          detalhe: indicados != null ? `${indicados} liderados` : l.nivel.name,
+          valor: `${formatPts(l.pontos)} pts`,
+          href: hrefPainelArena(l.id, filtro),
+        }
+      })
+    return {
+      liderados,
+      lideradosAtivos: liderados.filter((p) => p.pontos > 0),
+      liderancasAtivas: liderancas.filter((p) => p.pontos > 0).length,
+      totalLiderancas: liderancas.length,
+      fieis: estado.perfis.filter((p) => p.conquistas.includes('fiel')).length,
+      podio,
+      pontosTotal: somaPontos(estado.perfis),
+      comentariosTotal: somaComentarios(estado.perfis),
+      niveis: resumoPorNivel(liderados),
+      regioes: resumoPorRegiao(estado.perfis),
+    }
+  }, [estado, filtro])
 
   return (
-    <ArenaShell
-      role={role}
-      onRoleChange={setRole}
-      title="Dashboard"
-      subtitle={
-        role === 'lideranca'
-          ? `Escopo: grupo de ${ARENA_LEADERS[0]!.name} (protótipo)`
-          : 'Visão geral da campanha — dados de demonstração'
-      }
-    >
-      <section className="arena-tiles" aria-label="Números do dia">
-        <article className="arena-card">
-          <span className="arena-tile__label">Apoiadores</span>
-          <strong className="arena-tile__val">{stats.membersCount}</strong>
-        </article>
-        <article className="arena-card">
-          <span className="arena-tile__label">Interações hoje</span>
-          <strong className="arena-tile__val">{stats.interactionsToday}</strong>
-        </article>
-        <article className="arena-card">
-          <span className="arena-tile__label">Pontos hoje</span>
-          <strong className="arena-tile__val">{formatPts(stats.pointsToday)}</strong>
-        </article>
-        <article className="arena-card">
-          <span className="arena-tile__label">Comentários via API</span>
-          <strong className="arena-tile__val">{stats.apiCommentPct}%</strong>
-        </article>
-      </section>
+    <ArenaShell role="admin" title="Dashboard" subtitle="Ranking e engajamento da Arena de Apoiadores">
+      <ArenaFiltroPeriodo filtro={filtro} />
 
-      <ArenaCommentsSyncPanel />
-
-      <section className="arena-card">
-        <h2 className="arena-section-title">Interações por dia · 14 dias</h2>
-        <ArenaInteractionsChart data={chart} />
-      </section>
-
-      {role !== 'lideranca' ? (
+      {estado.status === 'loading' ? (
         <section className="arena-card">
-          <h2 className="arena-section-title">Lideranças que mais mobilizam</h2>
-          <ArenaPodium ranking={leaderRanking} />
+          <p className="arena-sub m-0">Calculando a pontuação do período…</p>
         </section>
+      ) : estado.status === 'erro' ? (
+        <section className="arena-card">
+          <p className="arena-sub m-0">{estado.mensagem}</p>
+        </section>
+      ) : dados ? (
+        <>
+          <section className="arena-tiles" aria-label="Números do período">
+            <article className="arena-card">
+              <span className="arena-tile__label">Apoiadores ativos</span>
+              <strong className="arena-tile__val">
+                {dados.lideradosAtivos.length}
+                <span className="arena-sub"> de {dados.liderados.length}</span>
+              </strong>
+            </article>
+            <article className="arena-card">
+              <span className="arena-tile__label">Lideranças ativas</span>
+              <strong className="arena-tile__val">
+                {dados.liderancasAtivas}
+                <span className="arena-sub"> de {dados.totalLiderancas}</span>
+              </strong>
+            </article>
+            <article className="arena-card">
+              <span className="arena-tile__label">Pontos no período</span>
+              <strong className="arena-tile__val">{formatPts(dados.pontosTotal)}</strong>
+            </article>
+            <article className="arena-card">
+              <span className="arena-tile__label">Comentários</span>
+              <strong className="arena-tile__val">{formatPts(dados.comentariosTotal)}</strong>
+            </article>
+          </section>
+
+          <div className="arena-grid-2">
+            <section className="arena-card">
+              <h2 className="arena-section-title">Apoiadores por nível</h2>
+              <ListaResumo
+                grupos={dados.niveis}
+                medida="perfis"
+                rotulo={(g) =>
+                  `${g.perfis} ${g.perfis === 1 ? 'apoiador' : 'apoiadores'} · ${Math.round((g.perfis / Math.max(1, dados.liderados.length)) * 100)}%`
+                }
+              />
+            </section>
+            <section className="arena-card">
+              <h2 className="arena-section-title">Pontos por região</h2>
+              <ListaResumo
+                grupos={dados.regioes}
+                medida="pontos"
+                rotulo={(g) => `${formatPts(g.pontos)} pts · ${g.ativos} de ${g.perfis} ativos`}
+              />
+            </section>
+          </div>
+
+          <section className="arena-card">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="arena-section-title mb-0">Ranking de apoiadores</h2>
+              <p className="arena-sub m-0">
+                {dados.liderados.length - dados.lideradosAtivos.length} sem pontos no período ·{' '}
+                {dados.fieis} fiéis
+              </p>
+            </div>
+            <div className="arena-table-wrap">
+              <table className="arena-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>@</th>
+                    <th>Cidade</th>
+                    <th>Nível</th>
+                    <th>Comentários</th>
+                    <th>Pontos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dados.lideradosAtivos.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-[var(--cx-muted,#686865)]">
+                        Nenhum apoiador pontuou neste período.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {dados.lideradosAtivos.map((p, i) => (
+                    <tr key={p.id}>
+                      <td className="arena-mono">{i + 1}</td>
+                      <td>
+                        <Link
+                          href={hrefPainelArena(p.id, filtro)}
+                          className="font-semibold text-[var(--cx-ink,#14161a)] no-underline hover:text-[var(--cx-amber,#e8a825)]"
+                        >
+                          {p.nome}
+                        </Link>
+                      </td>
+                      <td className="text-[var(--arena-text-muted)]">@{p.instagram}</td>
+                      <td>{p.cidade ?? '—'}</td>
+                      <td>
+                        {p.nivel.id} — {p.nivel.name}
+                      </td>
+                      <td className="arena-mono">{formatPts(p.comentarios)}</td>
+                      <td className="arena-mono font-bold">{formatPts(p.pontos)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="arena-card">
+            <h2 className="arena-section-title">Lideranças com mais pontos</h2>
+            {dados.podio.length > 0 ? (
+              <ArenaPodium ranking={dados.podio} />
+            ) : (
+              <p className="arena-sub m-0">Nenhuma liderança pontuou neste período.</p>
+            )}
+          </section>
+        </>
       ) : null}
 
-      <section className="arena-card">
-        <h2 className="arena-section-title">Ranking de apoiadores</h2>
-        <div className="arena-table-wrap">
-          <table className="arena-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Nome</th>
-                <th>@</th>
-                <th>Nível</th>
-                <th>Pontos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scores.map((s, i) => {
-                const m = memberById(s.memberId)
-                if (!m) return null
-                return (
-                  <tr key={s.memberId}>
-                    <td className="arena-mono">{i + 1}</td>
-                    <td>
-                      <Link
-                        href={`/dashboard/mobilizacao/painel?membro=${m.id}`}
-                        className="font-semibold text-[var(--cx-ink,#14161a)] no-underline hover:text-[var(--cx-amber,#e8a825)]"
-                      >
-                        {m.name}
-                      </Link>
-                    </td>
-                    <td className="text-[var(--arena-text-muted)]">@{m.instagramHandle}</td>
-                    <td>
-                      {s.level.id} — {s.level.name}
-                    </td>
-                    <td className="arena-mono font-bold">{formatPts(s.total)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <ArenaCommentsSyncPanel />
 
       <div className="arena-grid-2">
         <section className="arena-card">
@@ -130,7 +227,7 @@ export function ArenaDashboardView() {
             />
             <ArenaBreakdownRow
               kind="curtida"
-              subtitle="Apify · verificação periódica"
+              subtitle="Coleta de curtidas ainda não ativa"
               source="scraper"
             />
             <ArenaBreakdownRow
@@ -165,11 +262,6 @@ export function ArenaDashboardView() {
               </tbody>
             </table>
           </div>
-          {role === 'lideranca' ? (
-            <p className="arena-sub mt-3">
-              Liderança responsável: {leaderName(ARENA_LEADERS[0]!.id)}
-            </p>
-          ) : null}
         </section>
       </div>
     </ArenaShell>

@@ -1,12 +1,21 @@
 'use client'
 
 import Link from 'next/link'
-import type { LeaderGroupScore } from '@/lib/arena/types'
-import { formatPts, initials } from '@/components/arena/arena-shell'
+import { initials } from '@/components/arena/arena-shell'
 import { ArenaCrownIcon } from '@/components/arena/arena-icons'
 
+export type ArenaPodiumItem = {
+  id: string
+  nome: string
+  cidade: string | null
+  detalhe: string
+  /** Valor já formatado (ex.: "1.234 pts" ou "12 comentários"). */
+  valor: string
+  href: string
+}
+
 type Props = {
-  ranking: LeaderGroupScore[]
+  ranking: ArenaPodiumItem[]
 }
 
 export function ArenaPodium({ ranking }: Props) {
@@ -26,18 +35,15 @@ export function ArenaPodium({ ranking }: Props) {
       {rest.length > 0 ? (
         <ol className="arena-rank-list">
           {rest.map((item, i) => (
-            <li key={item.leader.id}>
+            <li key={item.id}>
               <span className="arena-rank-list__pos">{i + 4}º</span>
-              <span className="min-w-0 flex-1 truncate font-semibold">{item.leader.name}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{item.nome}</span>
               <span className="text-[var(--cx-muted,#686865)] text-xs">
-                {item.leader.city ?? '—'} · {item.memberCount} liderados
+                {item.cidade ?? '—'} · {item.detalhe}
               </span>
-              <span className="arena-mono font-bold">{formatPts(item.totalPoints)}</span>
-              <Link
-                href={`/dashboard/mobilizacao/membros?lideranca=${item.leader.id}`}
-                className="arena-podium__link"
-              >
-                Ver indicados
+              <span className="arena-mono font-bold">{item.valor}</span>
+              <Link href={item.href} className="arena-podium__link">
+                Ver painel
               </Link>
             </li>
           ))}
@@ -47,7 +53,7 @@ export function ArenaPodium({ ranking }: Props) {
   )
 }
 
-function PodiumSlot({ place, item }: { place: 1 | 2 | 3; item: LeaderGroupScore }) {
+function PodiumSlot({ place, item }: { place: 1 | 2 | 3; item: ArenaPodiumItem }) {
   return (
     <article
       className={`arena-podium__slot arena-podium__slot--${place}${place === 1 ? ' arena-card--elevated' : ''}`}
@@ -60,17 +66,14 @@ function PodiumSlot({ place, item }: { place: 1 | 2 | 3; item: LeaderGroupScore 
       ) : (
         <p className="arena-mono mb-1 text-sm font-bold text-[var(--cx-label,#969692)]">{place}º</p>
       )}
-      <div className="arena-podium__avatar">{initials(item.leader.name)}</div>
-      <h3 className="arena-podium__name">{item.leader.name}</h3>
+      <div className="arena-podium__avatar">{initials(item.nome)}</div>
+      <h3 className="arena-podium__name">{item.nome}</h3>
       <p className="arena-podium__meta">
-        {item.leader.city ?? '—'} · {item.memberCount} liderados
+        {item.cidade ?? '—'} · {item.detalhe}
       </p>
-      <p className="arena-podium__pts">{formatPts(item.totalPoints)} pts</p>
-      <Link
-        href={`/dashboard/mobilizacao/membros?lideranca=${item.leader.id}`}
-        className="arena-podium__link"
-      >
-        Ver indicados
+      <p className="arena-podium__pts">{item.valor}</p>
+      <Link href={item.href} className="arena-podium__link">
+        Ver painel
       </Link>
     </article>
   )

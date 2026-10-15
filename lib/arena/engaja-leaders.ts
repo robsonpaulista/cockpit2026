@@ -38,7 +38,3 @@ export const ENGAJA_LEADERS: EngajaLeaderRow[] = [
   { id: 'engaja-59wa6a5v', name: 'Geissyane Mikaele', city: 'Parnaíba', instagram: 'geicianemickaelen', afiliacaoUrl: 'https://engaja2026.com/cadastro/59wa6a5v', lideradosCount: 4 },
   { id: 'engaja-p3ud9ni2', name: 'Gabinete THE', city: 'Teresina', instagram: '_cvinicius7', afiliacaoUrl: 'https://engaja2026.com/cadastro/p3ud9ni2', lideradosCount: 9 },
 ]
-
-export function engajaLeadersAsArena(): ArenaLeader[] {
-  return ENGAJA_LEADERS.map(({ id, name, city }) => ({ id, name, city }))
-}
