@@ -78,20 +78,158 @@ function Mostrador() {
   )
 }
 
+type CartaoLoginProps = {
+  atraso: number
+  onFechar: () => void
+}
+
+function CartaoLogin({ atraso, onFechar }: CartaoLoginProps) {
+  const login = useLoginCockpit()
+  const tituloId = useId()
+  const [mostrarSenha, setMostrarSenha] = useState<boolean>(false)
+
+  const enviar = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    void login.entrar()
+  }
+
+  return (
+    <motion.form
+      onSubmit={enviar}
+      aria-labelledby={tituloId}
+      className="w-full max-w-[19rem] rounded-xl bg-white p-4 text-left shadow-[0_28px_70px_-28px_rgba(51,51,51,0.55)]"
+      initial={{ opacity: 0, y: 18, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: atraso, duration: 0.5, ease: EASE } }}
+      exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.18 } }}
+    >
+      <div className="mb-3.5 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--tse-yellow-soft)] text-[var(--tse-gold-text)]">
+            <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
+          </span>
+          <div>
+            <p id={tituloId} className="text-[13px] font-semibold leading-tight text-[var(--tse-text)]">
+              Acesso restrito
+            </p>
+            <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">Entre com a sua conta da equipe.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onFechar}
+          aria-label="Fechar"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--tse-muted)] transition hover:bg-[var(--tse-bg)] hover:text-[var(--tse-text)]"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label htmlFor={`${tituloId}-email`} className={rotuloClass}>
+            E-mail
+          </label>
+          <input
+            id={`${tituloId}-email`}
+            type="email"
+            autoComplete="username"
+            autoFocus
+            required
+            value={login.email}
+            onChange={(e) => login.setEmail(e.target.value)}
+            placeholder="seu@email.com"
+            className={campoClass}
+          />
+        </div>
+        <div>
+          <label htmlFor={`${tituloId}-senha`} className={rotuloClass}>
+            Senha
+          </label>
+          <div className="relative">
+            <input
+              id={`${tituloId}-senha`}
+              type={mostrarSenha ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              value={login.senha}
+              onChange={(e) => login.setSenha(e.target.value)}
+              placeholder="••••••••"
+              className={cn(campoClass, 'pr-11')}
+            />
+            <button
+              type="button"
+              onClick={() => setMostrarSenha((v) => !v)}
+              aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-[var(--tse-muted)] transition hover:text-[var(--tse-text)]"
+            >
+              {mostrarSenha ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            </button>
+          </div>
+        </div>
+
+        <label className="flex cursor-pointer select-none items-start gap-2 text-[11px] text-[var(--tse-muted)]">
+          <input
+            type="checkbox"
+            checked={login.lembrar}
+            onChange={(e) => login.setLembrar(e.target.checked)}
+            className="mt-0.5 h-4 w-4 cursor-pointer accent-[var(--tse-text)]"
+          />
+          <span>Lembrar neste dispositivo (use só em tablets da equipe)</span>
+        </label>
+
+        <AnimatePresence initial={false}>
+          {login.erro ? (
+            <motion.p
+              key="erro"
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              {login.erro}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+
+        <button
+          type="submit"
+          disabled={login.carregando}
+          className="group inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[var(--tse-text)] text-[13px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {login.carregando ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Entrando…
+            </>
+          ) : (
+            <>
+              Entrar no Cockpit
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </>
+          )}
+        </button>
+      </div>
+    </motion.form>
+  )
+}
+
 export type CockpitHomeProps = {
   /** Abre o cartão de login já na entrada (rota `/login`). */
   loginInicial?: boolean
+  /** Tela de descanso do dashboard: o botão Entrar só chama esta função, sem login. */
+  onEntrar?: () => void
 }
 
 /** Home pública do Cockpit X: marca revelada sobre o amarelo TSE e acesso da equipe. */
-export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
+export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps) {
   const reduzir = useReducedMotion() ?? false
   const hora = useRelogioBrasilia()
-  const login = useLoginCockpit()
-  const tituloId = useId()
-  const [loginAberto, setLoginAberto] = useState<boolean>(loginInicial)
+  const descanso = onEntrar != null
+  // No dashboard, `body[data-war-room-clean] main` zera o fundo e as fontes da home.
+  const Raiz = descanso ? 'div' : 'main'
+  const [loginAberto, setLoginAberto] = useState<boolean>(loginInicial && !descanso)
   const [revelado, setRevelado] = useState<boolean>(false)
-  const [mostrarSenha, setMostrarSenha] = useState<boolean>(false)
 
   useEffect(() => {
     const id = window.setTimeout(() => setRevelado(true), FIM_REVELACAO * 1000 + 600)
@@ -110,13 +248,8 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
   const atrasoAcoes = reduzir || revelado ? 0 : FIM_REVELACAO
   const inicial = <T,>(valor: T): T | false => (reduzir ? false : valor)
 
-  const enviar = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    void login.entrar()
-  }
-
   return (
-    <main className="ch-home" style={TSE_TOKENS}>
+    <Raiz className="ch-home" style={TSE_TOKENS}>
       <div className="ch-home__fundo" aria-hidden>
         <div className="ch-home__grade" />
         <motion.div
@@ -207,129 +340,12 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
         <div className="mt-5 flex w-full flex-col items-center">
           <AnimatePresence mode="wait" initial={!reduzir}>
             {loginAberto ? (
-              <motion.form
-                key="login"
-                onSubmit={enviar}
-                aria-labelledby={tituloId}
-                className="w-full max-w-[19rem] rounded-xl bg-white p-4 text-left shadow-[0_28px_70px_-28px_rgba(51,51,51,0.55)]"
-                initial={{ opacity: 0, y: 18, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: atrasoAcoes, duration: 0.5, ease: EASE } }}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.18 } }}
-              >
-                <div className="mb-3.5 flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--tse-yellow-soft)] text-[var(--tse-gold-text)]">
-                      <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
-                    </span>
-                    <div>
-                      <p id={tituloId} className="text-[13px] font-semibold leading-tight text-[var(--tse-text)]">
-                        Acesso restrito
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">Entre com a sua conta da equipe.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLoginAberto(false)}
-                    aria-label="Fechar"
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--tse-muted)] transition hover:bg-[var(--tse-bg)] hover:text-[var(--tse-text)]"
-                  >
-                    <X className="h-4 w-4" aria-hidden />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor={`${tituloId}-email`} className={rotuloClass}>
-                      E-mail
-                    </label>
-                    <input
-                      id={`${tituloId}-email`}
-                      type="email"
-                      autoComplete="username"
-                      autoFocus
-                      required
-                      value={login.email}
-                      onChange={(e) => login.setEmail(e.target.value)}
-                      placeholder="seu@email.com"
-                      className={campoClass}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={`${tituloId}-senha`} className={rotuloClass}>
-                      Senha
-                    </label>
-                    <div className="relative">
-                      <input
-                        id={`${tituloId}-senha`}
-                        type={mostrarSenha ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        required
-                        value={login.senha}
-                        onChange={(e) => login.setSenha(e.target.value)}
-                        placeholder="••••••••"
-                        className={cn(campoClass, 'pr-11')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMostrarSenha((v) => !v)}
-                        aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                        className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-[var(--tse-muted)] transition hover:text-[var(--tse-text)]"
-                      >
-                        {mostrarSenha ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <label className="flex cursor-pointer select-none items-start gap-2 text-[11px] text-[var(--tse-muted)]">
-                    <input
-                      type="checkbox"
-                      checked={login.lembrar}
-                      onChange={(e) => login.setLembrar(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 cursor-pointer accent-[var(--tse-text)]"
-                    />
-                    <span>Lembrar neste dispositivo (use só em tablets da equipe)</span>
-                  </label>
-
-                  <AnimatePresence initial={false}>
-                    {login.erro ? (
-                      <motion.p
-                        key="erro"
-                        role="alert"
-                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        {login.erro}
-                      </motion.p>
-                    ) : null}
-                  </AnimatePresence>
-
-                  <button
-                    type="submit"
-                    disabled={login.carregando}
-                    className="group inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[var(--tse-text)] text-[13px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {login.carregando ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        Entrando…
-                      </>
-                    ) : (
-                      <>
-                        Entrar no Cockpit
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </motion.form>
+              <CartaoLogin key="login" atraso={atrasoAcoes} onFechar={() => setLoginAberto(false)} />
             ) : (
               <motion.button
                 key="cta"
                 type="button"
-                onClick={() => setLoginAberto(true)}
+                onClick={onEntrar ?? (() => setLoginAberto(true))}
                 className="group inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tse-text)] pl-4 pr-1 text-[13px] font-semibold text-white shadow-[0_18px_40px_-18px_rgba(51,51,51,0.7)] transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0, transition: { delay: atrasoAcoes, duration: 0.55, ease: EASE } }}
@@ -344,15 +360,17 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
             )}
           </AnimatePresence>
 
-          <motion.a
-            href="/pesquisador/login"
-            className="mt-3 text-[11px] font-medium text-[var(--ch-tinta-suave)] underline decoration-[var(--ch-tinta-linha)] underline-offset-4 transition hover:text-[var(--tse-text)] hover:decoration-[var(--tse-text)]"
-            initial={inicial({ opacity: 0 })}
-            animate={{ opacity: 1 }}
-            transition={{ delay: FIM_REVELACAO + 0.25, duration: 0.6 }}
-          >
-            Acesso pesquisadores de campo
-          </motion.a>
+          {!descanso ? (
+            <motion.a
+              href="/pesquisador/login"
+              className="mt-3 text-[11px] font-medium text-[var(--ch-tinta-suave)] underline decoration-[var(--ch-tinta-linha)] underline-offset-4 transition hover:text-[var(--tse-text)] hover:decoration-[var(--tse-text)]"
+              initial={inicial({ opacity: 0 })}
+              animate={{ opacity: 1 }}
+              transition={{ delay: FIM_REVELACAO + 0.25, duration: 0.6 }}
+            >
+              Acesso pesquisadores de campo
+            </motion.a>
+          ) : null}
         </div>
       </div>
 
@@ -364,6 +382,6 @@ export function CockpitHome({ loginInicial = false }: CockpitHomeProps) {
       >
         © 2026 Cockpit X · Inteligência, território e operação em um só lugar
       </motion.footer>
-    </main>
+    </Raiz>
   )
 }

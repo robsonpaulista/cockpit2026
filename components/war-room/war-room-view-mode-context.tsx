@@ -17,9 +17,6 @@ export type WarRoomCopilotoTabHint =
   | 'obras'
   | 'emendas'
   | 'redes'
-  | 'anuncios'
-  | 'panorama'
-  | 'comparativo'
   | 'relatorio'
 
 type WarRoomViewModeContextValue = {

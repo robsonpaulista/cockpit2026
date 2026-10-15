@@ -72,7 +72,7 @@ As telas estão sendo migradas para o visual do portal de resultados do TSE, já
 
 ### Home pública (`/`, `/login`, `/preview-home`)
 
-`components/home/cockpit-home.tsx` + `cockpit-home.css`. A tela é toda em amarelo `#EBB402` e a logomarca COCKPIT X (Michroma) surge com animação: as letras sobem por máscara, o X grafite gira até o lugar, e a linha de horizonte se desenha. Atrás dela há um mostrador girando devagar, uma grade suave e um brilho diagonal periódico. O botão Entrar abre um cartão branco de login na própria tela. A lógica do login está em `hooks/use-login-cockpit.ts` e em `lib/services/auth-client.ts`. Tudo respeita `prefers-reduced-motion`. A tela de descanso do dashboard continua em `components/preview-home/preview-home-screen.tsx`.
+`components/home/cockpit-home.tsx` + `cockpit-home.css`. A tela é toda em amarelo `#EBB402` e a logomarca COCKPIT X (Michroma) surge com animação: as letras sobem por máscara, o X grafite gira até o lugar, e a linha de horizonte se desenha. Atrás dela há um mostrador girando devagar, uma grade suave e um brilho diagonal periódico. O botão Entrar abre um cartão branco de login na própria tela. A lógica do login está em `hooks/use-login-cockpit.ts` e em `lib/services/auth-client.ts`. Tudo respeita `prefers-reduced-motion`. A tela de descanso do dashboard (sidebar e inatividade) usa a mesma home com `onEntrar`: o botão Entrar só fecha o overlay, sem login (`components/splash-screen/splash-screen-rest-host.tsx`).
 
 ## Regras de uso
 

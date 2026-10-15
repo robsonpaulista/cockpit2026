@@ -9,30 +9,18 @@ import {
 } from '@/lib/war-room/agenda-proximos'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
-import { WarRoomCopilotoPanoramaView } from '@/components/war-room/war-room-copiloto-panorama-view'
-import { WarRoomCopilotoComparativoView } from '@/components/war-room/war-room-copiloto-comparativo-view'
 import { WarRoomCopilotoObrasView } from '@/components/war-room/war-room-copiloto-obras-view'
 import { WarRoomCopilotoEmendasView } from '@/components/war-room/war-room-copiloto-emendas-view'
 import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copiloto-redes-view'
-import { WarRoomCopilotoAnunciosView } from '@/components/war-room/war-room-copiloto-anuncios-view'
 import { WarRoomCopilotoRelatorioView } from '@/components/war-room/war-room-copiloto-relatorio-view'
 import { WarRoomCopilotoCoberturaView } from '@/components/war-room/war-room-copiloto-cobertura-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
 import { cn } from '@/lib/utils'
 
-type CopilotoTab =
-  | 'cidades'
-  | 'cobertura'
-  | 'obras'
-  | 'emendas'
-  | 'redes'
-  | 'anuncios'
-  | 'panorama'
-  | 'comparativo'
-  | 'relatorio'
+type CopilotoTab = 'cidades' | 'cobertura' | 'obras' | 'emendas' | 'redes' | 'relatorio'
 
 /**
- * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes, Anúncios, Comparativo, Radar e Relatório.
+ * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes e Relatório.
  */
 export function WarRoomCopilotoView() {
   const { municipios, obras, loading, error, recarregar } = useIpt()
@@ -128,39 +116,6 @@ export function WarRoomCopilotoView() {
           type="button"
           className={cn(
             'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'anuncios' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'anuncios'}
-          onClick={() => setTab('anuncios')}
-        >
-          Anúncios
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'comparativo' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'comparativo'}
-          onClick={() => setTab('comparativo')}
-        >
-          Comparativo
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'panorama' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'panorama'}
-          onClick={() => setTab('panorama')}
-        >
-          Radar
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
             tab === 'relatorio' && 'wr-copiloto-tabs__btn--active',
           )}
           aria-pressed={tab === 'relatorio'}
@@ -179,12 +134,6 @@ export function WarRoomCopilotoView() {
           <WarRoomCopilotoRelatorioView municipios={municipios} />
         ) : tab === 'redes' ? (
           <WarRoomCopilotoRedesView />
-        ) : tab === 'anuncios' ? (
-          <WarRoomCopilotoAnunciosView />
-        ) : tab === 'panorama' ? (
-          <WarRoomCopilotoPanoramaView />
-        ) : tab === 'comparativo' ? (
-          <WarRoomCopilotoComparativoView />
         ) : tab === 'cobertura' ? (
           <WarRoomCopilotoCoberturaView municipios={municipios} loading={loading} />
         ) : loading && municipios.length === 0 ? (

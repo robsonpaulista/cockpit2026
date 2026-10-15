@@ -1,175 +1,123 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import {
+  Download,
   ExternalLink,
-  FileText,
+  HardHat,
+  Landmark,
   Loader2,
+  MapPin,
   Plus,
   RefreshCw,
   Save,
   Trash2,
 } from 'lucide-react'
-import { IconFileTypeCsv, IconFileTypePdf } from '@tabler/icons-react'
-import { IptMunicipioSelect } from '@/components/ipt/ipt-municipio-select'
-import { useWarRoomCidade } from '@/components/war-room/war-room-cidade-context'
-import type { EmendaRegistro } from '@/lib/emendas-filtro'
+import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import {
-  demandasToObrasMapa,
-  type CampoDemandaObraRow,
-} from '@/lib/campo-demandas-obras'
+  TseBarraRotulo,
+  TseCard,
+  TseCarregando,
+  TseErro,
+  TseMenu,
+  TseMenuItem,
+  TseSelectGrande,
+  TseStatus,
+  TseTabs,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseCardClass,
+  tseRotuloCampoClass,
+  tseTabela,
+  type TseAba,
+} from '@/components/tse/tse-ui'
+import { useWarRoomCidade } from '@/components/war-room/war-room-cidade-context'
+import type { CampoDemandaObraRow } from '@/lib/campo-demandas-obras'
+import { demandasToObrasMapa } from '@/lib/campo-demandas-obras'
+import type { EmendaRegistro } from '@/lib/emendas-filtro'
 import type { IptMunicipio } from '@/lib/ipt'
-import { valorExibidoMapaObra, type ObraMapaRow } from '@/lib/obras-mapa'
+import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { valorExibidoMapaObra } from '@/lib/obras-mapa'
+import {
+  carregarDadosRelatorioExecutivo,
+  listarAcervoRelatorio,
+  removerAcervoRelatorio,
+  salvarAcervoRelatorio,
+} from '@/lib/services/relatorio-executivo-client'
+import type { RelatorioAcervoSalvo } from '@/lib/war-room/relatorio-executivo-acervo'
 import { exportRelatorioEmendasDemandasCsv } from '@/lib/war-room/relatorio-executivo-csv-export'
 import { exportRelatorioExecutivoPdf } from '@/lib/war-room/relatorio-executivo-export'
-import type { RelatorioAcervoSalvo } from '@/lib/war-room/relatorio-executivo-acervo'
 import {
   buildRelatorioExecutivoMunicipio,
   formatRelatorioBrl,
-  formatRelatorioBrlCompact,
+  type PlanoDriveLinkLite,
   type RelatorioAcervoItem,
   type RelatorioExecutivoMunicipio,
+  type RelatorioStatusValor,
 } from '@/lib/war-room/relatorio-executivo-municipio'
 import { cn } from '@/lib/utils'
 
 type BlocoId = 'capa' | 'emendas' | 'obras' | 'acervo'
 
-type PlanoDriveRow = {
-  obra_id: string
-  drive_web_view_link?: string | null
-  drive_file_name?: string | null
-}
+const MUNICIPIOS_PI = (municipiosPiaui as Array<{ nome: string }>)
+  .map((m) => m.nome)
+  .sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
-function StatusPill({
-  status,
-  tone,
-}: {
-  status: string
-  tone?:
-    | 'pago'
-    | 'empenhado'
-    | 'indicado'
-    | 'obra'
-    | 'execucao'
-    | 'aguardando'
-    | 'aguardando-exec'
-    | 'neutral'
-}) {
-  return (
-    <span
-      className={cn(
-        'wr-relatorio-exec__pill',
-        tone === 'pago' && 'wr-relatorio-exec__pill--pago',
-        tone === 'empenhado' && 'wr-relatorio-exec__pill--empenhado',
-        tone === 'indicado' && 'wr-relatorio-exec__pill--indicado',
-        tone === 'obra' && 'wr-relatorio-exec__pill--obra',
-        tone === 'execucao' && 'wr-relatorio-exec__pill--execucao',
-        tone === 'aguardando' && 'wr-relatorio-exec__pill--aguardando',
-        tone === 'aguardando-exec' && 'wr-relatorio-exec__pill--aguardando-exec',
-      )}
-    >
-      {status}
-    </span>
-  )
-}
+const fmt = (n: number): string => n.toLocaleString('pt-BR')
+const plural = (n: number, singular: string, pluralTxt: string): string => `${fmt(n)} ${n === 1 ? singular : pluralTxt}`
 
-type StatusTone = NonNullable<Parameters<typeof StatusPill>[0]['tone']>
-
-function toneStatusRelatorio(status: string): StatusTone {
+function corStatusRelatorio(status: string): string {
   const s = status
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
-  if (s.includes('PAGO') || s.includes('EXECUTAD') || s.includes('CONCLUID')) {
-    return 'pago'
-  }
-  if (s.includes('EMPENHAD')) return 'empenhado'
-  if (s.includes('INDICAD')) return 'indicado'
-  if (s.includes('AGUARD') && s.includes('EXEC')) return 'aguardando-exec'
-  if (s.includes('AGUARD') || s.includes('A INICIAR') || s.includes('PENDENTE')) {
-    return 'aguardando'
-  }
-  if (s.includes('EXECU') || s.includes('ANDAMENTO')) return 'execucao'
-  return 'neutral'
+  if (s.includes('PAGO') || s.includes('EXECUTAD') || s.includes('CONCLUID')) return 'var(--tse-green)'
+  if (s.includes('EMPENHAD')) return '#5D8AA7'
+  if (s.includes('INDICAD')) return 'var(--tse-yellow)'
+  if (s.includes('AGUARD') || s.includes('A INICIAR') || s.includes('PENDENTE')) return 'var(--tse-gold-text)'
+  if (s.includes('EXECU') || s.includes('ANDAMENTO')) return 'var(--tse-olive)'
+  return 'var(--tse-zero)'
 }
 
-/** Copiloto · Relatório Executivo municipal (modelo Teresina). */
-export function WarRoomCopilotoRelatorioView({
-  municipios = [],
-}: {
-  municipios?: IptMunicipio[]
-}) {
+/** Copiloto · Relatório Executivo municipal no padrão TSE. */
+export function WarRoomCopilotoRelatorioView({ municipios = [] }: { municipios?: IptMunicipio[] }) {
   const { municipio, setMunicipio } = useWarRoomCidade()
   const [bloco, setBloco] = useState<BlocoId>('capa')
   const [emendasAll, setEmendasAll] = useState<EmendaRegistro[]>([])
   const [demandasAll, setDemandasAll] = useState<CampoDemandaObraRow[]>([])
-  const [obrasAll, setObrasAll] = useState<ObraMapaRow[]>([])
-  const [planosDrive, setPlanosDrive] = useState<PlanoDriveRow[]>([])
+  const [planosDrive, setPlanosDrive] = useState<PlanoDriveLinkLite[]>([])
   const [acervoSalvo, setAcervoSalvo] = useState<RelatorioAcervoSalvo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [exportingPdf, setExportingPdf] = useState(false)
-  const [exportingCsv, setExportingCsv] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [refreshing, setRefreshing] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadAcervo = useCallback(async (muni: string) => {
-    if (!muni.trim()) {
-      setAcervoSalvo([])
-      return
-    }
-    try {
-      const res = await fetch(
-        `/api/war-room/relatorio-executivo/acervo?municipio=${encodeURIComponent(muni)}`,
-        { cache: 'no-store' },
-      )
-      const json = (await res.json().catch(() => null)) as {
-        items?: RelatorioAcervoSalvo[]
-      } | null
-      setAcervoSalvo(Array.isArray(json?.items) ? json.items : [])
-    } catch {
-      setAcervoSalvo([])
-    }
+    setAcervoSalvo(await listarAcervoRelatorio(muni))
   }, [])
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    const silent = opts?.silent === true
-    if (silent) setRefreshing(true)
-    else setLoading(true)
-    setError(null)
-    try {
-      const [emRes, demRes, driveRes] = await Promise.all([
-        fetch('/api/emendas', { cache: 'no-store' }),
-        fetch('/api/campo/demands', { cache: 'no-store' }),
-        fetch('/api/campo/obras-mapa/plano-drive', { cache: 'no-store' }),
-      ])
-
-      if (!emRes.ok) throw new Error('Falha ao carregar emendas')
-      const emJson = (await emRes.json()) as { emendas?: EmendaRegistro[] }
-      setEmendasAll(Array.isArray(emJson.emendas) ? emJson.emendas : [])
-
-      if (!demRes.ok) throw new Error('Falha ao carregar obras')
-      const demJson = await demRes.json().catch(() => null)
-      const demandas = Array.isArray(demJson)
-        ? (demJson as CampoDemandaObraRow[])
-        : []
-      setDemandasAll(demandas)
-      setObrasAll(demandasToObrasMapa(demandas))
-
-      if (driveRes.ok) {
-        const driveJson = (await driveRes.json()) as { links?: PlanoDriveRow[] }
-        setPlanosDrive(Array.isArray(driveJson.links) ? driveJson.links : [])
-      } else {
-        setPlanosDrive([])
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (opts?.silent) setRefreshing(true)
+      else setLoading(true)
+      setError(null)
+      try {
+        const dados = await carregarDadosRelatorioExecutivo()
+        setEmendasAll(dados.emendas)
+        setDemandasAll(dados.demandas)
+        setPlanosDrive(dados.planosDrive)
+        if (municipio) await loadAcervo(municipio)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erro ao montar o relatório')
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
       }
-
-      if (municipio) await loadAcervo(municipio)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao montar o relatório')
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [loadAcervo, municipio])
+    },
+    [loadAcervo, municipio],
+  )
 
   useEffect(() => {
     void load()
@@ -183,6 +131,8 @@ export function WarRoomCopilotoRelatorioView({
     if (municipio) void loadAcervo(municipio)
   }, [loadAcervo, municipio])
 
+  const obrasAll = useMemo(() => demandasToObrasMapa(demandasAll), [demandasAll])
+
   const relatorio: RelatorioExecutivoMunicipio | null = useMemo(() => {
     if (!municipio) return null
     return buildRelatorioExecutivoMunicipio({
@@ -190,530 +140,447 @@ export function WarRoomCopilotoRelatorioView({
       emendas: emendasAll,
       obras: obrasAll,
       planosDrive,
-      acervoSalvo: acervoSalvo.map((s) => ({
-        id: s.id,
-        obra_id: s.obra_id,
-        titulo: s.titulo,
-        status: s.status,
-        url: s.url,
-        label: s.label,
-      })),
+      acervoSalvo,
     })
   }, [acervoSalvo, emendasAll, municipio, obrasAll, planosDrive])
 
   const cidade = municipio ?? 'Município'
 
-  const exportarPdf = () => {
-    if (!relatorio || exportingPdf) return
-    setExportingPdf(true)
-    try {
-      exportRelatorioExecutivoPdf(relatorio)
-    } finally {
-      setExportingPdf(false)
-    }
-  }
-
-  const exportarCsv = () => {
-    if (exportingCsv || loading) return
-    setExportingCsv(true)
-    try {
-      exportRelatorioEmendasDemandasCsv({
-        emendas: emendasAll,
-        demandas: demandasAll,
-        municipios,
-      })
-    } finally {
-      setExportingCsv(false)
-    }
-  }
+  const abas: TseAba<BlocoId>[] = [
+    { id: 'capa', label: 'Capa' },
+    { id: 'emendas', label: `Emendas${relatorio ? ` (${fmt(relatorio.emendasCount)})` : ''}` },
+    { id: 'obras', label: `Obras e ações${relatorio ? ` (${fmt(relatorio.obrasCount)})` : ''}` },
+    { id: 'acervo', label: `Acervo${relatorio && relatorio.acervo.length > 0 ? ` (${fmt(relatorio.acervo.length)})` : ''}` },
+  ]
 
   return (
-    <div className="wr-relatorio-exec wr-copiloto-reveal">
-      <header
-        className="wr-relatorio-exec__toolbar wr-copiloto-reveal__card"
-        style={{ ['--wr-reveal-i' as string]: 0 }}
-      >
-        <div className="wr-relatorio-exec__toolbar-meta">
-          <h2 className="wr-relatorio-exec__title">Relatório</h2>
-          <p className="wr-relatorio-exec__hint">
-            Executivo municipal · A4 paisagem · emendas e obras separados (sem dupla contagem)
-          </p>
-        </div>
-        <div className="wr-relatorio-exec__toolbar-actions">
-          <div className="wr-relatorio-exec__muni">
-            <IptMunicipioSelect value={municipio} onChange={setMunicipio} />
+    <div
+      style={TSE_TOKENS}
+      data-tse-escopo
+      className="min-h-0 flex-1 overflow-y-auto bg-[var(--tse-bg)] font-sans text-[var(--tse-text)]"
+    >
+      <div className="space-y-4 px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-8">
+            <TseSelectGrande
+              icone={MapPin}
+              rotulo="Município"
+              value={municipio ?? ''}
+              onChange={(e) => setMunicipio(e.target.value || null)}
+            >
+              {MUNICIPIOS_PI.map((nome) => (
+                <option key={nome} value={nome}>
+                  {nome}
+                </option>
+              ))}
+            </TseSelectGrande>
+            <div className="text-[12px] text-[var(--tse-muted)]">
+              <div className="text-[13px] font-bold uppercase tracking-wide text-[var(--tse-text)]">
+                Relatório executivo
+              </div>
+              A4 paisagem · emendas e obras separadas, sem dupla contagem
+            </div>
           </div>
-          <button
-            type="button"
-            className="wr-copiloto-redes__ghost-btn"
-            disabled={!relatorio || loading || exportingPdf}
-            onClick={exportarPdf}
-            aria-label="Exportar PDF completo"
-            title="PDF completo"
-          >
-            {exportingPdf ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <IconFileTypePdf className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
-            )}
-            PDF
-          </button>
-          <button
-            type="button"
-            className="wr-copiloto-redes__ghost-btn"
-            disabled={
-              loading ||
-              exportingCsv ||
-              (emendasAll.length === 0 && demandasAll.length === 0)
-            }
-            onClick={exportarCsv}
-            aria-label="Exportar CSV único de emendas e demandas de todas as cidades"
-            title="CSV · emendas e demandas por expectativa"
-          >
-            {exportingCsv ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <IconFileTypeCsv className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
-            )}
-            CSV
-          </button>
-          <button
-            type="button"
-            className="wr-copiloto-redes__ghost-btn"
-            disabled={loading || refreshing}
-            onClick={() => void load({ silent: true })}
-          >
-            {refreshing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-            )}
-            Atualizar
-          </button>
-        </div>
-      </header>
-
-      <nav className="wr-relatorio-exec__blocos" aria-label="Blocos do relatório">
-        {(
-          [
-            { id: 'capa' as const, label: 'Capa' },
-            {
-              id: 'emendas' as const,
-              label: `Bloco 01 · Emendas${relatorio ? ` (${relatorio.emendasCount})` : ''}`,
-            },
-            {
-              id: 'obras' as const,
-              label: `Bloco 02 · Obras${relatorio ? ` (${relatorio.obrasCount})` : ''}`,
-            },
-            {
-              id: 'acervo' as const,
-              label: 'Bloco 03 · Acervo',
-            },
-          ] as const
-        ).map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            className={cn(
-              'wr-copiloto-redes__period-tab',
-              bloco === b.id && 'wr-copiloto-redes__period-tab--active',
-            )}
-            aria-pressed={bloco === b.id}
-            onClick={() => setBloco(b.id)}
-          >
-            {b.label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="wr-relatorio-exec__body wr-copiloto-reveal__board">
-        {loading && !relatorio ? (
-          <div className="wr-relatorio-exec__state">
-            <Loader2
-              className="h-5 w-5 animate-spin text-[var(--wr-brand,#F2D06B)]"
-              strokeWidth={1.5}
-            />
-            <span>Montando relatório…</span>
-          </div>
-        ) : error && !relatorio ? (
-          <div className="wr-relatorio-exec__state">
-            <p>{error}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <TseMenu icone={Download} rotulo="Exportar">
+              {(fechar) => (
+                <>
+                  <TseMenuItem
+                    titulo="PDF do relatório"
+                    descricao={`Capa, emendas, obras e acervo de ${cidade}`}
+                    onClick={() => {
+                      fechar()
+                      if (relatorio) exportRelatorioExecutivoPdf(relatorio)
+                    }}
+                  />
+                  <TseMenuItem
+                    titulo="CSV de emendas e demandas"
+                    descricao="Todas as cidades, por expectativa"
+                    onClick={() => {
+                      fechar()
+                      exportRelatorioEmendasDemandasCsv({ emendas: emendasAll, demandas: demandasAll, municipios })
+                    }}
+                  />
+                </>
+              )}
+            </TseMenu>
             <button
               type="button"
-              className="wr-copiloto-view__retry"
-              onClick={() => void load()}
+              onClick={() => void load({ silent: true })}
+              disabled={loading || refreshing}
+              className={tseBotaoCinzaClass}
             >
-              Tentar de novo
+              <RefreshCw className={cn(tseBotaoIconeClass, refreshing && 'animate-spin')} />
+              Atualizar
             </button>
           </div>
+        </div>
+
+        <TseTabs abas={abas} ativa={bloco} onChange={setBloco} />
+
+        {loading && !relatorio ? (
+          <TseCarregando texto="Montando relatório…" />
+        ) : error && !relatorio ? (
+          <TseErro>
+            {error}{' '}
+            <button type="button" onClick={() => void load()} className="ml-2 font-bold underline">
+              Tentar de novo
+            </button>
+          </TseErro>
         ) : !relatorio ? (
-          <div className="wr-relatorio-exec__state">
-            <FileText className="h-5 w-5 opacity-50" strokeWidth={1.5} />
-            <span>Selecione um município para montar o relatório.</span>
-          </div>
-        ) : bloco === 'capa' ? (
-          <CapaSection cidade={cidade} data={relatorio} onGo={setBloco} />
-        ) : bloco === 'emendas' ? (
-          <EmendasSection cidade={cidade} data={relatorio} />
-        ) : bloco === 'obras' ? (
-          <ObrasSection cidade={cidade} data={relatorio} />
+          <TseVazio>Selecione um município para montar o relatório.</TseVazio>
         ) : (
-          <AcervoSection
-            cidade={cidade}
-            data={relatorio}
-            onAcervoChanged={() => void loadAcervo(cidade)}
-          />
+          <>
+            {error ? <TseErro>{error}</TseErro> : null}
+            {bloco === 'capa' ? (
+              <CapaSection cidade={cidade} data={relatorio} />
+            ) : bloco === 'emendas' ? (
+              <EmendasSection cidade={cidade} data={relatorio} />
+            ) : bloco === 'obras' ? (
+              <ObrasSection cidade={cidade} data={relatorio} />
+            ) : (
+              <AcervoSection cidade={cidade} data={relatorio} onAcervoChanged={() => void loadAcervo(cidade)} />
+            )}
+          </>
         )}
       </div>
     </div>
   )
 }
 
-function CapaSection({
-  cidade,
-  data,
-  onGo,
+function Faixa({
+  titulo,
+  selo,
+  resumo,
+  children,
 }: {
-  cidade: string
-  data: RelatorioExecutivoMunicipio
-  onGo: (b: BlocoId) => void
+  titulo: string
+  selo: string
+  resumo: ReactNode
+  children: ReactNode
 }) {
   return (
-    <article className="wr-relatorio-exec__sheet">
-      <header className="wr-relatorio-exec__sheet-head">
-        <p className="wr-relatorio-exec__eyebrow">Cockpit 2026</p>
-        <h3 className="wr-relatorio-exec__sheet-title">
-          {cidade.toUpperCase()} <span>|</span> RELATÓRIO EXECUTIVO
-        </h3>
-        <p className="wr-relatorio-exec__sheet-sub">
-          Emendas federais e obras/ações — valores apresentados separadamente para
-          evitar dupla contagem
-        </p>
-      </header>
-
-      <div className="wr-relatorio-exec__hero-kpis">
-        <div className="wr-relatorio-exec__hero-kpi">
-          <p className="wr-relatorio-exec__hero-value">
-            {formatRelatorioBrl(data.emendasTotalIndicado)}
-          </p>
-          <p className="wr-relatorio-exec__hero-label">EMENDAS FEDERAIS</p>
-          <p className="wr-relatorio-exec__hero-hint">
-            Valor indicado · {data.emendasCount} registro
-            {data.emendasCount === 1 ? '' : 's'}
-          </p>
+    <section className="flex flex-wrap items-center gap-x-10 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+      <div className="min-w-[200px] flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[20px] font-bold uppercase">{titulo}</div>
+          <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+            {selo}
+          </span>
         </div>
-        <div className="wr-relatorio-exec__hero-kpi">
-          <p className="wr-relatorio-exec__hero-value">
-            {formatRelatorioBrl(data.obrasValorMapeado)}
-          </p>
-          <p className="wr-relatorio-exec__hero-label">OBRAS E AÇÕES</p>
-          <p className="wr-relatorio-exec__hero-hint">
-            Somente registros com valor informado · {data.obrasCount} registro
-            {data.obrasCount === 1 ? '' : 's'}
-          </p>
-        </div>
+        <div className="text-[14px] text-[var(--tse-muted)]">{resumo}</div>
       </div>
-
-      <section className="wr-relatorio-exec__section">
-        <h4 className="wr-relatorio-exec__section-title">
-          POR ANO › STATUS (EMENDAS E OBRAS SEPARADAS)
-        </h4>
-        {data.porAno.length === 0 ? (
-          <p className="wr-relatorio-exec__empty">Sem registros no município.</p>
-        ) : (
-          <div className="wr-relatorio-exec__anos">
-            {data.porAno.map((ano) => (
-              <article key={String(ano.ano)} className="wr-relatorio-exec__ano-card">
-                <header className="wr-relatorio-exec__ano-head">
-                  <h5 className="wr-relatorio-exec__ano-title">{ano.ano}</h5>
-                </header>
-                <div className="wr-relatorio-exec__ano-body">
-                  <div className="wr-relatorio-exec__ano-block">
-                    <div className="wr-relatorio-exec__ano-block-head">
-                      <span>EMENDAS FEDERAIS</span>
-                      <strong className="tabular-nums">
-                        {ano.emendasSemRegistro
-                          ? 'SEM REGISTROS'
-                          : formatRelatorioBrl(ano.emendasTotal)}
-                      </strong>
-                    </div>
-                    {ano.emendasSemRegistro ? (
-                      <p className="wr-relatorio-exec__muted">Sem registros no período.</p>
-                    ) : (
-                      <ul className="wr-relatorio-exec__status-list">
-                        {ano.emendasPorStatus.map((s) => (
-                          <li key={s.status}>
-                            <StatusPill
-                              status={s.status}
-                              tone={toneStatusRelatorio(s.status)}
-                            />
-                            <span className="wr-relatorio-exec__status-valor tabular-nums">
-                              {formatRelatorioBrl(s.valor)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="wr-relatorio-exec__ano-block">
-                    <div className="wr-relatorio-exec__ano-block-head">
-                      <span>OBRAS E AÇÕES</span>
-                      <strong className="tabular-nums">
-                        {ano.obrasPorStatus.length === 0
-                          ? 'SEM REGISTROS'
-                          : ano.obrasSemValor && ano.obrasTotal === 0
-                            ? 'SEM VALOR'
-                            : formatRelatorioBrl(ano.obrasTotal)}
-                      </strong>
-                    </div>
-                    {ano.obrasPorStatus.length === 0 ? (
-                      <p className="wr-relatorio-exec__muted">Sem registros no período.</p>
-                    ) : (
-                      <ul className="wr-relatorio-exec__status-list">
-                        {ano.obrasPorStatus.map((s) => (
-                          <li key={s.status}>
-                            <StatusPill
-                              status={s.status}
-                              tone={toneStatusRelatorio(s.status)}
-                            />
-                            <span className="wr-relatorio-exec__status-valor tabular-nums">
-                              {formatRelatorioBrlCompact(s.valor)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="wr-relatorio-exec__blocos-nav">
-        <button type="button" className="wr-relatorio-exec__bloco-card" onClick={() => onGo('emendas')}>
-          <span className="wr-relatorio-exec__bloco-id">BLOCO 01</span>
-          <span className="wr-relatorio-exec__bloco-name">
-            Emendas federais — {data.emendasCount} registro
-            {data.emendasCount === 1 ? '' : 's'}
-          </span>
-        </button>
-        <button type="button" className="wr-relatorio-exec__bloco-card" onClick={() => onGo('obras')}>
-          <span className="wr-relatorio-exec__bloco-id">BLOCO 02</span>
-          <span className="wr-relatorio-exec__bloco-name">
-            Obras e ações — {data.obrasCount} registro
-            {data.obrasCount === 1 ? '' : 's'}
-          </span>
-        </button>
-        <button type="button" className="wr-relatorio-exec__bloco-card" onClick={() => onGo('acervo')}>
-          <span className="wr-relatorio-exec__bloco-id">BLOCO 03</span>
-          <span className="wr-relatorio-exec__bloco-name">
-            Acervo — {data.acervo.length > 0 ? `${data.acervo.length} item(ns)` : 'a preencher'}
-          </span>
-        </button>
-      </div>
-
-      <p className="wr-relatorio-exec__footnote">
-        Emendas e obras não são somadas entre si para evitar dupla contagem de um
-        mesmo investimento. {cidade} · Cockpit 2026
-      </p>
-    </article>
+      {children}
+    </section>
   )
 }
 
-function EmendasSection({
-  cidade,
-  data,
-}: {
-  cidade: string
-  data: RelatorioExecutivoMunicipio
-}) {
+function Numero({ valor, rotulo }: { valor: ReactNode; rotulo: ReactNode }) {
   return (
-    <article className="wr-relatorio-exec__sheet">
-      <header className="wr-relatorio-exec__sheet-head">
-        <h3 className="wr-relatorio-exec__sheet-title">
-          {cidade.toUpperCase()} <span>|</span> EMENDAS FEDERAIS
-        </h3>
-        <p className="wr-relatorio-exec__sheet-sub">
-          {data.emendasCount} registro{data.emendasCount === 1 ? '' : 's'} · Indicado:{' '}
-          {formatRelatorioBrl(data.emendasTotais.indicado)}
-        </p>
-      </header>
+    <div className="text-right">
+      <div className="text-[26px] font-black leading-tight tabular-nums">{valor}</div>
+      <div className="text-[13px] text-[var(--tse-muted)]">{rotulo}</div>
+    </div>
+  )
+}
 
-      <div className="wr-relatorio-exec__mini-kpis">
-        <div>
-          <p className="wr-relatorio-exec__mini-value">
-            {formatRelatorioBrl(data.emendasTotais.indicado)}
-          </p>
-          <p className="wr-relatorio-exec__mini-label">INDICADOS</p>
+type AnoDoTipo = {
+  ano: number | string
+  itens: RelatorioStatusValor[]
+  total: number
+  semValor: boolean
+}
+
+function CartaoTipo({
+  titulo,
+  icone: Icone,
+  cor,
+  anos,
+  rotuloTotal,
+}: {
+  titulo: string
+  icone: ComponentType<{ className?: string }>
+  cor: string
+  anos: AnoDoTipo[]
+  rotuloTotal: string
+}) {
+  const comRegistro = anos.filter((a) => a.itens.length > 0)
+  const totalGeral = comRegistro.reduce((acc, a) => acc + a.total, 0)
+  const registros = comRegistro.reduce((acc, a) => acc + a.itens.reduce((n, s) => n + s.count, 0), 0)
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+      <div
+        className="flex items-center justify-between gap-3 border-b border-[#EEEEEE] px-4 py-3"
+        style={{ boxShadow: `inset 4px 0 0 ${cor}` }}
+      >
+        <div className="flex items-center gap-2">
+          <Icone className="h-5 w-5 text-[var(--tse-muted)]" />
+          <div className="text-[15px] font-bold uppercase tracking-wide">{titulo}</div>
         </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value">
-            {formatRelatorioBrl(data.emendasTotais.empenhado)}
-          </p>
-          <p className="wr-relatorio-exec__mini-label">EMPENHADOS</p>
-        </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value">
-            {formatRelatorioBrl(data.emendasTotais.pago)}
-          </p>
-          <p className="wr-relatorio-exec__mini-label">PAGOS</p>
-        </div>
+        {registros > 0 ? (
+          <div className="text-[12px] text-[var(--tse-muted)]">{plural(registros, 'registro', 'registros')}</div>
+        ) : null}
       </div>
 
-      {data.emendas.length === 0 ? (
-        <p className="wr-relatorio-exec__empty">Nenhuma emenda neste município.</p>
+      {comRegistro.length === 0 ? (
+        <div className="px-4 py-4 text-[13px] text-[var(--tse-muted)]">Sem registros no município.</div>
       ) : (
-        <div className="wr-relatorio-exec__table-wrap">
-          <table className="wr-relatorio-exec__table">
-            <thead>
+        <>
+          <div className="divide-y divide-[#EEEEEE]">
+            {comRegistro.map((a) => (
+              <div key={String(a.ano)} className="px-4 py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="text-[18px] font-black leading-none tabular-nums">{a.ano}</div>
+                  <div className="ml-auto whitespace-nowrap text-[13px]">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                      Subtotal {a.ano}{' '}
+                    </span>
+                    <span className="font-bold tabular-nums">
+                      {a.semValor && a.total === 0 ? 'Sem valor informado' : formatRelatorioBrl(a.total)}
+                    </span>
+                  </div>
+                </div>
+                <ul className="mt-2 space-y-1 border-l-2 border-[#EEEEEE] pl-3">
+                  {a.itens.map((s) => (
+                    <li key={s.status} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 text-[13px]">
+                      <TseStatus cor={corStatusRelatorio(s.status)}>{s.status}</TseStatus>
+                      <span className="text-[11px] text-[var(--tse-muted)]">
+                        {plural(s.count, 'registro', 'registros')}
+                      </span>
+                      <span
+                        className={cn(
+                          'ml-auto whitespace-nowrap tabular-nums',
+                          s.valor > 0 ? 'font-medium' : 'text-[12px] text-[var(--tse-muted)]',
+                        )}
+                      >
+                        {s.valor > 0 ? formatRelatorioBrl(s.valor) : 'Sem valor informado'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-3">
+            <span className="text-[13px] font-bold uppercase tracking-wide">{rotuloTotal}</span>
+            <span className="ml-auto whitespace-nowrap text-[18px] font-black tabular-nums">
+              {formatRelatorioBrl(totalGeral)}
+            </span>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function Rodape({ children }: { children: ReactNode }) {
+  return <div className="text-[11px] text-[var(--tse-muted)]">{children}</div>
+}
+
+function CapaSection({ cidade, data }: { cidade: string; data: RelatorioExecutivoMunicipio }) {
+  return (
+    <div className="space-y-4">
+      <Faixa
+        titulo="Relatório executivo"
+        selo={cidade}
+        resumo="Emendas federais e obras/ações apresentadas separadamente para evitar dupla contagem"
+      >
+        <Numero
+          valor={formatRelatorioBrl(data.emendasTotalIndicado)}
+          rotulo={`emendas federais · ${plural(data.emendasCount, 'registro', 'registros')}`}
+        />
+        <Numero
+          valor={formatRelatorioBrl(data.obrasValorMapeado)}
+          rotulo={`obras e ações · ${plural(data.obrasCount, 'registro', 'registros')}`}
+        />
+      </Faixa>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <CartaoTipo
+          titulo="Emendas federais"
+          icone={Landmark}
+          cor="var(--tse-yellow)"
+          rotuloTotal="Total de emendas"
+          anos={data.porAno.map((a) => ({
+            ano: a.ano,
+            itens: a.emendasSemRegistro ? [] : a.emendasPorStatus,
+            total: a.emendasTotal,
+            semValor: false,
+          }))}
+        />
+        <CartaoTipo
+          titulo="Obras e ações"
+          icone={HardHat}
+          cor="var(--tse-olive)"
+          rotuloTotal="Total de obras e ações"
+          anos={data.porAno.map((a) => ({
+            ano: a.ano,
+            itens: a.obrasPorStatus,
+            total: a.obrasTotal,
+            semValor: a.obrasSemValor,
+          }))}
+        />
+      </div>
+
+      <Rodape>
+        Emendas e obras não são somadas entre si para evitar dupla contagem de um mesmo investimento. {cidade} ·
+        Cockpit 2026
+      </Rodape>
+    </div>
+  )
+}
+
+function EmendasSection({ cidade, data }: { cidade: string; data: RelatorioExecutivoMunicipio }) {
+  const t = data.emendasTotais
+  const pctPago = t.indicado > 0 ? (t.pago / t.indicado) * 100 : 0
+  return (
+    <div className="space-y-4">
+      <Faixa
+        titulo="Emendas federais"
+        selo={cidade}
+        resumo={`${plural(data.emendasCount, 'registro', 'registros')} · indicado ${formatRelatorioBrl(t.indicado)}`}
+      >
+        <Numero valor={formatRelatorioBrl(t.indicado)} rotulo="indicados" />
+        <Numero valor={formatRelatorioBrl(t.empenhado)} rotulo="empenhados" />
+        <Numero valor={formatRelatorioBrl(t.pago)} rotulo="pagos" />
+        <div className="w-full">
+          <TseBarraRotulo
+            pct={pctPago}
+            rotulo={`${pctPago.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}
+          />
+          <div className="mt-1 text-[11px] text-[var(--tse-muted)]">Pago sobre o indicado</div>
+        </div>
+      </Faixa>
+
+      {data.emendas.length === 0 ? (
+        <TseVazio>Nenhuma emenda neste município.</TseVazio>
+      ) : (
+        <div className={tseTabela.container}>
+          <table className={tseTabela.table} data-tse-tabela>
+            <thead className={tseTabela.thead}>
               <tr>
-                <th>ANO</th>
-                <th>EMENDA</th>
-                <th>OBJETO</th>
-                <th className="wr-relatorio-exec__num">INDICADO</th>
-                <th className="wr-relatorio-exec__num">EMPENHADO</th>
-                <th className="wr-relatorio-exec__num">PAGO</th>
-                <th>STATUS</th>
+                <th className={tseTabela.th}>Ano</th>
+                <th className={tseTabela.th}>Emenda</th>
+                <th className={tseTabela.th}>Objeto</th>
+                <th className={cn(tseTabela.th, 'text-right')}>Indicado</th>
+                <th className={cn(tseTabela.th, 'text-right')}>Empenhado</th>
+                <th className={cn(tseTabela.th, 'text-right')}>Pago</th>
+                <th className={tseTabela.th}>Status</th>
               </tr>
             </thead>
             <tbody>
               {data.emendas.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.exercicio ?? '—'}</td>
-                  <td>{row.emenda}</td>
-                  <td>{row.objeto}</td>
-                  <td className="wr-relatorio-exec__num tabular-nums">
+                <tr key={row.id} className={tseTabela.tr}>
+                  <td className={cn(tseTabela.td, 'tabular-nums')}>{row.exercicio ?? '—'}</td>
+                  <td className={cn(tseTabela.td, 'font-semibold')}>{row.emenda}</td>
+                  <td className={tseTabela.td}>{row.objeto}</td>
+                  <td className={cn(tseTabela.td, 'text-right font-bold tabular-nums')}>
                     {row.indicado > 0 ? formatRelatorioBrl(row.indicado) : '—'}
                   </td>
-                  <td className="wr-relatorio-exec__num tabular-nums">
+                  <td className={cn(tseTabela.td, 'text-right tabular-nums')}>
                     {row.empenhado > 0 ? formatRelatorioBrl(row.empenhado) : '—'}
                   </td>
-                  <td className="wr-relatorio-exec__num tabular-nums">
+                  <td className={cn(tseTabela.td, 'text-right tabular-nums')}>
                     {row.pago > 0 ? formatRelatorioBrl(row.pago) : '—'}
                   </td>
-                  <td>
-                    <StatusPill status={row.status} tone={toneStatusRelatorio(row.status)} />
+                  <td className={tseTabela.td}>
+                    <TseStatus cor={corStatusRelatorio(row.status)}>{row.status}</TseStatus>
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] font-bold">
+                <td colSpan={3} className="px-3 py-2.5 uppercase">
+                  Total
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatRelatorioBrl(t.indicado)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatRelatorioBrl(t.empenhado)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatRelatorioBrl(t.pago)}</td>
+                <td />
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
 
       {data.leiturasRapidas.length > 0 ? (
-        <section className="wr-relatorio-exec__section">
-          <h4 className="wr-relatorio-exec__section-title">
-            TERMOS QUE A AGÊNCIA PRECISA SABER
-          </h4>
-          <div className="wr-relatorio-exec__leituras">
+        <TseCard titulo="Termos que a agência precisa saber">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {data.leiturasRapidas.map((l) => (
-              <div key={l.id} className="wr-relatorio-exec__leitura">
-                <p className="wr-relatorio-exec__leitura-title">{l.titulo}</p>
-                <p className="wr-relatorio-exec__leitura-text">{l.texto}</p>
+              <div key={l.id} className="rounded-lg bg-[var(--tse-bar)] p-3">
+                <div className="text-[13px] font-bold">{l.titulo}</div>
+                <div className="mt-1 text-[12px] leading-relaxed text-[var(--tse-muted)]">{l.texto}</div>
               </div>
             ))}
           </div>
-        </section>
+        </TseCard>
       ) : null}
-
-      <p className="wr-relatorio-exec__footnote">Bloco 01 — Emendas Federais</p>
-    </article>
+    </div>
   )
 }
 
-function ObrasSection({
-  cidade,
-  data,
-}: {
-  cidade: string
-  data: RelatorioExecutivoMunicipio
-}) {
+function ObrasSection({ cidade, data }: { cidade: string; data: RelatorioExecutivoMunicipio }) {
   const k = data.obrasKpis
   return (
-    <article className="wr-relatorio-exec__sheet">
-      <header className="wr-relatorio-exec__sheet-head">
-        <h3 className="wr-relatorio-exec__sheet-title">
-          {cidade.toUpperCase()} <span>|</span> OBRAS, ENTREGAS E AÇÕES
-        </h3>
-        <p className="wr-relatorio-exec__sheet-sub">
-          {k.registros} registro{k.registros === 1 ? '' : 's'} · Total informado:{' '}
-          {formatRelatorioBrl(k.valorMapeado)}
-        </p>
-      </header>
-
-      <div className="wr-relatorio-exec__mini-kpis wr-relatorio-exec__mini-kpis--5">
-        <div>
-          <p className="wr-relatorio-exec__mini-value tabular-nums">{k.registros}</p>
-          <p className="wr-relatorio-exec__mini-label">REGISTROS</p>
-        </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value">
-            {formatRelatorioBrl(k.valorMapeado)}
-          </p>
-          <p className="wr-relatorio-exec__mini-label">VALOR MAPEADO</p>
-        </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value tabular-nums">{k.acoesExecutadas}</p>
-          <p className="wr-relatorio-exec__mini-label">AÇÕES EXECUTADAS</p>
-        </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value tabular-nums">{k.emExecucao}</p>
-          <p className="wr-relatorio-exec__mini-label">EM EXECUÇÃO</p>
-        </div>
-        <div>
-          <p className="wr-relatorio-exec__mini-value tabular-nums">{k.aguardando}</p>
-          <p className="wr-relatorio-exec__mini-label">AGUARDANDO</p>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <Faixa
+        titulo="Obras, entregas e ações"
+        selo={cidade}
+        resumo={`${plural(k.registros, 'registro', 'registros')} · total informado ${formatRelatorioBrl(k.valorMapeado)}`}
+      >
+        <Numero valor={formatRelatorioBrl(k.valorMapeado)} rotulo="valor mapeado" />
+        <Numero valor={fmt(k.acoesExecutadas)} rotulo="executadas" />
+        <Numero valor={fmt(k.emExecucao)} rotulo="em execução" />
+        <Numero valor={fmt(k.aguardando)} rotulo="aguardando" />
+      </Faixa>
 
       {data.obrasPorTipo.length === 0 ? (
-        <p className="wr-relatorio-exec__empty">Nenhuma obra/ação neste município.</p>
+        <TseVazio>Nenhuma obra ou ação neste município.</TseVazio>
       ) : (
-        <div className="wr-relatorio-exec__tipos">
-          {data.obrasPorTipo.map((bloco) => (
-            <section key={bloco.tipoKey} className="wr-relatorio-exec__tipo">
-              <header className="wr-relatorio-exec__tipo-head">
-                <h4>
-                  {bloco.tipoLabel.toUpperCase()}{' '}
-                  <span>
-                    {bloco.count} registro{bloco.count === 1 ? '' : 's'} |{' '}
-                    {formatRelatorioBrl(bloco.valor)}
-                  </span>
-                </h4>
-              </header>
-              <ul className="wr-relatorio-exec__obra-list">
-                {bloco.obras.map((obra) => {
+        <div className="grid gap-4 xl:grid-cols-2">
+          {data.obrasPorTipo.map((grupo) => (
+            <TseCard
+              key={grupo.tipoKey}
+              titulo={grupo.tipoLabel}
+              subtitulo={`${plural(grupo.count, 'registro', 'registros')} · ${formatRelatorioBrl(grupo.valor)}`}
+            >
+              <ul className="mt-3 divide-y divide-[#EEEEEE]">
+                {grupo.obras.map((obra) => {
                   const valor = valorExibidoMapaObra(obra)
-                  const status = (obra.status ?? 'SEM STATUS').trim().toUpperCase() || 'SEM STATUS'
+                  const status = (obra.status ?? '').trim().toUpperCase() || 'SEM STATUS'
                   return (
-                    <li key={obra.id}>
-                      <div className="wr-relatorio-exec__obra-main">
-                        <StatusPill status={status} tone={toneStatusRelatorio(status)} />
-                        <span className="wr-relatorio-exec__obra-title">
-                          {obra.obra?.trim() || obra.tipo?.trim() || 'Sem título'}
-                        </span>
+                    <li key={obra.id} className="flex items-center justify-between gap-3 py-2 text-[13px]">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <TseStatus cor={corStatusRelatorio(status)}>{status}</TseStatus>
+                        <span className="truncate">{obra.obra?.trim() || obra.tipo?.trim() || 'Sem título'}</span>
                       </div>
-                      <span className="wr-relatorio-exec__obra-valor tabular-nums">
-                        {valor != null && valor > 0
-                          ? formatRelatorioBrl(valor)
-                          : 'SEM VALOR'}
+                      <span
+                        className={cn(
+                          'shrink-0 font-bold tabular-nums',
+                          !(valor != null && valor > 0) && 'font-semibold text-[var(--tse-muted)]',
+                        )}
+                      >
+                        {valor != null && valor > 0 ? formatRelatorioBrl(valor) : 'Sem valor'}
                       </span>
                     </li>
                   )
                 })}
               </ul>
-            </section>
+            </TseCard>
           ))}
         </div>
       )}
-
-      <p className="wr-relatorio-exec__footnote">Bloco 02 — Obras, Entregas e Ações</p>
-    </article>
+    </div>
   )
+}
+
+type RascunhoAcervo = { url: string; label: string; titulo: string }
+
+function acervoItemKey(item: RelatorioAcervoItem): string {
+  if (item.id) return `id:${item.id}`
+  if (item.obraId) return `obra:${item.obraId}`
+  return `tmp:${item.titulo}`
 }
 
 function AcervoSection({
@@ -725,31 +592,26 @@ function AcervoSection({
   data: RelatorioExecutivoMunicipio
   onAcervoChanged: () => void
 }) {
-  const [drafts, setDrafts] = useState<
-    Record<string, { url: string; label: string; titulo: string }>
-  >({})
+  const [drafts, setDrafts] = useState<Record<string, RascunhoAcervo>>({})
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [novoTitulo, setNovoTitulo] = useState('')
-  const [novoUrl, setNovoUrl] = useState('')
-  const [novoLabel, setNovoLabel] = useState('')
-  const [adding, setAdding] = useState(false)
+  const [novoTitulo, setNovoTitulo] = useState<string>('')
+  const [novoUrl, setNovoUrl] = useState<string>('')
+  const [novoLabel, setNovoLabel] = useState<string>('')
+  const [adding, setAdding] = useState<boolean>(false)
 
   useEffect(() => {
-    const next: Record<string, { url: string; label: string; titulo: string }> =
-      {}
+    const next: Record<string, RascunhoAcervo> = {}
     for (const item of data.acervo) {
-      const key = acervoItemKey(item)
-      next[key] = {
-        url: item.driveUrl ?? '',
-        label: item.driveName ?? '',
-        titulo: item.titulo,
-      }
+      next[acervoItemKey(item)] = { url: item.driveUrl ?? '', label: item.driveName ?? '', titulo: item.titulo }
     }
     setDrafts(next)
     setMsg(null)
   }, [data.acervo, cidade])
+
+  const atualizarDraft = (key: string, atual: RascunhoAcervo, campo: keyof RascunhoAcervo, valor: string) =>
+    setDrafts((prev) => ({ ...prev, [key]: { ...atual, [campo]: valor } }))
 
   const salvarItem = async (item: RelatorioAcervoItem) => {
     const key = acervoItemKey(item)
@@ -763,26 +625,15 @@ function AcervoSection({
     setSavingKey(key)
     setMsg(null)
     try {
-      const res = await fetch('/api/war-room/relatorio-executivo/acervo', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: item.id,
-          municipio: cidade,
-          obraId: item.obraId,
-          titulo: draft.titulo.trim() || item.titulo,
-          status: item.status,
-          url,
-          label: draft.label.trim() || null,
-        }),
+      await salvarAcervoRelatorio({
+        id: item.id,
+        municipio: cidade,
+        obraId: item.obraId,
+        titulo: draft.titulo.trim() || item.titulo,
+        status: item.status,
+        url,
+        label: draft.label.trim() || null,
       })
-      const json = (await res.json().catch(() => null)) as {
-        error?: string
-        setupRequired?: boolean
-      } | null
-      if (!res.ok) {
-        throw new Error(json?.error ?? 'Falha ao salvar link')
-      }
       setMsg('Link salvo.')
       onAcervoChanged()
     } catch (e) {
@@ -797,12 +648,7 @@ function AcervoSection({
     setRemovingId(item.id)
     setMsg(null)
     try {
-      const res = await fetch(
-        `/api/war-room/relatorio-executivo/acervo?id=${encodeURIComponent(item.id)}`,
-        { method: 'DELETE' },
-      )
-      const json = (await res.json().catch(() => null)) as { error?: string } | null
-      if (!res.ok) throw new Error(json?.error ?? 'Falha ao remover')
+      await removerAcervoRelatorio(item.id)
       setMsg('Link removido.')
       onAcervoChanged()
     } catch (e) {
@@ -822,19 +668,7 @@ function AcervoSection({
     setAdding(true)
     setMsg(null)
     try {
-      const res = await fetch('/api/war-room/relatorio-executivo/acervo', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          municipio: cidade,
-          titulo,
-          status: 'ACERVO',
-          url,
-          label: novoLabel.trim() || null,
-        }),
-      })
-      const json = (await res.json().catch(() => null)) as { error?: string } | null
-      if (!res.ok) throw new Error(json?.error ?? 'Falha ao adicionar')
+      await salvarAcervoRelatorio({ municipio: cidade, titulo, status: 'ACERVO', url, label: novoLabel.trim() || null })
       setNovoTitulo('')
       setNovoUrl('')
       setNovoLabel('')
@@ -848,199 +682,155 @@ function AcervoSection({
   }
 
   return (
-    <article className="wr-relatorio-exec__sheet">
-      <header className="wr-relatorio-exec__sheet-head">
-        <h3 className="wr-relatorio-exec__sheet-title">
-          {cidade.toUpperCase()} <span>|</span> ACERVO FOTOGRÁFICO E DOCUMENTAÇÃO
-        </h3>
-        <p className="wr-relatorio-exec__sheet-sub">
-          Links do repositório editáveis e salvos no banco · clicáveis no PDF ·
-          Bloco 03 — Comunicação
-        </p>
-      </header>
+    <div className="space-y-4">
+      <Faixa
+        titulo="Acervo fotográfico e documentação"
+        selo={cidade}
+        resumo="Links do repositório salvos no banco e clicáveis no PDF"
+      >
+        <Numero valor={fmt(data.acervo.length)} rotulo={data.acervo.length === 1 ? 'item' : 'itens'} />
+      </Faixa>
 
-      {msg ? <p className="wr-relatorio-exec__acervo-msg">{msg}</p> : null}
+      {msg ? (
+        <div className="rounded-xl border border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-2.5 text-[13px] font-semibold">
+          {msg}
+        </div>
+      ) : null}
 
       {data.acervo.length === 0 ? (
-        <div className="wr-relatorio-exec__acervo-empty">
-          <p className="wr-relatorio-exec__empty">Acervo — a preencher</p>
-          <p className="wr-relatorio-exec__muted">
-            Adicione um link abaixo ou salve URLs nas obras finalizadas quando
-            elas aparecerem neste bloco.
-          </p>
-        </div>
+        <TseVazio>
+          Acervo a preencher. Adicione um link abaixo ou salve URLs nas obras finalizadas quando elas aparecerem
+          aqui.
+        </TseVazio>
       ) : (
-        <>
-          <div className="wr-relatorio-exec__acervo-grid">
-            {data.acervo.map((item) => {
-              const key = acervoItemKey(item)
-              const draft = drafts[key] ?? {
-                url: item.driveUrl ?? '',
-                label: item.driveName ?? '',
-                titulo: item.titulo,
-              }
-              const saving = savingKey === key
-              return (
-                <div key={key} className="wr-relatorio-exec__acervo-card">
-                  <label className="wr-relatorio-exec__acervo-field">
-                    <span>Título</span>
-                    <input
-                      type="text"
-                      value={draft.titulo}
-                      onChange={(e) =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [key]: { ...draft, titulo: e.target.value },
-                        }))
-                      }
-                    />
-                  </label>
-                  <p className="wr-relatorio-exec__muted">{item.status}</p>
-                  <label className="wr-relatorio-exec__acervo-field">
-                    <span>URL do repositório</span>
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/..."
-                      value={draft.url}
-                      onChange={(e) =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [key]: { ...draft, url: e.target.value },
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="wr-relatorio-exec__acervo-field">
-                    <span>Texto do link (PDF)</span>
-                    <input
-                      type="text"
-                      placeholder="Abrir repositório"
-                      value={draft.label}
-                      onChange={(e) =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [key]: { ...draft, label: e.target.value },
-                        }))
-                      }
-                    />
-                  </label>
-                  <div className="wr-relatorio-exec__acervo-actions">
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          {data.acervo.map((item) => {
+            const key = acervoItemKey(item)
+            const draft = drafts[key] ?? { url: item.driveUrl ?? '', label: item.driveName ?? '', titulo: item.titulo }
+            const saving = savingKey === key
+            return (
+              <section key={key} className={cn(tseCardClass, 'space-y-3')}>
+                <div className="flex items-center justify-between gap-2">
+                  <TseStatus cor={corStatusRelatorio(item.status)}>{item.status}</TseStatus>
+                  {item.id ? (
                     <button
                       type="button"
-                      className="wr-relatorio-exec__acervo-btn"
-                      disabled={saving}
-                      onClick={() => void salvarItem(item)}
+                      disabled={removingId === item.id}
+                      onClick={() => void removerItem(item)}
+                      title="Remover link salvo"
+                      aria-label="Remover link salvo"
+                      className="rounded-md p-1.5 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[#B42318] disabled:opacity-60"
                     >
-                      {saving ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+                      {removingId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Save className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <Trash2 className="h-4 w-4" />
                       )}
-                      Salvar
                     </button>
-                    {draft.url.trim() ? (
-                      <a
-                        href={draft.url.trim()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="wr-relatorio-exec__acervo-btn wr-relatorio-exec__acervo-btn--ghost"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        Abrir
-                      </a>
-                    ) : null}
-                    {item.id ? (
-                      <button
-                        type="button"
-                        className="wr-relatorio-exec__acervo-btn wr-relatorio-exec__acervo-btn--ghost"
-                        disabled={removingId === item.id}
-                        onClick={() => void removerItem(item)}
-                        title="Remover link salvo"
-                      >
-                        {removingId === item.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        )}
-                      </button>
-                    ) : null}
-                  </div>
+                  ) : null}
                 </div>
-              )
-            })}
-          </div>
-
-          <section className="wr-relatorio-exec__section">
-            <h4 className="wr-relatorio-exec__section-title">
-              RELAÇÃO COM O BLOCO DE OBRAS E AÇÕES
-            </h4>
-            <ul className="wr-relatorio-exec__relacao">
-              {data.acervo.map((item) => (
-                <li key={`rel-${acervoItemKey(item)}`}>
-                  <span>{item.titulo}</span>
-                  <StatusPill status={item.status} tone={toneStatusRelatorio(item.status)} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
+                <label className="block">
+                  <span className={tseRotuloCampoClass}>Título</span>
+                  <input
+                    type="text"
+                    value={draft.titulo}
+                    onChange={(e) => atualizarDraft(key, draft, 'titulo', e.target.value)}
+                    className={tseCampoClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className={tseRotuloCampoClass}>URL do repositório</span>
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/..."
+                    value={draft.url}
+                    onChange={(e) => atualizarDraft(key, draft, 'url', e.target.value)}
+                    className={tseCampoClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className={tseRotuloCampoClass}>Texto do link no PDF</span>
+                  <input
+                    type="text"
+                    placeholder="Abrir repositório"
+                    value={draft.label}
+                    onChange={(e) => atualizarDraft(key, draft, 'label', e.target.value)}
+                    className={tseCampoClass}
+                  />
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void salvarItem(item)}
+                    className={tseBotaoPrimarioClass}
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Salvar
+                  </button>
+                  {draft.url.trim() ? (
+                    <a
+                      href={draft.url.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={tseBotaoCinzaClass}
+                    >
+                      <ExternalLink className={tseBotaoIconeClass} />
+                      Abrir
+                    </a>
+                  ) : null}
+                </div>
+              </section>
+            )
+          })}
+        </div>
       )}
 
-      <section className="wr-relatorio-exec__section">
-        <h4 className="wr-relatorio-exec__section-title">ADICIONAR LINK AO ACERVO</h4>
-        <div className="wr-relatorio-exec__acervo-add">
-          <label className="wr-relatorio-exec__acervo-field">
-            <span>Título</span>
+      <TseCard titulo="Adicionar link ao acervo" subtitulo="Pasta de fotos, vídeos ou documentos do município">
+        <div className="mt-3 grid items-end gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Título</span>
             <input
               type="text"
               value={novoTitulo}
               onChange={(e) => setNovoTitulo(e.target.value)}
               placeholder="Ex.: Pasta de fotos da Areninha"
+              className={tseCampoClass}
             />
           </label>
-          <label className="wr-relatorio-exec__acervo-field">
-            <span>URL</span>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>URL</span>
             <input
               type="url"
               value={novoUrl}
               onChange={(e) => setNovoUrl(e.target.value)}
               placeholder="https://..."
+              className={tseCampoClass}
             />
           </label>
-          <label className="wr-relatorio-exec__acervo-field">
-            <span>Texto do link</span>
+          <label className="block">
+            <span className={tseRotuloCampoClass}>Texto do link</span>
             <input
               type="text"
               value={novoLabel}
               onChange={(e) => setNovoLabel(e.target.value)}
               placeholder="Abrir repositório"
+              className={tseCampoClass}
             />
           </label>
           <button
             type="button"
-            className="wr-relatorio-exec__acervo-btn"
             disabled={adding}
             onClick={() => void adicionarLivre()}
+            className={cn(tseBotaoPrimarioClass, 'h-9')}
           >
-            {adding ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
-            )}
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Adicionar
           </button>
         </div>
-      </section>
+      </TseCard>
 
-      <p className="wr-relatorio-exec__footnote">
-        {cidade} — Acervo de Comunicação
-      </p>
-    </article>
+      <Rodape>{cidade} · Acervo de comunicação · Bloco 03 do PDF</Rodape>
+    </div>
   )
-}
-
-function acervoItemKey(item: RelatorioAcervoItem): string {
-  if (item.id) return `id:${item.id}`
-  if (item.obraId) return `obra:${item.obraId}`
-  return `tmp:${item.titulo}`
 }
