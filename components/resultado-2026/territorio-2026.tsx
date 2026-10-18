@@ -31,6 +31,13 @@ import {
 import type { ConquistaTerritorioPdf, PodioTerritorioPdf } from "./territorio-pdf-2026";
 import { CorridaTerritorial2026 } from "./corrida-territorial-2026";
 import { QuadroMunicipios2026 } from "./quadro-municipios-2026";
+import {
+  FILTROS_SITUACAO_2026,
+  filtrarVencedoresPorSituacao2026,
+  rotuloSituacao2026,
+  type FiltroSituacao2026,
+} from "@/lib/resultado-situacao-2026";
+import { SeloSituacao2026 } from "./selo-situacao-2026";
 import { CORES_PARTIDOS, abreviarCargo, corTerritorio, nomeProprio } from "./tse-ui";
 
 type ModoCor = "candidato" | "partido";
@@ -43,6 +50,7 @@ type Grupo = {
   chave: string;
   rotulo: string;
   detalhe: string;
+  situacao: string;
   cor: string;
   municipios: number;
   votos: number;
@@ -154,6 +162,7 @@ export function Territorio2026({
   const [hover, setHover] = useState<{ chave: string; x: number; y: number } | null>(null);
   const [gerandoPdf, setGerandoPdf] = useState<boolean>(false);
   const [municipioCorrida, setMunicipioCorrida] = useState<string>("");
+  const [situacao, setSituacao] = useState<FiltroSituacao2026>("todas");
   const mapaRef = useRef<HTMLDivElement>(null);
   const corridaRef = useRef<HTMLDivElement>(null);
   const ehFederal = cargo === "Deputado Federal";
@@ -172,7 +181,14 @@ export function Territorio2026({
     };
   }, []);
 
-  const vencedores = useMemo(() => vencedoresPorMunicipio2026(payload, cargo), [payload, cargo]);
+  const vencedores = useMemo(() => {
+    const limite = situacao === "todas" ? 3 : payload.candidatos.length;
+    return filtrarVencedoresPorSituacao2026(
+      vencedoresPorMunicipio2026(payload, cargo, limite),
+      (idx) => payload.candidatos[idx]?.situacao,
+      situacao,
+    );
+  }, [payload, cargo, situacao]);
   const porMunicipio = useMemo(
     () => new Map(vencedores.map((v) => [chaveMunicipio(v.nome), v])),
     [vencedores],
@@ -193,10 +209,12 @@ export function Territorio2026({
       if (!w) continue;
       const c = payload.candidatos[w.idx];
       const chave = modo === "candidato" ? String(w.idx) : c?.partido || "Sem partido";
+      const situacao = modo === "candidato" ? rotuloSituacao2026(c?.situacao) : "";
       const g = acc.get(chave) ?? {
         chave,
         rotulo: modo === "candidato" ? nomeProprio(c?.nome ?? "") : chave,
-        detalhe: modo === "candidato" ? (c?.partido ?? "") : "",
+        detalhe: modo === "candidato" ? [c?.partido ?? "", situacao].filter(Boolean).join(" · ") : "",
+        situacao,
         municipios: 0,
         votos: 0,
       };
@@ -229,6 +247,11 @@ export function Territorio2026({
     setModo(m);
     setDestaque(null);
   };
+  const definirSituacao = (id: FiltroSituacao2026) => {
+    setSituacao(id);
+    setDestaque(null);
+  };
+  const textoMapa = FILTROS_SITUACAO_2026.find((f) => f.id === situacao)?.noMapa ?? FILTROS_SITUACAO_2026[0].noMapa;
 
   const montarPodio = (): PodioTerritorioPdf[] => {
     const podio = new Map<string, PodioTerritorioPdf>();
@@ -236,9 +259,10 @@ export function Territorio2026({
       v.ranking.forEach((r, posicao) => {
         const c = payload.candidatos[r.idx];
         const chave = modo === "candidato" ? String(r.idx) : c?.partido || "Sem partido";
+        const situacao = modo === "candidato" ? rotuloSituacao2026(c?.situacao) : "";
         const item = podio.get(chave) ?? {
           rotulo: modo === "candidato" ? nomeProprio(c?.nome ?? "") : chave,
-          detalhe: modo === "candidato" ? (c?.partido ?? "") : "",
+          detalhe: modo === "candidato" ? [c?.partido ?? "", situacao].filter(Boolean).join(" · ") : "",
           cor: corPorChave.get(chave) ?? null,
           primeiros: 0,
           segundos: 0,
@@ -304,7 +328,9 @@ export function Territorio2026({
               const [primeiro, segundo, terceiro] = v.ranking;
               const rotuloColocado = (idx: number | undefined) => {
                 const c = idx == null ? undefined : payload.candidatos[idx];
-                return c ? `${nomeProprio(c.nome)} (${c.partido ?? ""})` : "";
+                if (!c) return "";
+                const situacao = rotuloSituacao2026(c.situacao);
+                return `${nomeProprio(c.nome)} (${[c.partido ?? "", situacao].filter(Boolean).join(" · ")})`;
               };
               return {
                 nome: v.nome,
@@ -340,7 +366,13 @@ export function Territorio2026({
 
   return (
     <div className="space-y-5">
-      <QuadroMunicipios2026 payload={payload} cargo={cargo} onAbrirMunicipio={onAbrirMunicipio} />
+      <QuadroMunicipios2026
+        payload={payload}
+        cargo={cargo}
+        situacao={situacao}
+        onSituacao={definirSituacao}
+        onAbrirMunicipio={onAbrirMunicipio}
+      />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className={`${tseCardClass} relative`}>
@@ -348,7 +380,7 @@ export function Territorio2026({
             <div>
               <h2 className="text-[15px] font-bold">Domínio territorial · {cargo}</h2>
               <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">
-                Mais votado em cada município · passe o mouse para ver votos e fatia do vencedor
+                {textoMapa} · passe o mouse para ver votos e fatia do vencedor
               </p>
             </div>
             <div className="flex items-center gap-2 text-[12px] text-[var(--tse-muted)]">
@@ -362,7 +394,7 @@ export function Territorio2026({
               viewBox={`0 0 ${LARGURA} ${mapa.altura}`}
               className="mx-auto block h-[min(78vh,880px)] w-auto max-w-full"
               role="img"
-              aria-label={`Mapa do Piauí com o mais votado para ${cargo} em cada município`}
+              aria-label={`Mapa do Piauí: ${textoMapa.toLowerCase()} para ${cargo}`}
             >
               {mapa.formas.map((f) => {
                 const v = porMunicipio.get(f.chave);
@@ -414,8 +446,8 @@ export function Territorio2026({
               </button>
             </div>
             <p className="mt-0.5 text-[11px] text-[var(--tse-muted)]">
-              {grupos.length} {modo === "candidato" ? "candidatos" : "partidos"} com ao menos um município · clique
-              para destacar no mapa
+              {grupos.length} {modo === "candidato" ? "candidatos" : "partidos"} com ao menos um município · E eleito, S
+              suplente, N não eleito · clique para destacar no mapa
             </p>
             <ul className="mt-3 max-h-[min(70vh,760px)] space-y-1 overflow-y-auto pr-1">
               {grupos.map((g) => (
@@ -491,6 +523,7 @@ function ItemLegenda({ grupo, ativo, onClick }: { grupo: Grupo; ativo: boolean; 
           {grupo.rotulo}
           {grupo.detalhe ? <span className="ml-1 text-[var(--tse-muted)]">{grupo.detalhe}</span> : null}
         </span>
+        <SeloSituacao2026 situacao={grupo.situacao} />
         <div className="shrink-0 text-right tabular-nums leading-tight">
           <div className="font-semibold">{formatarVotos2026(grupo.votosEstado)} votos</div>
           <div className="text-[10px] text-[var(--tse-muted)]">
@@ -523,14 +556,19 @@ function ResumoMunicipio({
       <ol className="mt-2 space-y-1.5">
         {vencedor.ranking.slice(0, compacto ? 2 : 3).map((c, i) => {
           const cand = payload.candidatos[c.idx];
+          const situacao = rotuloSituacao2026(cand?.situacao);
           return (
             <li key={c.idx}>
               <div className="flex items-baseline justify-between gap-2">
-                <span className={`truncate ${i === 0 ? "font-bold" : ""}`}>
-                  {i + 1}º {nomeProprio(cand?.nome ?? "")}
-                  <span className="ml-1 text-[11px] text-[var(--tse-muted)]">
-                    {cand?.partido ?? abreviarCargo(cand?.cargo ?? "")}
+                <span className={`flex min-w-0 items-center gap-1 ${i === 0 ? "font-bold" : ""}`}>
+                  <span className="truncate">
+                    {i + 1}º {nomeProprio(cand?.nome ?? "")}
+                    <span className="ml-1 text-[11px] font-normal text-[var(--tse-muted)]">
+                      {cand?.partido ?? abreviarCargo(cand?.cargo ?? "")}
+                      {!compacto && situacao ? ` · ${situacao}` : ""}
+                    </span>
                   </span>
+                  <SeloSituacao2026 situacao={cand?.situacao} />
                 </span>
                 <span className="shrink-0 tabular-nums">
                   {formatarVotos2026(c.votos)} · {formatarPct2026(c.pct)}

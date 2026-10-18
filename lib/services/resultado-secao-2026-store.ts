@@ -4,23 +4,57 @@ import type { ResultadoSecao2026Payload } from '@/lib/resultado-secao-2026'
 import { normalizeMunicipioChaveVotacao } from '@/lib/votacao-secao'
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'resultado-secao-2026.json')
+const SITUACAO_PATH = path.join(process.cwd(), 'data', 'votacao-deputados-2026-municipio.json')
 
-let cache: { mtimeMs: number; payload: ResultadoSecao2026Payload } | null = null
+let cache: { secaoMs: number; situacaoMs: number; payload: ResultadoSecao2026Payload } | null = null
 let cacheVotosJadyel: { mtimeMs: number; porMunicipio: Map<string, number> } | null = null
 
-/** Identificador da versão atual do arquivo (muda a cada regeneração), usado como ETag. */
-export async function versaoResultadoSecao2026(): Promise<string> {
-  const { mtimeMs, size } = await fs.stat(DATA_PATH)
-  return `"r2026-${Math.round(mtimeMs)}-${size}"`
+async function mtimeSituacao(): Promise<number> {
+  try {
+    return (await fs.stat(SITUACAO_PATH)).mtimeMs
+  } catch {
+    return 0
+  }
 }
 
-/** Lê `data/resultado-secao-2026.json`, recarregando só quando o arquivo muda. */
+/** Situação no turno por `cargo|número`, do cadastro já usado nos quadros de Atendimento. */
+async function situacaoPorCandidato(): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  try {
+    const raw = JSON.parse(await fs.readFile(SITUACAO_PATH, 'utf8')) as {
+      candidatos?: Array<{ cargo?: string; numero?: string; situacao?: string }>
+    }
+    for (const c of raw.candidatos ?? []) {
+      if (c.cargo && c.numero && c.situacao) mapa.set(`${c.cargo}|${c.numero}`, c.situacao)
+    }
+  } catch {
+    return mapa
+  }
+  return mapa
+}
+
+/** Identificador da versão atual dos arquivos (muda a cada regeneração), usado como ETag. */
+export async function versaoResultadoSecao2026(): Promise<string> {
+  const { mtimeMs, size } = await fs.stat(DATA_PATH)
+  const situacaoMs = await mtimeSituacao()
+  return `"r2026-${Math.round(mtimeMs)}-${size}-${Math.round(situacaoMs)}"`
+}
+
+/** Lê `data/resultado-secao-2026.json`, recarregando só quando o arquivo ou a situação mudam. */
 export async function carregarResultadoSecao2026(): Promise<ResultadoSecao2026Payload> {
   const { mtimeMs } = await fs.stat(DATA_PATH)
-  if (cache && cache.mtimeMs === mtimeMs) return cache.payload
-  const raw = await fs.readFile(DATA_PATH, 'utf8')
-  cache = { mtimeMs, payload: JSON.parse(raw) as ResultadoSecao2026Payload }
-  return cache.payload
+  const situacaoMs = await mtimeSituacao()
+  if (cache && cache.secaoMs === mtimeMs && cache.situacaoMs === situacaoMs) return cache.payload
+  const payload = JSON.parse(await fs.readFile(DATA_PATH, 'utf8')) as ResultadoSecao2026Payload
+  const situacao = await situacaoPorCandidato()
+  if (situacao.size > 0) {
+    payload.candidatos = payload.candidatos.map((c) => ({
+      ...c,
+      situacao: c.situacao || situacao.get(`${c.cargo}|${c.numero}`) || '',
+    }))
+  }
+  cache = { secaoMs: mtimeMs, situacaoMs, payload }
+  return payload
 }
 
 function indiceJadyel(payload: ResultadoSecao2026Payload): number {
@@ -45,7 +79,7 @@ export async function votosJadyelPorMunicipio2026(): Promise<Map<string, number>
   } catch {
     return new Map()
   }
-  const mtimeMs = cache?.mtimeMs ?? 0
+  const mtimeMs = cache?.secaoMs ?? 0
   if (cacheVotosJadyel && cacheVotosJadyel.mtimeMs === mtimeMs) return cacheVotosJadyel.porMunicipio
 
   const idx = indiceJadyel(payload)

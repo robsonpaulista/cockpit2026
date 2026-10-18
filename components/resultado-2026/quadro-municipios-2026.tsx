@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileSpreadsheet, FileText } from "lucide-react";
 import {
   TseBusca,
   TseCard,
   TseSegmentado,
   TseThOrdenavel,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
   tseLinkAcaoClass,
   tseTabela,
 } from "@/components/tse/tse-ui";
@@ -17,7 +19,16 @@ import {
   type LinhaQuadroMunicipio2026,
   type ResultadoSecao2026Payload,
 } from "@/lib/resultado-secao-2026";
+import { getTerritorioDesenvolvimentoPI } from "@/lib/piaui-territorio-desenvolvimento";
 import { quadroPorTerritorio2026, type TerritorioQuadro2026 } from "@/lib/resultado-territorios-2026";
+import type { CelulaQuadroExport2026, LinhaQuadroExport2026 } from "./quadro-municipios-export-2026";
+import {
+  FILTROS_SITUACAO_2026,
+  filtrarQuadroPorSituacao2026,
+  rotuloSituacao2026,
+  type FiltroSituacao2026,
+} from "@/lib/resultado-situacao-2026";
+import { SeloSituacao2026 } from "./selo-situacao-2026";
 import { abreviarNomeCandidato, nomeProprio, normalizarTexto, siglaCargo } from "./tse-ui";
 
 type QtdColunas = "5" | "10" | "15" | "20";
@@ -45,10 +56,14 @@ const somaTop = (votos: number[], posicoes: number[], n: number): number =>
 export function QuadroMunicipios2026({
   payload,
   cargo,
+  situacao,
+  onSituacao,
   onAbrirMunicipio,
 }: {
   payload: ResultadoSecao2026Payload;
   cargo: string;
+  situacao: FiltroSituacao2026;
+  onSituacao: (id: FiltroSituacao2026) => void;
   onAbrirMunicipio: (codigo: string, candidatoIdx: number) => void;
 }) {
   const [qtd, setQtd] = useState<QtdColunas>("10");
@@ -59,8 +74,13 @@ export function QuadroMunicipios2026({
   const [foco, setFoco] = useState<string>("");
   const [agrupamento, setAgrupamento] = useState<Agrupamento>("cidade");
   const [abertos, setAbertos] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const [exportando, setExportando] = useState<"pdf" | "xlsx" | null>(null);
 
-  const quadro = useMemo(() => quadroMunicipios2026(payload, cargo), [payload, cargo]);
+  const quadroCheio = useMemo(() => quadroMunicipios2026(payload, cargo), [payload, cargo]);
+  const quadro = useMemo(
+    () => filtrarQuadroPorSituacao2026(quadroCheio, (idx) => payload.candidatos[idx]?.situacao, situacao),
+    [quadroCheio, payload, situacao],
+  );
   const territorios = useMemo<TerritorioQuadro2026[]>(() => quadroPorTerritorio2026(quadro), [quadro]);
   const porTerritorio = agrupamento === "territorio";
   const focoPos = foco ? quadro.indices.indexOf(Number(foco)) : -1;
@@ -137,6 +157,8 @@ export function QuadroMunicipios2026({
 
   const sigla = siglaCargo(cargo);
   const totalEstado = quadro.totais.reduce((a, b) => a + b, 0);
+  const filtroSituacao = FILTROS_SITUACAO_2026.find((f) => f.id === situacao) ?? FILTROS_SITUACAO_2026[0];
+  const recorte = situacao === "todas" ? "" : ` · o total soma só os ${filtroSituacao.label.toLowerCase()}`;
 
   const th = (col: ColQuadro, rotulo: string, className?: string) => (
     <TseThOrdenavel
@@ -167,14 +189,19 @@ export function QuadroMunicipios2026({
     return (
       <td
         key={key}
-        title={c ? `${nomeProprio(c.nome)} · ${formatarVotos2026(votos[p])} votos` : undefined}
+        title={
+          c
+            ? `${nomeProprio(c.nome)} · ${rotuloSituacao2026(c.situacao) || "situação não informada"} · ${formatarVotos2026(votos[p])} votos`
+            : undefined
+        }
         className={cn(
           "whitespace-nowrap px-2.5 py-1.5 leading-tight",
           destaque && (focoAtivo ? "bg-[var(--tse-yellow-strong)]" : "bg-[var(--tse-yellow-soft)]"),
         )}
       >
-        <div className={cn("text-[12px]", destaque ? "font-black" : "font-semibold")}>
+        <div className={cn("flex items-center gap-1 text-[12px]", destaque ? "font-black" : "font-semibold")}>
           {abreviarNomeCandidato(c?.nome ?? "")}
+          <SeloSituacao2026 situacao={c?.situacao} />
         </div>
         <div className="text-[11px] tabular-nums text-[var(--tse-muted)]">{formatarVotos2026(votos[p])}</div>
       </td>
@@ -257,16 +284,102 @@ export function QuadroMunicipios2026({
 
   const vazio = porTerritorio ? grupos.length === 0 : linhas.length === 0;
 
+  const celulaExport = (votos: number[], ranking: number[], k: number): CelulaQuadroExport2026 => {
+    const p = ranking[k];
+    if (p == null) return { tipo: "vazio" };
+    if (focoAtivo && p !== focoPos) return { tipo: "oculta" };
+    const c = payload.candidatos[quadro.indices[p]];
+    return {
+      tipo: "voto",
+      nome: nomeProprio(c?.nome ?? ""),
+      partido: c?.partido ?? "",
+      situacao: rotuloSituacao2026(c?.situacao),
+      votos: votos[p] ?? 0,
+      destaque: focoAtivo || Boolean(c?.comparativo),
+    };
+  };
+
+  const linhaExport = (
+    nivel: LinhaQuadroExport2026["nivel"],
+    nome: string,
+    territorio: string,
+    detalhe: string,
+    votos: number[],
+    ranking: number[],
+    total: number,
+  ): LinhaQuadroExport2026 => {
+    const posicaoFoco = ranking.indexOf(focoPos);
+    return {
+    nivel,
+    nome,
+    territorio,
+    detalhe,
+    foco: !focoAtivo
+      ? null
+      : posicaoFoco < 0
+        ? { posicao: 0, votos: 0 }
+        : { posicao: posicaoFoco + 1, votos: votos[focoPos] ?? 0 },
+    celulas: posicoes.map((k) => celulaExport(votos, ranking, k)),
+    outros: total - somaTop(votos, ranking, n),
+    total,
+  };
+  };
+
+  const exportarQuadro = async (formato: "pdf" | "xlsx") => {
+    setExportando(formato);
+    try {
+      const { exportarQuadroPdf2026, exportarQuadroXlsx2026 } = await import("./quadro-municipios-export-2026");
+      const doEstado = linhaExport("estado", "Piauí", "", "", quadro.totais, rankingEstado, totalEstado);
+      const demais: LinhaQuadroExport2026[] = porTerritorio
+        ? grupos.flatMap((g) => [
+            linhaExport("territorio", g.linha.nome, g.linha.nome, `${g.cidades.length} cidades`, g.linha.votos, g.linha.ranking, g.linha.total),
+            ...g.cidades.map((c) =>
+              linhaExport(
+                "municipio",
+                c.nome,
+                g.linha.nome,
+                "",
+                c.votos,
+                c.ranking,
+                c.total,
+              ),
+            ),
+          ])
+        : linhas.map((l) =>
+            linhaExport("municipio", l.nome, getTerritorioDesenvolvimentoPI(l.nome) ?? "", "", l.votos, l.ranking, l.total),
+          );
+      const opcoes = {
+        meta: payload.meta,
+        fonteDados: payload.candidatos[0]?.fonte ?? "",
+        cargo,
+        agrupamento,
+        situacao: filtroSituacao.label,
+        busca,
+        foco: focoCandidato ? nomeProprio(focoCandidato.nome) : "",
+        colocacoes: posicoes.map((k) => `${sigla} ${k + 1}`),
+        linhas: [doEstado, ...demais],
+      };
+      if (formato === "pdf") exportarQuadroPdf2026(opcoes);
+      else exportarQuadroXlsx2026(opcoes);
+    } finally {
+      setExportando(null);
+    }
+  };
+
   return (
     <TseCard
       titulo={`Quadro por ${porTerritorio ? "território" : "município"} · ${cargo}`}
       subtitulo={
         focoCandidato
-          ? `${sigla} 1 é o mais votado da cidade · só ${nomeProprio(focoCandidato.nome)} aparece, na posição em que ficou em cada município`
-          : `${sigla} 1 é o mais votado da cidade, ${sigla} 2 o segundo e assim por diante · destaque para a referência e os parceiros`
+          ? `${sigla} 1 é o mais votado da cidade · só ${nomeProprio(focoCandidato.nome)} aparece, na posição em que ficou em cada município · E eleito, S suplente, N não eleito${recorte}`
+          : `${sigla} 1 é o mais votado da cidade, ${sigla} 2 o segundo e assim por diante · destaque para a referência e os parceiros · E eleito, S suplente, N não eleito${recorte}`
       }
       acao={
         <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex items-center gap-2 text-[12px] text-[var(--tse-muted)]">
+            Situação
+            <TseSegmentado opcoes={FILTROS_SITUACAO_2026} valor={situacao} onChange={onSituacao} />
+          </div>
           <div className="flex items-center gap-2 text-[12px] text-[var(--tse-muted)]">
             Agrupar
             <TseSegmentado opcoes={AGRUPAMENTOS} valor={agrupamento} onChange={setAgrupamento} />
@@ -276,14 +389,16 @@ export function QuadroMunicipios2026({
             <select
               value={focoAtivo ? foco : ""}
               onChange={(e) => escolherFoco(e.target.value)}
-              className="h-8 max-w-[220px] rounded-md border border-[var(--tse-border)] bg-white px-2 text-[13px] text-[var(--tse-text)] outline-none focus:border-[var(--tse-yellow)]"
+              className="h-8 max-w-[280px] rounded-md border border-[var(--tse-border)] bg-white px-2 text-[13px] text-[var(--tse-text)] outline-none focus:border-[var(--tse-yellow)]"
             >
               <option value="">Todos</option>
               {rankingEstado.map((p, k) => {
                 const c = payload.candidatos[quadro.indices[p]];
+                const situacao = rotuloSituacao2026(c?.situacao);
                 return (
                   <option key={quadro.indices[p]} value={String(quadro.indices[p])}>
                     {k + 1}º · {nomeProprio(c?.nome ?? "")}
+                    {situacao ? ` · ${situacao}` : ""}
                   </option>
                 );
               })}
@@ -299,6 +414,24 @@ export function QuadroMunicipios2026({
             placeholder={porTerritorio ? "Buscar território ou município" : "Buscar município"}
             className="w-48"
           />
+          <button
+            type="button"
+            onClick={() => void exportarQuadro("pdf")}
+            disabled={vazio || exportando != null}
+            className={tseBotaoCinzaClass}
+          >
+            <FileText className={tseBotaoIconeClass} />
+            {exportando === "pdf" ? "Gerando…" : "PDF"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void exportarQuadro("xlsx")}
+            disabled={vazio || exportando != null}
+            className={tseBotaoCinzaClass}
+          >
+            <FileSpreadsheet className={tseBotaoIconeClass} />
+            {exportando === "xlsx" ? "Gerando…" : "XLS"}
+          </button>
         </div>
       }
     >

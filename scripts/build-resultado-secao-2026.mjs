@@ -184,6 +184,7 @@ async function main() {
       numero: c.numero,
       cargo: c.cargo,
       partido: c.partido,
+      situacao: c.situacao,
       fonte,
       totalVotos: c.total,
       secoesNoRelatorio: secoesPorCargo(c.cargo),

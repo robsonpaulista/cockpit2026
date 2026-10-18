@@ -15,6 +15,8 @@ export type ResultadoSecao2026Candidato = {
   cargo: string
   /** Sigla do partido (consulta de candidatos TSE); ausente em arquivos gerados antes dela. */
   partido?: string
+  /** Situação no turno (TSE): ELEITO POR QP, ELEITO POR MÉDIA, SUPLENTE, NÃO ELEITO. */
+  situacao?: string
   fonte: string
   totalVotos: number
   secoesNoRelatorio: number
