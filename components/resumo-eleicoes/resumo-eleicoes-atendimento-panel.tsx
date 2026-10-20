@@ -1630,6 +1630,8 @@ export function ResumoEleicoesAtendimentoPanel() {
           nome,
           eleitores,
           votacao2022,
+          votacao2026:
+            votosTse2026Total === null ? null : votosNoMapaMunicipio(votosTse2026PorCidade, nome),
           liderancas: fromMap.liderancas,
           expectativa2026,
           percentualExpectativaEleitorado,
@@ -1637,7 +1639,7 @@ export function ResumoEleicoesAtendimentoPanel() {
         }
       })
       .filter((row): row is ResumoEleicoesCidadeLinha => row != null)
-  }, [visaoTodasCidades, cidades, resumosCidadeMap, cenarioVotos])
+  }, [visaoTodasCidades, cidades, resumosCidadeMap, cenarioVotos, votosTse2026PorCidade, votosTse2026Total])
 
   useEffect(() => {
     if (!visaoTodasCidades || !buscaIniciada) return

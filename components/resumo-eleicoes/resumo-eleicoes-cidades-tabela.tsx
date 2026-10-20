@@ -8,6 +8,8 @@ export type ResumoEleicoesCidadeLinha = {
   nome: string
   eleitores: number | null
   votacao2022: number
+  /** Votos nominais de 2026 no município; null enquanto o TSE ainda não carregou. */
+  votacao2026: number | null
   liderancas: number
   expectativa2026: number
   percentualExpectativaEleitorado: number | null
@@ -18,6 +20,7 @@ type SortColuna =
   | 'nome'
   | 'eleitores'
   | 'votacao2022'
+  | 'votacao2026'
   | 'liderancas'
   | 'expectativa2026'
   | 'percentualExpectativaEleitorado'
@@ -95,6 +98,12 @@ export function ResumoEleicoesCidadesTabela({
               <TseThOrdenavel col="votacao2022" alinhar="right" {...thProps}>
                 Votação 2022
               </TseThOrdenavel>
+              <TseThOrdenavel col="votacao2026" alinhar="right" {...thProps}>
+                Votação 2026
+              </TseThOrdenavel>
+              <TseThOrdenavel col="variacao" alinhar="right" {...thProps}>
+                Δ vs 2022
+              </TseThOrdenavel>
               <TseThOrdenavel col="liderancas" alinhar="right" {...thProps}>
                 Lideranças
               </TseThOrdenavel>
@@ -103,9 +112,6 @@ export function ResumoEleicoesCidadesTabela({
               </TseThOrdenavel>
               <TseThOrdenavel col="percentualExpectativaEleitorado" alinhar="right" {...thProps}>
                 <span title="Expectativa 2026 sobre o eleitorado">% exp.</span>
-              </TseThOrdenavel>
-              <TseThOrdenavel col="variacao" alinhar="right" {...thProps}>
-                Δ vs 2022
               </TseThOrdenavel>
             </tr>
           </thead>
@@ -135,6 +141,20 @@ export function ResumoEleicoesCidadesTabela({
                     {linha.eleitores !== null ? fmt(linha.eleitores) : '—'}
                   </td>
                   <td className={cn(tseTabela.td, 'py-1.5 text-right tabular-nums')}>{fmt(linha.votacao2022)}</td>
+                  <td className={cn(tseTabela.td, 'py-1.5 text-right font-bold tabular-nums')}>
+                    {linha.votacao2026 !== null ? fmt(linha.votacao2026) : '—'}
+                  </td>
+                  <td
+                    className={cn(
+                      tseTabela.td,
+                      'py-1.5 text-right font-bold tabular-nums',
+                      linha.variacao > 0 && 'text-[var(--tse-olive)]',
+                      linha.variacao < 0 && 'text-red-700',
+                    )}
+                  >
+                    {linha.variacao > 0 ? '+' : ''}
+                    {fmt(linha.variacao)}
+                  </td>
                   <td className="p-0 text-right">
                     <button
                       type="button"
@@ -153,17 +173,6 @@ export function ResumoEleicoesCidadesTabela({
                   </td>
                   <td className={cn(tseTabela.td, 'py-1.5 text-right tabular-nums text-[var(--tse-muted)]')}>
                     {formatPercentual(linha.percentualExpectativaEleitorado)}
-                  </td>
-                  <td
-                    className={cn(
-                      tseTabela.td,
-                      'py-1.5 text-right font-bold tabular-nums',
-                      linha.variacao > 0 && 'text-[var(--tse-olive)]',
-                      linha.variacao < 0 && 'text-red-700',
-                    )}
-                  >
-                    {linha.variacao > 0 ? '+' : ''}
-                    {fmt(linha.variacao)}
                   </td>
                 </tr>
               )
