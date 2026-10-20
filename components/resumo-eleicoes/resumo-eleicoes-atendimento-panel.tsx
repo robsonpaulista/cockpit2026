@@ -363,6 +363,7 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
   const [candidatoPadraoPesquisa, setCandidatoPadraoPesquisa] = useState<string>('')
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
+  const [expectativaVisivel, setExpectativaVisivel] = useState<boolean>(false)
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
   const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
@@ -2279,6 +2280,8 @@ export function ResumoEleicoesAtendimentoPanel() {
               votos2026={votosJadyel2026}
               rotuloCenario={labelCenarioAtivo}
               votosCenario={votosCenarioAtivo}
+              cenarioOculto={labelCenarioAtivo === 'Expectativa 2026' && !expectativaVisivel}
+              onMostrarCenario={() => setExpectativaVisivel(true)}
               liderancas={resumoCidade.liderancas}
               acoesLiderancas={
                 visaoTodasCidades ? (

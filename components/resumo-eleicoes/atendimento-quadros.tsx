@@ -72,6 +72,8 @@ export function AtendimentoDadosGerais({
   votosCenario,
   liderancas,
   acoesLiderancas,
+  cenarioOculto = false,
+  onMostrarCenario,
 }: {
   fonte: ReactNode
   eleitores: number | null
@@ -82,6 +84,9 @@ export function AtendimentoDadosGerais({
   votosCenario: number
   liderancas: number
   acoesLiderancas?: ReactNode
+  /** Expectativa 2026 começa oculta; o botão revela o bloco. */
+  cenarioOculto?: boolean
+  onMostrarCenario?: () => void
 }) {
   const destaque = 'font-bold text-[var(--tse-text)]'
   const variacao = (atual: number, base: number): number | null => (base > 0 ? ((atual - base) / base) * 100 : null)
@@ -92,9 +97,21 @@ export function AtendimentoDadosGerais({
     <section className="mt-4 rounded-2xl bg-white px-5 py-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-bold">Dados Gerais</h2>
-        <p className="text-[10px] font-semibold text-[var(--tse-muted)]">{fonte}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          {cenarioOculto && onMostrarCenario ? (
+            <button type="button" onClick={onMostrarCenario} className={tseLinkAcaoClass}>
+              Mostrar {rotuloCenario}
+            </button>
+          ) : null}
+          <p className="text-[10px] font-semibold text-[var(--tse-muted)]">{fonte}</p>
+        </div>
       </div>
-      <div className="mt-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]">
+      <div
+        className={cn(
+          'mt-4 grid gap-5 sm:grid-cols-2 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]',
+          cenarioOculto ? 'xl:grid-cols-3' : 'xl:grid-cols-4',
+        )}
+      >
         <Kpi rotulo="Eleitores" valor={eleitores !== null ? fmt(eleitores) : '—'}>
           {alcancePct !== null ? (
             <>
@@ -111,26 +128,28 @@ export function AtendimentoDadosGerais({
         >
           <span className={destaque}>{fmt(votos2022)}</span> votos em 2022
         </Kpi>
-        <Kpi
-          rotulo={rotuloCenario}
-          valor={fmt(votosCenario)}
-          selo={
-            pctVsExpectativa !== null ? (
-              <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
-            ) : null
-          }
-        >
-          {votos2026 === null ? (
-            'Aguardando resultado 2026'
-          ) : saldoVsExpectativa === 0 ? (
-            'Resultado igual à expectativa'
-          ) : (
-            <>
-              Resultado <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
-              {saldoVsExpectativa > 0 ? 'acima' : 'abaixo'}
-            </>
-          )}
-        </Kpi>
+        {cenarioOculto ? null : (
+          <Kpi
+            rotulo={rotuloCenario}
+            valor={fmt(votosCenario)}
+            selo={
+              pctVsExpectativa !== null ? (
+                <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
+              ) : null
+            }
+          >
+            {votos2026 === null ? (
+              'Aguardando resultado 2026'
+            ) : saldoVsExpectativa === 0 ? (
+              'Resultado igual à expectativa'
+            ) : (
+              <>
+                Resultado <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
+                {saldoVsExpectativa > 0 ? 'acima' : 'abaixo'}
+              </>
+            )}
+          </Kpi>
+        )}
         <Kpi rotulo="Lideranças" valor={fmt(liderancas)}>
           <div className="flex flex-wrap items-center gap-3">{acoesLiderancas}</div>
         </Kpi>
