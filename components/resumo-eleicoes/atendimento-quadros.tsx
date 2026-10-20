@@ -472,7 +472,8 @@ function abreviarCargoMovimento(cargo: string): string {
 function Participacao({ p }: { p: ParticipacaoCandidato }) {
   return (
     <span className="whitespace-nowrap">
-      {abreviarCargoMovimento(p.cargo)} {p.ano} · <span className="font-semibold text-[var(--tse-text)]">{fmt(p.votos)}</span>
+      {abreviarCargoMovimento(p.cargo)} {p.ano}
+      {p.origem ? ` · ${p.origem}` : ''} · <span className="font-semibold text-[var(--tse-text)]">{fmt(p.votos)}</span>
     </span>
   )
 }
@@ -575,7 +576,7 @@ export function QuadroMovimentosCandidatos({
         <h2 className="text-[15px] font-bold">Ascensão e queda · {municipio}</h2>
         <p className="text-[10px] font-semibold text-[var(--tse-muted)]">
           Mesma pessoa pelo nome, entre 2022, 2024 e 2026 · compara as duas últimas disputas, mesmo em cargos diferentes ·
-          estreante = sem candidatura em 2020, 2022 ou 2024 em nenhum município
+          Georgiano herda a base do pai, Júlio Cesar (dep. federal em 2022) · estreante = sem candidatura em 2020, 2022 ou 2024 em nenhum município
         </p>
       </div>
       <div className="mt-3 grid gap-6 md:grid-cols-2 xl:grid-cols-3">

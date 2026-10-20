@@ -126,7 +126,13 @@ export function filtrarVereador2024(dados: ResultadoEleicao[]): ResultadoEleicao
 
 export const ANOS_MOVIMENTO_CANDIDATOS = ['2022', '2024', '2026'] as const
 
-export type ParticipacaoCandidato = { ano: string; cargo: string; votos: number }
+export type ParticipacaoCandidato = {
+  ano: string
+  cargo: string
+  votos: number
+  /** Quando a base comparada é de outra pessoa (herança de votação). */
+  origem?: string
+}
 
 export type MovimentoCandidato = {
   chave: string
@@ -161,6 +167,34 @@ const ANO_ESTREIA = '2026'
 
 const chavePessoa = (item: ResultadoEleicao): string =>
   normalizeSituacaoEleicao(item.nomeCandidato || item.nomeUrnaCandidato)
+
+/**
+ * Georgiano era deputado estadual em 2022 e assumiu a cadeira federal do pai.
+ * A comparação usa a votação de Júlio Cesar (dep. federal eleito em 2022) na mesma cidade.
+ */
+function ehGeorgiano(urna: string, civil: string): boolean {
+  return urna === 'georgiano' || civil.startsWith('georgiano fernandes lima')
+}
+
+function ehJulioCesarFederal2022(item: ResultadoEleicao): boolean {
+  if (item.anoEleicao !== '2022' || !includesNormalizedCargo(item.cargo, 'federal')) return false
+  const urna = normalizeSituacaoEleicao(nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna))
+  const civil = normalizeSituacaoEleicao(item.nomeCandidato)
+  if (/\bfilho\b|\bleite\b|\barcoverde\b/.test(`${urna} ${civil}`)) return false
+  if (item.situacao && !isSituacaoEleito(item.situacao)) return false
+  return urna === 'julio cesar' || civil === 'julio cesar' || civil.startsWith('julio cesar de carvalho lima')
+}
+
+function votosJulioCesarFederal2022(dados: ResultadoEleicao[]): { cargo: string; votos: number } {
+  let votos = 0
+  let cargo = 'Deputado Federal'
+  for (const item of dados) {
+    if (!ehJulioCesarFederal2022(item)) continue
+    votos += parseVotosEleicao(item.quantidadeVotosNominais)
+    cargo = item.cargo || cargo
+  }
+  return { cargo, votos }
+}
 
 /**
  * Compara as duas participações mais recentes de cada pessoa no município.
@@ -226,9 +260,25 @@ export function movimentosCandidatos(
         pctCargo: totalCargo > 0 ? (estreia.votos / totalCargo) * 100 : 0,
       })
     }
-    if (participacoes.length < 2) continue
-    const anterior = participacoes[participacoes.length - 2]
     const atual = participacoes[participacoes.length - 1]
+    const herdaBaseDoPai =
+      ehGeorgiano(normalizeSituacaoEleicao(atual.nomeUrna), chave) &&
+      atual.ano === ANO_ESTREIA &&
+      includesNormalizedCargo(atual.cargo, 'federal')
+    if (participacoes.length < 2 && !herdaBaseDoPai) continue
+    let anterior = participacoes.length >= 2 ? participacoes[participacoes.length - 2] : atual
+    let origem: string | undefined
+    if (herdaBaseDoPai) {
+      const basePai = votosJulioCesarFederal2022(dados)
+      anterior = {
+        ano: '2022',
+        cargo: basePai.cargo,
+        votos: basePai.votos,
+        nomeUrna: atual.nomeUrna,
+        partido: atual.partido,
+      }
+      origem = 'Júlio Cesar'
+    }
     const diferenca = atual.votos - anterior.votos
     const variacaoPct = anterior.votos > 0 ? (diferenca / anterior.votos) * 100 : null
     if (Math.abs(diferenca) < minimo) continue
@@ -238,7 +288,7 @@ export function movimentosCandidatos(
       chave,
       nomeUrna: atual.nomeUrna,
       partido: atual.partido,
-      anterior: semRotulo(anterior),
+      anterior: { ...semRotulo(anterior), ...(origem ? { origem } : {}) },
       atual: semRotulo(atual),
       trajetoria: participacoes.map(semRotulo),
       diferenca,
