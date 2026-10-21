@@ -210,6 +210,7 @@ function Paginacao({
 
 function Quadro({
   titulo,
+  extra,
   qtdSelecionados,
   votosSelecionados,
   onLimpar,
@@ -217,6 +218,7 @@ function Quadro({
   children,
 }: {
   titulo: string
+  extra?: ReactNode
   qtdSelecionados: number
   votosSelecionados: number
   onLimpar: () => void
@@ -225,7 +227,10 @@ function Quadro({
 }) {
   return (
     <section className="flex min-w-0 flex-col rounded-2xl bg-white p-3 shadow-sm">
-      <h3 className="px-1.5 text-[14px] font-bold">{titulo}</h3>
+      <div className="flex items-center justify-between gap-2 px-1.5">
+        <h3 className="text-[14px] font-bold">{titulo}</h3>
+        {extra}
+      </div>
       <div className="mt-2 min-w-0 flex-1">{children}</div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#EEEEEE] px-1.5 pt-2 text-[11px] text-[var(--tse-muted)]">
         <span>
@@ -380,8 +385,47 @@ export function QuadroCandidatos({
 
 export type PartidoQuadro = { partido: string; votos: number; eleitos: number }
 
+export type AnoVotacaoPartido = '2024' | '2026'
+
+const ANOS_VOTACAO_PARTIDO: readonly AnoVotacaoPartido[] = ['2024', '2026']
+
+function SeletorAnoPartido({
+  ano,
+  onChange,
+}: {
+  ano: AnoVotacaoPartido
+  onChange: (ano: AnoVotacaoPartido) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Eleição da votação por partido"
+      className="flex shrink-0 rounded-md bg-[var(--tse-bar)] p-0.5 text-[11px] font-bold"
+    >
+      {ANOS_VOTACAO_PARTIDO.map((opcao) => (
+        <button
+          key={opcao}
+          type="button"
+          aria-pressed={ano === opcao}
+          onClick={() => onChange(opcao)}
+          className={cn(
+            'rounded px-1.5 py-0.5 tabular-nums',
+            ano === opcao
+              ? 'bg-[var(--tse-yellow-strong)] text-[var(--tse-text)]'
+              : 'text-[var(--tse-muted)] hover:text-[var(--tse-text)]',
+          )}
+        >
+          {opcao}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function QuadroPartidos({
   itens,
+  ano,
+  onAno,
   pagina,
   porPagina,
   onPagina,
@@ -392,6 +436,8 @@ export function QuadroPartidos({
   onFiltrar,
 }: {
   itens: PartidoQuadro[]
+  ano: AnoVotacaoPartido
+  onAno: (ano: AnoVotacaoPartido) => void
   pagina: number
   porPagina: number
   onPagina: (pagina: number) => void
@@ -404,7 +450,8 @@ export function QuadroPartidos({
   const visiveis = itens.slice((pagina - 1) * porPagina, pagina * porPagina)
   return (
     <Quadro
-      titulo="Votação por Partido 2026"
+      titulo="Votação por Partido"
+      extra={<SeletorAnoPartido ano={ano} onChange={onAno} />}
       qtdSelecionados={Object.keys(selecao).length}
       votosSelecionados={Object.values(selecao).reduce((a, b) => a + b, 0)}
       onLimpar={onLimpar}
@@ -425,7 +472,7 @@ export function QuadroPartidos({
         </thead>
         <tbody>
           {visiveis.map((item) => {
-            const rowId = `partido_2026:${item.partido}`
+            const rowId = `partido_${ano}:${item.partido}`
             const selecionada = selecao[rowId] !== undefined
             const filtrado = ativo(item.partido)
             return (

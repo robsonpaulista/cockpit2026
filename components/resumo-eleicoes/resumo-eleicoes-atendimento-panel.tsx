@@ -52,6 +52,7 @@ import {
   QuadroCandidatos,
   QuadroMovimentosCandidatos,
   QuadroPartidos,
+  type AnoVotacaoPartido,
 } from '@/components/resumo-eleicoes/atendimento-quadros'
 import {
   TseCarregando,
@@ -370,6 +371,7 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [loadingSimulacao, setLoadingSimulacao] = useState(false)
   const [savingSimulacao, setSavingSimulacao] = useState(false)
   const [restaurouEstadoRetorno, setRestaurouEstadoRetorno] = useState(false)
+  const [anoPartido, setAnoPartido] = useState<AnoVotacaoPartido>('2026')
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -451,6 +453,13 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const clearTableSelection = (table: TableKey) => {
     setSelectedVotes((prev) => ({ ...prev, [table]: {} }))
+  }
+
+  const definirAnoPartido = (ano: AnoVotacaoPartido) => {
+    if (ano === anoPartido) return
+    setAnoPartido(ano)
+    setPage('partido_2026', 1)
+    clearTableSelection('partido_2026')
   }
 
   const getSelectedCount = (table: TableKey): number => Object.keys(selectedVotes[table]).length
@@ -1591,15 +1600,21 @@ export function ResumoEleicoesAtendimentoPanel() {
     [municipioAtivo, dadosAtivos, candidatos2026ComHistorico],
   )
 
-  const partido2026 = useMemo<PartidoResumo[]>(() => {
+  const partidoQuadro = useMemo<PartidoResumo[]>(() => {
     const grouped = new Map<string, PartidoResumo>()
 
     for (const item of dadosAtivos) {
-      if (item.anoEleicao !== '2026' || !includesNormalized(item.cargo, 'deputado')) continue
+      const cargo = item.cargo
+      const entra =
+        anoPartido === '2026'
+          ? item.anoEleicao === '2026' && includesNormalized(cargo, 'deputado')
+          : item.anoEleicao === '2024' &&
+            (includesNormalized(cargo, 'vereador') ||
+              (includesNormalized(cargo, 'prefeito') && !includesNormalized(cargo, 'vice')))
+      if (!entra) continue
       const key = item.partido || '-'
       const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
       current.votos += parseVotos(item.quantidadeVotosNominais)
-      // Deputado estadual e federal entram — só eleitos de fato (exclui "Não eleito" e suplentes).
       if (isSituacaoEleito(item.situacao)) {
         current.eleitos += 1
       }
@@ -1607,7 +1622,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     }
 
     return Array.from(grouped.values()).sort((a, b) => b.votos - a.votos)
-  }, [dadosAtivos])
+  }, [dadosAtivos, anoPartido])
 
   const linhasCidadesResumo = useMemo((): ResumoEleicoesCidadeLinha[] => {
     if (!visaoTodasCidades) return []
@@ -1622,7 +1637,8 @@ export function ResumoEleicoesAtendimentoPanel() {
             : cenarioVotos === 'legado_anterior'
               ? fromMap.expectativaLegadoVotos
               : fromMap.expectativaVotos
-        const votacao2022 = fromMap.votacaoFinal2022
+        const votacao2022 =
+          votosTse2022Total === null ? null : fromMap.votacaoFinal2022
         const eleitores = getEleitoradoByCity(nome)
         const percentualExpectativaEleitorado =
           eleitores !== null && eleitores > 0 ? (expectativa2026 / eleitores) * 100 : null
@@ -1635,11 +1651,20 @@ export function ResumoEleicoesAtendimentoPanel() {
           liderancas: fromMap.liderancas,
           expectativa2026,
           percentualExpectativaEleitorado,
-          variacao: expectativa2026 - votacao2022,
+          variacao: votacao2022 === null ? null : expectativa2026 - votacao2022,
         }
       })
       .filter((row): row is ResumoEleicoesCidadeLinha => row != null)
-  }, [visaoTodasCidades, cidades, resumosCidadeMap, cenarioVotos, votosTse2026PorCidade, votosTse2026Total])
+  }, [
+    visaoTodasCidades,
+    cidades,
+    resumosCidadeMap,
+    cenarioVotos,
+    votosTse2022PorCidade,
+    votosTse2022Total,
+    votosTse2026PorCidade,
+    votosTse2026Total,
+  ])
 
   useEffect(() => {
     if (!visaoTodasCidades || !buscaIniciada) return
@@ -2368,7 +2393,9 @@ export function ResumoEleicoesAtendimentoPanel() {
               {...quadroProps('vereador_2024')}
             />
             <QuadroPartidos
-              itens={partido2026}
+              itens={partidoQuadro}
+              ano={anoPartido}
+              onAno={definirAnoPartido}
               pagina={currentPage.partido_2026}
               porPagina={ITEMS_PER_PAGE}
               onPagina={(pagina) => setPage('partido_2026', pagina)}

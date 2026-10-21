@@ -7,13 +7,14 @@ import { cn } from '@/lib/utils'
 export type ResumoEleicoesCidadeLinha = {
   nome: string
   eleitores: number | null
-  votacao2022: number
+  /** Votos nominais de 2022 no município; null enquanto o TSE ainda não carregou. */
+  votacao2022: number | null
   /** Votos nominais de 2026 no município; null enquanto o TSE ainda não carregou. */
   votacao2026: number | null
   liderancas: number
   expectativa2026: number
   percentualExpectativaEleitorado: number | null
-  variacao: number
+  variacao: number | null
 }
 
 type SortColuna =
@@ -140,7 +141,9 @@ export function ResumoEleicoesCidadesTabela({
                   <td className={cn(tseTabela.td, 'py-1.5 text-right tabular-nums')}>
                     {linha.eleitores !== null ? fmt(linha.eleitores) : '—'}
                   </td>
-                  <td className={cn(tseTabela.td, 'py-1.5 text-right tabular-nums')}>{fmt(linha.votacao2022)}</td>
+                  <td className={cn(tseTabela.td, 'py-1.5 text-right tabular-nums')}>
+                    {linha.votacao2022 !== null ? fmt(linha.votacao2022) : '—'}
+                  </td>
                   <td className={cn(tseTabela.td, 'py-1.5 text-right font-bold tabular-nums')}>
                     {linha.votacao2026 !== null ? fmt(linha.votacao2026) : '—'}
                   </td>
@@ -148,12 +151,13 @@ export function ResumoEleicoesCidadesTabela({
                     className={cn(
                       tseTabela.td,
                       'py-1.5 text-right font-bold tabular-nums',
-                      linha.variacao > 0 && 'text-[var(--tse-olive)]',
-                      linha.variacao < 0 && 'text-red-700',
+                      linha.variacao !== null && linha.variacao > 0 && 'text-[var(--tse-olive)]',
+                      linha.variacao !== null && linha.variacao < 0 && 'text-red-700',
                     )}
                   >
-                    {linha.variacao > 0 ? '+' : ''}
-                    {fmt(linha.variacao)}
+                    {linha.variacao === null
+                      ? '—'
+                      : `${linha.variacao > 0 ? '+' : ''}${fmt(linha.variacao)}`}
                   </td>
                   <td className="p-0 text-right">
                     <button
