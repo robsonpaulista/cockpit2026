@@ -21,7 +21,11 @@ export type LinhaQuadroExport2026 = {
   nome: string;
   territorio: string;
   detalhe: string;
-  foco: { posicao: number; votos: number } | null;
+  /** Eleitorado da linha; null quando o município não está na base. */
+  eleitores: number | null;
+  /** Soma dos votos nominais de todos os candidatos do cargo. */
+  votantes: number | null;
+  foco: { posicao: number; votos: number; pctEleitorado: number | null; pctVotacao: number | null } | null;
   celulas: CelulaQuadroExport2026[];
   outros: number;
   total: number;
@@ -71,17 +75,31 @@ function textoCelula(c: CelulaQuadroExport2026): string {
   return `${c.nome}${partido}\n${situacao}${formatarVotos2026(c.votos)}`;
 }
 
+function textoPct(pct: number | null, rotulo: string): string {
+  if (pct == null) return "";
+  return `\n${pct.toFixed(1).replace(".", ",")}% ${rotulo}`;
+}
+
 function textoFoco(foco: LinhaQuadroExport2026["foco"]): string {
   if (!foco) return "";
-  if (foco.posicao <= 0) return "sem votos";
-  return `${foco.posicao}º\n${formatarVotos2026(foco.votos)}`;
+  const pcts = `${textoPct(foco.pctEleitorado, "do eleitorado")}${textoPct(foco.pctVotacao, "da votação")}`;
+  if (foco.posicao <= 0) return `sem votos${pcts}`;
+  return `${foco.posicao}º\n${formatarVotos2026(foco.votos)}${pcts}`;
+}
+
+function textoBaseCidade(l: LinhaQuadroExport2026): string {
+  if (l.nivel !== "municipio") return "";
+  const eleitores = l.eleitores == null ? "—" : formatarVotos2026(l.eleitores);
+  const votantes = l.votantes == null ? "—" : formatarVotos2026(l.votantes);
+  return `\n${eleitores} eleitores · ${votantes} votantes`;
 }
 
 function nomeLinha(l: LinhaQuadroExport2026, agrupado: boolean): string {
   const nome = l.nome.toUpperCase();
+  const base = textoBaseCidade(l);
   if (l.nivel === "territorio" && l.detalhe) return `${nome}  ·  ${l.detalhe}`;
-  if (l.nivel === "municipio" && agrupado) return `    ${nome}`;
-  return nome;
+  if (l.nivel === "municipio" && agrupado) return `    ${nome}${base}`;
+  return `${nome}${base}`;
 }
 
 export function exportarQuadroPdf2026(o: OpcoesQuadroExport2026): void {
@@ -172,7 +190,9 @@ export function exportarQuadroXlsx2026(o: OpcoesQuadroExport2026): void {
     "Nível",
     "Território",
     "Município",
-    ...(comFoco ? ["Posição do candidato", "Votos do candidato"] : []),
+    "Eleitores",
+    "Votantes",
+    ...(comFoco ? ["Posição do candidato", "Votos do candidato", "% do eleitorado", "% da votação"] : []),
     ...o.colocacoes.flatMap((rotulo) => [rotulo, `Partido ${rotulo}`, `Situação ${rotulo}`, `Votos ${rotulo}`]),
     "Outros",
     "Total",
@@ -184,7 +204,16 @@ export function exportarQuadroXlsx2026(o: OpcoesQuadroExport2026): void {
     nivelRotulo(l.nivel),
     l.nivel === "territorio" ? `${l.nome}${l.detalhe ? ` (${l.detalhe})` : ""}` : l.territorio,
     l.nivel === "territorio" ? "" : l.nome,
-    ...(comFoco ? [l.foco && l.foco.posicao > 0 ? l.foco.posicao : "", l.foco && l.foco.posicao > 0 ? l.foco.votos : ""] : []),
+    l.nivel === "municipio" ? (l.eleitores ?? "") : "",
+    l.nivel === "municipio" ? (l.votantes ?? "") : "",
+    ...(comFoco
+      ? [
+          l.foco && l.foco.posicao > 0 ? l.foco.posicao : "",
+          l.foco && l.foco.posicao > 0 ? l.foco.votos : "",
+          l.foco?.pctEleitorado == null ? "" : Math.round(l.foco.pctEleitorado * 10) / 10,
+          l.foco?.pctVotacao == null ? "" : Math.round(l.foco.pctVotacao * 10) / 10,
+        ]
+      : []),
     ...l.celulas.flatMap((c) => valoresCelula(c)),
     l.outros,
     l.total,

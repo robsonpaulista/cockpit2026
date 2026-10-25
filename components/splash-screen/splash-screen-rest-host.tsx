@@ -17,54 +17,43 @@ function isRestScreenDisabled(pathname: string | null): boolean {
 
 /**
  * Host da tela de descanso no dashboard (home amarela Cockpit X):
- * - botão "Tela de descanso" (evento)
+ * - botão "Tela de descanso" (evento), em qualquer página do dashboard
  * - inatividade / lock de sessão (idle ativo)
  *
  * Em ambos os casos "Entrar" só fecha o overlay.
- * Em /dashboard/resumo-eleicoes a splash nunca abre.
+ * Em /dashboard/resumo-eleicoes a inatividade não abre a home; o botão abre.
  */
 export function SplashScreenRestHost() {
   const pathname = usePathname()
   const restDisabled = isRestScreenDisabled(pathname)
-  const [visible, setVisible] = useState(false)
+  const [abertoPeloBotao, setAbertoPeloBotao] = useState<boolean>(false)
   const { ativo: idleAtivo, dispensar: dispensarIdle } = useIdleSplash()
+  const visivel = abertoPeloBotao || (!restDisabled && idleAtivo)
 
   useEffect(() => {
-    if (restDisabled) {
-      setVisible(false)
-      return
-    }
-    const abrir = () => setVisible(true)
+    const abrir = () => setAbertoPeloBotao(true)
     window.addEventListener(SPLASH_PREVIEW_EVENT, abrir)
     return () => window.removeEventListener(SPLASH_PREVIEW_EVENT, abrir)
-  }, [restDisabled])
+  }, [])
 
   useEffect(() => {
-    if (restDisabled) {
-      setVisible(false)
-      return
-    }
-    if (idleAtivo) setVisible(true)
-  }, [idleAtivo, restDisabled])
-
-  useEffect(() => {
-    if (!visible) return
+    if (!visivel) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setVisible(false)
+        setAbertoPeloBotao(false)
         if (idleAtivo) dispensarIdle()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [visible, idleAtivo, dispensarIdle])
+  }, [visivel, idleAtivo, dispensarIdle])
 
   const fechar = useCallback(() => {
-    setVisible(false)
+    setAbertoPeloBotao(false)
     if (idleAtivo) dispensarIdle()
   }, [idleAtivo, dispensarIdle])
 
-  if (restDisabled || !visible) return null
+  if (!visivel) return null
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] overflow-y-auto" role="dialog" aria-modal aria-label="Tela de descanso">

@@ -49,6 +49,7 @@ import {
   type SecaoDetalhe2026,
 } from "@/lib/resultado-secao-2026";
 import { fetchResultadoSecao2026 } from "@/lib/services/resultado-secao-2026";
+import { ComparativoBase2026 } from "./comparativo-base-2026";
 import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
 import { Territorio2026 } from "./territorio-2026";
@@ -74,7 +75,8 @@ type Visao =
   | "secoes"
   | "comparativo"
   | "comparativo-secao"
-  | "territorio";
+  | "territorio"
+  | "comparativo-base";
 type Ordem = "votos" | "alfabetica";
 
 const PAGE_SIZE = 30;
@@ -101,6 +103,7 @@ const VISOES: { id: Visao; label: string }[] = [
   { id: "comparativo", label: "Comparativo por local" },
   { id: "comparativo-secao", label: "Comparativo por seção" },
   { id: "territorio", label: "Território" },
+  { id: "comparativo-base", label: "Comparativo de base" },
 ];
 
 const chaveSecao = (s: { m: string; z: number; s: number }): string => `${s.m}-${s.z}-${s.s}`;
@@ -471,6 +474,8 @@ export function ResultadoSecao2026Panel() {
     .filter(({ c, i }) => c.comparativo && !comparados.includes(i));
   const podeAdicionar = comparados.length < MAX_COMPARADOS;
   const emTerritorio = visao === "territorio";
+  const emBase = visao === "comparativo-base";
+  const emCargoEstadual = emTerritorio || emBase;
   const cargoTerritorioAtivo = cargoTerritorio || cargos[0] || "";
   const abrirMunicipioDoTerritorio = (codigo: string, idx: number) => {
     setMunicipio(codigo);
@@ -549,7 +554,7 @@ export function ResultadoSecao2026Panel() {
   return (
     <TsePage>
         <TseFilterBar>
-          {emTerritorio ? (
+          {emCargoEstadual ? (
             <TsePillSelect
               rotulo="Cargo"
               value={cargoTerritorioAtivo}
@@ -577,7 +582,7 @@ export function ResultadoSecao2026Panel() {
             </TseSelectGrande>
           )}
 
-          {!emTerritorio && zonasMunicipio.length > 1 && (
+          {!emCargoEstadual && zonasMunicipio.length > 1 && (
             <TsePillSelect
               rotulo="Zona"
               value={zona ?? ""}
@@ -596,7 +601,7 @@ export function ResultadoSecao2026Panel() {
             </TsePillSelect>
           )}
 
-          {emTerritorio || emComparativo ? null : (
+          {emCargoEstadual || emComparativo ? null : (
             <>
               <TsePillSelect
                 rotulo="Cargo"
@@ -727,6 +732,10 @@ export function ResultadoSecao2026Panel() {
               cargo={cargoTerritorioAtivo}
               onAbrirMunicipio={abrirMunicipioDoTerritorio}
             />
+          </div>
+        ) : emBase ? (
+          <div className="mt-5">
+            <ComparativoBase2026 payload={payload} cargo={cargoTerritorioAtivo} />
           </div>
         ) : emComparativo ? (
           <div className="mt-5">

@@ -19,6 +19,7 @@ import {
   type LinhaQuadroMunicipio2026,
   type ResultadoSecao2026Payload,
 } from "@/lib/resultado-secao-2026";
+import { getEleitoradoByCity } from "@/lib/eleitores";
 import { getTerritorioDesenvolvimentoPI } from "@/lib/piaui-territorio-desenvolvimento";
 import { quadroPorTerritorio2026, type TerritorioQuadro2026 } from "@/lib/resultado-territorios-2026";
 import type { CelulaQuadroExport2026, LinhaQuadroExport2026 } from "./quadro-municipios-export-2026";
@@ -53,6 +54,27 @@ const colunaFixa = "sticky left-0 z-[1]";
 const somaTop = (votos: number[], posicoes: number[], n: number): number =>
   posicoes.slice(0, n).reduce((soma, p) => soma + votos[p], 0);
 
+function pctDe(votos: number, base: number | null): number | null {
+  if (base == null || base <= 0) return null;
+  return (votos / base) * 100;
+}
+
+function formatarPct(pct: number): string {
+  return `${pct.toFixed(1).replace(".", ",")}%`;
+}
+
+function somarEleitorado(codigos: string[], porCodigo: ReadonlyMap<string, number>): number | null {
+  let soma = 0;
+  let achou = false;
+  for (const codigo of codigos) {
+    const n = porCodigo.get(codigo);
+    if (n == null) continue;
+    soma += n;
+    achou = true;
+  }
+  return achou ? soma : null;
+}
+
 export function QuadroMunicipios2026({
   payload,
   cargo,
@@ -82,6 +104,27 @@ export function QuadroMunicipios2026({
     [quadroCheio, payload, situacao],
   );
   const territorios = useMemo<TerritorioQuadro2026[]>(() => quadroPorTerritorio2026(quadro), [quadro]);
+  const eleitoradoPorCodigo = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const l of quadro.linhas) {
+      const n = getEleitoradoByCity(l.nome);
+      if (n != null && n > 0) mapa.set(l.codigo, n);
+    }
+    return mapa;
+  }, [quadro.linhas]);
+  const eleitoradoEstado = useMemo(
+    () => somarEleitorado(quadro.linhas.map((l) => l.codigo), eleitoradoPorCodigo),
+    [quadro.linhas, eleitoradoPorCodigo],
+  );
+  const totalNominalPorCodigo = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const l of quadroCheio.linhas) mapa.set(l.codigo, l.total);
+    return mapa;
+  }, [quadroCheio.linhas]);
+  const totalNominalEstado = useMemo(
+    () => quadroCheio.totais.reduce((soma, votos) => soma + votos, 0),
+    [quadroCheio.totais],
+  );
   const porTerritorio = agrupamento === "territorio";
   const focoPos = foco ? quadro.indices.indexOf(Number(foco)) : -1;
   const focoAtivo = focoPos >= 0;
@@ -174,6 +217,31 @@ export function QuadroMunicipios2026({
     </TseThOrdenavel>
   );
 
+  const percentuaisFoco = (votosCandidato: number, eleitorado: number | null, totalNominal: number) => {
+    const sobreEleitorado = pctDe(votosCandidato, eleitorado);
+    const sobreVotacao = pctDe(votosCandidato, totalNominal);
+    return (
+      <>
+        {sobreEleitorado != null && eleitorado != null ? (
+          <div
+            className="text-[11px] font-bold tabular-nums text-[var(--tse-olive)]"
+            title={`${formatarPct(sobreEleitorado)} da votação sobre o eleitorado (${formatarVotos2026(eleitorado)} eleitores)`}
+          >
+            {formatarPct(sobreEleitorado)} do eleitorado
+          </div>
+        ) : null}
+        {sobreVotacao != null ? (
+          <div
+            className="text-[11px] font-bold tabular-nums"
+            title={`${formatarPct(sobreVotacao)} dos ${formatarVotos2026(totalNominal)} votos nominais`}
+          >
+            {formatarPct(sobreVotacao)} da votação
+          </div>
+        ) : null}
+      </>
+    );
+  };
+
   const celulaColocado = (votos: number[], ranking: number[], k: number, key: string) => {
     const p = ranking[k];
     if (p == null) {
@@ -186,12 +254,13 @@ export function QuadroMunicipios2026({
     if (focoAtivo && p !== focoPos) return <td key={key} className="px-2.5 py-1.5" />;
     const c = payload.candidatos[quadro.indices[p]];
     const destaque = focoAtivo || Boolean(c?.comparativo);
+    const votosCelula = votos[p] ?? 0;
     return (
       <td
         key={key}
         title={
           c
-            ? `${nomeProprio(c.nome)} · ${rotuloSituacao2026(c.situacao) || "situação não informada"} · ${formatarVotos2026(votos[p])} votos`
+            ? `${nomeProprio(c.nome)} · ${rotuloSituacao2026(c.situacao) || "situação não informada"} · ${formatarVotos2026(votosCelula)} votos`
             : undefined
         }
         className={cn(
@@ -203,7 +272,7 @@ export function QuadroMunicipios2026({
           {abreviarNomeCandidato(c?.nome ?? "")}
           <SeloSituacao2026 situacao={c?.situacao} />
         </div>
-        <div className="text-[11px] tabular-nums text-[var(--tse-muted)]">{formatarVotos2026(votos[p])}</div>
+        <div className="text-[11px] tabular-nums text-[var(--tse-muted)]">{formatarVotos2026(votosCelula)}</div>
       </td>
     );
   };
@@ -212,8 +281,9 @@ export function QuadroMunicipios2026({
     <td className={cn(celulaNumero, "font-semibold")}>{formatarVotos2026(outros)}</td>
   );
 
-  const celulaFoco = (votos: number[], ranking: number[]) => {
+  const celulaFoco = (votos: number[], ranking: number[], eleitorado: number | null, totalNominal: number) => {
     const posicao = ranking.indexOf(focoPos);
+    const votosFoco = posicao < 0 ? 0 : (votos[focoPos] ?? 0);
     return (
       <td className="whitespace-nowrap border-x border-[#EEEEEE] bg-[#FFFDF2] px-2.5 py-1.5 leading-tight">
         {posicao < 0 ? (
@@ -221,15 +291,18 @@ export function QuadroMunicipios2026({
         ) : (
           <>
             <div className="text-[12px] font-black">{posicao + 1}º</div>
-            <div className="text-[11px] tabular-nums text-[var(--tse-muted)]">{formatarVotos2026(votos[focoPos])}</div>
+            <div className="text-[11px] tabular-nums text-[var(--tse-muted)]">{formatarVotos2026(votosFoco)}</div>
           </>
         )}
+        {percentuaisFoco(votosFoco, eleitorado, totalNominal)}
       </td>
     );
   };
 
   const linhaMunicipio = (l: LinhaQuadroMunicipio2026, recuo = false) => {
     const primeiro = focoAtivo && l.votos[focoPos] > 0 ? focoPos : l.ranking[0];
+    const eleitorado = eleitoradoPorCodigo.get(l.codigo) ?? null;
+    const totalNominal = totalNominalPorCodigo.get(l.codigo) ?? l.total;
     return (
       <tr key={l.codigo} className={cn(tseTabela.tr, "hover:bg-[#FAFAF7]")}>
         <td className={cn(tseTabela.td, colunaFixa, "bg-white font-semibold uppercase", recuo && "pl-9")}>
@@ -245,8 +318,14 @@ export function QuadroMunicipios2026({
               {l.nome}
             </button>
           )}
+          <div className="mt-0.5 text-[10px] font-semibold normal-case leading-tight text-[var(--tse-muted)]">
+            <div className="tabular-nums">{eleitorado != null ? formatarVotos2026(eleitorado) : "—"} eleitores</div>
+            <div className="tabular-nums" title="Soma dos votos nominais de todos os candidatos">
+              {formatarVotos2026(totalNominal)} votantes
+            </div>
+          </div>
         </td>
-        {focoAtivo ? celulaFoco(l.votos, l.ranking) : null}
+        {focoAtivo ? celulaFoco(l.votos, l.ranking, eleitorado, totalNominal) : null}
         {posicoes.map((k) => celulaColocado(l.votos, l.ranking, k, `${l.codigo}-${k}`))}
         {celulaOutros(l.total - somaTop(l.votos, l.ranking, n))}
         <td className={cn(celulaNumero, "font-bold")}>{formatarVotos2026(l.total)}</td>
@@ -256,6 +335,11 @@ export function QuadroMunicipios2026({
 
   const linhaTerritorio = ({ linha: t, cidades }: TerritorioQuadro2026) => {
     const aberto = Boolean(termo) || abertos.has(t.codigo);
+    const eleitorado = somarEleitorado(
+      cidades.map((c) => c.codigo),
+      eleitoradoPorCodigo,
+    );
+    const totalNominal = cidades.reduce((soma, c) => soma + (totalNominalPorCodigo.get(c.codigo) ?? 0), 0);
     return (
       <tr key={`td-${t.codigo}`} className={cn(tseTabela.tr, "bg-[#FAFAF7]")}>
         <td className={cn(tseTabela.td, colunaFixa, "bg-[#FAFAF7]")}>
@@ -274,7 +358,7 @@ export function QuadroMunicipios2026({
             </span>
           </button>
         </td>
-        {focoAtivo ? celulaFoco(t.votos, t.ranking) : null}
+        {focoAtivo ? celulaFoco(t.votos, t.ranking, eleitorado, totalNominal) : null}
         {posicoes.map((k) => celulaColocado(t.votos, t.ranking, k, `td-${t.codigo}-${k}`))}
         {celulaOutros(t.total - somaTop(t.votos, t.ranking, n))}
         <td className={cn(celulaNumero, "font-black")}>{formatarVotos2026(t.total)}</td>
@@ -307,32 +391,63 @@ export function QuadroMunicipios2026({
     votos: number[],
     ranking: number[],
     total: number,
+    eleitorado: number | null,
+    totalNominal: number,
   ): LinhaQuadroExport2026 => {
     const posicaoFoco = ranking.indexOf(focoPos);
+    const votosFoco = posicaoFoco < 0 ? 0 : (votos[focoPos] ?? 0);
     return {
-    nivel,
-    nome,
-    territorio,
-    detalhe,
-    foco: !focoAtivo
-      ? null
-      : posicaoFoco < 0
-        ? { posicao: 0, votos: 0 }
-        : { posicao: posicaoFoco + 1, votos: votos[focoPos] ?? 0 },
-    celulas: posicoes.map((k) => celulaExport(votos, ranking, k)),
-    outros: total - somaTop(votos, ranking, n),
-    total,
-  };
+      nivel,
+      nome,
+      territorio,
+      detalhe,
+      eleitores: nivel === "municipio" ? eleitorado : null,
+      votantes: nivel === "municipio" ? totalNominal : null,
+      foco: !focoAtivo
+        ? null
+        : {
+            posicao: posicaoFoco < 0 ? 0 : posicaoFoco + 1,
+            votos: votosFoco,
+            pctEleitorado: pctDe(votosFoco, eleitorado),
+            pctVotacao: pctDe(votosFoco, totalNominal),
+          },
+      celulas: posicoes.map((k) => celulaExport(votos, ranking, k)),
+      outros: total - somaTop(votos, ranking, n),
+      total,
+    };
   };
 
   const exportarQuadro = async (formato: "pdf" | "xlsx") => {
     setExportando(formato);
     try {
       const { exportarQuadroPdf2026, exportarQuadroXlsx2026 } = await import("./quadro-municipios-export-2026");
-      const doEstado = linhaExport("estado", "Piauí", "", "", quadro.totais, rankingEstado, totalEstado);
+      const doEstado = linhaExport(
+        "estado",
+        "Piauí",
+        "",
+        "",
+        quadro.totais,
+        rankingEstado,
+        totalEstado,
+        eleitoradoEstado,
+        totalNominalEstado,
+      );
       const demais: LinhaQuadroExport2026[] = porTerritorio
         ? grupos.flatMap((g) => [
-            linhaExport("territorio", g.linha.nome, g.linha.nome, `${g.cidades.length} cidades`, g.linha.votos, g.linha.ranking, g.linha.total),
+            linhaExport(
+              "territorio",
+              g.linha.nome,
+              g.linha.nome,
+              `${g.cidades.length} cidades`,
+              g.linha.votos,
+              g.linha.ranking,
+              g.linha.total,
+              somarEleitorado(
+                g.cidades.map((c) => c.codigo),
+                eleitoradoPorCodigo,
+              ),
+              g.cidades.reduce((soma, c) => soma + (totalNominalPorCodigo.get(c.codigo) ?? 0), 0),
+            ),
             ...g.cidades.map((c) =>
               linhaExport(
                 "municipio",
@@ -342,11 +457,23 @@ export function QuadroMunicipios2026({
                 c.votos,
                 c.ranking,
                 c.total,
+                eleitoradoPorCodigo.get(c.codigo) ?? null,
+                totalNominalPorCodigo.get(c.codigo) ?? c.total,
               ),
             ),
           ])
         : linhas.map((l) =>
-            linhaExport("municipio", l.nome, getTerritorioDesenvolvimentoPI(l.nome) ?? "", "", l.votos, l.ranking, l.total),
+            linhaExport(
+              "municipio",
+              l.nome,
+              getTerritorioDesenvolvimentoPI(l.nome) ?? "",
+              "",
+              l.votos,
+              l.ranking,
+              l.total,
+              eleitoradoPorCodigo.get(l.codigo) ?? null,
+              totalNominalPorCodigo.get(l.codigo) ?? l.total,
+            ),
           );
       const opcoes = {
         meta: payload.meta,
@@ -371,7 +498,7 @@ export function QuadroMunicipios2026({
       titulo={`Quadro por ${porTerritorio ? "território" : "município"} · ${cargo}`}
       subtitulo={
         focoCandidato
-          ? `${sigla} 1 é o mais votado da cidade · só ${nomeProprio(focoCandidato.nome)} aparece, na posição em que ficou em cada município · E eleito, S suplente, N não eleito${recorte}`
+          ? `${sigla} 1 é o mais votado da cidade · só ${nomeProprio(focoCandidato.nome)} aparece, na posição em que ficou em cada município · percentuais sobre o eleitorado e sobre os votos nominais de todos os candidatos · E eleito, S suplente, N não eleito${recorte}`
           : `${sigla} 1 é o mais votado da cidade, ${sigla} 2 o segundo e assim por diante · destaque para a referência e os parceiros · E eleito, S suplente, N não eleito${recorte}`
       }
       acao={
@@ -463,7 +590,7 @@ export function QuadroMunicipios2026({
           <tbody>
             <tr className={cn(tseTabela.tr, "bg-[#FBFAF3]")}>
               <td className={cn(tseTabela.td, colunaFixa, "bg-[#FBFAF3] font-black uppercase")}>Piauí</td>
-              {focoAtivo ? celulaFoco(quadro.totais, rankingEstado) : null}
+              {focoAtivo ? celulaFoco(quadro.totais, rankingEstado, eleitoradoEstado, totalNominalEstado) : null}
               {posicoes.map((k) => celulaColocado(quadro.totais, rankingEstado, k, `estado-${k}`))}
               {celulaOutros(totalEstado - somaTop(quadro.totais, rankingEstado, n))}
               <td className={cn(celulaNumero, "font-black")}>{formatarVotos2026(totalEstado)}</td>
