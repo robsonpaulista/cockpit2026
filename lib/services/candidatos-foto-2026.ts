@@ -1,11 +1,8 @@
-import { createWriteStream } from 'fs'
-import { spawn } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
-import { Readable } from 'stream'
-import { pipeline } from 'stream/promises'
+import { inflateRawSync } from 'zlib'
 
-/** Pacotes oficiais de fotos do DivulgaCand (PI), dados abertos do TSE. O arquivo é `FPI{sequencial}_div.jpg`. */
+/** Pacotes oficiais de fotos do DivulgaCand (PI). Cada foto é `FPI{sequencial}_div.jpg` dentro do ZIP. */
 const FONTES = {
   '2024': {
     url: 'https://cdn.tse.jus.br/estatistica/sead/eleicoes/eleicoes2024/fotos/foto_cand2024_PI_div.zip',
@@ -19,8 +16,18 @@ const FONTES = {
 
 export type AnoFotoCandidato = keyof typeof FONTES
 
+type EntradaZip = {
+  metodo: number
+  comprimido: number
+  offsetLocal: number
+}
+
+type LeitorZip = {
+  faixa: (inicio: number, fim: number) => Promise<Buffer>
+}
+
 const CACHE = path.join(process.cwd(), '.cache')
-const baixando = new Map<AnoFotoCandidato, Promise<string>>()
+const indices = new Map<string, Promise<Map<string, EntradaZip>>>()
 
 export function sqFotoCandidatoValido(sq: string): boolean {
   return /^\d{10,14}$/.test(sq)
@@ -34,20 +41,7 @@ function arquivoExtraido(ano: AnoFotoCandidato, sq: string): string {
   return path.join(CACHE, `fotos-cand-${ano}`, `FPI${sq}_div.jpg`)
 }
 
-async function baixarZip(ano: AnoFotoCandidato, destino: string): Promise<string> {
-  await fs.mkdir(CACHE, { recursive: true })
-  const parcial = `${destino}.parcial`
-  const resposta = await fetch(FONTES[ano].url)
-  if (!resposta.ok || !resposta.body) throw new Error('Não foi possível baixar as fotos do TSE')
-  await pipeline(
-    Readable.fromWeb(resposta.body as unknown as import('stream/web').ReadableStream),
-    createWriteStream(parcial),
-  )
-  await fs.rename(parcial, destino)
-  return destino
-}
-
-async function zipCompleto(destino: string): Promise<boolean> {
+async function zipLocalCompleto(destino: string): Promise<boolean> {
   try {
     const stat = await fs.stat(destino)
     if (stat.size < 22) return false
@@ -64,38 +58,112 @@ async function zipCompleto(destino: string): Promise<boolean> {
   }
 }
 
-async function caminhoZip(ano: AnoFotoCandidato): Promise<string> {
-  const destino = path.join(CACHE, FONTES[ano].zip)
-  if (await zipCompleto(destino)) return destino
-  const emCurso = baixando.get(ano)
+function leitorArquivo(caminho: string): LeitorZip {
+  return {
+    faixa: async (inicio, fim) => {
+      const arquivo = await fs.open(caminho, 'r')
+      try {
+        const buf = Buffer.alloc(fim - inicio + 1)
+        await arquivo.read(buf, 0, buf.length, inicio)
+        return buf
+      } finally {
+        await arquivo.close()
+      }
+    },
+  }
+}
+
+function leitorHttp(url: string): LeitorZip {
+  return {
+    faixa: async (inicio, fim) => {
+      const resposta = await fetch(url, {
+        headers: { Range: `bytes=${inicio}-${fim}` },
+        cache: 'no-store',
+      })
+      if (resposta.status !== 206 && resposta.status !== 200) {
+        throw new Error(`Falha ao ler foto do TSE (${resposta.status})`)
+      }
+      return Buffer.from(await resposta.arrayBuffer())
+    },
+  }
+}
+
+function lerIndice(chave: string, leitor: LeitorZip, tamanho: number): Promise<Map<string, EntradaZip>> {
+  const emCurso = indices.get(chave)
   if (emCurso) return emCurso
-  const tarefa = baixarZip(ano, destino).finally(() => {
-    baixando.delete(ano)
+  const tarefa = montarIndice(leitor, tamanho).catch((erro: unknown) => {
+    indices.delete(chave)
+    throw erro
   })
-  baixando.set(ano, tarefa)
+  indices.set(chave, tarefa)
   return tarefa
 }
 
-function extrairUm(zip: string, nome: string): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('unzip', ['-p', zip, nome])
-    const pedacos: Buffer[] = []
-    let tamanho = 0
-    proc.stdout.on('data', (chunk: Buffer) => {
-      tamanho += chunk.length
-      if (tamanho > 2_000_000) {
-        proc.kill()
-        resolve(null)
-        return
-      }
-      pedacos.push(chunk)
-    })
-    proc.on('error', reject)
-    proc.on('close', () => {
-      const foto = Buffer.concat(pedacos)
-      resolve(foto.length >= 2 && foto[0] === 0xff && foto[1] === 0xd8 ? foto : null)
-    })
-  })
+async function montarIndice(leitor: LeitorZip, tamanho: number): Promise<Map<string, EntradaZip>> {
+  const caudaInicio = Math.max(0, tamanho - 65557)
+  const cauda = await leitor.faixa(caudaInicio, tamanho - 1)
+  const assinatura = Buffer.from([0x50, 0x4b, 0x05, 0x06])
+  const eocd = cauda.lastIndexOf(assinatura)
+  if (eocd < 0) throw new Error('Pacote de fotos do TSE sem diretório')
+  const cdTamanho = cauda.readUInt32LE(eocd + 12)
+  const cdOffset = cauda.readUInt32LE(eocd + 16)
+  if (cdTamanho === 0xffffffff || cdOffset === 0xffffffff) {
+    throw new Error('Pacote de fotos do TSE em formato não suportado')
+  }
+  const cd = await leitor.faixa(cdOffset, cdOffset + cdTamanho - 1)
+  const mapa = new Map<string, EntradaZip>()
+  let p = 0
+  while (p + 46 <= cd.length && cd.readUInt32LE(p) === 0x02014b50) {
+    const metodo = cd.readUInt16LE(p + 10)
+    const comprimido = cd.readUInt32LE(p + 20)
+    const nomeLen = cd.readUInt16LE(p + 28)
+    const extraLen = cd.readUInt16LE(p + 30)
+    const comentarioLen = cd.readUInt16LE(p + 32)
+    const offsetLocal = cd.readUInt32LE(p + 42)
+    const nome = cd.subarray(p + 46, p + 46 + nomeLen).toString('utf8')
+    const base = nome.split('/').pop() ?? nome
+    if (base.endsWith('_div.jpg')) mapa.set(base, { metodo, comprimido, offsetLocal })
+    p += 46 + nomeLen + extraLen + comentarioLen
+  }
+  return mapa
+}
+
+async function lerJpeg(leitor: LeitorZip, entrada: EntradaZip): Promise<Buffer | null> {
+  const prefixo = await leitor.faixa(entrada.offsetLocal, entrada.offsetLocal + 29)
+  if (prefixo.readUInt32LE(0) !== 0x04034b50) return null
+  const nomeLen = prefixo.readUInt16LE(26)
+  const extraLen = prefixo.readUInt16LE(28)
+  const inicio = entrada.offsetLocal + 30 + nomeLen + extraLen
+  if (entrada.comprimido <= 0) return null
+  const dados = await leitor.faixa(inicio, inicio + entrada.comprimido - 1)
+  const foto = entrada.metodo === 0 ? dados : entrada.metodo === 8 ? inflateRawSync(dados) : null
+  if (!foto || foto.length < 2 || foto[0] !== 0xff || foto[1] !== 0xd8) return null
+  return foto
+}
+
+async function tamanhoDoPacote(url: string): Promise<number> {
+  const cabeca = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+  const peloCabecalho = Number(cabeca.headers.get('content-length'))
+  if (cabeca.ok && Number.isFinite(peloCabecalho) && peloCabecalho >= 22) return peloCabecalho
+  const cauda = await fetch(url, { headers: { Range: 'bytes=-22' }, cache: 'no-store' })
+  const total = Number((cauda.headers.get('content-range') ?? '').split('/')[1])
+  if (!Number.isFinite(total) || total < 22) throw new Error('Não foi possível consultar as fotos do TSE')
+  return total
+}
+
+async function lerDoPacote(ano: AnoFotoCandidato, nome: string): Promise<Buffer | null> {
+  const local = path.join(CACHE, FONTES[ano].zip)
+  if (await zipLocalCompleto(local)) {
+    const stat = await fs.stat(local)
+    const indice = await lerIndice(local, leitorArquivo(local), stat.size)
+    const entrada = indice.get(nome)
+    return entrada ? lerJpeg(leitorArquivo(local), entrada) : null
+  }
+
+  const url = FONTES[ano].url
+  const indice = await lerIndice(url, leitorHttp(url), await tamanhoDoPacote(url))
+  const entrada = indice.get(nome)
+  return entrada ? lerJpeg(leitorHttp(url), entrada) : null
 }
 
 /** JPEG do DivulgaCand para o ano e o sequencial do candidato, ou null se não houver foto. */
@@ -104,15 +172,9 @@ export async function lerFotoCandidato(ano: AnoFotoCandidato, sq: string): Promi
   try {
     return await fs.readFile(arquivoExtraido(ano, sq))
   } catch {
-    /* extrai só esta foto do pacote */
+    /* segue para o pacote do TSE */
   }
-  const zip = await caminhoZip(ano)
-  const foto = await extrairUm(zip, `FPI${sq}_div.jpg`)
-  if (!foto) return null
-  const destino = arquivoExtraido(ano, sq)
-  await fs.mkdir(path.dirname(destino), { recursive: true })
-  await fs.writeFile(destino, foto).catch(() => undefined)
-  return foto
+  return lerDoPacote(ano, `FPI${sq}_div.jpg`)
 }
 
 export const sqFotoCandidato2026Valido = sqFotoCandidatoValido
