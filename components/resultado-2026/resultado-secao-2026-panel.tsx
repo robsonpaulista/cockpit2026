@@ -80,13 +80,14 @@ type Visao =
   | "territorio"
   | "comparativo-base";
 type Ordem = "votos" | "alfabetica";
-type ModoMunicipios = "tabela" | "mapa";
+type ModoMunicipios = "tabela" | "mapa" | "ambos";
 
 const PAGE_SIZE = 30;
 
 const MODOS_MUNICIPIOS: { id: ModoMunicipios; label: string }[] = [
   { id: "tabela", label: "Tabela" },
   { id: "mapa", label: "Mapa" },
+  { id: "ambos", label: "Mapa + tabela" },
 ];
 
 /** Valor da opção "Todos os candidatos" no seletor (só na aba Municípios). */
@@ -1044,7 +1045,9 @@ export function ResultadoSecao2026Panel() {
                 />
               ) : null}
 
-              {visao === "municipios" && !todosAtivo && modoMunicipios === "mapa" ? (
+              {visao === "municipios" &&
+              !todosAtivo &&
+              (modoMunicipios === "mapa" || modoMunicipios === "ambos") ? (
                 <MapaVotosMunicipios2026
                   linhas={municipiosResumo}
                   candidatoNome={candidato.nome}
@@ -1053,7 +1056,9 @@ export function ResultadoSecao2026Panel() {
                 />
               ) : null}
 
-              {visao === "municipios" && !todosAtivo && modoMunicipios === "tabela" ? (
+              {visao === "municipios" &&
+              !todosAtivo &&
+              (modoMunicipios === "tabela" || modoMunicipios === "ambos") ? (
                 <MunicipiosTabela
                   linhas={municipiosVisiveis.slice(0, limite)}
                   rank={rankMunicipio}
