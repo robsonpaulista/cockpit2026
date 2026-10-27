@@ -16,6 +16,7 @@ export type ResumoEleicoesHubTab =
   | typeof RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL
 
 export const ATENDIMENTO_HREF = '/dashboard/resumo-eleicoes'
+export const RESULTADO_2026_HREF = '/dashboard/resumo-eleicoes/resultado-2026'
 export const VOTACAO_SECAO_HREF = '/dashboard/resumo-eleicoes/secao'
 export const AGENDA_HREF = '/dashboard/agenda'
 export const CHAPA_FEDERAL_HREF = '/dashboard/chapas'

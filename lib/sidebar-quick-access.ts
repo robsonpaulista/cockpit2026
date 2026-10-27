@@ -4,10 +4,9 @@ import {
   ATENDIMENTO_HREF,
   CHAPA_ESTADUAL_HREF,
   CHAPA_FEDERAL_HREF,
+  RESULTADO_2026_HREF,
 } from '@/lib/resumo-eleicoes-hub-route'
 import { territorioCampoHref } from '@/lib/territorio-campo-route'
-
-const RESULTADO_2026_HREF = '/dashboard/resumo-eleicoes/resultado-2026'
 
 export type SidebarQuickAccessItem = {
   id: string
@@ -37,7 +36,7 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     label: 'Resultado 2026',
     href: RESULTADO_2026_HREF,
     icon: 'Vote',
-    pageKey: 'resumo-eleicoes',
+    pageKey: 'resultado-2026',
   },
   {
     id: 'quick-agenda',

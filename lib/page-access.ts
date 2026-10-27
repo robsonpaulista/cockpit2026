@@ -120,6 +120,11 @@ export function expandStoredPermissions(stored: string[] | undefined | null): Se
     next.add(tabPermissionKey('resumo-eleicoes', 'chapa-estadual'))
     next.delete('chapas')
   }
+  const resultadoComoAba = tabPermissionKey('resumo-eleicoes', 'resultado-2026')
+  if (next.has(resultadoComoAba)) {
+    next.add('resultado-2026')
+    next.delete(resultadoComoAba)
+  }
   const panoramaPesquisa = tabPermissionKey('pesquisa', 'panorama')
   if (next.has(panoramaPesquisa)) {
     next.add(tabPermissionKey('pesquisa', 'tendencia'))
@@ -203,16 +208,15 @@ export function canAccessSidebarItem(canAccess: CanAccessFn, itemId: string): bo
     return canAccessTab(canAccess, 'resumo-eleicoes', 'chapa-estadual')
   }
   if (itemId === 'resumo-eleicoes-principal') {
-    return canAccessTab(canAccess, 'resumo-eleicoes', 'atendimento')
+    return canAccessTab(canAccess, 'resumo-eleicoes', RESUMO_ELEICOES_TAB_ATENDIMENTO)
+  }
+  if (itemId === 'resultado-2026') {
+    return canAccessPage(canAccess, 'resultado-2026')
   }
   if (itemId === 'resumo-eleicoes-secao') {
-    return canAccessTab(canAccess, 'resumo-eleicoes', 'secao')
+    return canAccessTab(canAccess, 'resumo-eleicoes', RESUMO_ELEICOES_TAB_SECAO)
   }
-  if (
-    itemId === 'resumo-eleicoes-menu' ||
-    itemId === 'resumo-eleicoes-historico' ||
-    itemId === 'resultado-2026'
-  ) {
+  if (itemId === 'resumo-eleicoes-menu' || itemId === 'resumo-eleicoes-historico') {
     return canAccessPage(canAccess, 'resumo-eleicoes')
   }
   const key = pageKeyForSidebarItem(itemId)

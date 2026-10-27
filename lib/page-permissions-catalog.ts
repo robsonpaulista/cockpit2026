@@ -78,6 +78,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         ]),
       },
       {
+        key: 'resultado-2026',
+        label: 'Resultado 2026',
+        path: '/dashboard/resumo-eleicoes/resultado-2026',
+      },
+      {
         key: 'resumo-eleicoes',
         label: 'Atendimentos',
         path: '/dashboard/resumo-eleicoes',

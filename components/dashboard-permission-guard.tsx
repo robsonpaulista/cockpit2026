@@ -18,6 +18,7 @@ function getPageKey(pathname: string): string | null {
   if (pathname.startsWith('/dashboard/radar-224')) return 'noticias'
   if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
   if (pathname.startsWith('/dashboard/ficha-atendimento')) return 'ficha-atendimento'
+  if (pathname.startsWith('/dashboard/resumo-eleicoes/resultado-2026')) return 'resultado-2026'
   if (pathname.startsWith('/dashboard/resumo-eleicoes')) return 'resumo-eleicoes'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]

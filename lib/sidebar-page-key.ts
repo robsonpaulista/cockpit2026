@@ -19,11 +19,11 @@ export function pageKeyForSidebarItem(id: string): string {
   ) {
     return 'gestao_pesquisas'
   }
+  if (id === 'resultado-2026') return 'resultado-2026'
   if (
     id === 'resumo-eleicoes-menu' ||
     id === 'resumo-eleicoes-principal' ||
     id === 'resumo-eleicoes-historico' ||
-    id === 'resultado-2026' ||
     id === 'resumo-eleicoes-secao'
   ) {
     return 'resumo-eleicoes'
