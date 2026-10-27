@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { Minus, Plus, RotateCcw } from 'lucide-react'
 import { TseCarregando, TseErro, tseBotaoCinzaClass, tseBotaoIconeClass, tseCardClass } from '@/components/tse/tse-ui'
@@ -9,6 +9,11 @@ import { formatarPct2026, formatarVotos2026, type MunicipioResumo2026 } from '@/
 import { fetchMalhaMunicipiosPI } from '@/lib/services/malha-pi'
 import { cn } from '@/lib/utils'
 import { nomeProprio } from './tse-ui'
+
+export type MapaVotosMunicipios2026Handle = {
+  /** Rasteriza o mapa em zoom 1 (estado inteiro) para PDF. */
+  capturarPng: () => Promise<string | null>
+}
 
 type Ponto = [number, number]
 type Anel = Ponto[]
@@ -24,6 +29,42 @@ const COR_BAIXA: [number, number, number] = [255, 248, 214] // yellow-soft TSE
 const COR_ALTA: [number, number, number] = [235, 180, 2] // amarelo Jadyel / TSE #EBB402
 const COR_ROTULO = '#333333'
 const TAM_ROTULO = 8.5
+
+/** Converte o SVG do mapa em PNG (data URL) para embutir no PDF. */
+async function svgElementoParaPng(svg: SVGSVGElement, escala = 2): Promise<string> {
+  const clone = svg.cloneNode(true) as SVGSVGElement
+  const vb = svg.viewBox.baseVal
+  const w = vb.width > 0 ? vb.width : LARGURA
+  const h = vb.height > 0 ? vb.height : Math.max(1, svg.clientHeight)
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  clone.setAttribute('width', String(Math.round(w)))
+  clone.setAttribute('height', String(Math.round(h)))
+  clone.querySelectorAll('text').forEach((t) => {
+    t.setAttribute('font-family', 'Helvetica, Arial, sans-serif')
+    t.removeAttribute('style')
+  })
+  const xml = new XMLSerializer().serializeToString(clone)
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }))
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = () => reject(new Error('Falha ao rasterizar o mapa'))
+      i.src = url
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(w * escala))
+    canvas.height = Math.max(1, Math.round(h * escala))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas indisponível')
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/png')
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
 
 type Camera = { zoom: number; x: number; y: number }
 
@@ -154,25 +195,28 @@ function corVotos(votos: number, max: number): string {
   return misturar(COR_BAIXA, COR_ALTA, Math.sqrt(votos / max))
 }
 
-export function MapaVotosMunicipios2026({
-  linhas,
-  candidatoNome,
-  busca,
-  onAbrirMunicipio,
-}: {
-  linhas: MunicipioResumo2026[]
-  candidatoNome: string
-  busca: string
-  onAbrirMunicipio: (codigo: string) => void
-}) {
+export const MapaVotosMunicipios2026 = forwardRef<
+  MapaVotosMunicipios2026Handle,
+  {
+    linhas: MunicipioResumo2026[]
+    candidatoNome: string
+    busca: string
+    onAbrirMunicipio: (codigo: string) => void
+  }
+>(function MapaVotosMunicipios2026({ linhas, candidatoNome, busca, onAbrirMunicipio }, ref) {
   const [malha, setMalha] = useState<MalhaMapaPIPayload | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [hover, setHover] = useState<{ chave: string; x: number; y: number } | null>(null)
   const [camera, setCamera] = useState<Camera>({ zoom: 1, x: 0, y: 0 })
   const [arrasto, setArrasto] = useState<{ sx: number; sy: number; cx: number; cy: number } | null>(null)
+  const [capturaPedido, setCapturaPedido] = useState<number>(0)
   const arrastouRef = useRef<boolean>(false)
   const mapaRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
+  const capturaResolverRef = useRef<((v: string | null) => void) | null>(null)
+  const cameraAntesCapturaRef = useRef<Camera | null>(null)
+  const cameraRef = useRef<Camera>(camera)
+  cameraRef.current = camera
 
   useEffect(() => {
     let ativo = true
@@ -187,6 +231,58 @@ export function MapaVotosMunicipios2026({
       ativo = false
     }
   }, [])
+
+  useImperativeHandle(ref, () => ({
+    capturarPng: () =>
+      new Promise<string | null>((resolve) => {
+        if (!svgRef.current) {
+          resolve(null)
+          return
+        }
+        capturaResolverRef.current = resolve
+        cameraAntesCapturaRef.current = cameraRef.current
+        setHover(null)
+        setArrasto(null)
+        setCamera({ zoom: 1, x: 0, y: 0 })
+        setCapturaPedido((n) => n + 1)
+      }),
+  }))
+
+  useEffect(() => {
+    if (!capturaPedido) return
+    const resolve = capturaResolverRef.current
+    if (!resolve) return
+    let cancelado = false
+    const restaurar = () => {
+      const anterior = cameraAntesCapturaRef.current
+      cameraAntesCapturaRef.current = null
+      if (anterior && (anterior.zoom !== 1 || anterior.x !== 0 || anterior.y !== 0)) {
+        setCamera(anterior)
+      }
+    }
+    const rodar = async () => {
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+      if (cancelado || capturaResolverRef.current !== resolve) return
+      capturaResolverRef.current = null
+      const svg = svgRef.current
+      if (!svg) {
+        resolve(null)
+        restaurar()
+        return
+      }
+      try {
+        resolve(await svgElementoParaPng(svg))
+      } catch {
+        resolve(null)
+      } finally {
+        restaurar()
+      }
+    }
+    void rodar()
+    return () => {
+      cancelado = true
+    }
+  }, [capturaPedido])
 
   const porChave = useMemo(() => {
     const map = new Map<string, MunicipioResumo2026>()
@@ -424,4 +520,4 @@ export function MapaVotosMunicipios2026({
       </div>
     </section>
   )
-}
+})

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Download, FileText, MapPin, Plus, User, X } from "lucide-react";
 import {
   TseBarraRotulo,
@@ -53,7 +53,10 @@ import { fetchResultadoSecao2026 } from "@/lib/services/resultado-secao-2026";
 import { ComparativoBase2026 } from "./comparativo-base-2026";
 import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
-import { MapaVotosMunicipios2026 } from "./mapa-votos-municipios-2026";
+import {
+  MapaVotosMunicipios2026,
+  type MapaVotosMunicipios2026Handle,
+} from "./mapa-votos-municipios-2026";
 import { Territorio2026 } from "./territorio-2026";
 import {
   CandidatosTodosTabela,
@@ -141,6 +144,7 @@ export function ResultadoSecao2026Panel() {
   const [cargoParceiro, setCargoParceiro] = useState<string>("");
   const [cargoTerritorio, setCargoTerritorio] = useState<string>("");
   const [gerandoPdf, setGerandoPdf] = useState<ModoPdfResultado | null>(null);
+  const mapaMunicipiosRef = useRef<MapaVotosMunicipios2026Handle>(null);
   /** Seções marcadas na aba Seções (`chaveSecao`); valem para qualquer candidato. */
   const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set());
   const [somenteMarcadasSel, setSomenteMarcadas] = useState<boolean>(false);
@@ -534,11 +538,16 @@ export function ResultadoSecao2026Panel() {
       };
       const n = linhasPdf(modoPdf);
       if (visao === "municipios") {
+        const incluirMapa = modoMunicipios === "ambos";
+        const mapaPng = incluirMapa
+          ? ((await mapaMunicipiosRef.current?.capturarPng()) ?? null)
+          : null;
         exportarResultadoPdf2026({
           ...base,
           visao,
           linhas: municipiosVisiveis.slice(0, n),
           rank: rankMunicipio,
+          mapaPng,
         });
       } else if (visao === "locais") {
         exportarResultadoPdf2026({
@@ -917,7 +926,11 @@ export function ResultadoSecao2026Panel() {
                         <>
                           <TseMenuItem
                             titulo="Como está na tela"
-                            descricao={`Card do candidato e as ${formatarVotos2026(Math.min(limite, totalVisao))} linhas carregadas`}
+                            descricao={
+                              visao === "municipios" && modoMunicipios === "ambos"
+                                ? `Mapa + card e as ${formatarVotos2026(Math.min(limite, totalVisao))} linhas da tabela`
+                                : `Card do candidato e as ${formatarVotos2026(Math.min(limite, totalVisao))} linhas carregadas`
+                            }
                             onClick={() => {
                               fechar();
                               void exportarPdf("tela");
@@ -925,7 +938,11 @@ export function ResultadoSecao2026Panel() {
                           />
                           <TseMenuItem
                             titulo="Lista completa"
-                            descricao={`${formatarVotos2026(totalVisao)} linhas${totalVisao > 4000 ? " (arquivo grande, pode demorar)" : ""}`}
+                            descricao={
+                              visao === "municipios" && modoMunicipios === "ambos"
+                                ? `Mapa + ${formatarVotos2026(totalVisao)} municípios${totalVisao > 4000 ? " (arquivo grande, pode demorar)" : ""}`
+                                : `${formatarVotos2026(totalVisao)} linhas${totalVisao > 4000 ? " (arquivo grande, pode demorar)" : ""}`
+                            }
                             onClick={() => {
                               fechar();
                               void exportarPdf("completo");
@@ -1049,6 +1066,7 @@ export function ResultadoSecao2026Panel() {
               !todosAtivo &&
               (modoMunicipios === "mapa" || modoMunicipios === "ambos") ? (
                 <MapaVotosMunicipios2026
+                  ref={mapaMunicipiosRef}
                   linhas={municipiosResumo}
                   candidatoNome={candidato.nome}
                   busca={busca}

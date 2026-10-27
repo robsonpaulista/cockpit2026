@@ -40,7 +40,13 @@ type BaseResultadoPdf = {
 
 export type OpcoesResultadoPdf2026 = BaseResultadoPdf &
   (
-    | { visao: 'municipios'; linhas: MunicipioResumo2026[]; rank: Map<string, number> }
+    | {
+        visao: 'municipios'
+        linhas: MunicipioResumo2026[]
+        rank: Map<string, number>
+        /** PNG do mapa (data URL); usado na visão Mapa + tabela. */
+        mapaPng?: string | null
+      }
     | { visao: 'locais'; linhas: LocalResumo2026[]; mostrarMunicipio: boolean }
     | { visao: 'secoes'; linhas: SecaoDetalhe2026[]; mostrarMunicipio: boolean; localLabel: string | null }
   )
@@ -62,8 +68,10 @@ export function montarResultadoPdf2026(o: OpcoesResultadoPdf2026): jsPDF {
   const fonteDados = o.candidato.fonte
   const { preencher, contorno, tinta, fonte, pilula, barra } = ferramentasPdf(doc)
 
+  const comMapa = o.visao === 'municipios' && Boolean(o.mapaPng)
   const descricao = [
     o.escopoLabel,
+    comMapa ? 'Mapa + tabela' : null,
     `Ordenação: ${o.ordemLabel}`,
     o.busca ? `Busca: "${o.busca}"` : null,
     o.visao === 'secoes' && o.localLabel ? `Local: ${o.localLabel}` : null,
@@ -119,6 +127,26 @@ export function montarResultadoPdf2026(o: OpcoesResultadoPdf2026): jsPDF {
   tinta(COR.muted)
   doc.text(`votos ${o.legendaVotos}`, W - MARGEM - 5, y + 20, { align: 'right' })
   y += ch + 6
+
+  if (o.visao === 'municipios' && o.mapaPng) {
+    fonte(9, 'bold')
+    tinta(COR.text)
+    doc.text('Mapa de votos por município', MARGEM, y)
+    y += 3
+    const props = doc.getImageProperties(o.mapaPng)
+    const maxW = sw
+    const maxH = Math.min(118, doc.internal.pageSize.getHeight() - y - 28)
+    const ratio = props.width / Math.max(1, props.height)
+    let iw = maxW
+    let ih = iw / ratio
+    if (ih > maxH) {
+      ih = maxH
+      iw = ih * ratio
+    }
+    const ix = MARGEM + (sw - iw) / 2
+    doc.addImage(o.mapaPng, 'PNG', ix, y, iw, ih)
+    y += ih + 6
+  }
 
   fonte(7.5)
   tinta(COR.muted)
@@ -299,10 +327,14 @@ export function montarResultadoPdf2026(o: OpcoesResultadoPdf2026): jsPDF {
     },
   })
 
-  numerarPaginas(doc, `Resultado 2026 · ${TITULO[o.visao]} · ${nomeProprio(o.candidato.nome)}`)
+  numerarPaginas(
+    doc,
+    `Resultado 2026 · ${TITULO[o.visao]}${comMapa ? ' · Mapa + tabela' : ''} · ${nomeProprio(o.candidato.nome)}`,
+  )
   return doc
 }
 
 export function exportarResultadoPdf2026(o: OpcoesResultadoPdf2026): void {
-  montarResultadoPdf2026(o).save(`${o.candidato.id}-2026-${o.visao}-${slugEscopo(o.escopoLabel)}-${o.modo}.pdf`)
+  const sufixo = o.visao === 'municipios' && o.mapaPng ? 'municipios-mapa' : o.visao
+  montarResultadoPdf2026(o).save(`${o.candidato.id}-2026-${sufixo}-${slugEscopo(o.escopoLabel)}-${o.modo}.pdf`)
 }
