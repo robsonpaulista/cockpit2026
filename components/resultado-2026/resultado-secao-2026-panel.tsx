@@ -19,6 +19,7 @@ import {
   TsePillSelect,
   TsePillValor,
   TseRank,
+  TseSegmentado,
   TseSelectGrande,
   TseTabs,
   TseVazio,
@@ -52,6 +53,7 @@ import { fetchResultadoSecao2026 } from "@/lib/services/resultado-secao-2026";
 import { ComparativoBase2026 } from "./comparativo-base-2026";
 import { ComparativoLocais2026 } from "./comparativo-locais-2026";
 import { ComparativoSecoes2026 } from "./comparativo-secoes-2026";
+import { MapaVotosMunicipios2026 } from "./mapa-votos-municipios-2026";
 import { Territorio2026 } from "./territorio-2026";
 import {
   CandidatosTodosTabela,
@@ -78,8 +80,14 @@ type Visao =
   | "territorio"
   | "comparativo-base";
 type Ordem = "votos" | "alfabetica";
+type ModoMunicipios = "tabela" | "mapa";
 
 const PAGE_SIZE = 30;
+
+const MODOS_MUNICIPIOS: { id: ModoMunicipios; label: string }[] = [
+  { id: "tabela", label: "Tabela" },
+  { id: "mapa", label: "Mapa" },
+];
 
 /** Valor da opção "Todos os candidatos" no seletor (só na aba Municípios). */
 const TODOS = "todos";
@@ -120,6 +128,7 @@ export function ResultadoSecao2026Panel() {
   const [municipio, setMunicipio] = useState<string | null>(null);
   const [zona, setZona] = useState<number | null>(null);
   const [visao, setVisao] = useState<Visao>("municipios");
+  const [modoMunicipios, setModoMunicipios] = useState<ModoMunicipios>("tabela");
   const [ordem, setOrdem] = useState<Ordem>("votos");
   const [busca, setBusca] = useState<string>("");
   const [limite, setLimite] = useState<number>(PAGE_SIZE);
@@ -855,14 +864,25 @@ export function ResultadoSecao2026Panel() {
 
             <main className="min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <select
-                  value={ordem}
-                  onChange={(e) => setOrdem(e.target.value as Ordem)}
-                  className={tseControleClass}
-                >
-                  <option value="votos">Ordenar: mais votados</option>
-                  <option value="alfabetica">Ordem alfabética</option>
-                </select>
+                <div className="flex flex-wrap items-center gap-3">
+                  {visao === "municipios" && !todosAtivo ? (
+                    <TseSegmentado
+                      opcoes={MODOS_MUNICIPIOS}
+                      valor={modoMunicipios}
+                      onChange={setModoMunicipios}
+                    />
+                  ) : null}
+                  {visao === "municipios" && !todosAtivo && modoMunicipios === "mapa" ? null : (
+                    <select
+                      value={ordem}
+                      onChange={(e) => setOrdem(e.target.value as Ordem)}
+                      className={tseControleClass}
+                    >
+                      <option value="votos">Ordenar: mais votados</option>
+                      <option value="alfabetica">Ordem alfabética</option>
+                    </select>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <TseBusca
                     value={busca}
@@ -1024,14 +1044,23 @@ export function ResultadoSecao2026Panel() {
                 />
               ) : null}
 
-              {visao === "municipios" && !todosAtivo && (
+              {visao === "municipios" && !todosAtivo && modoMunicipios === "mapa" ? (
+                <MapaVotosMunicipios2026
+                  linhas={municipiosResumo}
+                  candidatoNome={candidato.nome}
+                  busca={busca}
+                  onAbrirMunicipio={(codigo) => trocarMunicipio(codigo)}
+                />
+              ) : null}
+
+              {visao === "municipios" && !todosAtivo && modoMunicipios === "tabela" ? (
                 <MunicipiosTabela
                   linhas={municipiosVisiveis.slice(0, limite)}
                   rank={rankMunicipio}
                   maxVotos={maxVotosMunicipio}
                   onSelect={(codigo) => trocarMunicipio(codigo)}
                 />
-              )}
+              ) : null}
 
               {visao === "locais" && (
                 <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 min-[1600px]:grid-cols-3 min-[1900px]:grid-cols-4">
@@ -1103,10 +1132,12 @@ export function ResultadoSecao2026Panel() {
                 />
               )}
 
-              <TseCarregarMais
-                restantes={totalVisao - limite}
-                onClick={() => setLimite((n) => n + PAGE_SIZE)}
-              />
+              {visao === "municipios" && !todosAtivo && modoMunicipios === "mapa" ? null : (
+                <TseCarregarMais
+                  restantes={totalVisao - limite}
+                  onClick={() => setLimite((n) => n + PAGE_SIZE)}
+                />
+              )}
             </main>
           </div>
         )}
