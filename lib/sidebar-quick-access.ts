@@ -19,6 +19,7 @@ export type SidebarQuickAccessItem = {
     | 'ClipboardList'
     | 'BarChart3'
     | 'FileSpreadsheet'
+    | 'Landmark'
     | 'MapPin'
     | 'MessageSquare'
     | 'Radar'
@@ -72,6 +73,13 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     href: '/dashboard/emendas',
     icon: 'FileSpreadsheet',
     pageKey: 'emendas',
+  },
+  {
+    id: 'quick-oportunidades-federais',
+    label: 'Oportunidades federais',
+    href: '/dashboard/oportunidades-federais',
+    icon: 'Landmark',
+    pageKey: 'oportunidades-federais',
   },
   {
     id: 'quick-ficha-atendimento',
@@ -169,6 +177,7 @@ export function isSidebarQuickAccessActive(item: SidebarQuickAccessItem, pathnam
       return pathname === CHAPA_FEDERAL_HREF || pathname === CHAPA_ESTADUAL_HREF
     case 'quick-arena':
     case 'quick-emendas':
+    case 'quick-oportunidades-federais':
     case 'quick-ficha-atendimento':
     case 'quick-juridico':
     case 'quick-obras':

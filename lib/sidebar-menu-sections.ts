@@ -35,6 +35,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   operacao: 'Coordenadores e operação interna',
   juridico: 'Processos, prazos e comunicações',
   emendas: 'Emendas parlamentares',
+  'oportunidades-federais': 'Programas do Executivo abertos a proposta (fora de emenda)',
   obras: 'Obras com status SEI',
   proposicoes: 'Proposições na Câmara',
   'sei-pesquisa': 'Busca no SEI-PI',

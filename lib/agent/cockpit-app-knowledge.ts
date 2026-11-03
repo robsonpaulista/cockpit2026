@@ -141,6 +141,11 @@ Hub com abas **Panorama**, **Base** (lideranças/planilha) e **Visitas** (Campo 
 - API: /api/emendas
 - IA Cockpit: sem integração. Claude: oriente a página.
 
+### Oportunidades federais · /dashboard/oportunidades-federais
+- Programas discricionários do Transferegov (proposta voluntária no PI), fora da cota de emenda.
+- API: /api/oportunidades-federais, cron /api/cron/sync-oportunidades-federais
+- IA Cockpit: sem integração. Claude: oriente a página.
+
 ### Obras · /dashboard/obras
 - Obras com status SEI.
 - API: /api/obras, /api/obras/sei-status

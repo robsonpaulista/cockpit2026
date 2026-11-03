@@ -45,4 +45,5 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'gestao-pesquisas-inicio': 'Início',
   'gestao-pesquisas-config': 'Config',
   emendas: 'Emendas',
+  'oportunidades-federais': 'Oportunidades federais',
 }

@@ -28,6 +28,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   { id: 'emendas', label: 'Emendas', icon: 'FileSpreadsheet', href: '/dashboard/emendas' },
   {
+    id: 'oportunidades-federais',
+    label: 'Oportunidades federais',
+    icon: 'Landmark',
+    href: '/dashboard/oportunidades-federais',
+  },
+  {
     id: 'ficha-atendimento',
     label: 'Ficha de Atendimento',
     icon: 'ClipboardList',
@@ -219,6 +225,13 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   operacao: ['operacao equipe', 'operacao e equipe', 'equipe'],
   juridico: ['juridico', 'legal'],
   emendas: ['emendas parlamentares'],
+  'oportunidades-federais': [
+    'oportunidades federais',
+    'programas federais',
+    'transferegov',
+    'recursos discricionarios',
+    'propostas voluntarias',
+  ],
   obras: ['obras modulo'],
   proposicoes: ['proposicoes camara', 'projetos de lei'],
   'sei-pesquisa': ['sei', 'pesquisa sei'],

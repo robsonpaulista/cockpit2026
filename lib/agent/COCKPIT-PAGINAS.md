@@ -320,6 +320,18 @@ Legenda de handlers:
 
 ---
 
+## Oportunidades federais
+
+**Rota:** `/dashboard/oportunidades-federais`
+
+Programas discricionários do Executivo (Transferegov) abertos a proposta voluntária no PI — fora da cota de emenda.
+
+**APIs:** `/api/oportunidades-federais` (GET/POST sync), `/api/cron/sync-oportunidades-federais`  
+**SQL:** `database/create-oportunidades-federais.sql`  
+**Jarvis:** sem integração.
+
+---
+
 ## Obras
 
 **Rota:** `/dashboard/obras`

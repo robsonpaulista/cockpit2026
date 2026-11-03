@@ -126,6 +126,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     pages: [
       { key: 'juridico', label: 'Jurídico', path: '/dashboard/juridico' },
       { key: 'emendas', label: 'Emendas', path: '/dashboard/emendas' },
+      {
+        key: 'oportunidades-federais',
+        label: 'Oportunidades federais',
+        path: '/dashboard/oportunidades-federais',
+      },
       { key: 'obras', label: 'Obras', path: '/dashboard/obras' },
       { key: 'proposicoes', label: 'Proposições', path: '/dashboard/proposicoes' },
     ],

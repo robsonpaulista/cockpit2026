@@ -12,6 +12,7 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'resultado-2026',
   'chapas-menu',
   'emendas',
+  'oportunidades-federais',
   'ficha-atendimento',
   'juridico',
   'mobilizacao-menu',

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   History,
   Image,
+  Landmark,
   LayoutDashboard,
   MapPin,
   MessageCircle,
@@ -65,6 +66,7 @@ export const sidebarLucideIconMap: Record<string, LucideIcon> = {
   Radar,
   FolderOpen,
   Package,
+  Landmark,
 }
 
 export function resolveSidebarLucideIcon(iconName: string): LucideIcon {
