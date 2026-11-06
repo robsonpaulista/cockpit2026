@@ -77,14 +77,22 @@ CREATE TRIGGER trg_oportunidades_federais_updated_at
 ALTER TABLE public.oportunidades_federais ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.oportunidades_federais_sync ENABLE ROW LEVEL SECURITY;
 
+-- Data API: sem acesso anônimo; leitura só para logados. Escrita via service role (bypassa RLS).
+REVOKE ALL ON TABLE public.oportunidades_federais FROM anon, authenticated, PUBLIC;
+REVOKE ALL ON TABLE public.oportunidades_federais_sync FROM anon, authenticated, PUBLIC;
+GRANT SELECT ON TABLE public.oportunidades_federais TO authenticated;
+GRANT SELECT ON TABLE public.oportunidades_federais_sync TO authenticated;
+
 DROP POLICY IF EXISTS "Authenticated users can view oportunidades_federais"
   ON public.oportunidades_federais;
 CREATE POLICY "Authenticated users can view oportunidades_federais"
   ON public.oportunidades_federais FOR SELECT
-  USING (auth.role() = 'authenticated');
+  TO authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can view oportunidades_federais_sync"
   ON public.oportunidades_federais_sync;
 CREATE POLICY "Authenticated users can view oportunidades_federais_sync"
   ON public.oportunidades_federais_sync FOR SELECT
-  USING (auth.role() = 'authenticated');
+  TO authenticated
+  USING (true);
