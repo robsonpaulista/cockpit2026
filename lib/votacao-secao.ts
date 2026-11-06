@@ -1,6 +1,6 @@
 /** Utilitários para votação por seção (TSE bweb PI). */
 
-export const VOTACAO_SECAO_ANOS = [2024, 2022] as const
+export const VOTACAO_SECAO_ANOS = [2026, 2024, 2022] as const
 export type VotacaoSecaoAno = (typeof VOTACAO_SECAO_ANOS)[number]
 
 export const VOTACAO_SECAO_ANO_PADRAO: VotacaoSecaoAno = 2024
@@ -16,12 +16,13 @@ export function isVotavelLegendaBweb(nrVotavel: number): boolean {
 
 /** Cargos disponíveis por ano eleitoral. */
 export const VOTACAO_SECAO_CARGOS: Record<VotacaoSecaoAno, readonly string[]> = {
+  2026: ['Deputado Federal', 'Deputado Estadual'],
   2024: ['Prefeito', 'Vereador'],
   2022: ['Governador', 'Senador', 'Deputado Federal', 'Deputado Estadual'],
 }
 
 export function isVotacaoSecaoAno(value: unknown): value is VotacaoSecaoAno {
-  return value === 2024 || value === 2022
+  return value === 2026 || value === 2024 || value === 2022
 }
 
 export function parseVotacaoSecaoAno(value: string | null | undefined): VotacaoSecaoAno {

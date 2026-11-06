@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mesclarVotacaoSecaoMultiAno } from '@/lib/votacao-secao-merge'
 import {
+  getVotacaoSecao2026PorMunicipio,
+  listMunicipiosVotacaoSecao2026,
+} from '@/lib/votacao-secao-2026-from-resultado'
+import {
   normalizeMunicipioChaveVotacao,
   normalizeMunicipioComparacao,
   VOTACAO_SECAO_ANO_PADRAO,
@@ -134,6 +138,7 @@ export async function listMunicipiosVotacaoSecao(
   supabase: SupabaseClient,
   ano: VotacaoSecaoAno = VOTACAO_SECAO_ANO_PADRAO,
 ): Promise<string[]> {
+  if (ano === 2026) return listMunicipiosVotacaoSecao2026()
   const refs = await listMunicipiosRefs(supabase, ano)
   return refs.map((m) => m.nome)
 }
@@ -198,6 +203,11 @@ export async function getVotacaoSecaoPorMunicipio(
   const ano = params?.ano ?? VOTACAO_SECAO_ANO_PADRAO
   const turno = params?.turno ?? VOTACAO_SECAO_TURNO
   const cargoFiltro = params?.cargo?.trim() || null
+
+  // 2026: arquivo Resultado 2026 (não está em votacao_secao_* do Supabase).
+  if (ano === 2026) {
+    return getVotacaoSecao2026PorMunicipio(municipio, { cargo: cargoFiltro })
+  }
 
   const ref = await resolveMunicipioVotacaoSecao(supabase, municipio, ano)
   if (!ref) return null

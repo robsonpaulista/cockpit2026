@@ -1,5 +1,8 @@
 import { selecionarMelhorPorNome } from '@/lib/candidato-nome-correspondencia'
-import { JADYEL_URNA_DEP_FEDERAL_2022 } from '@/lib/jadyel-federal-2022-pi-votos'
+import {
+  JADYEL_URNA_DEP_FEDERAL_2022,
+  JADYEL_URNA_DEP_FEDERAL_2026,
+} from '@/lib/jadyel-federal-2022-pi-votos'
 import { chaveMatchFromResumo } from '@/lib/candidato-votacao-secao-match'
 import type { ResultadoEleicao } from '@/lib/resumo-eleicoes-dados'
 import {
@@ -10,7 +13,7 @@ import {
 import type { CandidatoMatrizColuna } from '@/lib/votacao-secao-matriz'
 
 export const ANO_VEREADOR_COMPARACAO = 2024 as const satisfies VotacaoSecaoAno
-export const ANO_JADYEL_DEP_FEDERAL = 2022 as const satisfies VotacaoSecaoAno
+export const ANO_JADYEL_DEP_FEDERAL = 2026 as const satisfies VotacaoSecaoAno
 export const ANO_DEP_ESTADUAL_LIDERANCA = 2022 as const satisfies VotacaoSecaoAno
 export const CARGO_JADYEL = 'Deputado Federal'
 export const CARGO_VEREADOR = 'Vereador'
@@ -21,10 +24,11 @@ export const ANOS_COMPARACAO_VEREADOR_JADYEL: VotacaoSecaoAno[] = [
   ANO_JADYEL_DEP_FEDERAL,
 ]
 
-/** Anos necessários para vereador + Jadyel + dep. estadual da liderança. */
+/** Anos necessários para vereador + Jadyel 2026 + dep. estadual da liderança (2022). */
 export const ANOS_COMPARACAO_VEREADOR_TRIPLA: VotacaoSecaoAno[] = [
   ANO_VEREADOR_COMPARACAO,
   ANO_JADYEL_DEP_FEDERAL,
+  ANO_DEP_ESTADUAL_LIDERANCA,
 ]
 
 export const CARGOS_COMPARACAO_VEREADOR_JADYEL = [
@@ -42,6 +46,7 @@ export function nmVotavelIndicaJadyel(nmVotavel: string): boolean {
   const n = nmVotavel.trim().toUpperCase()
   if (!n.includes('JADYEL')) return false
   return (
+    n === JADYEL_URNA_DEP_FEDERAL_2026.toUpperCase() ||
     n.includes('ALENCAR') ||
     n.includes('JUPI') ||
     n.includes('SILVA') ||
@@ -49,7 +54,7 @@ export function nmVotavelIndicaJadyel(nmVotavel: string): boolean {
   )
 }
 
-export function isJadyelDepFederal2022(
+export function isJadyelDepFederal(
   c: Pick<CandidatoMatrizColuna, 'nmVotavel' | 'dsCargo' | 'anoEleicao'>,
 ): boolean {
   return (
@@ -58,6 +63,9 @@ export function isJadyelDepFederal2022(
     nmVotavelIndicaJadyel(c.nmVotavel)
   )
 }
+
+/** @deprecated use isJadyelDepFederal */
+export const isJadyelDepFederal2022 = isJadyelDepFederal
 
 export function isVereador2024(
   c: Pick<CandidatoMatrizColuna, 'dsCargo' | 'anoEleicao'>,
@@ -96,7 +104,7 @@ export function deveCompararVereadorComJadyel(
 export function encontrarJadyelDepFederal(
   candidatos: readonly CandidatoMatrizColuna[],
 ): CandidatoMatrizColuna | null {
-  return candidatos.find(isJadyelDepFederal2022) ?? null
+  return candidatos.find(isJadyelDepFederal) ?? null
 }
 
 export function isDepEstadual2022(

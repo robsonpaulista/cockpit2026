@@ -556,7 +556,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                 Comparando com{' '}
                 {jadyelNome ? (
                   <>
-                    <strong className="text-[var(--tse-text)]">{jadyelNome}</strong> (Dep. Federal 2022)
+                    <strong className="text-[var(--tse-text)]">{jadyelNome}</strong> (Dep. Federal 2026)
                   </>
                 ) : null}
                 {jadyelNome && depEstadualSelecionado ? ' · ' : null}
@@ -732,7 +732,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
 
               {compararComReferentes && !jadyelNome && distribuicao.encontrado && (
                 <p className="mb-3 text-[12px] text-[var(--tse-muted)]">
-                  Jadyel Alencar (Dep. Federal 2022) não encontrado na base por seção deste município.
+                  Jadyel Alencar (Dep. Federal 2026) não encontrado na base por seção deste município.
                 </p>
               )}
 

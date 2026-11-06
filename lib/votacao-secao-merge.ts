@@ -5,11 +5,11 @@ import type {
   VotacaoSecaoResultado,
 } from '@/lib/votacao-secao'
 
-/** Chave estável para alinhar a mesma urna entre anos (zona + seção + local). */
+/** Chave estável para alinhar a mesma urna entre anos (zona + seção). */
 export function chaveAlinhamentoSecao(
   secao: Pick<VotacaoSecaoItem, 'nrZona' | 'nrSecao' | 'nrLocalVotacao'>,
 ): string {
-  return `${secao.nrZona}:${secao.nrSecao}:${secao.nrLocalVotacao ?? 'n'}`
+  return `${secao.nrZona}:${secao.nrSecao}`
 }
 
 function preferirMetadadosSecao(
@@ -18,6 +18,7 @@ function preferirMetadadosSecao(
 ): VotacaoSecaoItem {
   return {
     ...base,
+    nrLocalVotacao: base.nrLocalVotacao ?? outro.nrLocalVotacao,
     nmLocalVotacao: base.nmLocalVotacao?.trim() ? base.nmLocalVotacao : outro.nmLocalVotacao,
     dsEndereco: base.dsEndereco?.trim() ? base.dsEndereco : outro.dsEndereco,
     nmBairro: base.nmBairro?.trim() ? base.nmBairro : outro.nmBairro,
