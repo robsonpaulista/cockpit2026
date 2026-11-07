@@ -23,12 +23,10 @@ export const DASHBOARD_PAGE_HEADER_COMPACT_H_CLASS = 'h-[2.75rem]'
 /** Topbar Visível War Room / Dashboard — altura única (`h-16`). */
 export const DASHBOARD_TOPBAR_H_CLASS = 'h-16 min-h-16 max-h-16 box-border'
 
-/** Sidebar recolhida: faixa do logo alinhada ao topbar da página. */
+/** Sidebar recolhida: faixa do logo alinhada ao topbar (altura via --cockpit-top-h no CSS). */
 export const dashboardSidebarCollapsedTopbarZoneClass = cn(
-  'flex shrink-0 items-center justify-center border-b bg-transparent',
+  'box-border flex shrink-0 items-center justify-center overflow-visible border-b bg-transparent px-0',
   chromeBorderClass,
-  DASHBOARD_TOPBAR_H_CLASS,
-  'px-1'
 )
 
 /**

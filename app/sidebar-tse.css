@@ -129,13 +129,35 @@
 }
 
 /* Topo da sidebar (logo): faixa contínua com o header */
-#cockpit-sidebar [data-sidebar-brand-zone] {
+#cockpit-sidebar [data-sidebar-brand-zone='expanded'] {
   background: var(--cockpit-top-bg) !important;
   background-image: none !important;
   border-bottom: 1px solid var(--cockpit-top-line) !important;
 }
 
-/* Mesma altura do header (`#cockpit-topbar > div`); recolhida, só a faixa do logo */
+/*
+ * Recolhida: amarelo SÓ na faixa do logo (1ª faixa = altura da topbar).
+ * O spacer/chevron abaixo herda o branco do corpo — evita desalinhamento.
+ */
+#cockpit-sidebar [data-sidebar-brand-zone='collapsed'] {
+  background: transparent !important;
+  background-image: none !important;
+  border-bottom: none !important;
+  overflow: visible !important;
+}
+
+#cockpit-sidebar [data-sidebar-brand-zone='collapsed'] > :first-child {
+  background: var(--cockpit-top-bg) !important;
+  background-image: none !important;
+  border-bottom: 1px solid var(--cockpit-top-line) !important;
+  overflow: visible !important;
+  /* Cobre a borda direita da sidebar na faixa amarela (continua na topbar) */
+  box-shadow: 1px 0 0 0 var(--cockpit-top-bg);
+  position: relative;
+  z-index: 1;
+}
+
+/* Mesma altura do header (`#cockpit-topbar`) */
 #cockpit-sidebar [data-sidebar-brand-zone='expanded'],
 #cockpit-sidebar [data-sidebar-brand-zone='collapsed'] > :first-child {
   box-sizing: border-box !important;
@@ -144,6 +166,13 @@
   max-height: var(--cockpit-top-h) !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+/* Selo CX cabe no w-14 sem clip */
+#cockpit-sidebar [data-sidebar-brand-zone='collapsed'] [data-topbar-brand='cx'] {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  flex-shrink: 0 !important;
 }
 
 #cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x']:not([data-topbar-brand]) [data-cx-mark='cockpit'] {

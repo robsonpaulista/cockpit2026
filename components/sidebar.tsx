@@ -837,12 +837,11 @@ export function Sidebar() {
                 </div>
               ) : (
                 <>
+                  {/* Faixa amarela = só o selo, mesma altura da topbar */}
                   <div
                     className={cn(
                       dashboardSidebarCollapsedTopbarZoneClass,
-                      '!bg-transparent !border-white/10',
-                      !hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
-                      idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
+                      '!border-[color:var(--cockpit-top-line)]',
                     )}
                   >
                     {filmNav || isWarRoomOnly || isGradientHome ? (
@@ -850,33 +849,24 @@ export function Sidebar() {
                     ) : (
                       <TopbarBrandBlock compact />
                     )}
-                    {!hasFixedPageChrome || idleCollapsedChrome ? (
-                      <button
-                        onClick={toggleCollapse}
-                        className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
-                        aria-label="Expandir sidebar"
-                      >
-                        <SidebarCollapseChevron isWarRoom={isWarRoom} className="rotate-180" />
-                      </button>
-                    ) : null}
                   </div>
-                  {hasFixedPageChrome && !idleSplashAtivo ? (
-                    <div
-                      className={cn(
-                        collapsedPageHeaderSpacerClass,
-                        '!bg-transparent !border-white/10',
-                        'flex items-center justify-center',
-                      )}
+                  {/* Chevron abaixo, no corpo branco — não estica o amarelo */}
+                  <div
+                    className={cn(
+                      hasFixedPageChrome && !idleCollapsedChrome
+                        ? collapsedPageHeaderSpacerClass
+                        : 'flex shrink-0 items-center justify-center border-b border-[var(--sb-line,#E6E6E3)] py-2',
+                      'flex items-center justify-center bg-transparent',
+                    )}
+                  >
+                    <button
+                      onClick={toggleCollapse}
+                      className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
+                      aria-label="Expandir sidebar"
                     >
-                      <button
-                        onClick={toggleCollapse}
-                        className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
-                        aria-label="Expandir sidebar"
-                      >
-                        <SidebarCollapseChevron isWarRoom={isWarRoom} className="rotate-180" />
-                      </button>
-                    </div>
-                  ) : null}
+                      <SidebarCollapseChevron isWarRoom={isWarRoom} className="rotate-180" />
+                    </button>
+                  </div>
                 </>
               )
             )}

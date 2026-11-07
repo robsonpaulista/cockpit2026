@@ -14,7 +14,7 @@ export function TopbarBrandBlock({
     return (
       <span
         className={cn(
-          'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#333333]',
+          'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#333333]',
           className,
         )}
         aria-label="Cockpit X"
@@ -22,7 +22,7 @@ export function TopbarBrandBlock({
         data-topbar-brand="cx"
       >
         <span
-          className="text-[11px] leading-none tracking-tight"
+          className="text-[10px] leading-none tracking-tight"
           style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
         >
           <span data-cx-mark="cockpit" className="text-[var(--cockpit-top-bg,#EBB402)]">
