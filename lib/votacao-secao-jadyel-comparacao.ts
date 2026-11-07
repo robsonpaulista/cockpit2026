@@ -14,7 +14,7 @@ import type { CandidatoMatrizColuna } from '@/lib/votacao-secao-matriz'
 
 export const ANO_VEREADOR_COMPARACAO = 2024 as const satisfies VotacaoSecaoAno
 export const ANO_JADYEL_DEP_FEDERAL = 2026 as const satisfies VotacaoSecaoAno
-export const ANO_DEP_ESTADUAL_LIDERANCA = 2022 as const satisfies VotacaoSecaoAno
+export const ANO_DEP_ESTADUAL_LIDERANCA = 2026 as const satisfies VotacaoSecaoAno
 export const CARGO_JADYEL = 'Deputado Federal'
 export const CARGO_VEREADOR = 'Vereador'
 export const CARGO_DEP_ESTADUAL = 'Deputado Estadual'
@@ -24,11 +24,10 @@ export const ANOS_COMPARACAO_VEREADOR_JADYEL: VotacaoSecaoAno[] = [
   ANO_JADYEL_DEP_FEDERAL,
 ]
 
-/** Anos necessários para vereador + Jadyel 2026 + dep. estadual da liderança (2022). */
+/** Anos necessários para vereador 2024 + Jadyel federal 2026 + dep. estadual 2026. */
 export const ANOS_COMPARACAO_VEREADOR_TRIPLA: VotacaoSecaoAno[] = [
   ANO_VEREADOR_COMPARACAO,
   ANO_JADYEL_DEP_FEDERAL,
-  ANO_DEP_ESTADUAL_LIDERANCA,
 ]
 
 export const CARGOS_COMPARACAO_VEREADOR_JADYEL = [
@@ -107,7 +106,7 @@ export function encontrarJadyelDepFederal(
   return candidatos.find(isJadyelDepFederal) ?? null
 }
 
-export function isDepEstadual2022(
+export function isDepEstadualLideranca(
   c: Pick<CandidatoMatrizColuna, 'dsCargo' | 'anoEleicao'>,
 ): boolean {
   return (
@@ -116,6 +115,9 @@ export function isDepEstadual2022(
   )
 }
 
+/** @deprecated use isDepEstadualLideranca */
+export const isDepEstadual2022 = isDepEstadualLideranca
+
 export function encontrarDepEstadualPorNome(
   candidatos: readonly CandidatoMatrizColuna[],
   nomeAlvo: string | null | undefined,
@@ -123,17 +125,20 @@ export function encontrarDepEstadualPorNome(
   const alvo = String(nomeAlvo ?? '').trim()
   if (!alvo) return null
 
-  const pool = candidatos.filter(isDepEstadual2022)
+  const pool = candidatos.filter(isDepEstadualLideranca)
   return selecionarMelhorPorNome(pool, [alvo])
 }
 
-export function listarDepEstaduais2022Secao(
+export function listarDepEstaduaisLiderancaSecao(
   candidatos: readonly CandidatoMatrizColuna[],
 ): CandidatoMatrizColuna[] {
-  return [...candidatos.filter(isDepEstadual2022)].sort(
+  return [...candidatos.filter(isDepEstadualLideranca)].sort(
     (a, b) => b.totalVotos - a.totalVotos || a.nmVotavel.localeCompare(b.nmVotavel, 'pt-BR'),
   )
 }
+
+/** @deprecated use listarDepEstaduaisLiderancaSecao */
+export const listarDepEstaduais2022Secao = listarDepEstaduaisLiderancaSecao
 
 export function idsComparacaoVereadorComDepId(
   vereadorId: string,

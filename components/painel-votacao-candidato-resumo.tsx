@@ -563,7 +563,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                 {depEstadualSelecionado ? (
                   <>
                     <strong className="text-[var(--tse-text)]">{depEstadualSelecionado.nmVotavel}</strong>{' '}
-                    (Dep. Estadual 2022)
+                    (Dep. Estadual 2026)
                   </>
                 ) : null}
               </p>
@@ -702,7 +702,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                     <div className="min-w-0">
                       <SeletorCandidatoComBusca
                         id="dep-estadual-comparativo"
-                        label="Dep. Estadual 2022 (comparativo)"
+                        label="Dep. Estadual 2026 (comparativo)"
                         value={depEstadualSelecionadoId}
                         onChange={setDepEstadualSelecionadoId}
                         opcoes={depEstaduaisOpcoes}
