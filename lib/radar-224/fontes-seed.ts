@@ -276,7 +276,7 @@ export const RADAR_224_FONTES_SEED: RadarFonte[] = [
     dominio: 'portalcidadeluz.com.br',
     nota: 85,
     status: 'ativa',
-    territorios: ['Vale dos Rios Piauí e Itaueiras'],
+    territorios: ['Vale dos Rios Piauí e Itaueira'],
     municipiosPrioritarios: ['GUADALUPE', 'JERUMENHA', 'PORTO ALEGRE DO PIAUÍ'],
     coberturaResumo: 'Guadalupe e entorno — tag municipal',
   },
