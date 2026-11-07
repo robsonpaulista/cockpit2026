@@ -31,6 +31,8 @@ type UserMenuProps = {
   collapsed?: boolean
   /** Topbar âmbar no mobile — ícones e hover claros. */
   amberMobileChrome?: boolean
+  /** Topbar OPÇÃO B — só o avatar circular. */
+  avatarOnly?: boolean
 }
 
 function resolveWelcomeName(name: string | undefined, email: string | undefined): string {
@@ -47,6 +49,7 @@ export function UserMenu({
   className,
   collapsed = false,
   amberMobileChrome = false,
+  avatarOnly = false,
 }: UserMenuProps) {
   const { user, loading, signOut } = useAuth()
   const isGradientHome = useDashboardHomeChrome()
@@ -236,7 +239,9 @@ export function UserMenu({
                   : sidebarActiveFocusRingClass,
                 !iceSidebar && 'hover:opacity-80',
               )
-            : cn(
+            : avatarOnly
+              ? 'rounded-full p-0.5 hover:bg-black/10'
+              : cn(
                   'gap-2 rounded-lg px-3 py-2',
                   amberMobileChrome && 'max-lg:hover:bg-white/12',
                   isGradientHome
@@ -249,11 +254,13 @@ export function UserMenu({
           name={user.profile?.name}
           email={user.email ?? undefined}
           avatarUrl={user.profile?.avatar_url}
-          size={isSidebar ? 'sm' : 'md'}
-          tone={iceSidebar || isGradientHome ? 'ice' : 'amber'}
+          size={isSidebar || avatarOnly ? 'sm' : 'md'}
+          tone={avatarOnly ? 'ice' : iceSidebar || isGradientHome ? 'ice' : 'amber'}
         />
 
-        {isSidebar ? (
+        {avatarOnly && !isSidebar ? (
+          <span className="sr-only">{welcomeName}</span>
+        ) : isSidebar ? (
           collapsed ? (
             <span className="sr-only">{welcomeName}</span>
           ) : (
@@ -293,23 +300,25 @@ export function UserMenu({
           </div>
         )}
 
-        <ChevronDown
-          className={cn(
-            'h-3.5 w-3.5 shrink-0 transition-transform',
-            isSidebar
-              ? collapsed
-                ? 'hidden'
-                : iceSidebar
-                  ? 'text-[#2b2d31] opacity-100'
-                  : 'text-white/45'
-              : amberMobileChrome
-                ? 'text-secondary max-lg:text-white/85'
-                : isGradientHome
-                  ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#2b2d31]')
-                  : 'text-secondary',
-            open && 'rotate-180'
-          )}
-        />
+        {avatarOnly && !isSidebar ? null : (
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-transform',
+              isSidebar
+                ? collapsed
+                  ? 'hidden'
+                  : iceSidebar
+                    ? 'text-[#2b2d31] opacity-100'
+                    : 'text-white/45'
+                : amberMobileChrome
+                  ? 'text-secondary max-lg:text-white/85'
+                  : isGradientHome
+                    ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#2b2d31]')
+                    : 'text-secondary',
+              open && 'rotate-180'
+            )}
+          />
+        )}
       </button>
 
       {open ? (

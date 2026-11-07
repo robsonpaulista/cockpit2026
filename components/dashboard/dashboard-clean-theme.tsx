@@ -6,6 +6,8 @@ import '@/app/dashboard/war-room/war-room-fonts.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 /* Obsidian Glass — depois do clean para vencer o flat #f7f7f6 / #0a0a0c */
 import '@/app/sidebar-obsidian-glass.css'
+/* TSE / OPÇÃO B por último — vence wordmark branco do war-room-clean */
+import '@/app/sidebar-tse.css'
 
 /**
  * Ativa o tema premium clean cinza em todo o `/dashboard`

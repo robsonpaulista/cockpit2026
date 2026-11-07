@@ -312,6 +312,26 @@ export function findSidebarNavTargetById(id: string): SidebarNavTarget | undefin
   return SIDEBAR_NAV_TARGETS.find((t) => t.id === id)
 }
 
+/** Busca páginas do menu por rótulo ou alias (topbar “Buscar no sistema”). */
+export function searchSidebarNavTargets(query: string, limit = 8): SidebarNavTarget[] {
+  const q = norm(query)
+  if (!q) return []
+  const scored = SIDEBAR_NAV_TARGETS.map((t) => {
+    const hay = norm([t.label, ...t.aliases].join(' '))
+    let score = 0
+    if (hay === q) score = 100
+    else if (hay.startsWith(q)) score = 80
+    else if (hay.includes(q)) score = 50
+    else if (t.aliases.some((a) => norm(a).startsWith(q))) score = 40
+    return { t, score }
+  })
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score || a.t.label.localeCompare(b.t.label, 'pt-BR'))
+    .slice(0, limit)
+    .map((s) => s.t)
+}
+
 export function sidebarNavTargetListForPrompt(max = 24): string {
   return SIDEBAR_NAV_TARGETS.slice(0, max)
     .map((t) => `${t.label} → ${t.href}`)

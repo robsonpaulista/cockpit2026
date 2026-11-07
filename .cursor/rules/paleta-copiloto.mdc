@@ -17,14 +17,14 @@ Tokens: `app/design-tokens-copiloto.css` · Sidebar: `app/sidebar-tse.css`
 
 ## Sidebar e header — padrão TSE (amarelo)
 
-- Topo amarelo `#EBB402` com texto branco, altura 52px: zona da logo da sidebar (`[data-sidebar-brand-zone]`) e header das páginas (`#cockpit-topbar`), divisória `#D9A502` (variáveis `--cockpit-top-*`)
+- Topo amarelo `#EBB402` com texto grafite `#333333`, altura 52px: zona da logo da sidebar (`[data-sidebar-brand-zone]`) e header das páginas (`#cockpit-topbar`), divisória `#D9A502` (variáveis `--cockpit-top-*`) — OPÇÃO B
 - Corpo da sidebar branco `#FFFFFF`
 - Texto `#333333`, secundário/ícones `#717171`, divisores `#E6E6E3`
 - Hover: fundo `#F4F4F2`, ícone dourado `#B8960B`
 - Ativo: fundo `#FFF8D6`, barra esquerda `#EBB402`, ícone `#B8960B`
-- Avatar do usuário: fundo `#EBB402` com inicial branca na sidebar; invertido (branco com grafite) no header
-- Logomarca no topo amarelo: **COCKPIT** branco + **X** grafite `#333333`
-- Tipografia do topo: título do header usa a mesma fonte da logomarca (Michroma, peso 400, caixa alta)
+- Avatar do usuário: fundo `#EBB402` com inicial branca na sidebar; no header, avatar grafite `#333333`
+- Logomarca no topo amarelo (OPÇÃO B): selo circular grafite com **CX** amarelo + **COCKPIT X** grafite + subtítulo **Gestão de Mandato**
+- Topbar: título da página à esquerda; à direita busca branca (“Buscar no sistema…”), sino (Agenda) e avatar
 - Item ativo marcado por `aria-current="page"` / `data-active="true"`; cores só via `app/sidebar-tse.css` (ancorado em `#cockpit-sidebar` / `#cockpit-topbar`)
 
 ## Ao escrever UI / CSS

@@ -1,21 +1,23 @@
 'use client'
 
+import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { Bell } from 'lucide-react'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
-import {
-  TERRITORIO_CAMPO_PAGE_TITLE,
-  territorioCampoPageTitle,
-} from '@/lib/territorio-campo-route'
+import { territorioCampoPageTitle } from '@/lib/territorio-campo-route'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
-import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
 import { DASHBOARD_TOPBAR_H_CLASS } from '@/lib/dashboard-chrome-layout'
-import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
+import { isWarRoomPage } from '@/lib/war-room-clean-route'
+import { AGENDA_HREF } from '@/lib/resumo-eleicoes-hub-route'
+import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
+import { TopbarSystemSearch } from '@/components/dashboard/topbar-system-search'
+
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -48,6 +50,8 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/usuarios': 'Gestão de Usuários',
   '/dashboard/backup': 'Backup Supabase',
   '/dashboard/log-system': 'Log System',
+  '/dashboard/oportunidades-federais': 'Oportunidades federais',
+  '/dashboard/ficha-atendimento': 'Ficha de Atendimento',
 }
 
 function getPageTitle(pathname: string, tab: string | null, _view: string | null): string {
@@ -67,7 +71,6 @@ function getPageTitle(pathname: string, tab: string | null, _view: string | null
   return pathToTitle[pathname] ?? tituloPorCaminho(pathname)
 }
 
-/** Fallback legível para rotas sem título: `/dashboard/a-b/c-d` → `a b · c d`. */
 function tituloPorCaminho(pathname: string): string {
   const partes = pathname
     .replace(/^\/dashboard\/?/, '')
@@ -89,10 +92,11 @@ export function DashboardHeader() {
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
   const isHome = isDashboardHomePath(p)
-  const isWarRoom = isWarRoomCleanRoute(p)
+  const isWarRoom = isWarRoomPage(p)
+  /** OPÇÃO B: topbar amarelo sempre visível nas telas do dashboard (exceto home). */
+  const opcaoB = !isWarRoom && !isGradientHome && !isHome
 
-  /** War Room mantém a top bar mesmo com a sidebar expandida (alinha marca + cronômetro). */
-  if ((!showTopbar && !isWarRoom) || isHome) {
+  if ((!showTopbar && !isWarRoom && !opcaoB) || isHome) {
     return null
   }
 
@@ -102,6 +106,7 @@ export function DashboardHeader() {
   return (
     <header
       id="cockpit-topbar"
+      data-topbar-opcao={opcaoB ? 'b' : undefined}
       className={cn(
         'sticky top-0 z-30',
         isWarRoom &&
@@ -118,79 +123,64 @@ export function DashboardHeader() {
     >
       <div
         className={cn(
-          'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-6',
+          'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-5',
           isWarRoom
-            ? cn(
-                DASHBOARD_TOPBAR_H_CLASS,
-                'box-border overflow-hidden px-3 sm:px-4 lg:px-6',
-              )
+            ? cn(DASHBOARD_TOPBAR_H_CLASS, 'box-border overflow-hidden px-3 sm:px-4 lg:px-5')
             : isGradientHome
               ? 'h-12 lg:h-14'
               : 'h-16',
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <AppBrandTitle
-            isCockpit={false}
-            lightOnGradient={lightBrand}
-            lightOnAmber={mobileAmberHeader || isWarRoom}
-            size="md"
-            className={cn(
-              'min-w-0',
-              isWarRoom && 'lg:hidden',
-              isGradientHome ? 'sm:scale-105' : 'shrink-0',
-              mobileAmberHeader && 'max-lg:[&_span]:drop-shadow-[0_1px_8px_rgba(0,0,0,0.12)]',
-            )}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+          {/* Marca no topbar só quando a zona da sidebar não está à vista */}
+          <TopbarBrandBlock
+            className={cn('shrink-0', opcaoB ? 'lg:hidden' : isWarRoom ? 'lg:hidden' : undefined)}
           />
           <span
             className={cn(
-              'hidden shrink-0 sm:inline',
-              isWarRoom
-                ? 'wr-topbar-clean__sep text-[var(--wr-slate)]/35 lg:hidden'
-                : lightBrand
-                  ? 'text-white/35'
-                  : 'text-border-card/70',
-              mobileAmberHeader && 'max-lg:text-white/40',
+              'hidden h-6 w-px shrink-0 bg-[#333333]/25 sm:block',
+              opcaoB ? 'lg:hidden' : isWarRoom ? 'lg:hidden' : undefined,
             )}
             aria-hidden
-          >
-            |
-          </span>
+          />
           <div className="min-w-0 flex-1">
-            {isWarRoom ? (
-              <div className="flex min-w-0 flex-nowrap items-center gap-x-3 overflow-hidden sm:gap-x-4">
-                {topbarExtras?.hidePageTitle ? null : (
-                  <h1
-                    className="wr-topbar-clean__title shrink-0 font-bold uppercase tracking-tight text-base text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]"
-                    title={pageTitle}
-                  >
-                    {pageTitle}
-                  </h1>
+            {topbarExtras?.hidePageTitle ? null : (
+              <h1
+                className={cn(
+                  'truncate font-semibold tracking-tight',
+                  isWarRoom
+                    ? 'wr-topbar-clean__title text-base text-[var(--wr-black,#000)] sm:text-lg'
+                    : lightBrand
+                      ? 'text-sm text-white max-lg:hidden sm:text-base'
+                      : 'text-[15px] text-[#333333] sm:text-base',
+                  mobileAmberHeader && 'max-lg:text-[#333333]',
                 )}
-              </div>
-            ) : (
-              <div className="flex min-w-0 flex-nowrap items-center gap-x-3 overflow-hidden sm:gap-x-4">
-                {topbarExtras?.hidePageTitle ? null : (
-                  <h1
-                    className={cn(
-                      'shrink-0 truncate font-bold uppercase tracking-tight text-sm sm:text-base',
-                      lightBrand ? 'text-white max-lg:hidden' : 'text-text-primary',
-                      mobileAmberHeader && 'max-lg:text-white/95',
-                    )}
-                    title={pageTitle}
-                  >
-                    {pageTitle}
-                  </h1>
-                )}
-              </div>
+                title={pageTitle}
+              >
+                {pageTitle}
+              </h1>
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           {topbarExtras?.actions ? (
             <div className="flex items-center gap-1.5 sm:gap-2">{topbarExtras.actions}</div>
           ) : null}
-          {isWarRoom ? null : <UserMenu amberMobileChrome={mobileAmberHeader} />}
+          {opcaoB ? <TopbarSystemSearch /> : null}
+          {opcaoB ? (
+            <Link
+              href={AGENDA_HREF}
+              className="relative inline-flex h-8 w-8 items-center justify-center rounded-full text-[#333333] transition-colors hover:bg-black/10"
+              title="Agenda"
+              aria-label="Agenda"
+            >
+              <Bell className="h-4 w-4" strokeWidth={2} aria-hidden />
+            </Link>
+          ) : null}
+          {isWarRoom ? null : (
+            <UserMenu amberMobileChrome={mobileAmberHeader} avatarOnly={opcaoB} />
+          )}
         </div>
       </div>
     </header>

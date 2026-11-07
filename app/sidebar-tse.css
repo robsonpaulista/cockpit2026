@@ -146,29 +146,29 @@
   padding-bottom: 0 !important;
 }
 
-#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x']:not([data-topbar-brand]) [data-cx-mark='cockpit'] {
   color: #ffffff !important;
 }
 
-#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x']:not([data-topbar-brand]) [data-cx-mark='x'] {
   color: var(--cockpit-top-x) !important;
 }
 
-#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x'] > span + span {
+#cockpit-sidebar [data-sidebar-brand-zone] [data-brand-wordmark='cockpit-x']:not([data-topbar-brand]) > span + span {
   color: rgba(255, 255, 255, 0.85) !important;
 }
 
 #cockpit-sidebar [data-sidebar-brand-zone] button,
 #cockpit-sidebar [data-sidebar-brand-zone] :is(svg, .cockpit-icon) {
-  color: #ffffff !important;
+  color: #333333 !important;
 }
 
 #cockpit-sidebar [data-sidebar-brand-zone] button:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(0, 0, 0, 0.08) !important;
 }
 
 #cockpit-sidebar [data-sidebar-brand-zone] button:hover :is(svg, .cockpit-icon) {
-  color: #ffffff !important;
+  color: #333333 !important;
 }
 
 /* Tooltip da sidebar recolhida */
@@ -179,7 +179,7 @@ body .sidebar-nav-tooltip {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Header das páginas — continua o topo da sidebar, texto branco */
+/* Header das páginas — OPÇÃO B: amarelo com texto grafite, busca e avatar */
 #cockpit-topbar {
   background: var(--cockpit-top-bg) !important;
   background-image: none !important;
@@ -206,47 +206,79 @@ body .sidebar-nav-tooltip {
   max-height: none !important;
 }
 
-/* Mesma tipografia da logomarca da sidebar (Michroma tem peso único: 400) */
-#cockpit-topbar :is(.wr-topbar-clean__title, h1) {
+/* Título da página: sans sem caixa alta forçada (OPÇÃO B) */
+body[data-war-room-clean] #cockpit-topbar[data-topbar-opcao='b'] h1,
+#cockpit-topbar[data-topbar-opcao='b'] h1,
+#cockpit-topbar h1:not(.wr-topbar-clean__title) {
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  color: #333333 !important;
+}
+
+#cockpit-topbar .wr-topbar-clean__title {
   font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif !important;
   font-weight: 400 !important;
   font-size: 15px !important;
   line-height: 1 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-}
-
-#cockpit-topbar .wr-topbar-clean__title,
-#cockpit-topbar h1 {
-  color: #ffffff !important;
+  color: #333333 !important;
 }
 
 #cockpit-topbar :is(.wr-topbar-clean__sep, .text-border-card\/70) {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: rgba(51, 51, 51, 0.35) !important;
 }
 
-#cockpit-topbar [data-brand-wordmark='cockpit-x'] [data-cx-mark='cockpit'] {
-  color: #ffffff !important;
+/*
+ * Marca OPÇÃO B — precisa vencer war-room-clean.css
+ * (`body[data-war-room-clean] … [data-cx-mark]` força branco/âmbar).
+ */
+body[data-war-room-clean] #cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'],
+body[data-war-room-clean] #cockpit-topbar [data-topbar-brand='full'],
+#cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'],
+#cockpit-topbar [data-topbar-brand='full'] {
+  color: #333333 !important;
 }
 
-#cockpit-topbar [data-brand-wordmark='cockpit-x'] [data-cx-mark='x'] {
-  color: var(--cockpit-top-x) !important;
+body[data-war-room-clean] #cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'] [data-cx-mark='cockpit'],
+body[data-war-room-clean] #cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'] [data-cx-mark='x'],
+body[data-war-room-clean] #cockpit-topbar [data-topbar-brand='full'] [data-cx-mark='cockpit'],
+body[data-war-room-clean] #cockpit-topbar [data-topbar-brand='full'] [data-cx-mark='x'],
+#cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'] [data-cx-mark='cockpit'],
+#cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='full'] [data-cx-mark='x'],
+#cockpit-topbar [data-topbar-brand='full'] [data-cx-mark='cockpit'],
+#cockpit-topbar [data-topbar-brand='full'] [data-cx-mark='x'] {
+  color: #333333 !important;
   text-shadow: none !important;
 }
 
-#cockpit-topbar button[aria-haspopup='menu'] :is(p, span, svg) {
-  color: #ffffff !important;
+body[data-war-room-clean] #cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='cx'] [data-cx-mark],
+body[data-war-room-clean] #cockpit-topbar [data-topbar-brand='cx'] [data-cx-mark],
+#cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='cx'] [data-cx-mark],
+#cockpit-topbar [data-topbar-brand='cx'] [data-cx-mark] {
+  color: var(--cockpit-top-bg) !important;
+}
+
+body[data-war-room-clean] #cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='subtitle'],
+body[data-war-room-clean] #cockpit-topbar [data-topbar-brand='subtitle'],
+#cockpit-sidebar [data-sidebar-brand-zone] [data-topbar-brand='subtitle'],
+#cockpit-topbar [data-topbar-brand='subtitle'] {
+  color: #000000 !important;
 }
 
 #cockpit-topbar button[aria-haspopup='menu']:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Avatar no header: invertido para não sumir no fundo do topo */
+/* Avatar no header: grafite com inicial amarela (contraste no amarelo) */
 #cockpit-topbar button[aria-haspopup='menu'] .user-avatar-patch,
 #cockpit-topbar button[aria-haspopup='menu'] .user-avatar-patch :is(p, span, svg) {
-  background-color: #ffffff !important;
-  color: var(--cockpit-top-x) !important;
+  background-color: #333333 !important;
+  color: #ffffff !important;
 }
 
 /* Botão do menu no mobile */

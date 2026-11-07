@@ -12,7 +12,7 @@ import {
   type Icon as TablerIcon,
 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
-import { isWarRoomCleanRoute } from '@/lib/war-room-clean-route'
+import { isWarRoomCleanRoute, isWarRoomPage } from '@/lib/war-room-clean-route'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { useIdleSplash } from '@/contexts/idle-splash-context'
@@ -31,6 +31,7 @@ import {
   sidebarSectionLabelClass,
 } from '@/lib/premium-ui-classes'
 import { AppBrandHeader, AppBrandWordmark, SidebarBrandMark } from '@/components/app-brand-title'
+import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import {
@@ -587,6 +588,7 @@ export function Sidebar() {
   const hasFixedPageChrome = useDashboardFixedChromeActive()
   const topbarVisible = useDashboardTopbarVisible()
   const isWarRoom = isWarRoomCleanRoute(pathname)
+  const isWarRoomOnly = isWarRoomPage(pathname)
   const collapsedPageHeaderSpacerClass = dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible)
   const showCollapsedSubnavSpacer =
     hasFixedPageChrome &&
@@ -776,19 +778,21 @@ export function Sidebar() {
           >
             {(!navCollapsed || navMobileOpen) && (
               <>
-                <div className="flex min-w-0 flex-1 items-center justify-center pr-8">
-                  {isWarRoom || isGradientHome ? (
+                <div className="flex min-w-0 flex-1 items-center pr-8">
+                  {isWarRoomOnly || isGradientHome ? (
                     <AppBrandWordmark
                       size="md"
                       showTagline={isGradientHome}
                       className="min-w-0 items-center text-center"
                     />
-                  ) : (
+                  ) : filmNav ? (
                     <AppBrandHeader
                       isCockpit={isCockpit}
-                      variant={filmNav ? 'page' : 'sidebar'}
+                      variant="page"
                       className="min-w-0 w-full max-w-full items-center text-center"
                     />
+                  ) : (
+                    <TopbarBrandBlock className="min-w-0 pl-1" />
                   )}
                 </div>
                 {!collapsed && (
@@ -841,7 +845,11 @@ export function Sidebar() {
                       idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                     )}
                   >
-                    <SidebarBrandMark />
+                    {filmNav || isWarRoomOnly || isGradientHome ? (
+                      <SidebarBrandMark />
+                    ) : (
+                      <TopbarBrandBlock compact />
+                    )}
                     {!hasFixedPageChrome || idleCollapsedChrome ? (
                       <button
                         onClick={toggleCollapse}

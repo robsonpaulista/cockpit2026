@@ -11,6 +11,9 @@ export const SIDEBAR_BRAND_PETROL = '#0a0a0c'
 /** Slogan institucional — igual splash / login. */
 export const APP_BRAND_TAGLINE = 'Comando Dep Fed Jadyel Alencar'
 
+/** Subtítulo da marca no topo amarelo (OPÇÃO B). */
+export const APP_BRAND_MANDATO_SUBTITLE = 'Gestão de Mandato'
+
 /** Wordmark tipográfico COCKPIT X — Michroma, alinhado à home. */
 export const brandWordmarkClass =
   'font-[family-name:var(--font-michroma)] uppercase leading-none tracking-[0.04em]'

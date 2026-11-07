@@ -29,16 +29,17 @@ A paleta institucional do **War Room → Acionar Copiloto** é o padrão visual 
 ## Sidebar e header — padrão TSE (amarelo)
 
 A sidebar e o header seguem o portal de resultados do TSE (topo amarelo preenchido, corpo
-branco). Código: [`app/sidebar-tse.css`](../app/sidebar-tse.css),
-ancorado em `#cockpit-sidebar` / `#cockpit-topbar` (prevalece sobre os temas legados).
+branco), na variante **OPÇÃO B** (texto grafite, selo CX, busca no sistema). Código:
+[`app/sidebar-tse.css`](../app/sidebar-tse.css), ancorado em `#cockpit-sidebar` /
+`#cockpit-topbar` (prevalece sobre os temas legados).
 
 | Elemento | Hex | Variável |
 |----------|-----|----------|
 | Fundo do corpo | `#FFFFFF` | `--sb-bg` |
-| Topo (zona da logo + header `#cockpit-topbar`), altura 52px | `#EBB402` | `--cockpit-top-bg` / `--cockpit-top-h` |
+| Topo (zona da logo + header `#cockpit-topbar`), altura 52px — OPÇÃO B | `#EBB402` | `--cockpit-top-bg` / `--cockpit-top-h` |
 | Divisória do topo | `#D9A502` | `--cockpit-top-line` |
-| Texto no topo | `#FFFFFF` | — |
-| Barra do item ativo, avatar | `#EBB402` | `--sb-yellow` |
+| Texto no topo | Grafite `#333333` | — |
+| Barra do item ativo, avatar (sidebar) | `#EBB402` | `--sb-yellow` |
 | Ícone do item ativo e no hover | `#B8960B` | `--sb-gold-text` |
 | Fundo do item ativo | `#FFF8D6` | `--sb-active-bg` |
 | Texto do item ativo | `#333333` | `--sb-active-text` |
@@ -50,15 +51,16 @@ ancorado em `#cockpit-sidebar` / `#cockpit-topbar` (prevalece sobre os temas leg
 Item ativo é marcado no DOM por `aria-current="page"` (links) ou `data-active="true"`
 (botão de submenu com filho ativo) — não por classes de cor.
 
-## Logomarca (topo amarelo da sidebar e do header)
+## Logomarca e topbar (OPÇÃO B)
 
-| Parte | Cor |
-|-------|-----|
-| **COCKPIT** | Branco `#FFFFFF` |
-| **X** | Grafite `#333333` (`--cockpit-top-x`) |
-
-O título do
-header (`#cockpit-topbar`) usa a mesma fonte da logomarca: Michroma, peso 400, caixa alta, 15px.
+| Parte | Cor / forma |
+|-------|-------------|
+| Selo **CX** | Círculo grafite `#333333` com letras amarelas `#EBB402` |
+| **COCKPIT X** | Grafite `#333333` (Michroma) |
+| Subtítulo | `Gestão de Mandato` |
+| Título da página | Sans 15px / 700, grafite |
+| Busca | Pílula branca “Buscar no sistema…” |
+| Ações | Sino → Agenda; avatar grafite no header |
 
 ## Páginas no padrão TSE (migração em andamento)
 
