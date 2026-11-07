@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { RefreshCw, Star } from 'lucide-react'
+import {
+  Instagram,
+  Megaphone,
+  Newspaper,
+  RefreshCw,
+  Search,
+  Star,
+  Youtube,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   TseBarraRotulo,
   TseBarraValor,
@@ -79,6 +88,14 @@ const ROTULO_GRAFICO: Record<PanoramaPlatformId, string> = {
   'meta-ads': 'Anúncios',
 }
 
+const ICONE_PLATAFORMA: Record<PanoramaPlatformId, LucideIcon> = {
+  youtube: Youtube,
+  'google-news': Newspaper,
+  instagram: Instagram,
+  'google-trends': Search,
+  'meta-ads': Megaphone,
+}
+
 const fmtDiaCurto = (iso: string): string =>
   new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 
@@ -107,26 +124,68 @@ function Estrelas({ n }: { n: number }) {
   )
 }
 
-function LeituraPlataforma({ card }: { card: PanoramaPlatformKpiCard }) {
+function LeituraRapidaPlataformas({ cards }: { cards: PanoramaPlatformKpiCard[] }) {
   return (
-    <TseCard titulo={card.platformLabel} subtitulo={card.metricLabel}>
-      {card.empty || card.insights.length === 0 ? (
-        <p className="mt-3 text-[12px] text-[var(--tse-muted)]">Sem dados suficientes no período.</p>
-      ) : (
-        <ul className="mt-3 space-y-2.5">
-          {card.insights.map((i) => (
-            <li key={`${i.badge}-${i.name}`} className="text-[13px]">
-              <div className="flex flex-wrap items-center gap-2">
-                <TsePill tom={TOM_BADGE[i.badge]} className="text-[10px] uppercase tracking-wide">
-                  {i.badgeLabel}
-                </TsePill>
-                <span className="font-bold">{i.name}</span>
+    <TseCard titulo="Leitura rápida por plataforma" subtitulo="Líder e sinal de avanço · últimos 30 dias">
+      <ul className="mt-2 divide-y divide-[#EEEEEE]">
+        {cards.map((card) => {
+          const Icone = ICONE_PLATAFORMA[card.platformId]
+          const primario = card.insights[0] ?? null
+          const secundario = card.insights[1] ?? null
+          const vazio = card.empty || card.insights.length === 0
+          return (
+            <li
+              key={card.platformId}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 first:pt-1 last:pb-0 sm:flex-nowrap"
+            >
+              <div className="flex min-w-0 flex-[1_1_12rem] items-center gap-2.5">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--tse-bar)] text-[var(--tse-gold-text)]">
+                  <Icone className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-bold leading-tight">{card.platformLabel}</p>
+                  <p className="truncate text-[11px] text-[var(--tse-muted)]">{card.metricLabel}</p>
+                </div>
               </div>
-              <p className="mt-0.5 text-[12px] text-[var(--tse-muted)]">{i.text}</p>
+
+              {vazio ? (
+                <p className="min-w-0 flex-[2_1_16rem] text-[12px] text-[var(--tse-muted)]">
+                  Sem dados suficientes no período.
+                </p>
+              ) : (
+                <div className="flex min-w-0 flex-[2_1_20rem] flex-wrap items-center gap-x-2 gap-y-1">
+                  {primario ? (
+                    <>
+                      <TsePill tom={TOM_BADGE[primario.badge]} className="text-[10px] uppercase tracking-wide">
+                        {primario.badgeLabel}
+                      </TsePill>
+                      <span className="text-[13px] font-bold">{primario.name}</span>
+                      <span className="text-[12px] text-[var(--tse-muted)]">{primario.text}</span>
+                    </>
+                  ) : null}
+                  {secundario ? (
+                    <span className="w-full text-[11px] text-[var(--tse-muted)] sm:w-auto sm:border-l sm:border-[#E6E6E3] sm:pl-2">
+                      {secundario.badge === 'growth' || secundario.badge === 'outsider' ? (
+                        <TsePill
+                          tom={TOM_BADGE[secundario.badge]}
+                          className="mr-1.5 text-[9px] uppercase tracking-wide"
+                        >
+                          {secundario.badgeLabel}
+                        </TsePill>
+                      ) : null}
+                      {secundario.name ? (
+                        <span className="font-semibold text-[var(--tse-text)]">{secundario.name}</span>
+                      ) : null}
+                      {secundario.name ? ' · ' : null}
+                      {secundario.text}
+                    </span>
+                  ) : null}
+                </div>
+              )}
             </li>
-          ))}
-        </ul>
-      )}
+          )
+        })}
+      </ul>
     </TseCard>
   )
 }
@@ -579,12 +638,7 @@ export function RadarPanoramaPanel({ candidato, onCandidatoChange, state }: Rada
 
       {panorama.platformKpis.length > 0 ? (
         <div className="mt-4">
-          <h2 className="text-[15px] font-bold">Leitura rápida por plataforma</h2>
-          <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {panorama.platformKpis.map((card) => (
-              <LeituraPlataforma key={card.platformId} card={card} />
-            ))}
-          </div>
+          <LeituraRapidaPlataformas cards={panorama.platformKpis} />
         </div>
       ) : null}
 

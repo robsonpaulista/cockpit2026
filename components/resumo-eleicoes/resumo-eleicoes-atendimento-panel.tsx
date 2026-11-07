@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
-import { RefreshCw, Crown, BarChart3, FileText, Loader2, MapPin, MapPinned } from 'lucide-react'
+import { RefreshCw, Crown, FileText, Loader2, MapPin, MapPinned, Newspaper } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -54,6 +54,8 @@ import {
   QuadroPartidos,
   type AnoVotacaoPartido,
 } from '@/components/resumo-eleicoes/atendimento-quadros'
+import { AtendimentoNoticiasModal } from '@/components/resumo-eleicoes/atendimento-noticias-cidade'
+import { AtendimentoNoticiasTicker } from '@/components/resumo-eleicoes/atendimento-noticias-ticker'
 import {
   TseCarregando,
   TseErro,
@@ -366,6 +368,7 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const [expectativaVisivel, setExpectativaVisivel] = useState<boolean>(false)
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
+  const [showNoticiasModal, setShowNoticiasModal] = useState(false)
   const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
   const [loadingSimulacao, setLoadingSimulacao] = useState(false)
@@ -2179,7 +2182,6 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
-  const historicoHref = `/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`
   const secaoHref = resumoEleicoesHref(RESUMO_ELEICOES_TAB_SECAO, {
     cidade: cidade && !visaoTodasCidades ? cidade : undefined,
   })
@@ -2260,10 +2262,15 @@ export function ResumoEleicoesAtendimentoPanel() {
             <FileText className={tseBotaoIconeClass} aria-hidden />
             Demandas
           </button>
-          <Link href={historicoHref} className={tseBotaoCinzaClass}>
-            <BarChart3 className={tseBotaoIconeClass} aria-hidden />
-            Histórico
-          </Link>
+          <button
+            type="button"
+            onClick={() => setShowNoticiasModal(true)}
+            disabled={!municipioAtivo || loadingDados || !buscaIniciada}
+            className={tseBotaoCinzaClass}
+          >
+            <Newspaper className={tseBotaoIconeClass} aria-hidden />
+            Notícias
+          </button>
           <Link href={secaoHref} className={tseBotaoCinzaClass}>
             <MapPinned className={tseBotaoIconeClass} aria-hidden />
             Por seção
@@ -2326,6 +2333,8 @@ export function ResumoEleicoesAtendimentoPanel() {
               }
             />
           ) : null}
+
+          {municipioAtivo ? <AtendimentoNoticiasTicker municipio={municipioAtivo} /> : null}
 
           {visaoTodasCidades && buscaIniciada ? (
             <ResumoEleicoesCidadesTabela
@@ -2709,6 +2718,10 @@ export function ResumoEleicoesAtendimentoPanel() {
         cidadeNome={cidade}
         cidadeId={cidadePesquisaIdAtual}
       />
+
+      {showNoticiasModal && municipioAtivo ? (
+        <AtendimentoNoticiasModal municipio={municipioAtivo} onClose={() => setShowNoticiasModal(false)} />
+      ) : null}
     </TsePage>
   )
 }

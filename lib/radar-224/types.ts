@@ -28,6 +28,8 @@ export type RadarFonte = {
   camada: RadarFonteCamada
   selo: RadarFonteSelo
   url: string
+  /** URL de listagem para scrape direto (ex.: /politica). */
+  urlListagem?: string
   /** Domínio para matching futuro (Google News / scrape). */
   dominio: string
   /** Nota interna 0–100 (qualidade / prioridade). */

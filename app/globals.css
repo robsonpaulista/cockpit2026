@@ -3038,3 +3038,28 @@ body:not([data-war-room-clean]) .sidebar-apify-shell button:hover .cockpit-icon 
 [data-theme='republicanos'][data-appearance='light'] .tracking-wide {
   letter-spacing: 0.04em;
 }
+
+/* Atendimento — ticker de notícias */
+@keyframes atendimento-noticias-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.atendimento-noticias-ticker-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation-name: atendimento-noticias-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.atendimento-noticias-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atendimento-noticias-ticker-track {
+    animation: none !important;
+  }
+}

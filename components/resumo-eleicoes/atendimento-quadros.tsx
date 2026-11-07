@@ -33,14 +33,14 @@ function Kpi({
   children?: ReactNode
 }) {
   return (
-    <div className="min-w-0 xl:px-6 xl:first:pl-0 xl:last:pr-0">
-      <p className="truncate text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+    <div className="min-w-0 xl:px-4 xl:first:pl-0 xl:last:pr-0">
+      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</p>
+      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
         {/* div, não span: o CSS global do war-room força 13px em todo p/span dentro de main */}
-        <div className="text-[28px] font-bold leading-none tabular-nums">{valor}</div>
+        <div className="text-[22px] font-bold leading-none tabular-nums">{valor}</div>
         {selo}
       </div>
-      {children ? <div className="mt-2 text-[12px] leading-snug text-[var(--tse-muted)]">{children}</div> : null}
+      {children ? <div className="mt-0.5 text-[11px] leading-snug text-[var(--tse-muted)]">{children}</div> : null}
     </div>
   )
 }
@@ -51,7 +51,7 @@ function SeloVariacao({ pct, titulo }: { pct: number; titulo: string }) {
     <span
       title={titulo}
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums',
+        'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
         pct > 0 && 'bg-[color-mix(in_srgb,var(--tse-olive)_14%,white)] text-[var(--tse-olive)]',
         pct < 0 && 'bg-red-50 text-red-700',
         pct === 0 && 'bg-[var(--tse-bar)] text-[var(--tse-muted)]',
@@ -95,9 +95,9 @@ export function AtendimentoDadosGerais({
   const pctVsExpectativa = votos2026 !== null ? variacao(votos2026, votosCenario) : null
   const saldoVsExpectativa = votos2026 !== null ? votos2026 - votosCenario : 0
   return (
-    <section className="mt-4 rounded-2xl bg-white px-5 py-4 shadow-sm">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[15px] font-bold">Dados Gerais</h2>
+    <section className="mt-3 rounded-2xl bg-white px-4 py-2.5 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-[13px] font-bold">Dados Gerais</h2>
         <div className="flex flex-wrap items-center gap-3">
           {cenarioOculto && onMostrarCenario ? (
             <button type="button" onClick={onMostrarCenario} className={tseLinkAcaoClass}>
@@ -109,7 +109,7 @@ export function AtendimentoDadosGerais({
       </div>
       <div
         className={cn(
-          'mt-4 grid gap-5 sm:grid-cols-2 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]',
+          'mt-2 grid gap-3 sm:grid-cols-2 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]',
           cenarioOculto ? 'xl:grid-cols-3' : 'xl:grid-cols-4',
         )}
       >
