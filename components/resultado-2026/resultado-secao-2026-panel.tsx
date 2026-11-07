@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Download, FileText, MapPin, Plus, User, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Download, FileText, MapPin, Plus, User, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  fetchJadyelFederal2022VotosPorMunicipioPI,
+  obterVotos2022JadyelMunicipio,
+} from "@/lib/jadyel-federal-2022-pi-votos";
 import {
   TseBarraRotulo,
   TseBarraValor,
@@ -82,8 +87,41 @@ type Visao =
   | "comparativo-secao"
   | "territorio"
   | "comparativo-base";
-type Ordem = "votos" | "alfabetica";
+type Ordem = "votos" | "alfabetica" | "variacao";
 type ModoMunicipios = "tabela" | "mapa" | "ambos";
+
+type VariacaoMunicipio2026 = {
+  votos2022: number;
+  delta: number;
+  pct: number | null;
+  rotulo: "crescimento" | "queda" | "estavel" | "sem-base";
+};
+
+function variacaoMunicipio2026(votos2026: number, votos2022: number): VariacaoMunicipio2026 {
+  const delta = votos2026 - votos2022;
+  if (votos2022 <= 0) {
+    return {
+      votos2022,
+      delta,
+      pct: null,
+      rotulo: votos2026 > 0 ? "crescimento" : "sem-base",
+    };
+  }
+  const pct = (delta / votos2022) * 100;
+  return {
+    votos2022,
+    delta,
+    pct,
+    rotulo: delta > 0 ? "crescimento" : delta < 0 ? "queda" : "estavel",
+  };
+}
+
+function ehCandidatoJadyelFederal(
+  c: Pick<ResultadoSecao2026Payload["candidatos"][number], "nome" | "cargo"> | null | undefined,
+): boolean {
+  if (!c) return false;
+  return /federal/i.test(c.cargo) && /jadyel/i.test(c.nome);
+}
 
 const PAGE_SIZE = 30;
 
@@ -148,6 +186,9 @@ export function ResultadoSecao2026Panel() {
   /** Seções marcadas na aba Seções (`chaveSecao`); valem para qualquer candidato. */
   const [marcadas, setMarcadas] = useState<Set<string>>(() => new Set());
   const [somenteMarcadasSel, setSomenteMarcadas] = useState<boolean>(false);
+  const [votos2022PorMunicipio, setVotos2022PorMunicipio] = useState<Map<string, number> | null>(
+    null,
+  );
 
   useEffect(() => {
     let ativo = true;
@@ -170,6 +211,17 @@ export function ResultadoSecao2026Panel() {
       .finally(() => {
         if (ativo) setLoading(false);
       });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    void fetchJadyelFederal2022VotosPorMunicipioPI().then((res) => {
+      if (!ativo || !res) return;
+      setVotos2022PorMunicipio(res.mapaNormalizado);
+    });
     return () => {
       ativo = false;
     };
@@ -247,16 +299,36 @@ export function ResultadoSecao2026Panel() {
 
   const termo = normalizar(busca.trim());
 
+  const comparaCom2022 = ehCandidatoJadyelFederal(payload?.candidatos[candidatoIdx]);
+
+  useEffect(() => {
+    if (!comparaCom2022 && ordem === "variacao") setOrdem("votos");
+  }, [comparaCom2022, ordem]);
+
+  const variacaoPorMunicipio = useMemo(() => {
+    if (!comparaCom2022 || !votos2022PorMunicipio) return null;
+    const mapa = new Map<string, VariacaoMunicipio2026>();
+    for (const m of municipiosResumo) {
+      const v2022 = obterVotos2022JadyelMunicipio(votos2022PorMunicipio, m.nome);
+      mapa.set(m.codigo, variacaoMunicipio2026(m.votos, v2022));
+    }
+    return mapa;
+  }, [comparaCom2022, votos2022PorMunicipio, municipiosResumo]);
+
   const municipiosVisiveis = useMemo(() => {
     const lista = termo
       ? municipiosResumo.filter((m) => normalizar(m.nome).includes(termo))
       : municipiosResumo;
-    return [...lista].sort((a, b) =>
-      ordem === "votos"
-        ? b.votos - a.votos || a.nome.localeCompare(b.nome, "pt-BR")
-        : a.nome.localeCompare(b.nome, "pt-BR"),
-    );
-  }, [municipiosResumo, termo, ordem]);
+    return [...lista].sort((a, b) => {
+      if (ordem === "alfabetica") return a.nome.localeCompare(b.nome, "pt-BR");
+      if (ordem === "variacao" && variacaoPorMunicipio) {
+        const da = variacaoPorMunicipio.get(a.codigo)?.delta ?? Number.NEGATIVE_INFINITY;
+        const db = variacaoPorMunicipio.get(b.codigo)?.delta ?? Number.NEGATIVE_INFINITY;
+        return db - da || b.votos - a.votos || a.nome.localeCompare(b.nome, "pt-BR");
+      }
+      return b.votos - a.votos || a.nome.localeCompare(b.nome, "pt-BR");
+    });
+  }, [municipiosResumo, termo, ordem, variacaoPorMunicipio]);
 
   const locaisVisiveis = useMemo(() => {
     const lista = termo
@@ -532,7 +604,12 @@ export function ResultadoSecao2026Panel() {
         legendaVotos: nomeMunicipioSel
           ? `· ${formatarPct2026(pctDoCandidato)} do total do candidato`
           : "no estado",
-        ordemLabel: ordem === "votos" ? "mais votados" : "ordem alfabética",
+        ordemLabel:
+          ordem === "votos"
+            ? "mais votados"
+            : ordem === "variacao"
+              ? "maior variação vs 2022"
+              : "ordem alfabética",
         busca: busca.trim(),
         modo: modoPdf,
       };
@@ -890,6 +967,9 @@ export function ResultadoSecao2026Panel() {
                     >
                       <option value="votos">Ordenar: mais votados</option>
                       <option value="alfabetica">Ordem alfabética</option>
+                      {comparaCom2022 && variacaoPorMunicipio ? (
+                        <option value="variacao">Ordenar: variação vs 2022</option>
+                      ) : null}
                     </select>
                   )}
                 </div>
@@ -1081,6 +1161,7 @@ export function ResultadoSecao2026Panel() {
                   linhas={municipiosVisiveis.slice(0, limite)}
                   rank={rankMunicipio}
                   maxVotos={maxVotosMunicipio}
+                  variacaoPorMunicipio={variacaoPorMunicipio}
                   onSelect={(codigo) => trocarMunicipio(codigo)}
                 />
               ) : null}
@@ -1168,69 +1249,187 @@ export function ResultadoSecao2026Panel() {
   );
 }
 
+function SeloVariacaoMunicipio({ v }: { v: VariacaoMunicipio2026 }) {
+  if (v.rotulo === "sem-base") {
+    return (
+      <span
+        title="Sem base 2022"
+        className="inline-flex rounded px-1 py-px text-[10px] font-bold text-[var(--tse-muted)]"
+      >
+        —
+      </span>
+    );
+  }
+  const Icone = v.rotulo === "crescimento" ? ArrowUp : v.rotulo === "queda" ? ArrowDown : null;
+  const texto =
+    v.rotulo === "crescimento" ? "Crescimento" : v.rotulo === "queda" ? "Queda" : "Estável";
+  const pctFmt =
+    v.pct == null
+      ? "0%"
+      : `${v.pct > 0 ? "+" : v.pct < 0 ? "−" : ""}${formatarPct2026(Math.abs(v.pct), 1)}`;
+  return (
+    <span
+      title={`${texto} vs 2022`}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-bold tabular-nums",
+        v.rotulo === "crescimento" &&
+          "bg-[color-mix(in_srgb,var(--tse-olive)_14%,white)] text-[var(--tse-olive)]",
+        v.rotulo === "queda" && "bg-red-50 text-red-700",
+        v.rotulo === "estavel" && "bg-[var(--tse-bar)] text-[var(--tse-muted)]",
+      )}
+    >
+      {Icone ? <Icone className="h-2.5 w-2.5 shrink-0" aria-hidden /> : null}
+      {pctFmt}
+    </span>
+  );
+}
+
 function MunicipiosTabela({
   linhas,
   rank,
   maxVotos,
+  variacaoPorMunicipio,
   onSelect,
 }: {
   linhas: MunicipioResumo2026[];
   rank: Map<string, number>;
   maxVotos: number;
+  variacaoPorMunicipio: Map<string, VariacaoMunicipio2026> | null;
   onSelect: (codigo: string) => void;
 }) {
+  const comVariacao = Boolean(variacaoPorMunicipio);
+  const th = "px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]";
+  const td = "px-2 py-1 text-[12px]";
   return (
-    <div className={`mt-3 ${tseTabela.container}`}>
-      <table className={tseTabela.table}>
+    <div className={`mt-2 ${tseTabela.container}`}>
+      <table className={cn(tseTabela.table, "text-[12px]")}>
         <thead className={tseTabela.thead}>
           <tr>
-            <th className="w-14 px-3 py-2.5 text-center">Pos.</th>
-            <th className="px-3 py-2.5">Município</th>
-            <th className="px-3 py-2.5">Zona</th>
-            <th className="px-3 py-2.5 text-right">Locais</th>
-            <th className="w-[220px] px-3 py-2.5 text-right">Votos</th>
-            <th className="px-3 py-2.5 text-right">% do total</th>
-            <th className="w-10 px-2 py-2.5" aria-label="Abrir" />
+            <th className={cn(th, "w-10 text-center")}>Pos.</th>
+            <th className={th}>Município</th>
+            {!comVariacao ? <th className={th}>Zona</th> : null}
+            <th className={cn(th, "text-right")}>Locais</th>
+            {comVariacao ? (
+              <th className={cn(th, "text-right")} title="Deputado Federal 2022 · Jadyel">
+                2022
+              </th>
+            ) : null}
+            <th className={cn(th, "w-[150px] text-right")}>{comVariacao ? "2026" : "Votos"}</th>
+            {comVariacao ? (
+              <th className={cn(th, "text-right")} title="Votos 2026 − votos 2022">
+                Δ
+              </th>
+            ) : null}
+            {comVariacao ? (
+              <th className={cn(th, "text-right")} title="Variação percentual vs 2022">
+                Var.
+              </th>
+            ) : null}
+            <th className={cn(th, "text-right")}>%</th>
+            <th className={cn(th, "w-7")} aria-label="Abrir" />
           </tr>
         </thead>
         <tbody>
           {linhas.map((m) => {
             const pos = rank.get(m.codigo) ?? 0;
+            const variacao = variacaoPorMunicipio?.get(m.codigo) ?? null;
             return (
               <tr
                 key={m.codigo}
                 onClick={() => onSelect(m.codigo)}
                 className={tseTabela.trClicavel}
               >
-                <td className="px-3 py-2 text-center">
-                  <TseRank posicao={pos} />
+                <td className={cn(td, "text-center")}>
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums",
+                      pos <= 3
+                        ? "bg-[var(--tse-yellow)] text-white"
+                        : "bg-[var(--tse-bar)] text-[var(--tse-gold-text)]",
+                    )}
+                  >
+                    {pos}º
+                  </span>
                 </td>
-                <td className="px-3 py-2">
+                <td className={td}>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelect(m.codigo);
                     }}
-                    className="text-left font-bold uppercase hover:underline"
+                    className="text-left text-[12px] font-bold uppercase leading-tight hover:underline"
                   >
                     {m.nome}
                   </button>
                 </td>
-                <td className="px-3 py-2 tabular-nums text-[var(--tse-muted)]">
-                  {m.zonas.map(formatarZona2026).join(", ")}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                {!comVariacao ? (
+                  <td className={cn(td, "tabular-nums text-[var(--tse-muted)]")}>
+                    {m.zonas.map(formatarZona2026).join(", ")}
+                  </td>
+                ) : null}
+                <td className={cn(td, "text-right tabular-nums text-[var(--tse-muted)]")}>
                   {formatarVotos2026(m.locais)}
                 </td>
-                <td className="px-3 py-2">
-                  <TseBarraValor valor={m.votos} max={maxVotos} formatado={formatarVotos2026(m.votos)} />
+                {comVariacao ? (
+                  <td className={cn(td, "text-right tabular-nums text-[var(--tse-muted)]")}>
+                    {variacao ? formatarVotos2026(variacao.votos2022) : "—"}
+                  </td>
+                ) : null}
+                <td className={td}>
+                  {comVariacao ? (
+                    <div className="flex items-center justify-end gap-1.5">
+                      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-[#EEEEEE]">
+                        <div
+                          className="h-full bg-[var(--tse-green)]"
+                          style={{
+                            width: `${maxVotos > 0 ? (m.votos / maxVotos) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <span
+                        className={cn(
+                          "w-11 text-right text-[12px] font-bold tabular-nums",
+                          m.votos === 0 && "text-[var(--tse-muted)]",
+                        )}
+                      >
+                        {formatarVotos2026(m.votos)}
+                      </span>
+                    </div>
+                  ) : (
+                    <TseBarraValor
+                      valor={m.votos}
+                      max={maxVotos}
+                      formatado={formatarVotos2026(m.votos)}
+                      larguraNumero="w-12"
+                    />
+                  )}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <TsePill>{formatarPct2026(m.pctTotal)}</TsePill>
+                {comVariacao ? (
+                  <td
+                    className={cn(
+                      td,
+                      "text-right tabular-nums font-bold",
+                      variacao && variacao.delta > 0 && "text-[var(--tse-olive)]",
+                      variacao && variacao.delta < 0 && "text-red-700",
+                      variacao && variacao.delta === 0 && "text-[var(--tse-muted)]",
+                    )}
+                  >
+                    {variacao
+                      ? `${variacao.delta > 0 ? "+" : ""}${formatarVotos2026(variacao.delta)}`
+                      : "—"}
+                  </td>
+                ) : null}
+                {comVariacao ? (
+                  <td className={cn(td, "text-right")}>
+                    {variacao ? <SeloVariacaoMunicipio v={variacao} /> : "—"}
+                  </td>
+                ) : null}
+                <td className={cn(td, "text-right tabular-nums font-semibold text-[var(--tse-muted)]")}>
+                  {formatarPct2026(m.pctTotal, 1)}
                 </td>
-                <td className="px-2 py-2 text-[var(--tse-muted)] group-hover:text-[var(--tse-olive)]">
-                  <ChevronRight className="h-4 w-4" />
+                <td className={cn(td, "text-[var(--tse-muted)] group-hover:text-[var(--tse-olive)]")}>
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </td>
               </tr>
             );
