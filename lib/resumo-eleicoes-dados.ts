@@ -197,6 +197,51 @@ function votosJulioCesarFederal2022(dados: ResultadoEleicao[]): { cargo: string;
 }
 
 /**
+ * Anyara Santos estreia no estadual em 2026 herdando a base do marido,
+ * Pablo Santos (dep. estadual eleito em 2022; urna "Dr Pablo Santos" / civil PABLO DANTAS…).
+ */
+function ehAnyaraSantos(urna: string, civil: string): boolean {
+  return (
+    urna === 'anyara santos' ||
+    urna === 'anyara' ||
+    civil.startsWith('anyara soares aires santos') ||
+    civil.startsWith('anyara santos')
+  )
+}
+
+function ehPabloSantosNome(urna: string, civil: string): boolean {
+  const blob = `${urna} ${civil}`.trim()
+  if (!blob) return false
+  if (civil.startsWith('pablo dantas') || urna.startsWith('pablo dantas')) return true
+  if (urna === 'dr pablo santos' || urna === 'pablo santos') return true
+  if (civil === 'pablo santos' || civil.startsWith('pablo santos')) return true
+  // Planilha às vezes traz o nome civil no campo de urna.
+  return /\bpablo\b/.test(blob) && /\bsantos\b/.test(blob) && !/\bsindo\b/.test(blob)
+}
+
+function ehPabloSantosEstadual2022(item: ResultadoEleicao): boolean {
+  if (item.anoEleicao !== '2022' || !includesNormalizedCargo(item.cargo, 'estadual')) return false
+  const urna = normalizeSituacaoEleicao(nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna))
+  const civil = normalizeSituacaoEleicao(item.nomeCandidato)
+  if (item.situacao && !isSituacaoEleito(item.situacao)) return false
+  const nr = String(item.numeroUrna || '').replace(/\D/g, '')
+  // Mesmo nº de urna que a Anyara usa em 2026 (15199).
+  if (nr === '15199') return true
+  return ehPabloSantosNome(urna, civil)
+}
+
+function votosPabloSantosEstadual2022(dados: ResultadoEleicao[]): { cargo: string; votos: number } {
+  let votos = 0
+  let cargo = 'Deputado Estadual'
+  for (const item of dados) {
+    if (!ehPabloSantosEstadual2022(item)) continue
+    votos += parseVotosEleicao(item.quantidadeVotosNominais)
+    cargo = item.cargo || cargo
+  }
+  return { cargo, votos }
+}
+
+/**
  * Compara as duas participações mais recentes de cada pessoa no município.
  * Destacável = diferença de ao menos 1% dos votos do maior cargo da cidade (mín. 50) e de 20% sobre a anterior.
  * Estreantes = votação de 2026 acima desse mesmo mínimo, sem disputa anterior na base (2020 a 2024).
@@ -239,12 +284,40 @@ export function movimentosCandidatos(
   const movimentos: MovimentoCandidato[] = []
   const estreantes: EstreanteCandidato[] = []
 
+  // Doadores de base: a trajetória 2022→2024 deles cede lugar à herança 2022→herdeiro 2026.
+  let temAnyaraEstadual2026 = false
+  let temGeorgianoFederal2026 = false
+  for (const [chave, porAno] of pessoas) {
+    const estreia = porAno.get(ANO_ESTREIA)
+    if (!estreia) continue
+    const urna = normalizeSituacaoEleicao(estreia.nomeUrna)
+    if (ehAnyaraSantos(urna, chave) && includesNormalizedCargo(estreia.cargo, 'estadual')) {
+      temAnyaraEstadual2026 = true
+    }
+    if (ehGeorgiano(urna, chave) && includesNormalizedCargo(estreia.cargo, 'federal')) {
+      temGeorgianoFederal2026 = true
+    }
+  }
+
   for (const [chave, porAno] of pessoas) {
     const participacoes = [...porAno.values()].sort((a, b) => a.ano.localeCompare(b.ano))
     const estreia = porAno.get(ANO_ESTREIA)
+    const urnaEstreia = estreia ? normalizeSituacaoEleicao(estreia.nomeUrna) : ''
+    const herdaBaseDoPai =
+      !!estreia &&
+      ehGeorgiano(urnaEstreia, chave) &&
+      includesNormalizedCargo(estreia.cargo, 'federal')
+    const herdaBaseDoMarido =
+      !!estreia &&
+      ehAnyaraSantos(urnaEstreia, chave) &&
+      includesNormalizedCargo(estreia.cargo, 'estadual')
+    const herdaBase = herdaBaseDoPai || herdaBaseDoMarido
+
+    // Herança de base (pai/marido) não é estreia política — sai do quadro de estreantes.
     if (
       jaDisputaramNoEstado &&
       estreia &&
+      !herdaBase &&
       participacoes.length === 1 &&
       !jaDisputou.has(chave) &&
       !jaDisputaramNoEstado.has(chave) &&
@@ -261,11 +334,21 @@ export function movimentosCandidatos(
       })
     }
     const atual = participacoes[participacoes.length - 1]
-    const herdaBaseDoPai =
-      ehGeorgiano(normalizeSituacaoEleicao(atual.nomeUrna), chave) &&
-      atual.ano === ANO_ESTREIA &&
-      includesNormalizedCargo(atual.cargo, 'federal')
-    if (participacoes.length < 2 && !herdaBaseDoPai) continue
+    const urnaAtual = normalizeSituacaoEleicao(atual.nomeUrna)
+
+    // Pablo/Júlio doam a base ao herdeiro 2026 — não comparar o doador com 2024.
+    if (
+      !herdaBase &&
+      ((temAnyaraEstadual2026 && ehPabloSantosNome(urnaAtual, chave)) ||
+        (temGeorgianoFederal2026 &&
+          (urnaAtual === 'julio cesar' ||
+            chave === 'julio cesar' ||
+            chave.startsWith('julio cesar de carvalho lima'))))
+    ) {
+      continue
+    }
+
+    if (participacoes.length < 2 && !herdaBase) continue
     let anterior = participacoes.length >= 2 ? participacoes[participacoes.length - 2] : atual
     let origem: string | undefined
     if (herdaBaseDoPai) {
@@ -278,11 +361,24 @@ export function movimentosCandidatos(
         partido: atual.partido,
       }
       origem = 'Júlio Cesar'
+    } else if (herdaBaseDoMarido) {
+      const baseMarido = votosPabloSantosEstadual2022(dados)
+      anterior = {
+        ano: '2022',
+        cargo: baseMarido.cargo,
+        votos: baseMarido.votos,
+        nomeUrna: atual.nomeUrna,
+        partido: atual.partido,
+      }
+      origem = 'Pablo Santos'
     }
     const diferenca = atual.votos - anterior.votos
     const variacaoPct = anterior.votos > 0 ? (diferenca / anterior.votos) * 100 : null
-    if (Math.abs(diferenca) < minimo) continue
-    if (variacaoPct !== null && Math.abs(variacaoPct) < 20) continue
+    // Match de herança sempre aparece; demais candidaturas seguem o filtro de destaque.
+    if (!herdaBase) {
+      if (Math.abs(diferenca) < minimo) continue
+      if (variacaoPct !== null && Math.abs(variacaoPct) < 20) continue
+    }
     const semRotulo = ({ ano, cargo, votos }: Participacao): ParticipacaoCandidato => ({ ano, cargo, votos })
     movimentos.push({
       chave,
