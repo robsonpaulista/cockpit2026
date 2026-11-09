@@ -62,7 +62,7 @@ export function parsePublishedLabelAbsolutoPt(
 ): number | null {
   if (!label) return null
   const t = normalize(label)
-  const m = t.match(/^(\d{1,2})\s+de\s+([a-zç]+)\s+de\s+(\d{4})$/)
+  const m = t.match(/^(\d{1,2})\s+de\s+([a-zç]+)\s+de\s+(\d{4})\b/)
   if (!m) return null
   const dia = Number(m[1])
   const mes = MESES_PT[m[2]]
@@ -89,14 +89,15 @@ export function parsePublishedLabelSlash(
   return Number.isFinite(ts) ? ts : null
 }
 
-/** Extrai data do path WordPress `/2026/10/slug/`. */
+/** Extrai data do path `/2026/10/slug/` ou GP1 `/noticia/2026/11/2/...`. */
 export function parsePublishedFromUrl(url: string | null | undefined): number | null {
   if (!url) return null
-  const m = url.match(/\/(20\d{2})\/(0[1-9]|1[0-2])(?:\/(0[1-9]|[12]\d|3[01]))?\//)
+  const m = url.match(/\/(20\d{2})\/(\d{1,2})(?:\/(\d{1,2}))?(?:\/|$)/)
   if (!m) return null
   const ano = Number(m[1])
   const mes = Number(m[2]) - 1
   const dia = m[3] ? Number(m[3]) : 15
+  if (mes < 0 || mes > 11 || dia < 1 || dia > 31) return null
   const d = new Date(ano, mes, dia, 12, 0, 0, 0)
   const ts = d.getTime()
   return Number.isFinite(ts) ? ts : null

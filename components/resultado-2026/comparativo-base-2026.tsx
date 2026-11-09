@@ -17,6 +17,7 @@ import {
   type ModoComparativoBase,
   type RecorteComparativoBase,
 } from '@/lib/comparativo-base-2026'
+import { gerarAnalisesComparativoBase } from '@/lib/comparativo-base-analise-2026'
 import { formatarPct2026, formatarVotos2026, type ResultadoSecao2026Payload } from '@/lib/resultado-secao-2026'
 import { nomeProprio } from './tse-ui'
 
@@ -82,6 +83,21 @@ export function ComparativoBase2026({
   const colunas = useMemo(
     () => compararBaseCandidatos2026(matriz, escolhidos, { modo, quantidade: quantidadeRecorte, base }),
     [matriz, escolhidos, modo, quantidadeRecorte, base],
+  )
+  const analises = useMemo(
+    () =>
+      gerarAnalisesComparativoBase({
+        recorte: { modo, quantidade: quantidadeRecorte, base },
+        colunas: colunas.map((dados) => {
+          const c = payload.candidatos[dados.indice]
+          return {
+            nome: nomeProprio(c?.nome ?? ''),
+            partido: c?.partido ?? '',
+            dados,
+          }
+        }),
+      }),
+    [base, colunas, modo, payload.candidatos, quantidadeRecorte],
   )
 
   const definirModo = (proximo: ModoComparativoBase) => {
@@ -233,6 +249,21 @@ export function ComparativoBase2026({
             </tbody>
           </table>
         </div>
+      ) : null}
+
+      {analises.length > 0 ? (
+        <section className="mt-3 rounded-xl border border-[#E6E6E3] bg-[#F5F6F8] px-4 py-3" aria-label="Leitura do comparativo">
+          <h3 className="text-[12px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+            Leitura do comparativo
+          </h3>
+          <ul className="mt-2 space-y-2.5">
+            {analises.map((insight) => (
+              <li key={insight.id} className="text-[13px] leading-snug text-[var(--tse-text)]">
+                <span className="font-bold">{insight.titulo}.</span> {insight.texto}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {colunas.length > 0 ? (

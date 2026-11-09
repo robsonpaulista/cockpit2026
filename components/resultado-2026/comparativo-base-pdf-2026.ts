@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatarPct2026, formatarVotos2026, type ResultadoSecao2026Meta } from '@/lib/resultado-secao-2026'
 import type { ColunaComparativoBase, RecorteComparativoBase } from '@/lib/comparativo-base-2026'
+import { gerarAnalisesComparativoBase } from '@/lib/comparativo-base-analise-2026'
 import { COR, desenharCabecalho, numerarPaginas, slugEscopo } from './pdf-base-2026'
 
 export function exportarComparativoBasePdf2026(o: {
@@ -43,6 +44,31 @@ export function exportarComparativoBasePdf2026(o: {
   })
 
   let cursor = fimDaTabela(doc, y) + 8
+  const analises = gerarAnalisesComparativoBase({ recorte: o.recorte, colunas: o.colunas })
+  if (analises.length > 0) {
+    if (cursor > 170) {
+      doc.addPage()
+      cursor = 14
+    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(...COR.text)
+    doc.text('Leitura do comparativo', 10, cursor)
+    cursor += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    for (const insight of analises) {
+      const linhasTexto = doc.splitTextToSize(`• ${insight.titulo}. ${insight.texto}`, 277)
+      if (cursor + linhasTexto.length * 4.2 > 195) {
+        doc.addPage()
+        cursor = 14
+      }
+      doc.text(linhasTexto, 10, cursor)
+      cursor += linhasTexto.length * 4.2 + 2
+    }
+    cursor += 4
+  }
+
   for (const coluna of o.colunas) {
     if (cursor > 180) {
       doc.addPage()

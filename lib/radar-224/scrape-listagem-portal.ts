@@ -331,9 +331,57 @@ async function enrichDatesFromArticlePages(
   return itens
 }
 
+/** GP1 últimas por cidade: `ultimas_box` + `/pi/piaui/noticia/AAAA/M/D/slug-id.html`. */
+export function parseGp1UltimasBoxes(html: string, opts: FonteOpts): PortalNoticiaItem[] {
+  let origin = 'https://www.gp1.com.br'
+  try {
+    origin = new URL(opts.fonteUrl).origin
+  } catch {
+    /* keep */
+  }
+
+  const itens: PortalNoticiaItem[] = []
+  const seen = new Set<string>()
+  const re =
+    /<div class="clearfix ultimas_box">([\s\S]*?)(?=<div class="clearfix ultimas_box">|<\/ul>)/gi
+
+  for (const match of html.matchAll(re)) {
+    const bloco = match[1]
+    const linkMatch = bloco.match(
+      /<h3>\s*<a href="(\/pi\/piaui\/noticia\/[^"]+\.html)"[^>]*>([\s\S]*?)<\/a>\s*<\/h3>/i,
+    )
+    if (!linkMatch) continue
+    const href = linkMatch[1]
+    const title = stripTags(linkMatch[2])
+    const url = new URL(href, origin).href
+    if (!title || seen.has(url)) continue
+    seen.add(url)
+
+    const timeMatch = bloco.match(/<time class="date-ult">([\s\S]*?)<\/time>/i)
+    const rawTime = timeMatch ? stripTags(timeMatch[1]) : ''
+    const publishedLabel = rawTime.split('|')[0]?.trim() || null
+    const summaryMatch = bloco.match(/<span>\s*([\s\S]*?)\s*<\/span>/i)
+
+    itens.push({
+      articleId: articleIdFromUrl(url, String(itens.length + 1)),
+      title,
+      url,
+      summary: summaryMatch ? stripTags(summaryMatch[1]) || null : null,
+      publishedAt: null,
+      publishedLabel,
+      category: 'Cidade',
+      ...opts,
+    })
+  }
+
+  return itens
+}
+
 export function parseListagemPortal(html: string, opts: FonteOpts): PortalNoticiaItem[] {
   const listagem = parseListagemInterna(html, opts)
   if (listagem.length > 0) return listagem
+  const gp1 = parseGp1UltimasBoxes(html, opts)
+  if (gp1.length > 0) return gp1
   const nextCards = parseNextCategoryCards(html, opts)
   if (nextCards.length > 0) return nextCards
   const diario = parseDiarioNoticiaCards(html, opts)

@@ -8,6 +8,7 @@ import {
   publicadoNaJanelaPortal,
   resolvePublishedAtMs,
 } from '@/lib/radar-224/portal-noticia-data'
+import { textoEhTemaPolitico } from '@/lib/radar-224/filtro-tema-politico'
 import {
   fetchListagemPortal,
   type PortalNoticiaItem,
@@ -55,6 +56,7 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
   fontesConsultadas: number
   brutos: number
   descartadasAntigas: number
+  descartadasTema: number
   janelaDias: number
   itens: PortalNoticiaItem[]
 }> {
@@ -63,6 +65,7 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
   const seen = new Set<string>()
   let brutos = 0
   let descartadasAntigas = 0
+  let descartadasTema = 0
   const agora = Date.now()
 
   for (const fonte of fontes) {
@@ -79,10 +82,12 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
         if (seen.has(row.url)) continue
         seen.add(row.url)
         brutos += 1
-        if (
-          exigeMencao &&
-          !textoMencionaMunicipioPortal(`${row.title} ${row.url} ${row.summary ?? ''}`, municipio)
-        ) {
+        const blob = `${row.title} ${row.summary ?? ''}`
+        if (exigeMencao && !textoMencionaMunicipioPortal(`${blob} ${row.url}`, municipio)) {
+          continue
+        }
+        if (fonte.filtroTemas === 'politica' && !textoEhTemaPolitico(blob)) {
+          descartadasTema += 1
           continue
         }
         const publishedAtMs = resolvePublishedAtMs({
@@ -97,6 +102,7 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
         }
         itens.push({
           ...row,
+          category: fonte.filtroTemas === 'politica' ? 'Política' : row.category,
           publishedAt:
             row.publishedAt ||
             (publishedAtMs != null ? new Date(publishedAtMs).toISOString() : null),
@@ -128,6 +134,7 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
     fontesConsultadas: fontes.length,
     brutos,
     descartadasAntigas,
+    descartadasTema,
     janelaDias: PORTAL_NOTICIAS_JANELA_DIAS,
     itens,
   }

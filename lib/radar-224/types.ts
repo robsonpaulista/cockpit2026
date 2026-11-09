@@ -30,6 +30,11 @@ export type RadarFonte = {
   url: string
   /** URL de listagem para scrape direto (ex.: /politica). */
   urlListagem?: string
+  /**
+   * Filtro temático pós-scrape.
+   * `politica` — útil em listagens municipais mistas (GP1 por cidade).
+   */
+  filtroTemas?: 'politica'
   /** Domínio para matching futuro (Google News / scrape). */
   dominio: string
   /** Nota interna 0–100 (qualidade / prioridade). */
