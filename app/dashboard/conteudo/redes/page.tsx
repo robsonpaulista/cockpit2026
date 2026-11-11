@@ -4,12 +4,11 @@ import { useState } from 'react'
 import { ConteudoRedesShell, type ConteudoRedesTab } from '@/components/conteudo-redes/conteudo-redes-shell'
 import { RedesAudienciaTab } from '@/components/conteudo-redes/redes-audiencia-tab'
 import { RedesCidadesTab } from '@/components/conteudo-redes/redes-cidades-tab'
-import { RedesPostsTab } from '@/components/conteudo-redes/redes-posts-tab'
 import { TseCarregando, TseErro, TseVazio } from '@/components/tse/tse-ui'
 import { useInstagramRedes } from '@/hooks/use-instagram-redes'
 
 export default function ConteudoRedesPage() {
-  const [aba, setAba] = useState<ConteudoRedesTab>('posts')
+  const [aba, setAba] = useState<ConteudoRedesTab>('audience')
   const redes = useInstagramRedes()
   const { metrics, loading, error, conectado } = redes
 
@@ -40,12 +39,10 @@ export default function ConteudoRedesPage() {
           Não foi possível carregar o Instagram pelo servidor. As credenciais ficam em INSTAGRAM_TOKEN no ambiente
           (Vercel / .env.local) — ninguém precisa colar o token.
         </TseVazio>
-      ) : aba === 'audience' ? (
-        <RedesAudienciaTab redes={redes} />
       ) : aba === 'locations' ? (
         <RedesCidadesTab redes={redes} />
       ) : (
-        <RedesPostsTab redes={redes} />
+        <RedesAudienciaTab redes={redes} />
       )}
     </ConteudoRedesShell>
   )

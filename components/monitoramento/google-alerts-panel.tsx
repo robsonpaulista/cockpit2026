@@ -75,22 +75,20 @@ const COR_RISCO: Record<Risco, string> = {
 const SENTIMENTOS: Sentimento[] = ['negative', 'neutral', 'positive']
 const RISCOS: Risco[] = ['high', 'medium', 'low']
 
-type Grupo = { chave: string; rotulo: string; risco: boolean; itens: NewsItem[] }
+type Grupo = { chave: string; rotulo: string; itens: NewsItem[] }
 
+/** Agrupa por dia, do mais recente ao mais antigo (inclui risco alto no próprio dia). */
 function agrupar(itens: NewsItem[]): Grupo[] {
-  const grupos: Grupo[] = []
-  const altos = itens.filter((n) => n.risk_level === 'high')
-  if (altos.length) grupos.push({ chave: 'risco', rotulo: 'Risco alto', risco: true, itens: altos })
   const porDia = new Map<string, NewsItem[]>()
   for (const n of itens) {
-    if (n.risk_level === 'high') continue
     const k = dateKeyForItem(n)
-    porDia.set(k, [...(porDia.get(k) ?? []), n])
+    const lista = porDia.get(k)
+    if (lista) lista.push(n)
+    else porDia.set(k, [n])
   }
-  ;[...porDia.keys()]
+  return [...porDia.keys()]
     .sort((a, b) => b.localeCompare(a))
-    .forEach((k) => grupos.push({ chave: k, rotulo: dateGroupLabel(k), risco: false, itens: porDia.get(k) ?? [] }))
-  return grupos
+    .map((k) => ({ chave: k, rotulo: dateGroupLabel(k), itens: porDia.get(k) ?? [] }))
 }
 
 export function GoogleAlertsPanel({ atores, candidato }: RadarAbaProps) {
@@ -387,7 +385,7 @@ export function GoogleAlertsPanel({ atores, candidato }: RadarAbaProps) {
         }
       >
         {plural(filtradas.length, 'notícia', 'notícias')}
-        {temFiltros ? ' com os filtros aplicados' : ''} · risco alto primeiro, depois por data
+        {temFiltros ? ' com os filtros aplicados' : ''} · mais recentes primeiro
       </RadarLinhaContagem>
 
       <div className="mt-3">
@@ -421,10 +419,7 @@ export function GoogleAlertsPanel({ atores, candidato }: RadarAbaProps) {
                     <tr className="border-t border-[#EEEEEE] bg-[var(--tse-bar)]">
                       <td
                         colSpan={4}
-                        className={cn(
-                          'px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide',
-                          g.risco ? 'text-red-700' : 'text-[var(--tse-muted)]',
-                        )}
+                        className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]"
                       >
                         {g.rotulo} · {fmtInt(g.itens.length)}
                       </td>

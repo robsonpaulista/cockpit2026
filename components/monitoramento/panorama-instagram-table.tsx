@@ -2,14 +2,9 @@
 
 import { ExternalLink } from 'lucide-react'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
+import { tseTabela } from '@/components/tse/tse-ui'
 import type { PanoramaHighlight } from '@/lib/monitoramento-panorama'
 import type { PanoramaInstagramTableRow } from '@/lib/monitoramento-panorama-charts'
-import {
-  typographyBodyClass,
-  typographyBodyMediumClass,
-  typographyBodyMutedClass,
-  typographyTableThClass,
-} from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 function formatDecimal(n: number, digits = 1): string {
@@ -24,8 +19,8 @@ function formatInt(n: number): string {
 }
 
 function cellHighlight(h: PanoramaHighlight): string {
-  if (h === 'best') return 'bg-[#F4FAF0] font-semibold text-[#2D5A1E]'
-  if (h === 'worst') return 'bg-[#FDF6F6] text-[#8B2E2E]'
+  if (h === 'best') return 'bg-[var(--tse-yellow-soft)] font-bold text-[var(--tse-text)]'
+  if (h === 'worst') return 'text-[var(--tse-muted)]'
   return ''
 }
 
@@ -45,31 +40,22 @@ function initialsFromName(name: string): string {
   return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
 }
 
-function CandidateAvatar({
-  name,
-  avatarUrl,
-}: {
-  name: string
-  avatarUrl: string | null
-}) {
+function CandidateAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        className="wr-panorama-ig-table__avatar"
-      />
-    )
+    return <img src={avatarUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
   }
   return (
     <span
-      className="wr-panorama-ig-table__avatar wr-panorama-ig-table__avatar--fallback"
+      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--tse-yellow-soft)] text-[10px] font-black text-[var(--tse-gold-text)]"
       aria-hidden
     >
       {initialsFromName(name)}
     </span>
   )
 }
+
+const thClass = cn(tseTabela.th, 'px-2.5 py-1.5')
+const tdClass = cn(tseTabela.td, 'px-2.5 py-1')
 
 interface PanoramaInstagramTableProps {
   rows: PanoramaInstagramTableRow[]
@@ -85,46 +71,18 @@ export function PanoramaInstagramTable({
   const withoutUsername = rows.filter((r) => !r.instagramUsername)
 
   return (
-    <div className={cn('wr-panorama-ig-table flex h-full min-h-0 flex-col gap-1', className)}>
-      <div className="min-h-0 flex-1 max-md:overflow-x-hidden md:overflow-x-auto">
-        <table
-          className={cn(
-            'w-full border-collapse text-left max-md:table-auto md:table-fixed',
-            typographyBodyClass
-          )}
-        >
-          <colgroup className="md:hidden">
-            <col className="w-[40%]" />
-            <col className="w-[18%]" />
-            <col className="w-[24%]" />
-            <col className="w-[18%]" />
-          </colgroup>
-          <colgroup className="max-md:hidden">
-            <col className="w-[28%]" />
-            <col className="w-[8%]" />
-            <col className="w-[8%]" />
-            <col className="w-[12%]" />
-            <col className="w-[11%]" />
-            <col className="w-[9%]" />
-            <col className="w-[8%]" />
-            <col className="w-[16%]" />
-          </colgroup>
-          <thead>
-            <tr className={cn('border-b border-[rgb(var(--color-border-tertiary)/0.55)]', typographyTableThClass)}>
-              <th className="px-2 py-0.5 font-semibold">Candidato</th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Posts</th>
-              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">/sem</th>
-              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
-                Eng. total
-              </th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Eng. médio</th>
-              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
-                Curt. média
-              </th>
-              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
-                Com. média
-              </th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Top 1</th>
+    <div className={cn('flex h-full min-h-0 flex-col gap-1.5', className)}>
+      <div className={cn('min-h-0 flex-1', tseTabela.container, 'rounded-none bg-transparent shadow-none')}>
+        <table className={cn(tseTabela.table, 'text-[12px] leading-tight')} data-tse-tabela>
+          <thead className={tseTabela.thead}>
+            <tr>
+              <th className={thClass}>Candidato</th>
+              <th className={cn(thClass, 'text-right')}>Posts</th>
+              <th className={cn(thClass, 'hidden text-right md:table-cell')}>/sem</th>
+              <th className={cn(thClass, 'text-right')}>Eng. médio</th>
+              <th className={cn(thClass, 'hidden text-right md:table-cell')}>Curt. média</th>
+              <th className={cn(thClass, 'hidden text-right md:table-cell')}>Com. média</th>
+              <th className={cn(thClass, 'text-right')}>Top 1</th>
             </tr>
           </thead>
           <tbody>
@@ -134,68 +92,32 @@ export function PanoramaInstagramTable({
               const topUrl = top?.postUrl
 
               return (
-                <tr
-                  key={row.slug}
-                  className="border-b border-[rgb(var(--color-border-tertiary)/0.35)] last:border-b-0"
-                >
-                  <td className="px-2 py-0.5">
+                <tr key={row.slug} className={tseTabela.tr}>
+                  <td className={tdClass}>
                     <div
-                      className="wr-panorama-ig-table__candidato"
-                      title={
-                        row.instagramUsername
-                          ? `@${row.instagramUsername}`
-                          : 'sem @ cadastrado'
-                      }
+                      className="flex min-w-0 items-center gap-1.5"
+                      title={row.instagramUsername ? `@${row.instagramUsername}` : 'sem @ cadastrado'}
                     >
                       <CandidateAvatar name={row.name} avatarUrl={row.avatarUrl} />
-                      <span
-                        className={cn(
-                          'pmh-name min-w-0 truncate',
-                          typographyBodyMediumClass,
-                          'text-text-secondary'
-                        )}
-                      >
-                        {row.name}
-                      </span>
+                      <span className="min-w-0 truncate font-bold">{row.name}</span>
                     </div>
                   </td>
-                  <td className={cn('px-2 py-0.5 text-right tabular-nums', cellHighlight(row.highlights.postCount))}>
+                  <td className={cn(tdClass, 'text-right tabular-nums', cellHighlight(row.highlights.postCount))}>
                     <AnimatedCounter value={row.postCount} resetKey={animationEpoch} />
                   </td>
-                  <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
+                  <td className={cn(tdClass, 'hidden text-right tabular-nums text-[var(--tse-muted)] md:table-cell')}>
                     {formatDecimal(row.postsPerWeek)}
                   </td>
-                  <td
-                    className={cn(
-                      'hidden px-2 py-0.5 text-right tabular-nums md:table-cell',
-                      cellHighlight(row.highlights.totalEngagement)
-                    )}
-                  >
-                    <AnimatedCounter value={row.totalEngagement} resetKey={animationEpoch} />
-                  </td>
-                  <td
-                    className={cn(
-                      'px-2 py-0.5 text-right tabular-nums',
-                      cellHighlight(row.highlights.avgEngagement)
-                    )}
-                  >
+                  <td className={cn(tdClass, 'text-right tabular-nums', cellHighlight(row.highlights.avgEngagement))}>
                     <AnimatedCounter value={row.avgEngagement} resetKey={animationEpoch} />
                   </td>
-                  <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
-                    {row.postCount > 0 ? (
-                      <AnimatedCounter value={row.avgLikes} resetKey={animationEpoch} />
-                    ) : (
-                      '—'
-                    )}
+                  <td className={cn(tdClass, 'hidden text-right tabular-nums text-[var(--tse-muted)] md:table-cell')}>
+                    {row.postCount > 0 ? <AnimatedCounter value={row.avgLikes} resetKey={animationEpoch} /> : '—'}
                   </td>
-                  <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
-                    {row.postCount > 0 ? (
-                      <AnimatedCounter value={row.avgComments} resetKey={animationEpoch} />
-                    ) : (
-                      '—'
-                    )}
+                  <td className={cn(tdClass, 'hidden text-right tabular-nums text-[var(--tse-muted)] md:table-cell')}>
+                    {row.postCount > 0 ? <AnimatedCounter value={row.avgComments} resetKey={animationEpoch} /> : '—'}
                   </td>
-                  <td className="px-2 py-0.5 text-right">
+                  <td className={cn(tdClass, 'text-right')}>
                     {top ? (
                       topUrl ? (
                         <a
@@ -203,19 +125,19 @@ export function PanoramaInstagramTable({
                           target="_blank"
                           rel="noopener noreferrer"
                           title={hint}
-                          className="inline-flex max-w-full items-center justify-end gap-1 text-[rgb(var(--color-primary))] hover:underline"
+                          className="inline-flex max-w-full items-center justify-end gap-1 font-bold text-[var(--tse-olive)] hover:underline"
                         >
                           <span className="tabular-nums">{formatInt(top.engagement)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                           <span className="sr-only">Abrir postagem no Instagram</span>
                         </a>
                       ) : (
-                        <span className="inline-block tabular-nums text-text-secondary" title={hint}>
+                        <span className="inline-block tabular-nums text-[var(--tse-muted)]" title={hint}>
                           {formatInt(top.engagement)}
                         </span>
                       )
                     ) : (
-                      <span className="text-text-muted">—</span>
+                      <span className="text-[var(--tse-muted)]">—</span>
                     )}
                   </td>
                 </tr>
@@ -227,14 +149,12 @@ export function PanoramaInstagramTable({
 
       <div className="mt-auto shrink-0 space-y-1">
         {withoutUsername.length > 0 ? (
-          <p className={cn(typographyBodyMutedClass, 'text-amber-800')}>
+          <p className="text-[12px] text-[var(--tse-gold-text)]">
             {withoutUsername.length} sem @ cadastrado — configure em Candidatos monitorados.
           </p>
         ) : null}
-
-        <p className={typographyBodyMutedClass}>
-          Verde = melhor entre monitorados · vermelho = menor no grupo · Top 1 = post com mais engajamento
-          (passe o mouse para ver o texto)
+        <p className="text-[12px] text-[var(--tse-muted)]">
+          Destaque amarelo = melhor entre monitorados · Top 1 = post com mais engajamento
         </p>
       </div>
     </div>

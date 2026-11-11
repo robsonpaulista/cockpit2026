@@ -31,10 +31,7 @@ import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-co
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
 import { JarvisVisibilityProvider } from '@/contexts/jarvis-visibility-context'
 import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
-import {
-  isDashboardHomePath,
-  isIceGlassSidebarPath,
-} from '@/lib/dashboard-home-chrome'
+import { isIceGlassSidebarPath } from '@/lib/dashboard-home-chrome'
 import '@/components/jarvis/jarvis-neural.css'
 import '@/components/dashboard/home-glass.css'
 import '@/app/sidebar-obsidian-glass.css'
@@ -44,10 +41,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   useSessionPresence()
   const { collapsed, setCollapsed } = useSidebar()
   const pathname = usePathname() ?? ''
-  const isHomeScene = isDashboardHomePath(pathname)
-  /** Glass sidebar só fora da home hub (home não tem sidebar). */
-  const isIceSidebar = isIceGlassSidebarPath(pathname) && !isHomeScene
-  const columnBgClass = isHomeScene ? 'bg-black' : 'bg-bg-surface'
+  const isIceSidebar = isIceGlassSidebarPath(pathname)
+  const columnBgClass = 'bg-bg-surface'
   const mainOffsetClass = collapsed
     ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS
     : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS
@@ -58,18 +53,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     } else {
       document.body.removeAttribute('data-home-glass')
     }
-    if (isHomeScene) {
-      document.body.setAttribute('data-home-scene', '')
-    } else {
-      document.body.removeAttribute('data-home-scene')
-    }
+    document.body.removeAttribute('data-home-scene')
     return () => {
       document.body.removeAttribute('data-home-glass')
       document.body.removeAttribute('data-home-scene')
     }
-  }, [isIceSidebar, isHomeScene])
+  }, [isIceSidebar])
 
-  /* War Room / home: sidebar expandida para mostrar logo + slogan (igual dashboard). */
+  /* War Room: sidebar expandida para mostrar logo + slogan. */
   useEffect(() => {
     if (isIceSidebar) setCollapsed(false)
   }, [isIceSidebar, setCollapsed])
@@ -80,32 +71,19 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <DashboardHomeChromeProvider value={isIceSidebar}>
         <DashboardPageChromeProvider>
         <DashboardTopbarExtrasProvider>
-        <div
-          className={cn(
-            'relative flex h-screen overflow-hidden',
-            isHomeScene ? 'bg-black' : 'bg-bg-surface',
-          )}
-        >
+        <div className="relative flex h-screen overflow-hidden bg-bg-surface">
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
             <NavigationLoadingBar />
-            {!isHomeScene ? <Sidebar /> : null}
+            <Sidebar />
             <SplashScreenRestHost />
             <div
               className={cn(
-                'relative flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-                isHomeScene ? 'bg-black' : columnBgClass,
-                !isHomeScene && mainOffsetClass,
+                'relative flex flex-1 flex-col overflow-hidden bg-bg-surface transition-all duration-300 ease-out',
+                mainOffsetClass,
               )}
-              data-home-glass-shell={isHomeScene ? '' : undefined}
-              style={isHomeScene ? undefined : undefined}
             >
-              {!isHomeScene ? <DashboardHeader /> : null}
-              <main
-                className={cn(
-                  'relative flex min-h-0 flex-1 overflow-hidden flex-col',
-                  isHomeScene ? 'bg-black' : columnBgClass,
-                )}
-              >
+              <DashboardHeader />
+              <main className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden', columnBgClass)}>
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                   <DashboardScrollRegion>
                     <DashboardPermissionGuard>
@@ -113,7 +91,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                     </DashboardPermissionGuard>
                   </DashboardScrollRegion>
                 </div>
-                {!isHomeScene ? <JarvisGlobalHost /> : null}
+                <JarvisGlobalHost />
               </main>
             </div>
           </div>

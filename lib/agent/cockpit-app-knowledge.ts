@@ -166,6 +166,10 @@ Hub com abas **Panorama**, **Base** (lideranças/planilha) e **Visitas** (Campo 
 - API: /api/campo-pesquisa/config, /api/field-survey-settings
 - IA Cockpit: sem integração.
 
+### Início · /dashboard
+- Após o login, permanece em /dashboard com tela de boas-vindas (sem redirecionar automaticamente).
+- Orienta o uso do menu lateral para abrir os módulos liberados ao perfil.
+
 ### Usuários · /dashboard/usuarios
 - Permissões e contas.
 - API: /api/users, /api/auth/permissions

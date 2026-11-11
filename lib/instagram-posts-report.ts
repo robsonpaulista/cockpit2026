@@ -134,7 +134,7 @@ export function formatInstagramPostsReport(input: InstagramPostsReportInput): st
     }
 
     resposta +=
-      '\n_Abra **Redes & Instagram** → **Posts & Insights** para ver o ranking completo e campeões por métrica._'
+      '\n_Abra **Redes & Instagram** → **Audiência** para ver o ranking completo e campeões por métrica._'
     return resposta
   }
 

@@ -3170,7 +3170,7 @@ export function AIAgent({
         action: {
           type: 'navigate',
           url: '/dashboard/conteudo/redes',
-          label: 'Ver Posts & Insights',
+          label: 'Ver Audiência no Instagram',
         },
       }
     }

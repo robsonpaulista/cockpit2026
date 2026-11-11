@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FileText, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { resumoTrZebra } from '@/lib/resumo-eleicoes-table-styles'
 import { canonicalizeLiderancaAtual } from '@/lib/territorio-lideranca-atual'
@@ -111,6 +111,8 @@ type ResumoLiderancasCrudModalProps = {
   startCreating?: boolean
   onClose: () => void
   onChanged?: () => void
+  /** Abre demandas já filtradas pela liderança (ex.: Atendimento). */
+  onAbrirDemandas?: (nomeLideranca: string) => void
 }
 
 export function ResumoLiderancasCrudModal({
@@ -121,6 +123,7 @@ export function ResumoLiderancasCrudModal({
   startCreating = false,
   onClose,
   onChanged,
+  onAbrirDemandas,
 }: ResumoLiderancasCrudModalProps) {
   const [rows, setRows] = useState<LiderancaCrudRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -465,12 +468,16 @@ export function ResumoLiderancasCrudModal({
                   <th className="bg-background px-2 py-2 text-right text-text-secondary">
                     {labelCenario(cenarioVotos)}
                   </th>
+                  {onAbrirDemandas ? (
+                    <th className="bg-background px-2 py-2 text-center text-text-secondary">Demandas</th>
+                  ) : null}
                   <th className="bg-background px-2 py-2 text-right text-text-secondary">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {ordenadas.map((lideranca, rowIndex) => {
                   const emDialogo = Boolean(lideranca.emDialogo)
+                  const nomeLideranca = String(lideranca.nome || '').trim()
                   return (
                     <tr
                       key={lideranca.id}
@@ -493,6 +500,23 @@ export function ResumoLiderancasCrudModal({
                       <td className="px-2 py-1.5 text-right">
                         {valorCenario(lideranca, cenarioVotos).toLocaleString('pt-BR')}
                       </td>
+                      {onAbrirDemandas ? (
+                        <td className="px-2 py-1.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!nomeLideranca) return
+                              onAbrirDemandas(nomeLideranca)
+                            }}
+                            disabled={!nomeLideranca}
+                            className="inline-flex rounded p-1.5 text-text-secondary hover:bg-background hover:text-text-primary disabled:opacity-40"
+                            title={`Demandas de ${nomeLideranca || 'liderança'}`}
+                            aria-label={`Abrir demandas de ${nomeLideranca || 'liderança'}`}
+                          >
+                            <FileText className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </td>
+                      ) : null}
                       <td className="px-2 py-1.5">
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -527,6 +551,7 @@ export function ResumoLiderancasCrudModal({
                   <td className="px-2 py-1.5 text-right tabular-nums">
                     {totalExpectativa.toLocaleString('pt-BR')}
                   </td>
+                  {onAbrirDemandas ? <td className="px-2 py-1.5" aria-hidden /> : null}
                   <td className="px-2 py-1.5" aria-hidden />
                 </tr>
               </tfoot>

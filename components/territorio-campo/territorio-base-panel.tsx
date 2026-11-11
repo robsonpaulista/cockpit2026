@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Briefcase, Check, ChevronDown, Download, Network, RefreshCw } from 'lucide-react'
+import { Briefcase, Check, ChevronDown, Download, RefreshCw } from 'lucide-react'
 import { TerritorioBaseExportModal } from '@/components/territorio-campo/territorio-base-export-modal'
-import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
 import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance-modal'
@@ -28,6 +27,7 @@ import {
   type SortCidadeCol,
 } from '@/components/territorio-campo/territorio-cidades-tabela'
 import { useTerritorioMunicipio } from '@/components/territorio-campo/territorio-municipio-context'
+import { normalizeMunicipioChaveVotacao } from '@/lib/votacao-secao'
 import {
   TseBarraRotulo,
   TseBusca,
@@ -107,7 +107,7 @@ function normalizeNumber(value: unknown): number {
 const texto = (v: unknown): string => String(v ?? '').trim()
 
 export function TerritorioBasePanel() {
-  const { municipio, noMunicipio } = useTerritorioMunicipio()
+  const { municipio, setMunicipio, noMunicipio } = useTerritorioMunicipio()
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +119,6 @@ export function TerritorioBasePanel() {
   const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<FaixaVotos>('')
   const [showDepDropdown, setShowDepDropdown] = useState<boolean>(false)
   const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState<boolean>(true)
-  const [showMindMap, setShowMindMap] = useState<boolean>(false)
   const [showExportModal, setShowExportModal] = useState<boolean>(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [baseCarregada, setBaseCarregada] = useState<boolean>(false)
@@ -321,6 +320,23 @@ export function TerritorioBasePanel() {
       )
     : []
 
+  const cidadesDisponiveisFiltro = useMemo(() => {
+    const nomes = new Set<string>()
+    for (const l of liderancas) {
+      const cidade = cidadeDe(l)
+      if (cidade && cidade !== 'Sem cidade') nomes.add(cidade)
+    }
+    return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [liderancas, cidadeCol])
+
+  const valorFiltroCidade = useMemo(() => {
+    if (!municipio) return ''
+    const chave = normalizeMunicipioChaveVotacao(municipio)
+    return (
+      cidadesDisponiveisFiltro.find((c) => normalizeMunicipioChaveVotacao(c) === chave) ?? municipio
+    )
+  }, [municipio, cidadesDisponiveisFiltro])
+
   // Exclui LIDERANCA ATUAL = N/Não; inclui SIM ou com votos no cenário.
   const liderancasFiltradas = (() => {
     if (liderancas.length === 0) return []
@@ -435,7 +451,11 @@ export function TerritorioBasePanel() {
   const pctCobertura = (Math.min(cidadesUnicasCount, universoMunicipios) / universoMunicipios) * 100
   const todasExpandidas = expandedCities.size >= cidadesUnicasCount && cidadesUnicasCount > 0
   const hasFiltrosAtivos =
-    Boolean(filtroNome) || Boolean(filtroCargo) || filtroDepEstadual.length > 0 || Boolean(filtroFaixaVotos)
+    Boolean(municipio) ||
+    Boolean(filtroNome) ||
+    Boolean(filtroCargo) ||
+    filtroDepEstadual.length > 0 ||
+    Boolean(filtroFaixaVotos)
   const escopoLabel = municipio ?? 'Piauí'
 
   // Com um município escolhido no topo, abre direto as lideranças dele.
@@ -562,6 +582,7 @@ export function TerritorioBasePanel() {
   }, [labelCenarioDadosAtivo, municipio, filtroNome, filtroCargo, filtroDepEstadual, filtroFaixaVotos])
 
   const limparFiltros = () => {
+    setMunicipio(null)
     setFiltroNome('')
     setFiltroCargo('')
     setFiltroDepEstadual([])
@@ -676,6 +697,28 @@ export function TerritorioBasePanel() {
         <main className="min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
+              {cidadesDisponiveisFiltro.length > 0 ? (
+                <select
+                  value={valorFiltroCidade}
+                  onChange={(e) => {
+                    setMunicipio(e.target.value || null)
+                    setLimite(PAGE_SIZE)
+                  }}
+                  className={cn(
+                    tseControleClass,
+                    municipio && 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] font-semibold',
+                  )}
+                  aria-label="Filtrar por cidade"
+                >
+                  <option value="">Todas as cidades</option>
+                  {cidadesDisponiveisFiltro.map((cidade) => (
+                    <option key={cidade} value={cidade}>
+                      {cidade}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+
               {cargoCol && cargosUnicos.length > 0 ? (
                 <select
                   value={filtroCargo}
@@ -760,15 +803,6 @@ export function TerritorioBasePanel() {
               >
                 <Download className={tseBotaoIconeClass} />
                 Exportar
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowMindMap(true)}
-                disabled={liderancasFiltradas.length === 0}
-                className={tseBotaoCinzaClass}
-              >
-                <Network className={tseBotaoIconeClass} />
-                Mapa mental
               </button>
               {votosReferenciaCol ? (
                 <button
@@ -970,16 +1004,6 @@ export function TerritorioBasePanel() {
             document.body,
           )
         : null}
-
-      <MindMapModal
-        isOpen={showMindMap}
-        onClose={() => setShowMindMap(false)}
-        liderancas={liderancasFiltradas}
-        candidatoPadrao={candidatoPadrao || 'Candidato'}
-        cidadeCol={cidadeCol || 'cidade'}
-        nomeCol={nomeCol || 'nome'}
-        expectativaVotosCol={votosReferenciaCol || null}
-      />
 
       <TerritorioBaseExportModal
         isOpen={showExportModal}

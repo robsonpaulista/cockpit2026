@@ -11,6 +11,7 @@ import {
   Loader2,
   Shield,
   Key,
+  LockKeyhole,
   AlertCircle,
   X,
 } from 'lucide-react'
@@ -60,8 +61,10 @@ export default function UsuariosPage() {
   const [error, setError] = useState<string | null>(null)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showPermsModal, setShowPermsModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [formUser, setFormUser] = useState<UserRow | null>(null)
   const [permsUser, setPermsUser] = useState<UserRow | null>(null)
+  const [passwordUser, setPasswordUser] = useState<UserRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
@@ -107,6 +110,11 @@ export default function UsuariosPage() {
   const openPerms = (u: UserRow) => {
     setPermsUser(u)
     setShowPermsModal(true)
+  }
+
+  const openPasswordReset = (u: UserRow) => {
+    setPasswordUser(u)
+    setShowPasswordModal(true)
   }
 
   const handleDelete = async (u: UserRow) => {
@@ -187,7 +195,7 @@ export default function UsuariosPage() {
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary">
                       Admin
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary w-40">
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary w-48">
                       Ações
                     </th>
                   </tr>
@@ -221,6 +229,14 @@ export default function UsuariosPage() {
                             title="Permissões"
                           >
                             <Key className="h-4 w-4 text-text-secondary" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openPasswordReset(u)}
+                            className="rounded-lg p-2 hover:bg-bg-app"
+                            title="Resetar senha"
+                          >
+                            <LockKeyhole className="h-4 w-4 text-text-secondary" />
                           </button>
                           <button
                             type="button"
@@ -281,6 +297,143 @@ export default function UsuariosPage() {
           }}
         />
       )}
+
+      {showPasswordModal && passwordUser && (
+        <UserPasswordResetModal
+          user={passwordUser}
+          onClose={() => {
+            setShowPasswordModal(false)
+            setPasswordUser(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+interface UserPasswordResetModalProps {
+  user: UserRow
+  onClose: () => void
+}
+
+function UserPasswordResetModal({ user, onClose }: UserPasswordResetModalProps) {
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [ok, setOk] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    setOk(false)
+    if (password.length < 6) {
+      setErr('Senha com no mínimo 6 caracteres é obrigatória.')
+      return
+    }
+    if (password !== confirm) {
+      setErr('A confirmação não confere com a nova senha.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/users/${user.id}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErr(typeof data.error === 'string' ? data.error : 'Erro ao resetar senha.')
+        return
+      }
+      setOk(true)
+      setPassword('')
+      setConfirm('')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Erro ao resetar senha.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-4">
+      <div className="usuarios-modal-panel w-full max-w-md rounded-2xl border border-border-card shadow-xl">
+        <div className="flex items-center justify-between border-b border-border-card p-6">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary">Resetar senha</h3>
+            <p className="mt-0.5 text-sm text-text-secondary">
+              {user.name || user.email}
+              {user.name ? ` · ${user.email}` : ''}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-bg-app" aria-label="Fechar">
+            <X className="h-5 w-5 text-text-secondary" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="space-y-4 p-6">
+          {err && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {err}
+            </div>
+          )}
+          {ok && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              Senha atualizada. Informe a nova senha ao usuário.
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-text-primary">Nova senha</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-border-card bg-bg-app px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              placeholder="Mín. 6 caracteres"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-text-primary">Confirmar senha</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-border-card bg-bg-app px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              placeholder="Repita a nova senha"
+            />
+          </div>
+
+          <div className="flex gap-3 border-t border-border-card pt-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-gold px-4 py-2 text-white hover:bg-accent-gold/90 disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <LockKeyhole className="h-4 w-4" />
+                  Definir nova senha
+                </>
+              )}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-lg border border-border-card px-4 py-2 hover:bg-bg-app">
+              Fechar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

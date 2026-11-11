@@ -74,7 +74,7 @@ export function AtendimentoDadosGerais({
   liderancas,
   acoesLiderancas,
   cenarioOculto = false,
-  onMostrarCenario,
+  onAlternarCenario,
 }: {
   fonte: ReactNode
   eleitores: number | null
@@ -85,9 +85,9 @@ export function AtendimentoDadosGerais({
   votosCenario: number
   liderancas: number
   acoesLiderancas?: ReactNode
-  /** Expectativa 2026 começa oculta; o botão revela o bloco. */
+  /** Expectativa 2026 começa oculta; o botão revela ou esconde o bloco. */
   cenarioOculto?: boolean
-  onMostrarCenario?: () => void
+  onAlternarCenario?: () => void
 }) {
   const destaque = 'font-bold text-[var(--tse-text)]'
   const variacao = (atual: number, base: number): number | null => (base > 0 ? ((atual - base) / base) * 100 : null)
@@ -99,9 +99,14 @@ export function AtendimentoDadosGerais({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-[13px] font-bold">Dados Gerais</h2>
         <div className="flex flex-wrap items-center gap-3">
-          {cenarioOculto && onMostrarCenario ? (
-            <button type="button" onClick={onMostrarCenario} className={tseLinkAcaoClass}>
-              Mostrar {rotuloCenario}
+          {onAlternarCenario ? (
+            <button
+              type="button"
+              onClick={onAlternarCenario}
+              className={tseLinkAcaoClass}
+              aria-expanded={!cenarioOculto}
+            >
+              {cenarioOculto ? 'Mostrar' : 'Ocultar'}
             </button>
           ) : null}
           <p className="text-[10px] font-semibold text-[var(--tse-muted)]">{fonte}</p>

@@ -53,12 +53,9 @@ export function isTodayNews(item: NewsItem): boolean {
   return d.toDateString() === new Date().toDateString()
 }
 
+/** Mais recente primeiro — risco não altera a ordem. */
 export function sortNewsForDisplay(items: NewsItem[]): NewsItem[] {
   return [...items].sort((a, b) => {
-    const aHigh = a.risk_level === 'high' ? 1 : 0
-    const bHigh = b.risk_level === 'high' ? 1 : 0
-    if (aHigh !== bHigh) return bHigh - aHigh
-
     const da = newsItemDate(a)?.getTime() ?? 0
     const db = newsItemDate(b)?.getTime() ?? 0
     return db - da

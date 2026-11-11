@@ -100,7 +100,7 @@ export function formatInstagramFollowersDailyReport(input: FollowersDailyReportI
 
   resposta +=
     '\n_Dados dos snapshots diários salvos ao acessar Redes & Instagram. ' +
-    'Para ver o gráfico completo, abra **Posts & Insights** → Histórico de Seguidores._'
+    'Para ver o detalhe completo, abra **Redes & Instagram** → **Audiência**._'
 
   return resposta
 }

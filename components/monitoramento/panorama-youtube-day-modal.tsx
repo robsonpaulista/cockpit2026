@@ -134,7 +134,7 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
       />
       <div
         ref={panelRef}
-        className="fixed z-[120] flex w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface shadow-2xl"
+        className="fixed z-[120] flex w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-[var(--tse-border)] bg-white shadow-2xl"
         style={{
           left: position?.left ?? -9999,
           top: position?.top ?? -9999,
@@ -146,18 +146,18 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
         aria-labelledby="panorama-youtube-day-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--color-border-tertiary)/0.85)] px-4 py-3">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--tse-border)] px-4 py-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[#DC2626]">YouTube</p>
-            <h2 id="panorama-youtube-day-title" className="truncate text-sm font-semibold text-text-primary">
+            <h2 id="panorama-youtube-day-title" className="truncate text-sm font-semibold text-[var(--tse-text)]">
               {selection.name}
             </h2>
-            <p className="mt-0.5 text-xs capitalize text-text-muted">{formatDayLabel(selection.date)}</p>
+            <p className="mt-0.5 text-xs capitalize text-[var(--tse-muted)]">{formatDayLabel(selection.date)}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-bg-app hover:text-text-primary"
+            className="shrink-0 rounded-lg p-1.5 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
             aria-label="Fechar"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -166,14 +166,14 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-muted">
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--tse-muted)]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               Carregando vídeos…
             </div>
           ) : error ? (
             <p className="py-6 text-center text-sm text-status-danger">{error}</p>
           ) : mentions.length === 0 ? (
-            <p className="py-6 text-center text-sm text-text-muted">
+            <p className="py-6 text-center text-sm text-[var(--tse-muted)]">
               Nenhum vídeo encontrado para este dia.
               {selection.count > 0
                 ? ' Os dados do heatmap podem estar desatualizados — recarregue o panorama.'
@@ -184,13 +184,13 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
               {mentions.map((mention) => (
                 <li
                   key={mention.id}
-                  className="rounded-lg border border-[rgb(var(--color-border-tertiary)/0.6)] bg-bg-app px-3 py-2.5"
+                  className="rounded-lg border border-[var(--tse-border)] bg-[var(--tse-bar)] px-3 py-2.5"
                 >
                   <a
                     href={mention.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 text-sm font-medium leading-snug text-text-primary hover:text-[rgb(var(--color-primary))]"
+                    className="group flex items-start gap-2 text-sm font-medium leading-snug text-[var(--tse-text)] hover:text-[var(--tse-olive)]"
                   >
                     <span className="min-w-0 flex-1">{mention.video_title}</span>
                     <ExternalLink
@@ -198,7 +198,7 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
                       aria-hidden
                     />
                   </a>
-                  <p className="mt-1 text-[11px] text-text-muted">
+                  <p className="mt-1 text-[11px] text-[var(--tse-muted)]">
                     {mention.channel_title ?? 'Canal desconhecido'} · {formatTime(mention.published_at)} ·{' '}
                     {formatViews(mention.views ?? 0)} views
                   </p>
@@ -210,7 +210,7 @@ export function PanoramaYoutubeDayModal({ selection, onClose }: PanoramaYoutubeD
 
         <div
           className={cn(
-            'border-t border-[rgb(var(--color-border-tertiary)/0.85)] px-4 py-2.5 text-[11px] text-text-muted',
+            'border-t border-[var(--tse-border)] px-4 py-2.5 text-[11px] text-[var(--tse-muted)]',
             loading ? 'opacity-60' : ''
           )}
         >

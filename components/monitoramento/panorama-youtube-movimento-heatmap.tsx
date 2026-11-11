@@ -7,10 +7,6 @@ import {
 } from '@/components/monitoramento/panorama-youtube-day-modal'
 import { heatmapCellColor } from '@/lib/monitoramento-heatmap-colors'
 import type { YoutubePanoramaHeatmapRow } from '@/lib/youtube-panorama-series'
-import {
-  typographyBodyMediumClass,
-  typographyBodyMutedClass,
-} from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 type YoutubeHeatmapHover = {
@@ -76,16 +72,16 @@ export function PanoramaYoutubeMovimentoHeatmap({
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <div className={cn('mb-2 min-h-[36px] shrink-0 rounded-lg border border-[rgb(var(--color-border-tertiary)/0.45)] bg-bg-app px-2.5 py-2 leading-snug', typographyBodyMutedClass)}>
+      <div className="mb-2 min-h-[36px] shrink-0 rounded-lg border border-[var(--tse-border)] bg-[var(--tse-bar)] px-2.5 py-2 text-[12px] leading-snug text-[var(--tse-muted)]">
         {hover ? (
           <span>
-            <span className="font-medium text-text-primary">{hover.name}</span>
+            <span className="font-medium text-[var(--tse-text)]">{hover.name}</span>
             {' · '}
             {formatTooltipDate(hover.date)}
             {' · '}
-            <span className="font-medium text-text-primary">{formatPeakPercent(hover.percent)}</span>
+            <span className="font-medium text-[var(--tse-text)]">{formatPeakPercent(hover.percent)}</span>
             {' · '}
-            <span className="text-text-secondary">{formatViews(hover.views)}</span>
+            <span>{formatViews(hover.views)}</span>
           </span>
         ) : (
           'Passe o mouse sobre uma célula · clique em um dia com atividade para ver os vídeos'
@@ -97,7 +93,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
           {rows.map((row, rowIndex) => (
             <div key={row.slug} className="mb-1.5 flex items-center gap-2 last:mb-0">
               <span
-                className={cn('w-[120px] shrink-0 truncate text-text-secondary', typographyBodyMediumClass)}
+                className="w-[120px] shrink-0 truncate text-[13px] font-semibold text-[var(--tse-text)]"
                 title={row.name}
               >
                 {row.name}
@@ -114,8 +110,8 @@ export function PanoramaYoutubeMovimentoHeatmap({
                       type="button"
                       disabled={!hasActivity}
                       className={cn(
-                        'animate-panorama-heatmap-cell h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
-                        hasActivity ? 'cursor-pointer' : 'cursor-default'
+                        'animate-panorama-heatmap-cell h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--tse-olive)]',
+                        hasActivity ? 'cursor-pointer' : 'cursor-default',
                       )}
                       style={{
                         backgroundColor: heatmapCellColor(row.color, normalized, 1, 'individual'),
@@ -157,7 +153,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
                 {ticks.map((tick) => (
                   <span
                     key={tick.index}
-                    className={cn('absolute', typographyBodyMutedClass)}
+                    className="absolute text-[11px] text-[var(--tse-muted)]"
                     style={{ left: `${(tick.index / Math.max(dates.length - 1, 1)) * 100}%` }}
                   >
                     {tick.label}
@@ -169,7 +165,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
         </div>
       </div>
 
-      <div className={cn('mt-2 flex shrink-0 flex-wrap items-center gap-2', typographyBodyMutedClass)}>
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2 text-[11px] text-[var(--tse-muted)]">
         <span>Sem atividade</span>
         <div className="flex gap-[2px]">
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -177,7 +173,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
               key={t}
               className="h-3 w-4 rounded-[2px]"
               style={{
-                backgroundColor: heatmapCellColor('#374151', t, 1, 'individual'),
+                backgroundColor: heatmapCellColor('#B8960B', t, 1, 'individual'),
               }}
             />
           ))}

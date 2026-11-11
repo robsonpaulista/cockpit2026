@@ -48,7 +48,7 @@ import {
 export type DemandaObraRow = CampoDemandaObraRow
 
 type SortCol = 'cidade' | 'obras' | 'resolvidas'
-type CategoriaStatus = 'resolvida' | 'andamento' | 'encaminhada' | 'outra'
+type CategoriaStatus = 'resolvida' | 'andamento'
 
 type GrupoCidade = {
   cidade: string
@@ -62,18 +62,28 @@ const PAGE_SIZE = 30
 const TOTAL_MUNICIPIOS_PI = 224
 
 const CATEGORIAS: Array<{ id: CategoriaStatus; label: string; cor: string }> = [
-  { id: 'resolvida', label: 'Resolvidas / concluídas', cor: 'var(--tse-green)' },
+  { id: 'resolvida', label: 'Resolvidas', cor: 'var(--tse-green)' },
   { id: 'andamento', label: 'Em andamento', cor: 'var(--tse-yellow)' },
-  { id: 'encaminhada', label: 'Encaminhadas', cor: '#5D8AA7' },
-  { id: 'outra', label: 'Outros status', cor: 'var(--tse-zero)' },
 ]
 
+function normalizarStatusDemanda(status: string | null | undefined): string {
+  return String(status || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Resolvidas: equipamento entregue, obra executada, ação executada (+ resolvido/concluído). Demais = em andamento. */
 function categoriaStatus(status: string | null | undefined): CategoriaStatus {
-  const sl = (status || '').toLowerCase().trim()
-  if (sl.includes('resolvido') || sl.includes('conclu')) return 'resolvida'
-  if (sl.includes('andamento') || sl.includes('progresso')) return 'andamento'
-  if (sl.includes('encaminhad')) return 'encaminhada'
-  return 'outra'
+  const sl = normalizarStatusDemanda(status)
+  if (!sl) return 'andamento'
+  if (sl.includes('resolvid') || sl.includes('conclu')) return 'resolvida'
+  if (sl.includes('equipamento') && sl.includes('entreg')) return 'resolvida'
+  if (sl.includes('obra') && sl.includes('executad')) return 'resolvida'
+  if ((sl.includes('acao') || sl.includes('accao')) && sl.includes('executad')) return 'resolvida'
+  return 'andamento'
 }
 
 const corCategoria = (c: CategoriaStatus): string => CATEGORIAS.find((x) => x.id === c)?.cor ?? 'var(--tse-zero)'
@@ -171,7 +181,7 @@ export function DemandasObrasPanel() {
       grupo.rows.push(row)
       const cat = categoriaStatus(row.status)
       if (cat === 'resolvida') grupo.resolvidas += 1
-      if (cat === 'andamento') grupo.andamento += 1
+      else grupo.andamento += 1
       map.set(cidadeKey, grupo)
     }
 

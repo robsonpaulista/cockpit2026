@@ -483,7 +483,7 @@ function appendDigitalSemTemas(
   }
   if (posts.length > 0) {
     itens.push(
-      `${formatNum(posts.length)} publicações no Instagram — classifique os temas em Redes & Instagram (Posts & Insights)`
+      `${formatNum(posts.length)} publicações no Instagram — classifique os temas em Redes & Instagram (Audiência)`
     )
     return
   }

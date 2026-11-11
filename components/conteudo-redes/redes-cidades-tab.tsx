@@ -13,7 +13,6 @@ import {
   TseListaFiltro,
   TseRank,
   TseSegmentado,
-  TseStatus,
   TseThOrdenavel,
   TseVazio,
   tseCardClass,
@@ -21,9 +20,11 @@ import {
   tseTabela,
 } from '@/components/tse/tse-ui'
 import type { InstagramRedes } from '@/hooks/use-instagram-redes'
+import { normalizeIptMunicipio } from '@/lib/ipt'
 import { aggregateInstagramMetricsByCaptionCity } from '@/lib/instagram-city-caption-stats'
 import { fetchInstagramCityDemographicsHistory } from '@/lib/instagram-city-demographics-client'
 import type { CityDemographicsSeriesPoint } from '@/lib/instagram-city-demographics-history'
+import { matchInstagramCityToPiMunicipio } from '@/lib/ipt-instagram-presenca-digital'
 import {
   cityTrendLabel,
   inferCityTrend,
@@ -33,7 +34,7 @@ import {
 import { cn } from '@/lib/utils'
 
 type Modo = 'caption' | 'followers' | 'engaged'
-type SortCol = 'cidade' | 'valor' | 'posts'
+type SortCol = 'cidade' | 'valor' | 'posts' | 'seguidores' | 'pctEng'
 
 type LinhaCidade = {
   nome: string
@@ -41,7 +42,12 @@ type LinhaCidade = {
   posts: number
   curtidas: number
   engMedio: number
+  /** % sobre a base do modo API (seguidores/engajados). */
   pct: number
+  /** Seguidores da cidade (follower_demographics), cruzados pelo município. */
+  seguidores: number
+  /** Engajamento ÷ seguidores × 100 (só faz sentido com base de seguidores). */
+  pctEngSeguidores: number | null
   pontos: CityTrendPoint[]
   tendencia: CityTrendDirection
 }
@@ -49,6 +55,18 @@ type LinhaCidade = {
 const PAGE_SIZE = 30
 const TOTAL_MUNICIPIOS_PI = 224
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
+const fmtPct = (n: number): string => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
+
+function mapaSeguidoresPorMunicipio(topLocations: Record<string, number> | undefined): Map<string, number> {
+  const mapa = new Map<string, number>()
+  for (const [label, qtd] of Object.entries(topLocations ?? {})) {
+    const oficial = matchInstagramCityToPiMunicipio(label)
+    if (!oficial) continue
+    const chave = normalizeIptMunicipio(oficial)
+    mapa.set(chave, (mapa.get(chave) ?? 0) + (Number(qtd) || 0))
+  }
+  return mapa
+}
 
 const TENDENCIAS: Array<{ id: CityTrendDirection; cor: string }> = [
   { id: 'up', cor: 'var(--tse-olive)' },
@@ -56,8 +74,6 @@ const TENDENCIAS: Array<{ id: CityTrendDirection; cor: string }> = [
   { id: 'down', cor: '#B42318' },
   { id: 'insufficient', cor: 'var(--tse-zero)' },
 ]
-const corTendencia = (t: CityTrendDirection): string => TENDENCIAS.find((x) => x.id === t)?.cor ?? 'var(--tse-zero)'
-
 const normalizar = (s: string): string =>
   s
     .normalize('NFD')
@@ -92,10 +108,16 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
     setLimite(PAGE_SIZE)
     setExpandidas(new Set())
     setFiltroTendencia(null)
-    if (modo !== 'caption') setSortCol((col) => (col === 'posts' ? 'valor' : col))
+    if (modo !== 'caption') {
+      setSortCol((col) => (col === 'posts' || col === 'seguidores' || col === 'pctEng' ? 'valor' : col))
+    }
   }, [modo])
 
   const legenda = useMemo(() => aggregateInstagramMetricsByCaptionCity(postsPeriodo), [postsPeriodo])
+  const seguidoresPorMunicipio = useMemo(
+    () => mapaSeguidoresPorMunicipio(metrics?.demographics?.topLocations),
+    [metrics?.demographics?.topLocations],
+  )
 
   const locationMap = modo === 'engaged' ? metrics?.demographics?.engagedTopLocations : metrics?.demographics?.topLocations
   const totalSeguidores = metrics?.followers?.total ?? 0
@@ -109,6 +131,7 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
           postsCount: p.postsInDay ?? 1,
           label: new Date(p.postedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
         }))
+        const seguidores = seguidoresPorMunicipio.get(normalizeIptMunicipio(c.municipio)) ?? 0
         return {
           nome: c.municipio,
           valor: c.engagement,
@@ -116,6 +139,8 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
           curtidas: c.likes,
           engMedio: c.avgEngagement,
           pct: 0,
+          seguidores,
+          pctEngSeguidores: seguidores > 0 ? (c.engagement / seguidores) * 100 : null,
           pontos,
           tendencia: inferCityTrend(pontos),
         }
@@ -129,6 +154,13 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
         date: row.date,
         value: modo === 'engaged' ? row.engaged : row.followers,
       }))
+      const oficial = matchInstagramCityToPiMunicipio(nome)
+      const seguidores =
+        modo === 'followers'
+          ? valor
+          : oficial
+            ? (seguidoresPorMunicipio.get(normalizeIptMunicipio(oficial)) ?? 0)
+            : 0
       return {
         nome,
         valor,
@@ -136,11 +168,13 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
         curtidas: 0,
         engMedio: 0,
         pct: base > 0 ? (valor / base) * 100 : 0,
+        seguidores,
+        pctEngSeguidores: null,
         pontos,
         tendencia: inferCityTrend(pontos),
       }
     })
-  }, [modo, legenda, locationMap, totalSeguidores, seriesApi])
+  }, [modo, legenda, locationMap, totalSeguidores, seriesApi, seguidoresPorMunicipio])
 
   const rank = new Map(
     [...linhas].sort((a, b) => b.valor - a.valor || a.nome.localeCompare(b.nome, 'pt-BR')).map((l, i) => [l.nome, i + 1]),
@@ -157,7 +191,14 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
     .sort((a, b) => {
       const porNome = a.nome.localeCompare(b.nome, 'pt-BR')
       if (sortCol === 'cidade') return sortAsc ? porNome : -porNome
-      const diff = sortCol === 'posts' ? a.posts - b.posts : a.valor - b.valor
+      const diff =
+        sortCol === 'posts'
+          ? a.posts - b.posts
+          : sortCol === 'seguidores'
+            ? a.seguidores - b.seguidores
+            : sortCol === 'pctEng'
+              ? (a.pctEngSeguidores ?? -1) - (b.pctEngSeguidores ?? -1)
+              : a.valor - b.valor
       return (sortAsc ? diff : -diff) || porNome
     })
   const pagina = visiveis.slice(0, limite)
@@ -165,10 +206,12 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
   const todasAbertas = pagina.length > 0 && pagina.every((l) => expandidas.has(l.nome))
 
   const totalValor = linhas.reduce((s, l) => s + l.valor, 0)
+  const totalSeguidoresLegenda = linhas.reduce((s, l) => s + l.seguidores, 0)
   const rotuloValor = modo === 'caption' ? 'Engajamento' : modo === 'engaged' ? 'Engajados' : 'Seguidores'
   const coberturaPosts = legenda.postsTotal ? (legenda.postsWithCity / legenda.postsTotal) * 100 : 0
   const hasFiltros = Boolean(termo || filtroTendencia)
-  const colunas = modo === 'caption' ? 8 : 6
+  const colunas = modo === 'caption' ? 9 : 5
+  const cidadesComSeguidores = linhas.filter((l) => l.seguidores > 0).length
 
   const alternarSort = (col: SortCol) => {
     if (col === sortCol) setSortAsc((v) => !v)
@@ -202,6 +245,11 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
                 <TseDado rotulo="Sem match" valor={fmt(legenda.postsWithoutCity)} />
                 <TseDado rotulo="Curtidas" valor={fmt(linhas.reduce((s, l) => s + l.curtidas, 0))} />
                 <TseDado rotulo="Engajamento" valor={fmt(totalValor)} />
+                <TseDado
+                  rotulo="Seguidores (API)"
+                  valor={fmt(totalSeguidoresLegenda)}
+                  sufixo={cidadesComSeguidores > 0 ? `· ${fmt(cidadesComSeguidores)} cid.` : undefined}
+                />
               </TseDados>
               <TseBarraRotulo pct={coberturaPosts} rotulo={`${Math.round(coberturaPosts)}%`} />
               <p className="mt-1 text-[11px] text-[var(--tse-muted)]">Publicações com município identificado</p>
@@ -265,7 +313,7 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
             </div>
             <p className="text-[15px] text-[var(--tse-muted)]">
               {modo === 'caption'
-                ? 'Engajamento das publicações por município citado na legenda (224 municípios do PI)'
+                ? 'Engajamento por município na legenda · cruzado com seguidores da API (eng. ÷ seguidores)'
                 : 'Top cidades devolvido pela Meta · linha do tempo com snapshots diários'}
             </p>
           </div>
@@ -277,6 +325,12 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
             <p className="text-3xl font-black">{fmt(totalValor)}</p>
             <p className="text-[13px] text-[var(--tse-muted)]">{rotuloValor.toLowerCase()}</p>
           </div>
+          {modo === 'caption' ? (
+            <div className="text-right">
+              <p className="text-3xl font-black">{fmt(totalSeguidoresLegenda)}</p>
+              <p className="text-[13px] text-[var(--tse-muted)]">seguidores</p>
+            </div>
+          ) : null}
         </section>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--tse-muted)]">
@@ -354,8 +408,24 @@ export function RedesCidadesTab({ redes }: { redes: InstagramRedes }) {
                     >
                       {rotuloValor}
                     </TseThOrdenavel>
-                    {modo !== 'caption' ? <th className="px-3 py-2.5 text-right">%</th> : null}
-                    <th className="px-3 py-2.5">Tendência</th>
+                    {modo === 'caption' ? (
+                      <>
+                        <TseThOrdenavel
+                          col="seguidores"
+                          alinhar="right"
+                          sortCol={sortCol}
+                          sortAsc={sortAsc}
+                          onSort={alternarSort}
+                        >
+                          Seguidores
+                        </TseThOrdenavel>
+                        <TseThOrdenavel col="pctEng" alinhar="right" sortCol={sortCol} sortAsc={sortAsc} onSort={alternarSort}>
+                          % eng. × seg.
+                        </TseThOrdenavel>
+                      </>
+                    ) : (
+                      <th className="px-3 py-2.5 text-right">%</th>
+                    )}
                     <th className="w-10 px-2 py-2.5" aria-label="Expandir" />
                   </tr>
                 </thead>
@@ -423,14 +493,24 @@ function LinhaTabela({
         <td className="px-3 py-2">
           <TseBarraValor valor={linha.valor} max={maxValor} formatado={fmt(linha.valor)} larguraNumero="w-16" />
         </td>
-        {modo !== 'caption' ? (
+        {modo === 'caption' ? (
+          <>
+            <td className="px-3 py-2 text-right tabular-nums">
+              {linha.seguidores > 0 ? fmt(linha.seguidores) : <span className="text-[var(--tse-muted)]">—</span>}
+            </td>
+            <td className="px-3 py-2 text-right tabular-nums font-semibold">
+              {linha.pctEngSeguidores != null ? (
+                fmtPct(linha.pctEngSeguidores)
+              ) : (
+                <span className="font-normal text-[var(--tse-muted)]">—</span>
+              )}
+            </td>
+          </>
+        ) : (
           <td className="px-3 py-2 text-right tabular-nums text-[var(--tse-muted)]">
             {linha.pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
           </td>
-        ) : null}
-        <td className="px-3 py-2">
-          <TseStatus cor={corTendencia(linha.tendencia)}>{cityTrendLabel(linha.tendencia)}</TseStatus>
-        </td>
+        )}
         <TseChevronCelula aberta={aberta} />
       </tr>
       {aberta ? (

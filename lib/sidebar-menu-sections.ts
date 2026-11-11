@@ -25,7 +25,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'resumo-eleicoes-principal': 'Resumo por cidade — expectativa, lideranças e pesquisas',
   'resumo-eleicoes-secao': 'Votação por seção eleitoral e histórico local',
   'resultado-2026': 'Votos do Jadyel por município, local e seção (TSE 2026)',
-  'conteudo-redes': 'Métricas, posts e performance no Instagram',
+  'conteudo-redes': 'Audiência, temas e performance no Instagram',
   'noticias-menu': 'Monitoramento de mídia e Radar 224 (cobertura municipal)',
   'noticias-monitoramento': 'Panorama, Google Alerts, YouTube, Trends e Instagram',
   'radar-224': 'Top 50 municípios e catálogo de fontes noticiosas',

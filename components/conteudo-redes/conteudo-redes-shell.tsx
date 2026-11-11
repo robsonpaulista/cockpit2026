@@ -15,10 +15,9 @@ import { useAllowedHubTabs } from '@/hooks/use-allowed-hub-tabs'
 import { FOLLOWERS_HISTORY_RANGE_OPTIONS } from '@/lib/instagram-followers-history-chart'
 import { cn } from '@/lib/utils'
 
-export type ConteudoRedesTab = 'posts' | 'audience' | 'locations'
+export type ConteudoRedesTab = 'audience' | 'locations'
 
 const TABS: readonly TseAba<ConteudoRedesTab>[] = [
-  { id: 'posts', label: 'Posts & Insights' },
   { id: 'audience', label: 'Audiência' },
   { id: 'locations', label: 'Por Cidade' },
 ]

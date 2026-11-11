@@ -22,26 +22,26 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  brandAmberBadgeClass,
-  brandAmberButtonClass,
-  brandAmberChipClass,
-  brandAmberCompactButtonClass,
-  brandAmberIconClass,
-  brandAmberIconWrapClass,
-  brandAmberMetricClass,
-} from '@/lib/sidebar-brand-styles'
-import '@/app/dashboard/shared/ipt-page-palette.css'
-
-const INPUT_FOCUS_CLASS =
-  'focus:outline-none focus:ring-2 focus:ring-[#f04b23]/25 focus:border-[#f04b23]'
-
-const SECONDARY_ACTION_CLASS = cn(
-  brandAmberChipClass,
-  'rounded-lg text-xs font-medium transition-all duration-200 hover:bg-[#f04b23] hover:text-white hover:border-[#f04b23]',
-)
-
-const GHOST_ACTION_CLASS =
-  'rounded-lg border border-card bg-background text-xs font-medium text-text-secondary transition-all duration-200 hover:border-[#f04b23]/30 hover:bg-[#fff1ed] hover:text-[#c43d1c]'
+  TseBusca,
+  TseCard,
+  TseCarregando,
+  TseFilterBar,
+  TseModal,
+  TsePage,
+  TsePill,
+  TseStatus,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoNeutroClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseCardClass,
+  tseControleClass,
+  tseLinkAcaoClass,
+  tseRotuloCampoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
 
 interface Proposicao {
   id: number
@@ -251,25 +251,10 @@ const SITUACOES_PROPOSICAO = [
   { value: '1150', label: 'Aguardando Sanção' },
 ]
 
-const BADGE_COLORS: Record<string, string> = {
-  PL: 'bg-[#fff1ed] text-[#c43d1c] border-[#ffc9b8]',
-  PLP: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-  PEC: 'bg-red-500/15 text-red-400 border-red-500/30',
-  MPV: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
-  REQ: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  INC: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  PDL: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-  PRC: 'bg-pink-500/15 text-pink-400 border-pink-500/30',
-  EMC: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-  DOC: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
-  RIC: 'bg-teal-500/15 text-teal-400 border-teal-500/30',
-  RCP: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
-  MSC: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
-  PDC: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
-}
+const TIPOS_DESTAQUE = new Set(['PL', 'PLP', 'PEC', 'MPV'])
 
-function getBadgeColor(tipo: string): string {
-  return BADGE_COLORS[tipo] || brandAmberBadgeClass
+function getBadgeTom(tipo: string): 'amarelo' | 'neutro' {
+  return TIPOS_DESTAQUE.has(tipo) ? 'amarelo' : 'neutro'
 }
 
 function formatDataApresentacao(data: string): string {
@@ -281,17 +266,25 @@ function formatDataApresentacao(data: string): string {
 function formatDataHora(data: string): string {
   if (!data) return ''
   const date = new Date(data)
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-function getStatusColor(descricao: string | null): string {
-  if (!descricao) return 'bg-text-secondary/10 text-text-secondary'
+function getStatusCor(descricao: string | null): string {
+  if (!descricao) return 'var(--tse-muted)'
   const d = descricao.toLowerCase()
-  if (d.includes('aprovad') || d.includes('sancionad') || d.includes('transformad')) return 'bg-status-success/15 text-status-success'
-  if (d.includes('arquivad') || d.includes('rejeitad') || d.includes('prejudicad')) return 'bg-status-danger/15 text-status-danger'
-  if (d.includes('senado')) return 'bg-purple-500/15 text-purple-400'
-  if (d.includes('aguardando')) return 'bg-status-warning/15 text-status-warning'
-  return 'bg-status-info/15 text-status-info'
+  if (d.includes('aprovad') || d.includes('sancionad') || d.includes('transformad')) return 'var(--tse-olive)'
+  if (d.includes('arquivad') || d.includes('rejeitad') || d.includes('prejudicad') || d.includes('vetad')) {
+    return 'rgb(185 28 28)'
+  }
+  if (d.includes('senado')) return 'var(--tse-gold-text)'
+  if (d.includes('aguardando')) return 'var(--tse-yellow)'
+  return 'var(--tse-olive)'
 }
 
 function getTimelineIcon(descricao: string): typeof CheckCircle2 {
@@ -305,6 +298,9 @@ function getTimelineIcon(descricao: string): typeof CheckCircle2 {
 }
 
 type BundleDeputado = DeputadoQuadro & { proposicoes: Proposicao[] }
+
+const chipFiltroClass =
+  'inline-flex max-w-full items-center gap-1.5 rounded-full bg-[var(--tse-yellow-soft)] px-2.5 py-1 text-[12px] font-bold text-[var(--tse-gold-text)]'
 
 export default function ProposicoesPage() {
   const [deputadosBundles, setDeputadosBundles] = useState<BundleDeputado[]>([])
@@ -320,13 +316,6 @@ export default function ProposicoesPage() {
   const [searchInput, setSearchInput] = useState<string>('')
   const [showFilters, setShowFilters] = useState<boolean>(false)
   const listaProposicoesRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    document.body.setAttribute('data-ipt-palette', '')
-    return () => {
-      document.body.removeAttribute('data-ipt-palette')
-    }
-  }, [])
 
   const allProposicoes = useMemo(() => {
     const seen = new Set<number>()
@@ -437,7 +426,9 @@ export default function ProposicoesPage() {
     }
 
     run()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [allProposicoes])
 
   const filteredItems = useMemo(() => {
@@ -446,9 +437,7 @@ export default function ProposicoesPage() {
       items = items.filter((p) => p.deputadoAutorId === filtroDeputadoQuadro)
     }
     if (filtroColunaQuadro != null) {
-      items = items.filter((p) =>
-        proposicaoNaColunaResumo(filtroColunaQuadro, p, statusMap[p.id])
-      )
+      items = items.filter((p) => proposicaoNaColunaResumo(filtroColunaQuadro, p, statusMap[p.id]))
     }
     if (filtroTipo) items = items.filter((p) => p.siglaTipo === filtroTipo)
     if (filtroAno) items = items.filter((p) => p.ano === Number(filtroAno))
@@ -501,7 +490,6 @@ export default function ProposicoesPage() {
     DEPUTADOS_QUADRO_RESUMO.find((d) => d.id === id)?.nome ?? `Deputado ${id}`
 
   const handleCelulaQuadro = (deputadoId: number, col: ColunaResumoId) => {
-    // Garante que o total da célula = itens da lista (sem filtros antigos escondidos)
     setFiltroTipo('')
     setFiltroAno('')
     setFiltroKeyword('')
@@ -529,8 +517,13 @@ export default function ProposicoesPage() {
     return filteredItems.slice(start, start + ITEMS_PER_PAGE)
   }, [filteredItems, pagina])
 
-  const handleSearch = () => { setFiltroKeyword(searchInput); setPagina(1) }
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }
+  const handleSearch = () => {
+    setFiltroKeyword(searchInput)
+    setPagina(1)
+  }
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch()
+  }
 
   const clearFilters = () => {
     setFiltroTipo('')
@@ -544,28 +537,43 @@ export default function ProposicoesPage() {
   }
 
   const fetchAutores = async (proposicaoId: number, titulo: string) => {
-    setAutoresModalOpen(true); setAutoresLoading(true); setAutoresProposicao(titulo); setAutores([])
+    setAutoresModalOpen(true)
+    setAutoresLoading(true)
+    setAutoresProposicao(titulo)
+    setAutores([])
     try {
       const response = await fetch(`/api/proposicoes/${proposicaoId}/autores`)
-      if (response.ok) { setAutores((await response.json()).dados || []) }
-    } catch (error) { console.error('Erro ao buscar autores:', error) }
-    finally { setAutoresLoading(false) }
+      if (response.ok) {
+        setAutores((await response.json()).dados || [])
+      }
+    } catch (error) {
+      console.error('Erro ao buscar autores:', error)
+    } finally {
+      setAutoresLoading(false)
+    }
   }
 
   const fetchTramitacoes = async (proposicaoId: number, titulo: string) => {
-    setTramitacoesModalOpen(true); setTramitacoesLoading(true); setTramitacoesProposicao(titulo); setTramitacoes([])
+    setTramitacoesModalOpen(true)
+    setTramitacoesLoading(true)
+    setTramitacoesProposicao(titulo)
+    setTramitacoes([])
     try {
       const response = await fetch(`/api/proposicoes/${proposicaoId}/tramitacoes`)
       if (response.ok) {
         const lista: Tramitacao[] = (await response.json()).dados || []
         setTramitacoes(lista.sort((a, b) => b.sequencia - a.sequencia))
       }
-    } catch (error) { console.error('Erro ao buscar tramitações:', error) }
-    finally { setTramitacoesLoading(false) }
+    } catch (error) {
+      console.error('Erro ao buscar tramitações:', error)
+    } finally {
+      setTramitacoesLoading(false)
+    }
   }
 
-  const hasActiveFilters =
-    Boolean(filtroTipo || filtroAno || filtroKeyword || filtroStatus || filtroColunaQuadro != null)
+  const hasActiveFilters = Boolean(
+    filtroTipo || filtroAno || filtroKeyword || filtroStatus || filtroColunaQuadro != null
+  )
   const activeFilterCount = [
     filtroTipo,
     filtroAno,
@@ -574,552 +582,619 @@ export default function ProposicoesPage() {
     filtroColunaQuadro != null ? 'quadro' : '',
   ].filter(Boolean).length
   const statusFilterActive = !!filtroStatus
-  const progressPercent = statusProgress.total > 0 ? Math.round((statusProgress.loaded / statusProgress.total) * 100) : 0
+  const progressPercent =
+    statusProgress.total > 0 ? Math.round((statusProgress.loaded / statusProgress.total) * 100) : 0
 
   const startItem = filteredItems.length > 0 ? (pagina - 1) * ITEMS_PER_PAGE + 1 : 0
   const endItem = Math.min(pagina * ITEMS_PER_PAGE, filteredItems.length)
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-bg-surface">
-        <div className="px-4 py-6 lg:px-6">
-          <div className="mb-6">
-            <div className="h-8 w-64 bg-surface rounded-lg animate-pulse mb-2" />
-            <div className="h-4 w-96 bg-surface rounded-lg animate-pulse" />
-          </div>
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <Loader2 className={cn('w-8 h-8 animate-spin mx-auto mb-4', brandAmberIconClass)} />
-              <p className="text-sm text-text-secondary">Carregando todas as proposições...</p>
-              <p className="text-xs text-text-secondary/60 mt-1">Isso pode levar alguns segundos</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <TsePage>
+        <TseCarregando texto="Carregando todas as proposições…" />
+      </TsePage>
     )
   }
 
   return (
-    <div className="min-h-screen bg-bg-surface">
-      <div className="px-4 py-6 lg:px-6">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', brandAmberIconWrapClass)}>
-              <FileText className={cn('w-5 h-5', brandAmberIconClass)} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-text-primary">Proposições Legislativas</h2>
-              <p className="text-sm text-text-secondary">
-                {allProposicoes.length} proposições —{' '}
-                {DEPUTADOS_QUADRO_RESUMO.map((d) => d.nome).join(', ')} — Câmara dos Deputados
-              </p>
-            </div>
-          </div>
+    <TsePage>
+      <div className="mb-5">
+        <p className="text-xl font-bold uppercase">Proposições Legislativas</p>
+        <p className="mt-1 text-[15px] text-[var(--tse-muted)]">
+          {allProposicoes.length} proposições — {DEPUTADOS_QUADRO_RESUMO.map((d) => d.nome).join(', ')} — Câmara
+          dos Deputados
+        </p>
+      </div>
+
+      <section className={cn(tseCardClass, 'mb-5 flex flex-wrap items-center gap-4')}>
+        <img
+          src="https://www.camara.leg.br/internet/deputado/bandep/220697.jpg"
+          alt="Dep. Jadyel Alencar"
+          className="h-16 w-16 rounded-full object-cover ring-2 ring-[var(--tse-yellow)]"
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[17px] font-bold">Jadyel Alencar</h3>
+          <p className="text-[13px] text-[var(--tse-muted)]">REPUBLICANOS — PI | 57ª Legislatura</p>
         </div>
+        <a
+          href="https://www.camara.leg.br/deputados/220697"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(tseBotaoCinzaClass, 'gap-1.5')}
+        >
+          Perfil na Câmara
+          <ExternalLink className={tseBotaoIconeClass} />
+        </a>
+      </section>
 
-        {/* Card do Deputado */}
-        <div className="bg-surface rounded-2xl border border-card p-5 mb-6 flex items-center gap-4">
-          <img
-            src="https://www.camara.leg.br/internet/deputado/bandep/220697.jpg"
-            alt="Dep. Jadyel Alencar"
-            className="w-16 h-16 rounded-full object-cover border-2 border-[#f04b23] shadow-md"
-          />
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-text-primary">Jadyel Alencar</h3>
-            <p className="text-sm text-text-secondary">REPUBLICANOS — PI | 57ª Legislatura</p>
+      {!statusesFullyLoaded && statusProgress.total > 0 ? (
+        <section className={cn(tseCardClass, 'mb-5')}>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-[13px] text-[var(--tse-muted)]">
+              <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} />
+              Carregando status das proposições…
+            </p>
+            <span className="text-[13px] font-bold tabular-nums">
+              {statusProgress.loaded}/{statusProgress.total} ({progressPercent}%)
+            </span>
           </div>
-          <a
-            href="https://www.camara.leg.br/deputados/220697"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(SECONDARY_ACTION_CLASS, 'px-4 py-2 text-sm')}
-          >
-            Perfil na Câmara
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
-
-        {/* Barra de progresso de status */}
-        {!statusesFullyLoaded && statusProgress.total > 0 && (
-          <div className="mb-4 p-4 rounded-xl bg-surface border border-card">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-text-secondary flex items-center gap-2">
-                <Loader2 className={cn('w-3.5 h-3.5 animate-spin', brandAmberIconClass)} />
-                Carregando status das proposições...
-              </p>
-              <span className="text-xs font-medium text-text-primary">
-                {statusProgress.loaded}/{statusProgress.total} ({progressPercent}%)
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#f04b23] rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--tse-bar)]">
+            <div
+              className="h-full rounded-full bg-[var(--tse-yellow)] transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
-        )}
+        </section>
+      ) : null}
 
-        {/* Quadro resumo (padrão visual do dashboard) */}
-        {deputadosBundles.length > 0 && (
-          <div className="mb-6 rounded-2xl border border-card bg-surface overflow-hidden shadow-sm">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-card bg-background/80">
-              <Table2 className={cn('w-4 h-4', brandAmberIconClass)} />
-              <h3 className="text-sm font-semibold text-text-primary">Quadro resumo legislativo</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] border-collapse text-sm text-text-primary">
-                <thead>
-                  <tr className="bg-[#fff1ed]/60 text-text-primary">
-                    <th className="border border-card px-3 py-2.5 text-left font-semibold">Deputado</th>
-                    {COLUNAS_QUADRO_RESUMO.map((col) => (
-                      <th
-                        key={col.id}
-                        className="border border-card px-2 py-2.5 text-center font-semibold text-[11px] leading-tight max-w-[120px]"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {deputadosBundles.map((dep) => (
-                    <tr
-                      key={dep.id}
-                      className={cn(
-                        'border-b border-card last:border-b-0 transition-colors',
-                        dep.destaque ? 'bg-[#fff1ed]/40' : 'bg-surface hover:bg-background/80'
-                      )}
-                    >
-                      <td className="border border-card px-3 py-2.5 font-medium text-left text-text-primary">
-                        {dep.nome}
-                      </td>
-                      {COLUNAS_QUADRO_RESUMO.map((col) => {
-                        const n = contagemQuadro[dep.id]?.[col.id] ?? 0
-                        const loading = n < 0
-                        return (
-                          <td
-                            key={col.id}
-                            className="border border-card px-2 py-2 text-center align-middle bg-background/40"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleCelulaQuadro(dep.id, col.id)}
-                              disabled={loading}
-                              title={`Ver lista: ${col.label}`}
-                              className={cn(
-                                'min-w-[2.25rem] tabular-nums rounded-lg px-2 py-1 text-sm font-semibold transition-colors',
-                                loading
-                                  ? 'text-text-secondary cursor-wait'
-                                  : cn(brandAmberMetricClass, 'hover:bg-[#fff1ed] focus:outline-none focus:ring-2 focus:ring-[#f04b23]/25')
-                              )}
-                            >
-                              {loading ? '…' : n}
-                            </button>
-                          </td>
-                        )
-                      })}
-                    </tr>
+      {deputadosBundles.length > 0 ? (
+        <TseCard
+          className="mb-5 overflow-hidden p-0"
+          titulo={
+            <span className="inline-flex items-center gap-2 px-4 pt-4">
+              <Table2 className="h-5 w-5 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" aria-hidden />
+              Quadro resumo legislativo
+            </span>
+          }
+        >
+          <div className={cn(tseTabela.container, 'mt-3 rounded-none shadow-none')}>
+            <table className={cn(tseTabela.table, 'min-w-[880px]')} data-tse-tabela>
+              <thead className={tseTabela.thead}>
+                <tr>
+                  <th className={tseTabela.th}>Deputado</th>
+                  {COLUNAS_QUADRO_RESUMO.map((col) => (
+                    <th key={col.id} className={cn(tseTabela.th, 'max-w-[120px] text-center leading-tight')}>
+                      {col.label}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="px-4 py-3 bg-background/50 border-t border-card text-xs text-text-secondary leading-relaxed space-y-1">
-              <p>
-                <span className="font-medium text-text-primary">57ª Legislatura:</span> apenas proposições
-                apresentadas a partir de fevereiro de 2023. Clique em um número para filtrar a lista abaixo
-                (outros filtros são limpos para bater com o total da célula).
-              </p>
-              <p className="text-text-secondary/80">
-                Colunas por status usam a última tramitação da API. Mostram “…” até o carregamento terminar.
-              </p>
-            </div>
+                </tr>
+              </thead>
+              <tbody>
+                {deputadosBundles.map((dep) => (
+                  <tr
+                    key={dep.id}
+                    className={cn(tseTabela.tr, dep.destaque && 'bg-[var(--tse-yellow-soft)]')}
+                  >
+                    <td className={cn(tseTabela.td, 'font-bold')}>{dep.nome}</td>
+                    {COLUNAS_QUADRO_RESUMO.map((col) => {
+                      const n = contagemQuadro[dep.id]?.[col.id] ?? 0
+                      const loading = n < 0
+                      return (
+                        <td key={col.id} className={cn(tseTabela.td, 'text-center')}>
+                          <button
+                            type="button"
+                            onClick={() => handleCelulaQuadro(dep.id, col.id)}
+                            disabled={loading}
+                            title={`Ver lista: ${col.label}`}
+                            className={cn(
+                              'min-w-[2.25rem] rounded-md px-2 py-1 text-[13px] font-bold tabular-nums transition-colors',
+                              loading
+                                ? 'cursor-wait text-[var(--tse-muted)]'
+                                : 'text-[var(--tse-olive)] hover:bg-[var(--tse-yellow-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--tse-yellow)]/40',
+                            )}
+                          >
+                            {loading ? '…' : n}
+                          </button>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+          <div className="space-y-1 border-t border-[#EEEEEE] bg-[var(--tse-bar)] px-4 py-3 text-[12px] leading-relaxed text-[var(--tse-muted)]">
+            <p>
+              <span className="font-bold text-[var(--tse-text)]">57ª Legislatura:</span> apenas proposições
+              apresentadas a partir de fevereiro de 2023. Clique em um número para filtrar a lista abaixo (outros
+              filtros são limpos para bater com o total da célula).
+            </p>
+            <p>
+              Colunas por status usam a última tramitação da API. Mostram “…” até o carregamento terminar.
+            </p>
+          </div>
+        </TseCard>
+      ) : null}
 
-        {/* Busca e filtros */}
-        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Buscar por palavra-chave na ementa..."
-                className={cn('w-full pl-10 pr-4 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 transition-all', INPUT_FOCUS_CLASS)}
-              />
-            </div>
-            <button onClick={handleSearch} className={cn(brandAmberButtonClass, 'rounded-xl px-5 py-2.5')}>
+      <div className="mb-5">
+        <TseFilterBar>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3" onKeyDown={handleKeyDown}>
+            <TseBusca
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Buscar por palavra-chave na ementa…"
+              className="min-w-[220px] flex-1"
+            />
+            <button type="button" onClick={handleSearch} className={tseBotaoPrimarioClass}>
+              <Search className="h-4 w-4" />
               Buscar
             </button>
             <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={cn(
-                'px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all border',
-                showFilters ? cn(brandAmberChipClass, 'rounded-xl') : 'bg-background text-text-secondary border-card hover:border-[#f04b23]/30'
-              )}
+              className={cn(showFilters ? tseBotaoPrimarioClass : tseBotaoCinzaClass, 'gap-1.5')}
             >
-              <Filter className="w-4 h-4" />
+              <Filter className={showFilters ? 'h-4 w-4' : tseBotaoIconeClass} />
               Filtros
-              {activeFilterCount > 0 && (
-                <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full bg-[#f04b23] text-white">
+              {activeFilterCount > 0 ? (
+                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--tse-yellow)] px-1 text-[10px] font-black text-white">
                   {activeFilterCount}
                 </span>
-              )}
+              ) : null}
             </button>
           </div>
+        </TseFilterBar>
 
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t border-card space-y-4">
-              <div className="flex flex-wrap items-start gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Tipo de Proposição</label>
-                  <select
-                    value={filtroTipo}
-                    onChange={(e) => { setFiltroTipo(e.target.value); setPagina(1) }}
-                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary transition-all', INPUT_FOCUS_CLASS)}
-                  >
-                    {TIPOS_PROPOSICAO.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
-                  </select>
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                    Status / Situação
-                    {!statusesFullyLoaded && statusProgress.total > 0 && (
-                      <span className={cn('ml-2', brandAmberMetricClass)}>({progressPercent}% carregado)</span>
-                    )}
-                  </label>
-                  <select
-                    value={filtroStatus}
-                    onChange={(e) => { setFiltroStatus(e.target.value); setPagina(1) }}
-                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary transition-all', INPUT_FOCUS_CLASS)}
-                  >
-                    {SITUACOES_PROPOSICAO.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
-                  </select>
-                </div>
-                <div className="w-36">
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Ano</label>
-                  <input
-                    type="number"
-                    value={filtroAno}
-                    onChange={(e) => { setFiltroAno(e.target.value); setPagina(1) }}
-                    placeholder="Ex: 2026"
-                    min="2000"
-                    max="2030"
-                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 transition-all', INPUT_FOCUS_CLASS)}
-                  />
-                </div>
+        {showFilters ? (
+          <section className={cn(tseCardClass, 'mt-3')}>
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="min-w-[200px] flex-1">
+                <label className={tseRotuloCampoClass}>Tipo de proposição</label>
+                <select
+                  value={filtroTipo}
+                  onChange={(e) => {
+                    setFiltroTipo(e.target.value)
+                    setPagina(1)
+                  }}
+                  className={cn(tseCampoClass, 'h-10')}
+                >
+                  {TIPOS_PROPOSICAO.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              {hasActiveFilters && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {filtroColunaQuadro != null && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-lg max-w-full">
-                      <Table2 className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">
-                        {nomeDeputadoQuadro(filtroDeputadoQuadro ?? 0)} — {labelColunaQuadro(filtroColunaQuadro)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => limparFiltroQuadro()}
-                        className="ml-0.5 hover:text-status-danger transition-colors flex-shrink-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+              <div className="min-w-[200px] flex-1">
+                <label className={tseRotuloCampoClass}>
+                  Status / situação
+                  {!statusesFullyLoaded && statusProgress.total > 0 ? (
+                    <span className="ml-2 font-semibold normal-case tracking-normal text-[var(--tse-gold-text)]">
+                      ({progressPercent}% carregado)
                     </span>
-                  )}
-                  {filtroTipo && (
-                    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg', brandAmberChipClass)}>
-                      <FileText className="w-3 h-3" />
-                      {TIPOS_PROPOSICAO.find(t => t.value === filtroTipo)?.label?.split(' — ')[0] || filtroTipo}
-                      <button onClick={() => { setFiltroTipo(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
-                    </span>
-                  )}
-                  {filtroStatus && (
-                    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg', brandAmberChipClass)}>
-                      <GitBranch className="w-3 h-3" />
-                      {SITUACOES_PROPOSICAO.find(s => s.value === filtroStatus)?.label || filtroStatus}
-                      <button onClick={() => { setFiltroStatus(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
-                    </span>
-                  )}
-                  {filtroAno && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-status-warning/15 text-status-warning rounded-lg">
-                      <Calendar className="w-3 h-3" />
-                      {filtroAno}
-                      <button onClick={() => { setFiltroAno(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
-                    </span>
-                  )}
-                  {filtroKeyword && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-500/15 text-purple-400 rounded-lg">
-                      <Search className="w-3 h-3" />
-                      &quot;{filtroKeyword}&quot;
-                      <button onClick={() => { setFiltroKeyword(''); setSearchInput(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
-                    </span>
-                  )}
-                  <button onClick={clearFilters} className="px-3 py-1 text-xs text-status-danger hover:bg-status-danger/10 rounded-lg transition-colors flex items-center gap-1 ml-1">
-                    <X className="w-3 h-3" />
-                    Limpar todos
-                  </button>
-                </div>
-              )}
+                  ) : null}
+                </label>
+                <select
+                  value={filtroStatus}
+                  onChange={(e) => {
+                    setFiltroStatus(e.target.value)
+                    setPagina(1)
+                  }}
+                  className={cn(tseCampoClass, 'h-10')}
+                >
+                  {SITUACOES_PROPOSICAO.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-36">
+                <label className={tseRotuloCampoClass}>Ano</label>
+                <input
+                  type="number"
+                  value={filtroAno}
+                  onChange={(e) => {
+                    setFiltroAno(e.target.value)
+                    setPagina(1)
+                  }}
+                  placeholder="Ex: 2026"
+                  min="2000"
+                  max="2030"
+                  className={cn(tseCampoClass, 'h-10')}
+                />
+              </div>
             </div>
-          )}
+
+            {hasActiveFilters ? (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#EEEEEE] pt-4">
+                {filtroColunaQuadro != null ? (
+                  <span className={chipFiltroClass}>
+                    <Table2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">
+                      {nomeDeputadoQuadro(filtroDeputadoQuadro ?? 0)} — {labelColunaQuadro(filtroColunaQuadro)}
+                    </span>
+                    <button type="button" onClick={() => limparFiltroQuadro()} className="shrink-0 hover:text-[var(--tse-text)]">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null}
+                {filtroTipo ? (
+                  <span className={chipFiltroClass}>
+                    <FileText className="h-3 w-3" />
+                    {TIPOS_PROPOSICAO.find((t) => t.value === filtroTipo)?.label?.split(' — ')[0] || filtroTipo}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroTipo('')
+                        setPagina(1)
+                      }}
+                      className="hover:text-[var(--tse-text)]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null}
+                {filtroStatus ? (
+                  <span className={chipFiltroClass}>
+                    <GitBranch className="h-3 w-3" />
+                    {SITUACOES_PROPOSICAO.find((s) => s.value === filtroStatus)?.label || filtroStatus}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroStatus('')
+                        setPagina(1)
+                      }}
+                      className="hover:text-[var(--tse-text)]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null}
+                {filtroAno ? (
+                  <span className={chipFiltroClass}>
+                    <Calendar className="h-3 w-3" />
+                    {filtroAno}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroAno('')
+                        setPagina(1)
+                      }}
+                      className="hover:text-[var(--tse-text)]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null}
+                {filtroKeyword ? (
+                  <span className={chipFiltroClass}>
+                    <Search className="h-3 w-3" />
+                    &quot;{filtroKeyword}&quot;
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroKeyword('')
+                        setSearchInput('')
+                        setPagina(1)
+                      }}
+                      className="hover:text-[var(--tse-text)]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null}
+                <button type="button" onClick={clearFilters} className={tseLinkAcaoClass}>
+                  Limpar todos
+                </button>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+      </div>
+
+      {hasActiveFilters ? (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-[var(--tse-yellow-soft)] px-4 py-3">
+          <Filter className="h-4 w-4 shrink-0 text-[var(--tse-gold-text)]" />
+          <p className="text-[13px] text-[var(--tse-text)]">
+            <span className="font-bold">{filteredItems.length}</span> proposição(ões) encontrada(s) de{' '}
+            {allProposicoes.length} no total
+            {(statusFilterActive || filtroColunaQuadro != null) && !statusesFullyLoaded ? (
+              <span className="text-[var(--tse-gold-text)]"> — status ainda carregando, resultado pode mudar</span>
+            ) : null}
+          </p>
         </div>
+      ) : null}
 
-        {/* Info banner */}
-        {hasActiveFilters && (
-          <div className="mb-4 p-3 rounded-xl bg-[#fff1ed]/50 border border-[#ffc9b8]/60 flex items-center gap-3">
-            <Filter className={cn('w-4 h-4 flex-shrink-0', brandAmberIconClass)} />
-            <p className="text-xs text-text-secondary">
-              <span className="font-semibold text-text-primary">{filteredItems.length}</span> proposição(ões) encontrada(s)
-              {' '}de {allProposicoes.length} no total
-              {(statusFilterActive || filtroColunaQuadro != null) && !statusesFullyLoaded && (
-                <span className={brandAmberMetricClass}> — status ainda carregando, resultado pode mudar</span>
-              )}
-            </p>
-          </div>
-        )}
-
-        {/* Lista */}
-        <div ref={listaProposicoesRef} className="scroll-mt-28">
+      <div ref={listaProposicoesRef} className="scroll-mt-28">
         {paginatedItems.length === 0 ? (
-          <div className="bg-surface rounded-2xl border border-card p-12 text-center">
-            <FileText className="w-12 h-12 text-text-secondary/30 mx-auto mb-4" />
-            <p className="text-text-secondary mb-2">
-              {hasActiveFilters
-                ? 'Nenhuma proposição corresponde aos filtros selecionados.'
-                : 'Nenhuma proposição encontrada.'}
-            </p>
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className={cn('text-sm hover:underline mt-2', brandAmberMetricClass)}>
-                Limpar filtros
-              </button>
+          <TseVazio>
+            {hasActiveFilters ? (
+              <>
+                Nenhuma proposição corresponde aos filtros selecionados.{' '}
+                <button type="button" onClick={clearFilters} className={tseLinkAcaoClass}>
+                  Limpar filtros
+                </button>
+              </>
+            ) : (
+              'Nenhuma proposição encontrada.'
             )}
-          </div>
+          </TseVazio>
         ) : (
           <div className="space-y-3">
             {paginatedItems.map((prop) => {
               const status = statusMap[prop.id]
               return (
-                <div key={prop.id} className="bg-surface rounded-2xl border border-card p-5 hover:shadow-card-hover hover:border-[#f04b23]/25 transition-all duration-200 group">
+                <article key={prop.id} className={cn(tseCardClass, 'transition-shadow hover:shadow-md')}>
                   <div className="flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <span className={cn('px-2.5 py-1 text-xs font-bold rounded-lg border', getBadgeColor(prop.siglaTipo))}>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-3">
+                        <TsePill tom={getBadgeTom(prop.siglaTipo)}>
                           {prop.siglaTipo} {prop.numero}/{prop.ano}
-                        </span>
-                        <span className="text-xs text-text-secondary flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                        </TsePill>
+                        <span className="inline-flex items-center gap-1 text-[12px] text-[var(--tse-muted)]">
+                          <Calendar className="h-3 w-3" />
                           {formatDataApresentacao(prop.dataApresentacao)}
                         </span>
                       </div>
-                      <p className="text-sm text-text-primary leading-relaxed line-clamp-3 mb-3">{prop.ementa}</p>
+                      <p className="mb-3 line-clamp-3 text-[14px] leading-relaxed">{prop.ementa}</p>
 
                       {status ? (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={cn('px-2.5 py-1 text-xs font-medium rounded-lg', getStatusColor(status.descricaoSituacao))}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <TseStatus cor={getStatusCor(status.descricaoSituacao)}>
                             {status.descricaoSituacao || status.descricaoTramitacao}
+                          </TseStatus>
+                          <span className="inline-flex items-center gap-1 text-[12px] text-[var(--tse-muted)]">
+                            <Building2 className="h-3 w-3" />
+                            {status.siglaOrgao}
                           </span>
-                          <span className="text-xs text-text-secondary flex items-center gap-1">
-                            <Building2 className="w-3 h-3" />{status.siglaOrgao}
+                          <span className="text-[12px] text-[var(--tse-muted)]">
+                            {formatDataApresentacao(status.dataHora)}
                           </span>
-                          <span className="text-xs text-text-secondary/60">{formatDataApresentacao(status.dataHora)}</span>
                         </div>
                       ) : (
-                        <div className="h-5 w-48 bg-background rounded-md animate-pulse" />
+                        <div className="h-5 w-48 animate-pulse rounded-md bg-[var(--tse-bar)]" />
                       )}
                     </div>
-                    <div className="flex flex-col gap-2 flex-shrink-0">
+                    <div className="flex shrink-0 flex-col gap-2">
                       <button
+                        type="button"
                         onClick={() => fetchTramitacoes(prop.id, `${prop.siglaTipo} ${prop.numero}/${prop.ano}`)}
-                        className={cn(brandAmberCompactButtonClass, 'rounded-lg px-3 py-2')}
+                        className={cn(tseBotaoPrimarioClass, 'gap-1.5')}
                       >
-                        <GitBranch className="w-3.5 h-3.5" />Tramitação
+                        <GitBranch className="h-3.5 w-3.5" />
+                        Tramitação
                       </button>
                       <button
+                        type="button"
                         onClick={() => fetchAutores(prop.id, `${prop.siglaTipo} ${prop.numero}/${prop.ano}`)}
-                        className={cn(SECONDARY_ACTION_CLASS, 'px-3 py-2 flex items-center gap-1.5')}
+                        className={cn(tseBotaoCinzaClass, 'gap-1.5')}
                       >
-                        <Users className="w-3.5 h-3.5" />Autores
+                        <Users className="h-3.5 w-3.5" />
+                        Autores
                       </button>
                       <a
                         href={`https://www.camara.leg.br/propostas-legislativas/${prop.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn(GHOST_ACTION_CLASS, 'px-3 py-2 flex items-center gap-1.5')}
+                        className={cn(tseBotaoNeutroClass, 'justify-center gap-1.5')}
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />Detalhes
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Detalhes
                       </a>
                     </div>
                   </div>
-                </div>
+                </article>
               )
             })}
           </div>
         )}
 
-        {filteredItems.length > 0 && (
-          <div className="mt-6 flex items-center justify-between">
-            <span className="text-sm text-text-secondary">
+        {filteredItems.length > 0 ? (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] text-[var(--tse-muted)]">
               Mostrando {startItem}–{endItem} de {filteredItems.length} proposições
-              {hasActiveFilters && <span className="text-text-secondary/60"> (filtrado)</span>}
+              {hasActiveFilters ? <span> (filtrado)</span> : null}
             </span>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina <= 1}
-                className={cn(
-                  'px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1 transition-all border',
-                  pagina > 1 ? 'bg-surface border-card text-text-primary hover:bg-[#fff1ed] hover:text-[#c43d1c] hover:border-[#f04b23]/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
-                )}
+                className={cn(tseBotaoCinzaClass, 'disabled:cursor-not-allowed disabled:opacity-40')}
               >
-                <ChevronLeft className="w-4 h-4" />Anterior
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
               </button>
-              <span className="px-3 py-2 text-sm font-medium text-text-primary">
-                {pagina} / {totalPages}
+              <span className={cn(tseControleClass, 'inline-flex items-center font-bold')}>
+                {pagina} / {totalPages || 1}
               </span>
               <button
+                type="button"
                 onClick={() => setPagina((p) => Math.min(totalPages, p + 1))}
                 disabled={pagina >= totalPages}
-                className={cn(
-                  'px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1 transition-all border',
-                  pagina < totalPages ? 'bg-surface border-card text-text-primary hover:bg-[#fff1ed] hover:text-[#c43d1c] hover:border-[#f04b23]/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
-                )}
+                className={cn(tseBotaoCinzaClass, 'disabled:cursor-not-allowed disabled:opacity-40')}
               >
-                Próxima<ChevronRight className="w-4 h-4" />
+                Próxima
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
-        )}
-        </div>
-
-        {/* Info box */}
-        <div className="mt-8 rounded-2xl border border-[#ffc9b8]/60 bg-[#fff1ed]/50 p-6">
-          <h3 className="text-base font-semibold text-text-primary mb-2 flex items-center gap-2">
-            <FileText className={cn('w-4 h-4', brandAmberIconClass)} />Sobre as Proposições
-          </h3>
-          <p className="text-sm text-text-secondary leading-relaxed">
-            As proposições legislativas incluem projetos de lei, requerimentos, indicações e outras iniciativas
-            parlamentares. Dados obtidos em tempo real da API de Dados Abertos da Câmara dos Deputados.
-            Pelo Regimento da Câmara, todos os que assinam uma proposição são considerados autores (art. 102),
-            tanto os proponentes quanto os apoiadores.
-          </p>
-        </div>
+        ) : null}
       </div>
 
-      {/* Modal de Autores */}
-      {autoresModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAutoresModalOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-lg font-semibold text-text-primary">Autores da Proposição</h2>
-                <p className="text-sm text-text-secondary">{autoresProposicao}</p>
-              </div>
-              <button onClick={() => setAutoresModalOpen(false)} className="p-2 rounded-lg hover:bg-background transition-colors">
-                <X className="w-5 h-5 text-text-secondary" />
-              </button>
+      <TseCard
+        className="mt-8"
+        titulo={
+          <span className="inline-flex items-center gap-2">
+            <FileText className="h-5 w-5 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" aria-hidden />
+            Sobre as proposições
+          </span>
+        }
+      >
+        <p className="mt-2 text-[14px] leading-relaxed text-[var(--tse-muted)]">
+          As proposições legislativas incluem projetos de lei, requerimentos, indicações e outras iniciativas
+          parlamentares. Dados obtidos em tempo real da API de Dados Abertos da Câmara dos Deputados. Pelo Regimento
+          da Câmara, todos os que assinam uma proposição são considerados autores (art. 102), tanto os proponentes
+          quanto os apoiadores.
+        </p>
+      </TseCard>
+
+      {autoresModalOpen ? (
+        <TseModal
+          id="proposicoes-autores"
+          titulo="Autores da proposição"
+          subtitulo={autoresProposicao}
+          onClose={() => setAutoresModalOpen(false)}
+          largura="max-w-lg"
+        >
+          {autoresLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className={cn(tseBotaoIconeClass, 'h-6 w-6 animate-spin')} />
             </div>
-            {autoresLoading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className={cn('w-6 h-6 animate-spin', brandAmberIconClass)} /></div>
-            ) : autores.length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-8">Nenhum autor encontrado.</p>
-            ) : (
-              <div className="space-y-3">
-                {autores.map((autor, idx) => (
-                  <div key={`${autor.nome}-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-background border border-card">
-                    <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', brandAmberIconWrapClass)}><Users className={cn('w-4 h-4', brandAmberIconClass)} /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{autor.nome}</p>
-                      <p className="text-xs text-text-secondary">{autor.tipo}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {autor.proponente === 1 && (<span className={cn('px-2 py-0.5 text-xs font-medium rounded-md', brandAmberChipClass)}>Proponente</span>)}
-                      <span className="text-xs text-text-secondary">#{autor.ordemAssinatura}</span>
-                    </div>
+          ) : autores.length === 0 ? (
+            <p className="py-8 text-center text-[13px] text-[var(--tse-muted)]">Nenhum autor encontrado.</p>
+          ) : (
+            <div className="space-y-2">
+              {autores.map((autor, idx) => (
+                <div key={`${autor.nome}-${idx}`} className={cn(tseCardClass, 'flex items-center gap-3 p-3')}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--tse-yellow-soft)]">
+                    <Users className="h-4 w-4 text-[var(--tse-gold-text)]" />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Tramitações */}
-      {tramitacoesModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setTramitacoesModalOpen(false)}>
-          <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5 flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                  <GitBranch className={cn('w-5 h-5', brandAmberIconClass)} />Tramitação
-                </h2>
-                <p className="text-sm text-text-secondary">{tramitacoesProposicao}</p>
-              </div>
-              <button onClick={() => setTramitacoesModalOpen(false)} className="p-2 rounded-lg hover:bg-background transition-colors">
-                <X className="w-5 h-5 text-text-secondary" />
-              </button>
-            </div>
-
-            {tramitacoesLoading ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className={cn('w-6 h-6 animate-spin', brandAmberIconClass)} /></div>
-            ) : tramitacoes.length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-12">Nenhuma tramitação encontrada.</p>
-            ) : (
-              <div className="overflow-y-auto flex-1 pr-2 scrollbar-hide">
-                <div className="mb-6 p-4 rounded-xl bg-[#fff1ed]/60 border border-[#ffc9b8]/60">
-                  <p className={cn('text-xs font-medium mb-1', brandAmberMetricClass)}>Status Atual</p>
-                  <p className="text-sm font-semibold text-text-primary">
-                    {tramitacoes[0].descricaoSituacao || tramitacoes[0].descricaoTramitacao}
-                  </p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-text-secondary">
-                    <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{tramitacoes[0].siglaOrgao}</span>
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDataHora(tramitacoes[0].dataHora)}</span>
-                    {tramitacoes[0].regime && tramitacoes[0].regime !== '.' && <span>Regime: {tramitacoes[0].regime}</span>}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-bold">{autor.nome}</p>
+                    <p className="text-[12px] text-[var(--tse-muted)]">{autor.tipo}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {autor.proponente === 1 ? <TsePill tom="amarelo">Proponente</TsePill> : null}
+                    <span className="text-[12px] text-[var(--tse-muted)]">#{autor.ordemAssinatura}</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </TseModal>
+      ) : null}
 
-                <div className="relative">
-                  <div className="absolute left-[17px] top-0 bottom-0 w-px bg-border-card" />
-                  {tramitacoes.map((tram, idx) => {
-                    const isFirst = idx === 0
-                    const Icon = getTimelineIcon(tram.descricaoTramitacao)
-                    return (
-                      <div key={`${tram.sequencia}-${idx}`} className="relative pl-12 pb-6 last:pb-0">
-                        <div className={cn('absolute left-0 top-0 w-[35px] h-[35px] rounded-full flex items-center justify-center z-10', isFirst ? 'bg-[#f04b23] text-white shadow-md' : 'bg-background border-2 border-card text-text-secondary')}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <div className={cn('rounded-xl p-4 border transition-all', isFirst ? 'bg-[#fff1ed]/40 border-[#ffc9b8]/60' : 'bg-background border-card hover:border-[#f04b23]/15')}>
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <p className={cn('text-sm font-medium', isFirst ? brandAmberMetricClass : 'text-text-primary')}>{tram.descricaoTramitacao}</p>
-                            <span className="text-xs text-text-secondary whitespace-nowrap flex-shrink-0">#{tram.sequencia}</span>
-                          </div>
-                          <div className="flex items-center gap-3 mb-2 text-xs text-text-secondary flex-wrap">
-                            <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{tram.siglaOrgao}</span>
-                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDataHora(tram.dataHora)}</span>
-                            {tram.descricaoSituacao && (
-                              <span className={cn('px-2 py-0.5 rounded-md text-xs font-medium', getStatusColor(tram.descricaoSituacao))}>{tram.descricaoSituacao}</span>
-                            )}
-                          </div>
-                          {tram.despacho && <p className="text-xs text-text-secondary/80 leading-relaxed line-clamp-3">{tram.despacho}</p>}
-                          {tram.url && (
-                            <a href={tram.url} target="_blank" rel="noopener noreferrer" className={cn('inline-flex items-center gap-1 mt-2 text-xs hover:underline', brandAmberMetricClass)}>
-                              <ExternalLink className="w-3 h-3" />Ver documento
-                            </a>
-                          )}
-                        </div>
+      {tramitacoesModalOpen ? (
+        <TseModal
+          id="proposicoes-tramitacoes"
+          titulo={
+            <span className="inline-flex items-center gap-2">
+              <GitBranch className="h-5 w-5 text-[var(--tse-yellow)]" aria-hidden />
+              Tramitação
+            </span>
+          }
+          subtitulo={tramitacoesProposicao}
+          onClose={() => setTramitacoesModalOpen(false)}
+          largura="max-w-2xl"
+        >
+          {tramitacoesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className={cn(tseBotaoIconeClass, 'h-6 w-6 animate-spin')} />
+            </div>
+          ) : tramitacoes.length === 0 ? (
+            <p className="py-12 text-center text-[13px] text-[var(--tse-muted)]">Nenhuma tramitação encontrada.</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[var(--tse-border)] bg-[var(--tse-yellow-soft)] p-4">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-gold-text)]">
+                  Status atual
+                </p>
+                <p className="text-[14px] font-bold">
+                  {tramitacoes[0].descricaoSituacao || tramitacoes[0].descricaoTramitacao}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-[var(--tse-muted)]">
+                  <span className="inline-flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {tramitacoes[0].siglaOrgao}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {formatDataHora(tramitacoes[0].dataHora)}
+                  </span>
+                  {tramitacoes[0].regime && tramitacoes[0].regime !== '.' ? (
+                    <span>Regime: {tramitacoes[0].regime}</span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute bottom-0 left-[17px] top-0 w-px bg-[var(--tse-border)]" />
+                {tramitacoes.map((tram, idx) => {
+                  const isFirst = idx === 0
+                  const Icon = getTimelineIcon(tram.descricaoTramitacao)
+                  return (
+                    <div key={`${tram.sequencia}-${idx}`} className="relative pb-6 pl-12 last:pb-0">
+                      <div
+                        className={cn(
+                          'absolute left-0 top-0 z-10 flex h-[35px] w-[35px] items-center justify-center rounded-full',
+                          isFirst
+                            ? 'bg-[var(--tse-yellow)] text-white shadow-sm'
+                            : 'border-2 border-[var(--tse-border)] bg-white text-[var(--tse-muted)]',
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
                       </div>
-                    )
-                  })}
-                </div>
+                      <div
+                        className={cn(
+                          'rounded-xl border p-4 transition-colors',
+                          isFirst
+                            ? 'border-[var(--tse-yellow)]/40 bg-[var(--tse-yellow-soft)]/60'
+                            : 'border-[var(--tse-border)] bg-white hover:border-[var(--tse-yellow)]/30',
+                        )}
+                      >
+                        <div className="mb-1 flex items-start justify-between gap-2">
+                          <p
+                            className={cn(
+                              'text-[13px] font-bold',
+                              isFirst ? 'text-[var(--tse-gold-text)]' : 'text-[var(--tse-text)]',
+                            )}
+                          >
+                            {tram.descricaoTramitacao}
+                          </p>
+                          <span className="shrink-0 whitespace-nowrap text-[12px] text-[var(--tse-muted)]">
+                            #{tram.sequencia}
+                          </span>
+                        </div>
+                        <div className="mb-2 flex flex-wrap items-center gap-3 text-[12px] text-[var(--tse-muted)]">
+                          <span className="inline-flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {tram.siglaOrgao}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDataHora(tram.dataHora)}
+                          </span>
+                          {tram.descricaoSituacao ? (
+                            <TseStatus cor={getStatusCor(tram.descricaoSituacao)}>{tram.descricaoSituacao}</TseStatus>
+                          ) : null}
+                        </div>
+                        {tram.despacho ? (
+                          <p className="line-clamp-3 text-[12px] leading-relaxed text-[var(--tse-muted)]">
+                            {tram.despacho}
+                          </p>
+                        ) : null}
+                        {tram.url ? (
+                          <a
+                            href={tram.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(tseLinkAcaoClass, 'mt-2 inline-flex items-center gap-1')}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Ver documento
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+            </div>
+          )}
+        </TseModal>
+      ) : null}
+    </TsePage>
   )
 }

@@ -1,9 +1,9 @@
 export type HeatmapScaleMode = 'individual' | 'comparative'
 
-const EMPTY_CELL = '#EDEDED'
-/** Cor padrão do modo comparativo — paleta IPT (#f04b23). */
-const COMPARATIVE_BASE = '#f04b23'
-const TEXT_ON_LIGHT = '#20201f'
+const EMPTY_CELL = '#EEEEEE'
+/** Cor padrão do modo comparativo — amarelo TSE. */
+const COMPARATIVE_BASE = '#EBB402'
+const TEXT_ON_LIGHT = '#333333'
 const TEXT_ON_DARK = '#ffffff'
 
 type Rgb = { r: number; g: number; b: number }

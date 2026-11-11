@@ -14,25 +14,8 @@ import {
   type HeatmapScaleMode,
 } from '@/lib/monitoramento-heatmap-colors'
 import type { PanoramaHeatmapRow } from '@/lib/monitoramento-panorama-charts'
-import { chromeFilterChipClass } from '@/lib/button-chrome'
-import {
-  typographyBodyMediumClass,
-  typographyBodyMutedClass,
-} from '@/lib/typography-chrome'
+import { TseSegmentado } from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
-
-const SCALE_OPTIONS: { value: HeatmapScaleMode; label: string; title: string }[] = [
-  {
-    value: 'comparative',
-    label: 'Todos',
-    title: 'Mesma escala entre candidatos',
-  },
-  {
-    value: 'individual',
-    label: 'Por candidato',
-    title: 'Escala relativa ao pico de cada candidato',
-  },
-]
 
 function formatDayLabel(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
@@ -106,23 +89,15 @@ export function PanoramaHeatmapScaleToggle({
   className?: string
 }) {
   return (
-    <div
-      className={cn('flex shrink-0 flex-wrap justify-end gap-1', className)}
-      role="group"
-      aria-label="Modo de escala"
-    >
-      {SCALE_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          title={opt.title}
-          onClick={() => onScaleModeChange(opt.value)}
-          className={chromeFilterChipClass(scaleMode === opt.value)}
-          aria-pressed={scaleMode === opt.value}
-        >
-          {opt.label}
-        </button>
-      ))}
+    <div className={cn('shrink-0', className)} aria-label="Modo de escala">
+      <TseSegmentado<HeatmapScaleMode>
+        valor={scaleMode}
+        onChange={onScaleModeChange}
+        opcoes={[
+          { id: 'comparative', label: 'Todos' },
+          { id: 'individual', label: 'Por candidato' },
+        ]}
+      />
     </div>
   )
 }
@@ -190,17 +165,18 @@ export function PanoramaMentionHeatmap({
       : 'pl-[112px]'
     : 'pl-[128px]'
   const nameTypeClass = compact
-    ? 'pmh-name leading-snug'
-    : cn('pmh-name', typographyBodyMediumClass, 'text-text-secondary')
+    ? 'leading-snug font-bold text-[var(--tse-text)]'
+    : 'text-[13px] font-bold text-[var(--tse-text)]'
   const mutedTypeClass = compact
-    ? 'pmh-muted leading-snug'
-    : typographyBodyMutedClass
+    ? 'leading-snug text-[var(--tse-muted)]'
+    : 'text-[11px] text-[var(--tse-muted)]'
   const rowGapClass = compact ? 'mb-1.5' : 'mb-2'
 
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 w-full flex-col',
+        'flex w-full flex-col',
+        fillAvailableHeight ? 'h-full min-h-0' : 'h-auto',
         compact ? 'gap-1.5' : 'gap-2',
         className,
       )}
@@ -210,26 +186,26 @@ export function PanoramaMentionHeatmap({
       ) : null}
 
       {enableNewsModal && !compact ? (
-        <p className={cn('shrink-0 leading-snug', typographyBodyMutedClass)}>
+        <p className="shrink-0 text-[12px] leading-snug text-[var(--tse-muted)]">
           Clique em um dia para ver as matérias
         </p>
       ) : null}
 
       <div
         className={cn(
-          'flex min-h-0 w-full flex-1 flex-col',
+          'flex w-full flex-col justify-start',
           fillAvailableHeight
-            ? 'h-full overflow-x-hidden overflow-y-auto'
+            ? 'min-h-0 flex-1 overflow-x-hidden'
             : compact
-              ? 'justify-start overflow-x-auto overflow-y-auto pr-0.5'
-              : 'justify-center overflow-x-auto',
+              ? 'overflow-x-auto overflow-y-auto pr-0.5'
+              : 'overflow-x-auto',
         )}
       >
         <div
           className={cn(
             'w-full max-w-none',
             compact ? 'min-w-0' : 'min-w-[520px]',
-            fillAvailableHeight && 'flex w-full flex-col gap-1.5',
+            fillAvailableHeight && 'flex h-full min-h-0 w-full flex-col gap-1.5',
           )}
         >
           {rows.map((row, rowIndex) => {
@@ -239,7 +215,7 @@ export function PanoramaMentionHeatmap({
                 key={row.slug}
                 className={cn(
                   'flex w-full max-w-none items-center gap-2 last:mb-0',
-                  fillAvailableHeight ? 'h-7 shrink-0' : rowGapClass,
+                  fillAvailableHeight ? 'min-h-[18px] flex-1' : rowGapClass,
                 )}
               >
                 <span
@@ -254,14 +230,14 @@ export function PanoramaMentionHeatmap({
                       key={`${row.slug}-${dates[i]}`}
                       type="button"
                       className={cn(
-                        'animate-panorama-heatmap-cell min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
+                        'animate-panorama-heatmap-cell min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--tse-olive)]',
                         showValues
                           ? cn(
                               'inline-flex items-center justify-center px-0.5',
-                              fillAvailableHeight ? 'h-full' : 'h-[22px]',
+                              fillAvailableHeight ? 'h-full min-h-[18px]' : 'h-[22px]',
                             )
                           : fillAvailableHeight
-                            ? 'h-full'
+                            ? 'h-full min-h-[18px]'
                             : 'h-[18px]',
                         value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default',
                       )}
@@ -302,7 +278,7 @@ export function PanoramaMentionHeatmap({
                       {showValues ? (
                         <span
                           className={cn(
-                            'wr-heatmap-cell-val pointer-events-none select-none font-semibold leading-none tabular-nums tracking-tight',
+                            'pointer-events-none select-none font-semibold leading-none tabular-nums tracking-tight',
                             fillAvailableHeight ? 'text-[10px] min-[900px]:text-[11px]' : 'text-[9px]',
                             heatmapValueTone(
                               row.color,
@@ -311,8 +287,8 @@ export function PanoramaMentionHeatmap({
                               scaleMode,
                               comparativeBaseColor,
                             ) === 'on-dark'
-                              ? 'wr-heatmap-cell-val--on-dark'
-                              : 'wr-heatmap-cell-val--on-light',
+                              ? 'text-white'
+                              : 'text-[var(--tse-text)]',
                           )}
                         >
                           {value > 0 ? formatHeatmapCellValue(value) : '0'}

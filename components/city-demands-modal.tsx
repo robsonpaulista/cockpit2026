@@ -267,7 +267,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filtroStatus, setFiltroStatus] = useState<string>('todos')
   const [liderancasPermitidas, setLiderancasPermitidas] = useState<string[]>([])
   const [sortCol, setSortCol] = useState<DemandSortCol>('status')
   const [sortDir, setSortDir] = useState<DemandSortDir>('asc')
@@ -327,30 +326,26 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       setDemands([])
       setError(null)
       setLiderancasPermitidas([])
-      setFiltroStatus('todos')
       setSortCol('status')
       setSortDir('asc')
     }
   }, [isOpen, cidade, fetchDemands])
 
   const { demandsFiltradasEOrdenadas, ignorouFiltroLideranca } = useMemo(() => {
-    const porStatus = demands.filter(
-      (d) => filtroStatus === 'todos' || d.status === filtroStatus
-    )
     let filtradas: Demand[]
     let ignorou = false
     if (liderancasPermitidas.length === 0) {
-      filtradas = porStatus
+      filtradas = demands
     } else {
-      const comLideranca = porStatus.filter((demand) => {
+      const comLideranca = demands.filter((demand) => {
         const raw = getDemandLiderancaParaFiltro(demand)
         if (!raw) return true
         return liderancasPermitidas.some((permitido) =>
           nomesLiderancaCombinam(permitido, raw)
         )
       })
-      if (comLideranca.length === 0 && porStatus.length > 0) {
-        filtradas = porStatus
+      if (comLideranca.length === 0 && demands.length > 0) {
+        filtradas = demands
         ignorou = true
       } else {
         filtradas = comLideranca
@@ -360,7 +355,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       demandsFiltradasEOrdenadas: ordenarDemandasPorColuna(filtradas, sortCol, sortDir),
       ignorouFiltroLideranca: ignorou,
     }
-  }, [demands, filtroStatus, liderancasPermitidas, sortCol, sortDir])
+  }, [demands, liderancasPermitidas, sortCol, sortDir])
 
   const toggleSort = useCallback(
     (col: DemandSortCol) => {
@@ -420,8 +415,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   )
 
   // Obter status únicos para filtro
-  const statusUnicos = Array.from(new Set(demands.map(d => d.status).filter(Boolean))) as string[]
-
   return createPortal(
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-4">
       <div
@@ -448,71 +441,24 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
           </button>
         </div>
 
-        {/* Filtros */}
-        {!loading && !error && demands.length > 0 && (
-          <div className={cn('space-y-2 border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
-            <div>
-              <p className="mb-1.5 text-xs font-medium text-text-secondary">Filtrar por status</p>
-              <div
-                className={cn(
-                  'flex flex-wrap gap-1.5',
-                  isDarkAppearance ? 'rounded-lg bg-black/20 p-1' : 'rounded-lg bg-background/80 p-1',
-                )}
-                role="group"
-                aria-label="Filtro de status das demandas"
-              >
-                <button
-                  type="button"
-                  onClick={() => setFiltroStatus('todos')}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                    filtroStatus === 'todos'
-                      ? isDarkAppearance
-                        ? 'bg-white/15 text-text-primary shadow-sm'
-                        : 'bg-surface text-text-primary shadow-sm ring-1 ring-border-card'
-                      : 'text-text-secondary hover:text-text-primary',
-                  )}
-                >
-                  Todos
-                </button>
-                {statusUnicos.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setFiltroStatus(status)}
-                    className={cn(
-                      'max-w-[200px] truncate rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                      filtroStatus === status
-                        ? isDarkAppearance
-                          ? 'bg-white/15 text-text-primary shadow-sm'
-                          : 'bg-surface text-text-primary shadow-sm ring-1 ring-border-card'
-                        : 'text-text-secondary hover:text-text-primary',
-                    )}
-                    title={status}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {liderancasPermitidas.length > 0 && (
-              <p className="text-xs leading-snug text-text-secondary">
-                {ignorouFiltroLideranca ? (
-                  <>
-                    Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
-                    exibindo <span className="font-medium text-text-primary">todas as demandas desta cidade</span> na
-                    planilha.
-                  </>
-                ) : (
-                  <>
-                    Modal respeitando filtros da página: {liderancasPermitidas.length} liderança
-                    {liderancasPermitidas.length !== 1 ? 's' : ''}.
-                  </>
-                )}
-              </p>
-            )}
+        {!loading && !error && demands.length > 0 && liderancasPermitidas.length > 0 ? (
+          <div className={cn('border-b px-4 py-2.5', isCockpit ? 'border-white/10' : 'border-card')}>
+            <p className="text-xs leading-snug text-text-secondary">
+              {ignorouFiltroLideranca ? (
+                <>
+                  Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
+                  exibindo <span className="font-medium text-text-primary">todas as demandas desta cidade</span> na
+                  planilha.
+                </>
+              ) : (
+                <>
+                  Filtrado por {liderancasPermitidas.length} liderança
+                  {liderancasPermitidas.length !== 1 ? 's' : ''}.
+                </>
+              )}
+            </p>
           </div>
-        )}
+        ) : null}
 
         {/* Content — tabela compacta */}
         <div className={cn('min-h-0 flex-1 overflow-auto', contentClass)}>

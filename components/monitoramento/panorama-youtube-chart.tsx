@@ -12,6 +12,8 @@ import {
   YAxis,
 } from 'recharts'
 import { PanoramaYoutubeMovimentoHeatmap } from '@/components/monitoramento/panorama-youtube-movimento-heatmap'
+import { PANORAMA_TSE_CHART } from '@/components/monitoramento/panorama-tse-chrome'
+import { TseSegmentado } from '@/components/tse/tse-ui'
 import type { PanoramaPlatformChart } from '@/lib/monitoramento-panorama-charts'
 import {
   buildYoutubeAbsoluteSeries,
@@ -19,17 +21,7 @@ import {
   type YoutubePanoramaViewMode,
   youtubePanoramaSubtitle,
 } from '@/lib/youtube-panorama-series'
-import { chromeFilterChipClass } from '@/lib/button-chrome'
-import {
-  typographyBodyClass,
-  typographyBodyMutedClass,
-} from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
-
-const VIEW_OPTIONS: { value: YoutubePanoramaViewMode; label: string }[] = [
-  { value: 'volume', label: 'Volume' },
-  { value: 'movimento', label: 'Movimento' },
-]
 
 const MOVIMENTO_HINT =
   'Cada linha usa escala própria. Use para identificar picos e atividade recente, não para comparar volume entre candidatos. Clique em um dia para ver os vídeos.'
@@ -84,17 +76,17 @@ function YoutubeVolumeTooltip({ active, payload, label, absoluteRows, lines }: Y
   if (entries.length === 0) return null
 
   return (
-    <div className={cn('max-w-[240px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5 shadow-sm', typographyBodyClass)}>
+    <div className="max-w-[240px] rounded-lg border border-[var(--tse-border)] bg-white px-3 py-2.5 text-[13px] shadow-sm">
       {entries.map((entry) => (
         <div
           key={entry.line.slug}
-          className="border-b border-[rgb(var(--color-border-tertiary)/0.35)] py-1.5 first:pt-0 last:border-b-0 last:pb-0"
+          className="border-b border-[#EEEEEE] py-1.5 first:pt-0 last:border-b-0 last:pb-0"
         >
           <p className="font-semibold" style={{ color: entry.line.color }}>
             {entry.line.name}
           </p>
-          <p className="mt-0.5 text-text-muted">{formatTooltipDate(date)}</p>
-          <p className="mt-1 font-medium text-text-primary">{formatViews(entry.absolute)}</p>
+          <p className="mt-0.5 text-[var(--tse-muted)]">{formatTooltipDate(date)}</p>
+          <p className="mt-1 font-medium text-[var(--tse-text)]">{formatViews(entry.absolute)}</p>
         </div>
       ))}
     </div>
@@ -116,24 +108,19 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
       <div className="mb-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className={typographyBodyMutedClass}>{subtitle}</p>
-        <div className="flex shrink-0 gap-1">
-          {VIEW_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setViewMode(opt.value)}
-              className={chromeFilterChipClass(viewMode === opt.value)}
-              aria-pressed={viewMode === opt.value}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <p className="text-[12px] text-[var(--tse-muted)]">{subtitle}</p>
+        <TseSegmentado<YoutubePanoramaViewMode>
+          valor={viewMode}
+          onChange={setViewMode}
+          opcoes={[
+            { id: 'volume', label: 'Volume' },
+            { id: 'movimento', label: 'Movimento' },
+          ]}
+        />
       </div>
 
       {isMovimento ? (
-        <p className={cn('mb-2 shrink-0 leading-snug', typographyBodyMutedClass)}>{MOVIMENTO_HINT}</p>
+        <p className="mb-2 shrink-0 text-[13px] leading-snug text-[var(--tse-muted)]">{MOVIMENTO_HINT}</p>
       ) : null}
 
       {isMovimento ? (
@@ -147,15 +134,15 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
           <div className="min-h-[160px] w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={absoluteSeries} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={PANORAMA_TSE_CHART.grade} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateLabel}
-                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
-                  minTickGap={20}
+                  tick={{ fontSize: 11, fill: PANORAMA_TSE_CHART.tick }}
+                  minTickGap={24}
                 />
                 <YAxis
-                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
+                  tick={{ fontSize: 11, fill: PANORAMA_TSE_CHART.tick }}
                   width={44}
                   domain={[0, 'auto']}
                   tickFormatter={(value) => formatCompactNumber(Number(value))}
@@ -172,9 +159,9 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
                     dataKey={line.slug}
                     name={line.name}
                     stroke={line.color}
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
+                    activeDot={{ r: 4 }}
                     connectNulls
                     isAnimationActive={false}
                   />
@@ -183,24 +170,14 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-2 shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2">
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {chart.lines.map((line) => (
-                <span
-                  key={line.slug}
-                  className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
-                  title={line.name}
-                >
-                  <span
-                    className="h-0.5 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: line.color }}
-                    aria-hidden
-                  />
-                  <span className="truncate">{line.name}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
+            {chart.lines.map((line) => (
+              <li key={line.slug} className="flex items-center gap-1.5" title={line.name}>
+                <span className="h-3 w-3 shrink-0" style={{ backgroundColor: line.color }} aria-hidden />
+                {line.name}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </div>

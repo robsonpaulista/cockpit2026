@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
-import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
 import { DASHBOARD_TOPBAR_H_CLASS } from '@/lib/dashboard-chrome-layout'
 import { isWarRoomPage } from '@/lib/war-room-clean-route'
@@ -19,7 +18,7 @@ import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
 import { TopbarSystemSearch } from '@/components/dashboard/topbar-system-search'
 
 const pathToTitle: Record<string, string> = {
-  '/dashboard': 'Visão Geral',
+  '/dashboard': 'Início',
   '/dashboard/narrativas': 'Estratégia',
   '/dashboard/campo': 'Base Eleitoral · Visitas',
   '/dashboard/agenda': 'Agenda',
@@ -91,12 +90,11 @@ export function DashboardHeader() {
   const topbarExtras = useDashboardTopbarExtras()
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
-  const isHome = isDashboardHomePath(p)
   const isWarRoom = isWarRoomPage(p)
-  /** OPÇÃO B: topbar amarelo sempre visível nas telas do dashboard (exceto home). */
-  const opcaoB = !isWarRoom && !isGradientHome && !isHome
+  /** OPÇÃO B: topbar amarelo TSE nas telas do dashboard (exceto War Room / glass). */
+  const opcaoB = !isWarRoom && !isGradientHome
 
-  if ((!showTopbar && !isWarRoom && !opcaoB) || isHome) {
+  if (!showTopbar && !isWarRoom && !opcaoB) {
     return null
   }
 

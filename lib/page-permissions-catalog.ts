@@ -99,7 +99,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: 'Redes Sociais / Instagram',
         path: '/dashboard/conteudo/redes',
         tabs: tabs('conteudo', [
-          { id: 'posts', label: 'Posts & Insights' },
           { id: 'audience', label: 'Audiência' },
           { id: 'locations', label: 'Por Cidade' },
         ]),

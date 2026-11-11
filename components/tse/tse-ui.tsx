@@ -2,7 +2,17 @@
 
 import { useState, type ComponentType, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Loader2, Search, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Search,
+  Trophy,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 
@@ -301,7 +311,18 @@ export function TseStatus({ cor, children }: { cor: string; children: ReactNode 
   )
 }
 
-export type TseItemLista<T extends string> = { id: T; label: ReactNode; valor: number; cor: string }
+export type TseItemLista<T extends string> = {
+  id: T
+  label: ReactNode
+  valor: number
+  cor: string
+  /** Sufixo do valor principal (ex.: "posts"). */
+  rotuloValor?: string
+  /** Coluna extra à direita (ex.: engajamento médio) — exige `colunas`. */
+  extra?: ReactNode
+  /** Destaca o item (ex.: maior engajamento médio) com ícone de campeão. */
+  destaque?: boolean
+}
 
 /** Lista lateral com quadrado colorido e contagem; clicar filtra (clicar de novo limpa). */
 export function TseListaFiltro<T extends string>({
@@ -310,22 +331,86 @@ export function TseListaFiltro<T extends string>({
   ativo,
   onChange,
   formatar = (n) => n.toLocaleString('pt-BR'),
+  colunas,
 }: {
   titulo: ReactNode
   itens: readonly TseItemLista<T>[]
   ativo: T | null
   onChange: (id: T | null) => void
   formatar?: (n: number) => string
+  /** Cabeçalhos no padrão tabela (sem grades). */
+  colunas?: { label: string; valor: string; extra: string }
 }) {
+  const limpar =
+    ativo != null ? (
+      <button type="button" onClick={() => onChange(null)} className={tseLinkAcaoClass}>
+        Todos
+      </button>
+    ) : null
+
+  if (colunas) {
+    const grade = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.5rem] items-center gap-x-2'
+    return (
+      <section className={tseCardClass}>
+        <div className="flex items-center justify-end">{limpar}</div>
+        <div
+          className={cn(
+            grade,
+            'px-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]',
+            limpar ? 'mt-1' : undefined,
+          )}
+          role="row"
+        >
+          <span>{colunas.label}</span>
+          <span className="text-right">{colunas.valor}</span>
+          <span className="text-right">{colunas.extra}</span>
+        </div>
+        <ul className="mt-1 text-[13px]">
+          {itens.map((item) => {
+            const sel = item.id === ativo
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onChange(sel ? null : item.id)}
+                  aria-pressed={sel}
+                  className={cn(
+                    grade,
+                    'w-full rounded-md px-2 py-1.5 text-left hover:bg-[var(--tse-yellow-soft)]',
+                    sel && 'bg-[var(--tse-yellow-soft)] font-bold',
+                    item.destaque && !sel && 'bg-[var(--tse-yellow-soft)]/70',
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="h-3 w-3 shrink-0" style={{ backgroundColor: item.cor }} aria-hidden />
+                    <span className="min-w-0 truncate">{item.label}</span>
+                  </span>
+                  <strong className="text-right tabular-nums">{formatar(item.valor)}</strong>
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-end gap-1 text-right tabular-nums',
+                      item.destaque ? 'font-semibold text-[var(--tse-gold-text)]' : 'text-[var(--tse-muted)]',
+                    )}
+                  >
+                    {item.destaque ? (
+                      <Trophy className="h-3 w-3 shrink-0" aria-label="Maior engajamento médio" />
+                    ) : null}
+                    <span>{item.extra ?? '—'}</span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+    )
+  }
+
   return (
     <section className={tseCardClass}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[15px] font-bold">{titulo}</h2>
-        {ativo != null ? (
-          <button type="button" onClick={() => onChange(null)} className={tseLinkAcaoClass}>
-            Todos
-          </button>
-        ) : null}
+        {limpar}
       </div>
       <ul className="mt-3 space-y-1 text-[13px]">
         {itens.map((item) => {
@@ -337,15 +422,20 @@ export function TseListaFiltro<T extends string>({
                 onClick={() => onChange(sel ? null : item.id)}
                 aria-pressed={sel}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left hover:bg-[var(--tse-yellow-soft)]',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[var(--tse-yellow-soft)]',
                   sel && 'bg-[var(--tse-yellow-soft)] font-bold',
                 )}
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="h-3 w-3 shrink-0" style={{ backgroundColor: item.cor }} aria-hidden />
-                  <span className="truncate">{item.label}</span>
+                  <span className="min-w-0 truncate">{item.label}</span>
                 </span>
-                <strong className="tabular-nums">{formatar(item.valor)}</strong>
+                <strong className="shrink-0 tabular-nums">
+                  {formatar(item.valor)}
+                  {item.rotuloValor ? (
+                    <span className="ml-1 font-semibold text-[var(--tse-muted)]">{item.rotuloValor}</span>
+                  ) : null}
+                </strong>
               </button>
             </li>
           )

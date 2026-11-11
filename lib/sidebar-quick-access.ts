@@ -30,7 +30,12 @@ export type SidebarQuickAccessItem = {
   pageKey: string
 }
 
-/** Resultado 2026 fixo no topo; os demais em ordem alfabética por rótulo (pt-BR). */
+/**
+ * Ordem do Acesso rápido:
+ * 1) Resultado 2026 no topo
+ * 2) Fluxo operacional: Agenda → Atendimentos → Lideranças → Emendas → Instagram → Radar → Proposições → Chapas
+ * 3) Demais módulos em ordem alfabética (pt-BR)
+ */
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   {
     id: 'quick-resultado-2026',
@@ -47,60 +52,11 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'agenda',
   },
   {
-    id: 'quick-arena',
-    label: 'Arena',
-    href: '/dashboard/mobilizacao',
-    icon: 'Users',
-    pageKey: 'mobilizacao',
-  },
-  {
     id: 'quick-atendimentos',
     label: 'Atendimentos',
     href: ATENDIMENTO_HREF,
     icon: 'ClipboardList',
     pageKey: 'resumo-eleicoes',
-  },
-  {
-    id: 'quick-chapas',
-    label: 'Chapas',
-    href: CHAPA_FEDERAL_HREF,
-    icon: 'Vote',
-    pageKey: 'chapas',
-  },
-  {
-    id: 'quick-emendas',
-    label: 'Emendas',
-    href: '/dashboard/emendas',
-    icon: 'FileSpreadsheet',
-    pageKey: 'emendas',
-  },
-  {
-    id: 'quick-oportunidades-federais',
-    label: 'Oportunidades federais',
-    href: '/dashboard/oportunidades-federais',
-    icon: 'Landmark',
-    pageKey: 'oportunidades-federais',
-  },
-  {
-    id: 'quick-ficha-atendimento',
-    label: 'Ficha de Atendimento',
-    href: '/dashboard/ficha-atendimento',
-    icon: 'ClipboardList',
-    pageKey: 'ficha-atendimento',
-  },
-  {
-    id: 'quick-instagram',
-    label: 'Instagram',
-    href: '/dashboard/conteudo/redes',
-    icon: 'MessageSquare',
-    pageKey: 'conteudo',
-  },
-  {
-    id: 'quick-juridico',
-    label: 'Jurídico',
-    href: '/dashboard/juridico',
-    icon: 'Scale',
-    pageKey: 'juridico',
   },
   {
     id: 'quick-liderancas',
@@ -110,11 +66,60 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'territorio',
   },
   {
+    id: 'quick-emendas',
+    label: 'Emendas',
+    href: '/dashboard/emendas',
+    icon: 'FileSpreadsheet',
+    pageKey: 'emendas',
+  },
+  {
+    id: 'quick-instagram',
+    label: 'Instagram',
+    href: '/dashboard/conteudo/redes',
+    icon: 'MessageSquare',
+    pageKey: 'conteudo',
+  },
+  {
     id: 'quick-midias',
-    label: 'Mídias',
+    label: 'Radar',
     href: '/dashboard/noticias/monitoramento',
     icon: 'Radar',
     pageKey: 'noticias',
+  },
+  {
+    id: 'quick-proposicoes',
+    label: 'Proposições',
+    href: '/dashboard/proposicoes',
+    icon: 'ScrollText',
+    pageKey: 'proposicoes',
+  },
+  {
+    id: 'quick-chapas',
+    label: 'Chapas',
+    href: CHAPA_FEDERAL_HREF,
+    icon: 'Vote',
+    pageKey: 'chapas',
+  },
+  {
+    id: 'quick-arena',
+    label: 'Arena',
+    href: '/dashboard/mobilizacao',
+    icon: 'Users',
+    pageKey: 'mobilizacao',
+  },
+  {
+    id: 'quick-ficha-atendimento',
+    label: 'Ficha de Atendimento',
+    href: '/dashboard/ficha-atendimento',
+    icon: 'ClipboardList',
+    pageKey: 'ficha-atendimento',
+  },
+  {
+    id: 'quick-juridico',
+    label: 'Jurídico',
+    href: '/dashboard/juridico',
+    icon: 'Scale',
+    pageKey: 'juridico',
   },
   {
     id: 'quick-obras',
@@ -124,18 +129,18 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'obras',
   },
   {
+    id: 'quick-oportunidades-federais',
+    label: 'Oportunidades federais',
+    href: '/dashboard/oportunidades-federais',
+    icon: 'Landmark',
+    pageKey: 'oportunidades-federais',
+  },
+  {
     id: 'quick-pesquisas',
     label: 'Pesquisas de Opinião',
     href: '/dashboard/pesquisa',
     icon: 'BarChart3',
     pageKey: 'pesquisa',
-  },
-  {
-    id: 'quick-proposicoes',
-    label: 'Proposições',
-    href: '/dashboard/proposicoes',
-    icon: 'ScrollText',
-    pageKey: 'proposicoes',
   },
   {
     id: 'quick-termometro',

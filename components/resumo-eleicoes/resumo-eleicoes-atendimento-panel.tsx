@@ -2315,7 +2315,11 @@ export function ResumoEleicoesAtendimentoPanel() {
               rotuloCenario={labelCenarioAtivo}
               votosCenario={votosCenarioAtivo}
               cenarioOculto={labelCenarioAtivo === 'Expectativa 2026' && !expectativaVisivel}
-              onMostrarCenario={() => setExpectativaVisivel(true)}
+              onAlternarCenario={
+                labelCenarioAtivo === 'Expectativa 2026'
+                  ? () => setExpectativaVisivel((v) => !v)
+                  : undefined
+              }
               liderancas={resumoCidade.liderancas}
               acoesLiderancas={
                 visaoTodasCidades ? (
@@ -2593,6 +2597,10 @@ export function ResumoEleicoesAtendimentoPanel() {
           onClose={fecharModalLiderancas}
           onChanged={() => {
             void afterLiderancasCrudChanged()
+          }}
+          onAbrirDemandas={(nomeLideranca) => {
+            fecharModalLiderancas()
+            abrirModalDemandasFiltrado([nomeLideranca])
           }}
         />
       ) : null}
