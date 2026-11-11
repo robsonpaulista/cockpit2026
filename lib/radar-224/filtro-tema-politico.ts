@@ -13,6 +13,67 @@ function normalize(value: string): string {
     .trim()
 }
 
+/**
+ * Notícias de segurança pública / acidente a excluir do Atendimento
+ * (Portal SRN e demais listagens municipais).
+ */
+const TERMOS_POLICIAL_ACIDENTE: Array<{ termo: string; palavraInteira?: boolean }> = [
+  { termo: 'policia' },
+  { termo: 'policial' },
+  { termo: 'delegacia' },
+  { termo: 'delegado' },
+  { termo: 'delegada' },
+  { termo: 'prf', palavraInteira: true },
+  { termo: 'bombeiro' },
+  { termo: 'samu', palavraInteira: true },
+  { termo: 'acidente' },
+  { termo: 'capotamento' },
+  { termo: 'colisao' },
+  { termo: 'atropel' },
+  { termo: 'atingido por caminhao' },
+  { termo: 'homicidio' },
+  { termo: 'assassinato' },
+  { termo: 'assassinada' },
+  { termo: 'assassinado' },
+  { termo: 'morta a tiros' },
+  { termo: 'morto a tiros' },
+  { termo: 'morta em supermercado' },
+  { termo: 'tiroteio' },
+  { termo: 'execucao' },
+  { termo: 'latrocinio' },
+  { termo: 'feminicidio' },
+  { termo: 'estupro' },
+  { termo: 'sequestro' },
+  { termo: 'trafico de drogas' },
+  { termo: 'trafico' },
+  { termo: 'entorpecente' },
+  { termo: 'operacao contra o trafico' },
+  { termo: 'preso' },
+  { termo: 'presa' },
+  { termo: 'presos' },
+  { termo: 'prisao' },
+  { termo: 'prende' },
+  { termo: 'apreendido' },
+  { termo: 'apreendida' },
+  { termo: 'apreensao' },
+  { termo: 'roubo' },
+  { termo: 'assalto' },
+  { termo: 'furto' },
+  { termo: 'arma de fogo' },
+  { termo: 'corpo encontrado' },
+  { termo: 'corpo de homem' },
+  { termo: 'corpo de mulher' },
+  { termo: 'morre apos' },
+  { termo: 'morreu apos' },
+  { termo: 'homem morre' },
+  { termo: 'mulher morre' },
+  { termo: 'jovem e morta' },
+  { termo: 'jovem e morto' },
+  { termo: 'encontrado morto' },
+  { termo: 'encontrada morta' },
+  { termo: 'suspeito e encontrado morto' },
+]
+
 /** Termos curtos exigem fronteira de palavra (evita “tre” em “entre”). */
 const TERMOS_POLITICOS: Array<{ termo: string; palavraInteira?: boolean }> = [
   { termo: 'prefeito' },
@@ -76,4 +137,16 @@ export function textoEhTemaPolitico(texto: string): boolean {
   const t = normalize(texto)
   if (!t) return false
   return TERMOS_POLITICOS.some(({ termo, palavraInteira }) => contemTermo(t, termo, palavraInteira))
+}
+
+/** True se o texto parece notícia policial, criminosa ou de acidente. */
+export function textoEhNoticiaPolicialOuAcidente(texto: string): boolean {
+  const t = normalize(texto)
+  if (!t) return false
+  // “pm ” no normalizado vira “pm” — trata fronteira à parte
+  if (/(?:^|\s)pm(?:\s|$)/.test(t)) return true
+  return TERMOS_POLICIAL_ACIDENTE.some(({ termo, palavraInteira }) => {
+    if (termo === 'pm ') return false
+    return contemTermo(t, termo, palavraInteira)
+  })
 }

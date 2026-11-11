@@ -8,7 +8,10 @@ import {
   publicadoNaJanelaPortal,
   resolvePublishedAtMs,
 } from '@/lib/radar-224/portal-noticia-data'
-import { textoEhTemaPolitico } from '@/lib/radar-224/filtro-tema-politico'
+import {
+  textoEhNoticiaPolicialOuAcidente,
+  textoEhTemaPolitico,
+} from '@/lib/radar-224/filtro-tema-politico'
 import {
   fetchListagemPortal,
   type PortalNoticiaItem,
@@ -84,6 +87,10 @@ export async function buscarNoticiasPortalMunicipio(municipio: string): Promise<
         brutos += 1
         const blob = `${row.title} ${row.summary ?? ''}`
         if (exigeMencao && !textoMencionaMunicipioPortal(`${blob} ${row.url}`, municipio)) {
+          continue
+        }
+        if (textoEhNoticiaPolicialOuAcidente(blob)) {
+          descartadasTema += 1
           continue
         }
         if (fonte.filtroTemas === 'politica' && !textoEhTemaPolitico(blob)) {
