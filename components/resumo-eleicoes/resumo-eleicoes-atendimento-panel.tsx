@@ -357,6 +357,10 @@ export function ResumoEleicoesAtendimentoPanel() {
   } | null>(null)
   const [showDemandsLeaderSelector, setShowDemandsLeaderSelector] = useState(false)
   const [showCityDemands, setShowCityDemands] = useState(false)
+  /** Quando demandas abriu a partir do modal de lideranças, guarda a cidade para o botão Voltar. */
+  const [cidadeVoltarDemandasParaLiderancas, setCidadeVoltarDemandasParaLiderancas] = useState<
+    string | null
+  >(null)
   const [loadingDemandasLiderancas, setLoadingDemandasLiderancas] = useState(false)
   const [selectedDemandasLiderancas, setSelectedDemandasLiderancas] = useState<string[]>([])
   const [liderancasDemandasInicializadas, setLiderancasDemandasInicializadas] = useState(false)
@@ -849,12 +853,16 @@ export function ResumoEleicoesAtendimentoPanel() {
     setSelectedDemandasLiderancas([])
   }
 
-  const abrirModalDemandasFiltrado = (nomesOpcional?: string[]) => {
+  const abrirModalDemandasFiltrado = (
+    nomesOpcional?: string[],
+    opts?: { voltarParaLiderancas?: string | null },
+  ) => {
     const lista = nomesOpcional ?? selectedDemandasLiderancas
     if (lista.length === 0) return
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(lista))
     }
+    setCidadeVoltarDemandasParaLiderancas(opts?.voltarParaLiderancas ?? null)
     setShowDemandsLeaderSelector(false)
     setShowCityDemands(true)
   }
@@ -2599,8 +2607,12 @@ export function ResumoEleicoesAtendimentoPanel() {
             void afterLiderancasCrudChanged()
           }}
           onAbrirDemandas={(nomeLideranca) => {
-            fecharModalLiderancas()
-            abrirModalDemandasFiltrado([nomeLideranca])
+            const cidadeAlvo = cidadeLiderancasModal
+            setShowLiderancasModal(false)
+            setPrefillLiderancaModal(null)
+            abrirModalDemandasFiltrado([nomeLideranca], {
+              voltarParaLiderancas: cidadeAlvo,
+            })
           }}
         />
       ) : null}
@@ -2713,10 +2725,25 @@ export function ResumoEleicoesAtendimentoPanel() {
         isOpen={showCityDemands}
         onClose={() => {
           setShowCityDemands(false)
+          setCidadeVoltarDemandasParaLiderancas(null)
+          setCidadeLiderancasModal(null)
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('territorio_demands_liderancas')
           }
         }}
+        onVoltar={
+          cidadeVoltarDemandasParaLiderancas
+            ? () => {
+                const cidadeVolta = cidadeVoltarDemandasParaLiderancas
+                setShowCityDemands(false)
+                setCidadeVoltarDemandasParaLiderancas(null)
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('territorio_demands_liderancas')
+                }
+                void abrirLiderancasCidade(cidadeVolta)
+              }
+            : undefined
+        }
         cidade={cidade}
       />
 

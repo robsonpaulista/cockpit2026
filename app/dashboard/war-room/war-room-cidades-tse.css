@@ -1,0 +1,85 @@
+/**
+ * Aba Cidades (Termômetro) — pele TSE sobre a tabela densa existente.
+ * Escopo: [data-tse-cidades] apenas; não altera variant=modal nem outras abas.
+ */
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__table--tse thead tr.wr-expectativa-ranking-modal__group-row th {
+  background: var(--tse-bar, #f4f4f2) !important;
+  color: var(--tse-muted, #6b7280) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--tse-border, #e6e6e3) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__table--tse thead tr.wr-expectativa-ranking-modal__cols-row th {
+  background: var(--tse-bar, #f4f4f2) !important;
+  color: var(--tse-muted, #6b7280) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--tse-border, #e6e6e3) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__table--tse tbody tr:hover td {
+  background: var(--tse-yellow-soft, #fff8d6) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__table--tse tfoot tr.wr-expectativa-ranking-modal__totais td {
+  background: var(--tse-bar, #f4f4f2) !important;
+  font-weight: 700 !important;
+  color: var(--tse-text, #333333) !important;
+  border-top: 1px solid var(--tse-border, #e6e6e3) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__flag--alerta,
+[data-tse-cidades] .wr-expectativa-ranking-modal__pesquisa-pct-chip.wr-expectativa-ranking-modal__flag--alerta {
+  background: color-mix(in srgb, var(--tse-yellow, #ebb402) 22%, white) !important;
+  color: var(--tse-text, #333333) !important;
+  border-color: transparent !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__trend--alta {
+  color: var(--tse-green, #5a7a1c) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__trend--baixa {
+  color: #b45309 !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__trend--estavel {
+  color: var(--tse-muted, #6b7280) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__meta-proj--under {
+  color: #b45309 !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__meta-proj--ok {
+  color: var(--tse-green, #5a7a1c) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__meta-proj--flat {
+  color: var(--tse-muted, #6b7280) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-ranking-modal__peso-tick--on {
+  background: var(--tse-yellow, #ebb402) !important;
+}
+
+[data-tse-cidades] .wr-expectativa-clean__agenda-alerta,
+[data-tse-cidades] .wr-expectativa-ranking-modal__agenda-alerta {
+  color: var(--tse-yellow, #ebb402) !important;
+  background: color-mix(in srgb, var(--tse-yellow, #ebb402) 18%, white) !important;
+  border-color: transparent !important;
+}
+
+/* Neutraliza coral legado na aba Cidades */
+[data-tse-cidades] .text-\[\#f04b23\],
+[data-tse-cidades] .text-\[\#F04B23\],
+[data-tse-cidades] [class*='text-[#f04b23]'],
+[data-tse-cidades] [class*='text-[#F04B23]'] {
+  color: var(--tse-yellow, #ebb402) !important;
+}

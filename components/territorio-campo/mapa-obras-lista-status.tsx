@@ -32,6 +32,16 @@ import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { chromeButtonClass } from '@/lib/button-chrome'
 import { cn } from '@/lib/utils'
 import {
+  TseBusca,
+  TseFilterBar,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseCampoClass,
+  tseLinkAcaoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
+import {
   compareTerritorioNumber,
   compareTerritorioText,
   TerritorioSortableHeaderButton,
@@ -594,23 +604,165 @@ export function MapaObrasListaStatus({
   const temFiltrosAtivos =
     Boolean(filtroMunicipio || filtroTipo) || filtroStatus.size > 0
 
-  const actionBtnClass = embedded ? 'wr-copiloto-redes__ghost-btn' : chromeButtonClass
-  const exportBtnClass = embedded
-    ? 'wr-copiloto-export-btn wr-copiloto-redes__ghost-btn'
-    : chromeButtonClass
+  const actionBtnClass = embedded ? tseBotaoCinzaClass : chromeButtonClass
+  const exportBtnClass = embedded ? tseBotaoCinzaClass : chromeButtonClass
   const selectClass = embedded
-    ? 'wr-copiloto-filter-select max-w-[14rem] truncate'
+    ? cn(tseCampoClass, 'h-8 max-w-[14rem] truncate')
     : 'max-w-[14rem] truncate rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
   const searchClass = embedded
-    ? 'wr-copiloto-filter-select min-w-[12rem] flex-1 sm:max-w-xs'
+    ? cn(tseCampoClass, 'h-8 min-w-[12rem] flex-1 sm:max-w-xs')
     : 'min-w-[12rem] flex-1 rounded-lg border border-card bg-bg-app px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-xs'
   const statusTriggerClass = cn(
     selectClass,
     'inline-flex max-w-[16rem] items-center justify-between gap-2 text-left',
   )
   const statusActionClass = cn(actionBtnClass, !embedded && 'h-7 px-2 text-[10px]')
-  const rowCheckboxClass =
-    'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
+  const rowCheckboxClass = embedded
+    ? 'h-3.5 w-3.5 shrink-0 rounded border-[var(--tse-border)] accent-[var(--tse-yellow)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--tse-yellow)_35%,transparent)]'
+    : 'h-3.5 w-3.5 shrink-0 rounded border-card accent-[#f2d06b] focus:ring-2 focus:ring-[color-mix(in_srgb,#f2d06b_35%,transparent)]'
+
+  const filtrosBar = (
+    <>
+      {embedded ? (
+        <TseBusca
+          value={busca}
+          onChange={setBusca}
+          placeholder="Buscar município, obra, status, plano…"
+          className="w-64 min-w-[12rem] flex-1 sm:max-w-xs"
+        />
+      ) : (
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar município, obra, status, plano…"
+          className={searchClass}
+        />
+      )}
+      <select
+        value={filtroMunicipio}
+        onChange={(e) => setFiltroMunicipio(e.target.value)}
+        title="Filtrar por município"
+        className={selectClass}
+      >
+        <option value="">Todos os municípios</option>
+        {opcoesMunicipio.map((municipio) => (
+          <option key={municipio} value={municipio}>
+            {municipio}
+          </option>
+        ))}
+      </select>
+      <select
+        value={filtroTipo}
+        onChange={(e) => setFiltroTipo(e.target.value)}
+        title="Filtrar por tipo"
+        className={selectClass}
+      >
+        <option value="">Todos os tipos</option>
+        {opcoesTipo.map((tipo) => (
+          <option key={tipo} value={tipo}>
+            {tipoLabelOf(tipo)}
+          </option>
+        ))}
+      </select>
+      <MultiCheckFilterSelect
+        options={opcoesStatus.map((status) => ({ id: status, label: status }))}
+        selected={filtroStatus}
+        onChange={setFiltroStatus}
+        allLabel="Todos os status"
+        title="Filtrar por um ou mais status"
+        ariaLabel="Status das obras"
+        triggerClassName={statusTriggerClass}
+        actionClassName={statusActionClass}
+        emptyOptionsLabel="Nenhum status na lista"
+      />
+      {temFiltrosAtivos && (
+        <button
+          type="button"
+          onClick={() => {
+            setFiltroMunicipio('')
+            setFiltroTipo('')
+            setFiltroStatus(new Set())
+          }}
+          className={cn(
+            embedded ? tseLinkAcaoClass : actionBtnClass,
+            !embedded && 'h-8 px-2 text-[11px]',
+          )}
+        >
+          Limpar filtros
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => void atualizar()}
+        disabled={atualizando || atualizandoLocal || linksLoading}
+        title="Recarregar obras da planilha e vínculos do Drive"
+        className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
+      >
+        {atualizando || atualizandoLocal ? (
+          <Loader2
+            className={cn(embedded ? tseBotaoIconeClass : 'h-3.5 w-3.5', 'animate-spin')}
+            aria-hidden
+          />
+        ) : (
+          <RefreshCw className={embedded ? tseBotaoIconeClass : 'h-3.5 w-3.5'} aria-hidden />
+        )}
+        Atualizar
+      </button>
+      <button
+        type="button"
+        onClick={() => setExportModalOpen(true)}
+        disabled={obrasParaExportar.length === 0}
+        title={
+          selecionadasCount > 0
+            ? `Exportar ${selecionadasCount} obra(s) selecionada(s)`
+            : 'Exportar lista filtrada (CSV, Excel ou PDF)'
+        }
+        className={cn(exportBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
+      >
+        <Download className={embedded ? tseBotaoIconeClass : 'h-3.5 w-3.5'} aria-hidden />
+        Exportar
+        {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
+      </button>
+      {selecionadasCount > 0 ? (
+        <button
+          type="button"
+          onClick={limparSelecaoObras}
+          className={cn(
+            embedded ? tseLinkAcaoClass : actionBtnClass,
+            !embedded && 'h-8 px-2 text-[11px]',
+          )}
+        >
+          Limpar seleção
+        </button>
+      ) : null}
+      {blocosPorTipo.length > 0 ? (
+        <button
+          type="button"
+          onClick={todosExpandidos ? recolherTodosTipos : expandirTodosTipos}
+          title={todosExpandidos ? 'Recolher todos os tipos' : 'Expandir todos os tipos'}
+          className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
+        >
+          {todosExpandidos ? 'Recolher tipos' : 'Expandir tipos'}
+        </button>
+      ) : null}
+      <span
+        className={cn(
+          'text-xs',
+          embedded ? 'font-semibold text-[var(--tse-muted)]' : 'text-text-secondary',
+        )}
+      >
+        {filtradas.length.toLocaleString('pt-BR')} obra
+        {filtradas.length === 1 ? '' : 's'}
+        {selecionadasCount > 0
+          ? ` · ${selecionadasCount.toLocaleString('pt-BR')} selecionada${selecionadasCount === 1 ? '' : 's'}`
+          : ''}
+        {blocosPorTipo.length > 0
+          ? ` · ${blocosPorTipo.length} tipo${blocosPorTipo.length === 1 ? '' : 's'}`
+          : ''}
+      </span>
+    </>
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -634,144 +786,36 @@ export function MapaObrasListaStatus({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          embedded ? 'wr-copiloto-filtros' : 'flex flex-wrap items-center gap-2',
-          'relative z-40',
-        )}
-      >
-        <input
-          type="search"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar município, obra, status, plano…"
-          className={searchClass}
-        />
-        <select
-          value={filtroMunicipio}
-          onChange={(e) => setFiltroMunicipio(e.target.value)}
-          title="Filtrar por município"
-          className={selectClass}
-        >
-          <option value="">Todos os municípios</option>
-          {opcoesMunicipio.map((municipio) => (
-            <option key={municipio} value={municipio}>
-              {municipio}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filtroTipo}
-          onChange={(e) => setFiltroTipo(e.target.value)}
-          title="Filtrar por tipo"
-          className={selectClass}
-        >
-          <option value="">Todos os tipos</option>
-          {opcoesTipo.map((tipo) => (
-            <option key={tipo} value={tipo}>
-              {tipoLabelOf(tipo)}
-            </option>
-          ))}
-        </select>
-        <MultiCheckFilterSelect
-          options={opcoesStatus.map((status) => ({ id: status, label: status }))}
-          selected={filtroStatus}
-          onChange={setFiltroStatus}
-          allLabel="Todos os status"
-          title="Filtrar por um ou mais status"
-          ariaLabel="Status das obras"
-          triggerClassName={statusTriggerClass}
-          actionClassName={statusActionClass}
-          emptyOptionsLabel="Nenhum status na lista"
-        />
-        {temFiltrosAtivos && (
-          <button
-            type="button"
-            onClick={() => {
-              setFiltroMunicipio('')
-              setFiltroTipo('')
-              setFiltroStatus(new Set())
-            }}
-            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
-          >
-            Limpar filtros
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => void atualizar()}
-          disabled={atualizando || atualizandoLocal || linksLoading}
-          title="Recarregar obras da planilha e vínculos do Drive"
-          className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
-        >
-          {atualizando || atualizandoLocal ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-          )}
-          Atualizar
-        </button>
-        <button
-          type="button"
-          onClick={() => setExportModalOpen(true)}
-          disabled={obrasParaExportar.length === 0}
-          title={
-            selecionadasCount > 0
-              ? `Exportar ${selecionadasCount} obra(s) selecionada(s)`
-              : 'Exportar lista filtrada (CSV, Excel ou PDF)'
-          }
-          className={cn(exportBtnClass, !embedded && 'h-8 px-2 text-[11px] disabled:opacity-50')}
-        >
-          <Download className="h-3.5 w-3.5" aria-hidden />
-          Exportar
-          {selecionadasCount > 0 ? ` (${selecionadasCount})` : ''}
-        </button>
-        {selecionadasCount > 0 ? (
-          <button
-            type="button"
-            onClick={limparSelecaoObras}
-            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
-          >
-            Limpar seleção
-          </button>
-        ) : null}
-        {blocosPorTipo.length > 0 ? (
-          <button
-            type="button"
-            onClick={todosExpandidos ? recolherTodosTipos : expandirTodosTipos}
-            title={todosExpandidos ? 'Recolher todos os tipos' : 'Expandir todos os tipos'}
-            className={cn(actionBtnClass, !embedded && 'h-8 px-2 text-[11px]')}
-          >
-            {todosExpandidos ? 'Recolher tipos' : 'Expandir tipos'}
-          </button>
-        ) : null}
-        <span className="text-xs text-text-secondary">
-          {filtradas.length.toLocaleString('pt-BR')} obra
-          {filtradas.length === 1 ? '' : 's'}
-          {selecionadasCount > 0
-            ? ` · ${selecionadasCount.toLocaleString('pt-BR')} selecionada${selecionadasCount === 1 ? '' : 's'}`
-            : ''}
-          {blocosPorTipo.length > 0
-            ? ` · ${blocosPorTipo.length} tipo${blocosPorTipo.length === 1 ? '' : 's'}`
-            : ''}
-        </span>
-      </div>
+      {embedded ? (
+        <div className="relative z-40">
+          <TseFilterBar>{filtrosBar}</TseFilterBar>
+        </div>
+      ) : (
+        <div className="relative z-40 flex flex-wrap items-center gap-2">{filtrosBar}</div>
+      )}
 
       <div
         className={cn(
           embedded
-            ? 'wr-copiloto-table-wrap'
+            ? cn(tseTabela.container, 'wr-copiloto-table-wrap')
             : 'overflow-hidden rounded-xl border border-card bg-bg-surface',
         )}
+        data-tse-tabela={embedded ? '' : undefined}
       >
         <div className="overflow-x-auto">
           <table
             className={cn(
               'min-w-full text-left text-sm',
-              embedded && 'wr-copiloto-table',
+              embedded && cn(tseTabela.table, 'wr-copiloto-table'),
             )}
           >
-            <thead className="border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary">
+            <thead
+              className={
+                embedded
+                  ? tseTabela.thead
+                  : 'border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary'
+              }
+            >
               <tr>
                 <th className="w-10 px-3 py-2.5">
                   <input
@@ -1020,9 +1064,15 @@ export function MapaObrasListaStatus({
           </table>
         </div>
         {filtradas.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-text-muted">
-            Nenhuma obra encontrada.
-          </p>
+          embedded ? (
+            <div className="p-4">
+              <TseVazio>Nenhuma obra encontrada.</TseVazio>
+            </div>
+          ) : (
+            <p className="px-4 py-10 text-center text-sm text-text-muted">
+              Nenhuma obra encontrada.
+            </p>
+          )
         ) : null}
       </div>
 

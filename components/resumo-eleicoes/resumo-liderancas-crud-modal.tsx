@@ -1,10 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { resumoTrZebra } from '@/lib/resumo-eleicoes-table-styles'
 import { canonicalizeLiderancaAtual } from '@/lib/territorio-lideranca-atual'
+import {
+  TseCarregando,
+  TseErro,
+  TseModal,
+  TsePill,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoPrimarioClass,
+  tseCampoClass,
+  tseRotuloCampoClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
 
 export type CenarioVotosLiderancasModal =
   | 'revisao_final'
@@ -125,6 +137,7 @@ export function ResumoLiderancasCrudModal({
   onChanged,
   onAbrirDemandas,
 }: ResumoLiderancasCrudModalProps) {
+  const tituloId = useId()
   const [rows, setRows] = useState<LiderancaCrudRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -304,261 +317,269 @@ export function ResumoLiderancasCrudModal({
   }
 
   const formAberto = creating || editingId != null
+  const subtitulo = loading
+    ? 'Carregando…'
+    : `${rows.length} registro${rows.length === 1 ? '' : 's'} · ${labelCenario(cenarioVotos)}`
+  const thCompacta = cn(tseTabela.th, '!py-1.5')
+  const tdCompacta = cn(tseTabela.td, '!py-1')
+  const acaoIconeClass =
+    'inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--tse-muted)] disabled:opacity-50'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-card bg-surface">
-        <div className="flex items-center justify-between border-b border-card px-4 py-3">
-          <div>
-            <h3 className="text-sm font-semibold text-text-primary">Lideranças de {cidade}</h3>
-            <p className="text-xs text-text-secondary">
-              {loading ? 'Carregando…' : `${rows.length} registro(s)`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={iniciarCriacao}
-              disabled={saving || loading}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-card bg-background px-2.5 text-xs font-medium text-text-primary hover:bg-surface disabled:opacity-50"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Nova
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded p-1.5 transition-colors hover:bg-background"
-            >
-              <X className="h-4 w-4 text-text-secondary" />
-            </button>
-          </div>
-        </div>
-
-        {error ? (
-          <div className="border-b border-status-danger/30 bg-status-danger/10 px-4 py-2 text-xs text-status-danger">
-            {error}
-          </div>
-        ) : null}
-
-        {formAberto ? (
-          <div className="border-b border-card bg-background/40 px-4 py-3">
-            <p className="mb-2 text-xs font-medium text-text-secondary">
-              {editingId ? 'Editar liderança' : 'Nova liderança'}
-            </p>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-              <label className="text-xs text-text-secondary">
-                Nome
-                <input
-                  value={form.nome}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nome: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Cargo
-                <input
-                  value={form.cargo}
-                  onChange={(e) => setForm((prev) => ({ ...prev, cargo: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Dep. Estadual
-                <input
-                  value={form.depEstadual}
-                  onChange={(e) => setForm((prev) => ({ ...prev, depEstadual: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Governador
-                <input
-                  value={form.governador}
-                  onChange={(e) => setForm((prev) => ({ ...prev, governador: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Expectativa 2026 (Legado)
-                <input
-                  value={form.expectativaLegado}
-                  onChange={(e) => setForm((prev) => ({ ...prev, expectativaLegado: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Aferido Jadyel 2026
-                <input
-                  value={form.expectativaAferida}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, expectativaAferida: e.target.value }))
-                  }
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Promessa 2026
-                <input
-                  value={form.promessa}
-                  onChange={(e) => setForm((prev) => ({ ...prev, promessa: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary">
-                Revisão Final
-                <input
-                  value={form.previsto}
-                  onChange={(e) => setForm((prev) => ({ ...prev, previsto: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                />
-              </label>
-              <label className="text-xs text-text-secondary md:col-span-2 lg:col-span-3">
-                Liderança atual
-                <select
-                  value={form.liderancaAtual}
-                  onChange={(e) => setForm((prev) => ({ ...prev, liderancaAtual: e.target.value }))}
-                  className="mt-1 h-9 w-full rounded-lg border border-card bg-surface px-2 text-sm text-text-primary"
-                >
-                  <option value="">(em branco)</option>
-                  <option value="SIM">SIM</option>
-                  <option value="NÃO">NÃO</option>
-                  <option value="EM DIÁLOGO">EM DIÁLOGO</option>
-                </select>
-              </label>
-            </div>
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={cancelarForm}
-                disabled={saving}
-                className="h-8 rounded-lg border border-card bg-surface px-3 text-xs text-text-primary disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => void salvar()}
-                disabled={saving}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#f04b23] px-3 text-xs font-medium text-white disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
-                Salvar
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="overflow-auto p-3">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Carregando lideranças…
-            </div>
-          ) : ordenadas.length === 0 ? (
-            <p className="py-6 text-center text-sm text-text-secondary">
-              Nenhuma liderança cadastrada para esta cidade.
-            </p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr>
-                  <th className="bg-background px-2 py-2 text-left text-text-secondary">Nome</th>
-                  <th className="bg-background px-2 py-2 text-left text-text-secondary">Cargo</th>
-                  <th className="bg-background px-2 py-2 text-right text-text-secondary">
-                    {labelCenario(cenarioVotos)}
-                  </th>
-                  {onAbrirDemandas ? (
-                    <th className="bg-background px-2 py-2 text-center text-text-secondary">Demandas</th>
-                  ) : null}
-                  <th className="bg-background px-2 py-2 text-right text-text-secondary">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordenadas.map((lideranca, rowIndex) => {
-                  const emDialogo = Boolean(lideranca.emDialogo)
-                  const nomeLideranca = String(lideranca.nome || '').trim()
-                  return (
-                    <tr
-                      key={lideranca.id}
-                      className={cn(
-                        'border-b border-card transition-colors',
-                        emDialogo
-                          ? 'bg-red-50 text-red-700 hover:bg-red-100/80'
-                          : cn('text-text-primary hover:bg-background/50', resumoTrZebra(rowIndex)),
-                      )}
-                    >
-                      <td className="px-2 py-1.5">
-                        <span className={cn(emDialogo && 'font-semibold')}>{lideranca.nome || '-'}</span>
-                        {emDialogo ? (
-                          <span className="ml-1.5 inline-flex rounded bg-red-600 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                            Em diálogo
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-2 py-1.5">{lideranca.cargo || '-'}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        {valorCenario(lideranca, cenarioVotos).toLocaleString('pt-BR')}
-                      </td>
-                      {onAbrirDemandas ? (
-                        <td className="px-2 py-1.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!nomeLideranca) return
-                              onAbrirDemandas(nomeLideranca)
-                            }}
-                            disabled={!nomeLideranca}
-                            className="inline-flex rounded p-1.5 text-text-secondary hover:bg-background hover:text-text-primary disabled:opacity-40"
-                            title={`Demandas de ${nomeLideranca || 'liderança'}`}
-                            aria-label={`Abrir demandas de ${nomeLideranca || 'liderança'}`}
-                          >
-                            <FileText className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        </td>
-                      ) : null}
-                      <td className="px-2 py-1.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => iniciarEdicao(lideranca)}
-                            disabled={saving}
-                            className="rounded p-1.5 text-text-secondary hover:bg-background hover:text-text-primary disabled:opacity-50"
-                            title="Editar"
-                          >
-                            <Pencil className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void excluir(lideranca)}
-                            disabled={saving}
-                            className="rounded p-1.5 text-text-secondary hover:bg-status-danger/10 hover:text-status-danger disabled:opacity-50"
-                            title="Excluir"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
-                  <td className="px-2 py-1.5" colSpan={2}>
-                    TOTAL
-                  </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">
-                    {totalExpectativa.toLocaleString('pt-BR')}
-                  </td>
-                  {onAbrirDemandas ? <td className="px-2 py-1.5" aria-hidden /> : null}
-                  <td className="px-2 py-1.5" aria-hidden />
-                </tr>
-              </tfoot>
-            </table>
-          )}
-        </div>
+    <TseModal
+      id={tituloId}
+      titulo={`Lideranças de ${cidade}`}
+      subtitulo={subtitulo}
+      onClose={onClose}
+      largura="max-w-4xl"
+      rodape={
+        <>
+          <span className="text-[12px] text-[var(--tse-muted)]">
+            Total {labelCenario(cenarioVotos)}:{' '}
+            <strong className="tabular-nums text-[var(--tse-text)]">
+              {totalExpectativa.toLocaleString('pt-BR')}
+            </strong>
+          </span>
+          <button type="button" onClick={onClose} className={tseBotaoCinzaClass}>
+            Fechar
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[13px] text-[var(--tse-muted)]">
+          Cadastro e expectativa por liderança no município.
+        </p>
+        <button
+          type="button"
+          onClick={iniciarCriacao}
+          disabled={saving || loading}
+          className={tseBotaoPrimarioClass}
+        >
+          <Plus className={tseBotaoIconeClass} aria-hidden />
+          Nova
+        </button>
       </div>
-    </div>
+
+      {error ? <TseErro>{error}</TseErro> : null}
+
+      {formAberto ? (
+        <div className="rounded-xl bg-white p-4 shadow-sm">
+          <p className="mb-3 text-[13px] font-bold text-[var(--tse-text)]">
+            {editingId ? 'Editar liderança' : 'Nova liderança'}
+          </p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <label>
+              <span className={tseRotuloCampoClass}>Nome</span>
+              <input
+                value={form.nome}
+                onChange={(e) => setForm((prev) => ({ ...prev, nome: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Cargo</span>
+              <input
+                value={form.cargo}
+                onChange={(e) => setForm((prev) => ({ ...prev, cargo: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Dep. Estadual</span>
+              <input
+                value={form.depEstadual}
+                onChange={(e) => setForm((prev) => ({ ...prev, depEstadual: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Governador</span>
+              <input
+                value={form.governador}
+                onChange={(e) => setForm((prev) => ({ ...prev, governador: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Expectativa 2026 (Legado)</span>
+              <input
+                value={form.expectativaLegado}
+                onChange={(e) => setForm((prev) => ({ ...prev, expectativaLegado: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Aferido Jadyel 2026</span>
+              <input
+                value={form.expectativaAferida}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, expectativaAferida: e.target.value }))
+                }
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Promessa 2026</span>
+              <input
+                value={form.promessa}
+                onChange={(e) => setForm((prev) => ({ ...prev, promessa: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label>
+              <span className={tseRotuloCampoClass}>Revisão Final</span>
+              <input
+                value={form.previsto}
+                onChange={(e) => setForm((prev) => ({ ...prev, previsto: e.target.value }))}
+                className={tseCampoClass}
+              />
+            </label>
+            <label className="md:col-span-2 lg:col-span-3">
+              <span className={tseRotuloCampoClass}>Liderança atual</span>
+              <select
+                value={form.liderancaAtual}
+                onChange={(e) => setForm((prev) => ({ ...prev, liderancaAtual: e.target.value }))}
+                className={tseCampoClass}
+              >
+                <option value="">(em branco)</option>
+                <option value="SIM">SIM</option>
+                <option value="NÃO">NÃO</option>
+                <option value="EM DIÁLOGO">EM DIÁLOGO</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={cancelarForm}
+              disabled={saving}
+              className={tseBotaoCinzaClass}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => void salvar()}
+              disabled={saving}
+              className={tseBotaoPrimarioClass}
+            >
+              {saving ? (
+                <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
+              ) : null}
+              Salvar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <TseCarregando texto="Carregando lideranças…" className="min-h-[20vh]" />
+      ) : ordenadas.length === 0 ? (
+        <TseVazio>Nenhuma liderança cadastrada para esta cidade.</TseVazio>
+      ) : (
+        <div className={tseTabela.container} data-tse-tabela="">
+          <table className={tseTabela.table}>
+            <thead className={tseTabela.thead}>
+              <tr>
+                <th className={thCompacta}>Nome</th>
+                <th className={thCompacta}>Cargo</th>
+                <th className={cn(thCompacta, 'text-right')}>{labelCenario(cenarioVotos)}</th>
+                {onAbrirDemandas ? (
+                  <th className={cn(thCompacta, 'text-center')}>Demandas</th>
+                ) : null}
+                <th className={cn(thCompacta, 'text-right')}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ordenadas.map((lideranca) => {
+                const emDialogo = Boolean(lideranca.emDialogo)
+                const nomeLideranca = String(lideranca.nome || '').trim()
+                return (
+                  <tr
+                    key={lideranca.id}
+                    className={cn(
+                      tseTabela.tr,
+                      emDialogo && 'bg-[color-mix(in_srgb,#b45309_8%,white)]',
+                    )}
+                  >
+                    <td className={cn(tdCompacta, 'font-semibold')}>
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        {lideranca.nome || '-'}
+                        {emDialogo ? <TsePill tom="amarelo">Em diálogo</TsePill> : null}
+                      </span>
+                    </td>
+                    <td className={tdCompacta}>{lideranca.cargo || '-'}</td>
+                    <td className={cn(tdCompacta, 'text-right tabular-nums')}>
+                      {valorCenario(lideranca, cenarioVotos).toLocaleString('pt-BR')}
+                    </td>
+                    {onAbrirDemandas ? (
+                      <td className={cn(tdCompacta, 'text-center')}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!nomeLideranca) return
+                            onAbrirDemandas(nomeLideranca)
+                          }}
+                          disabled={!nomeLideranca}
+                          className={cn(
+                            acaoIconeClass,
+                            'hover:bg-[var(--tse-bar)] hover:text-[var(--tse-yellow)] disabled:opacity-40',
+                          )}
+                          title={`Demandas de ${nomeLideranca || 'liderança'}`}
+                          aria-label={`Abrir demandas de ${nomeLideranca || 'liderança'}`}
+                        >
+                          <FileText className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </td>
+                    ) : null}
+                    <td className={tdCompacta}>
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => iniciarEdicao(lideranca)}
+                          disabled={saving}
+                          className={cn(
+                            acaoIconeClass,
+                            'hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]',
+                          )}
+                          title="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void excluir(lideranca)}
+                          disabled={saving}
+                          className={cn(
+                            acaoIconeClass,
+                            'hover:bg-[#FEE2E2] hover:text-[#B42318]',
+                          )}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-[var(--tse-border)] bg-[var(--tse-bar)] font-bold">
+                <td className={tdCompacta} colSpan={2}>
+                  TOTAL
+                </td>
+                <td className={cn(tdCompacta, 'text-right tabular-nums')}>
+                  {totalExpectativa.toLocaleString('pt-BR')}
+                </td>
+                {onAbrirDemandas ? <td className={tdCompacta} aria-hidden /> : null}
+                <td className={tdCompacta} aria-hidden />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </TseModal>
   )
 }

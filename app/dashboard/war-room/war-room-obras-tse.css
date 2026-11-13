@@ -1,0 +1,49 @@
+/**
+ * Aba Obras (Termômetro) — pele TSE no painel embutido.
+ * Escopo: [data-tse-obras] e .wr-mapa-obras-embedded.
+ */
+
+[data-tse-obras] .wr-mapa-obras-embedded,
+[data-tse-obras] {
+  color: var(--tse-text, #333);
+}
+
+[data-tse-obras] .wr-copiloto-table-wrap,
+[data-tse-obras] [data-tse-tabela] {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+[data-tse-obras] table.wr-copiloto-table thead,
+[data-tse-obras] [data-tse-tabela] thead {
+  background: var(--tse-bar, #f9f9f9) !important;
+  color: var(--tse-muted, #717171) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+[data-tse-obras] table.wr-copiloto-table tbody tr:hover td {
+  background: var(--tse-yellow-soft, #fff8d6) !important;
+}
+
+[data-tse-obras] .accent-\[\#f2d06b\],
+[data-tse-obras] input[type='checkbox'] {
+  accent-color: var(--tse-yellow, #ebb402);
+}
+
+[data-tse-obras] .text-accent-gold,
+[data-tse-obras] .text-\[rgb\(var\(--color-primary\)\)\] {
+  color: var(--tse-olive, #6a8421) !important;
+}
+
+/* Neutraliza coral legado */
+[data-tse-obras] .text-\[\#f04b23\],
+[data-tse-obras] .text-\[\#F04B23\],
+[data-tse-obras] [class*='text-[#f04b23]'],
+[data-tse-obras] [class*='text-[#F04B23]'] {
+  color: var(--tse-yellow, #ebb402) !important;
+}

@@ -1,10 +1,19 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { X, AlertCircle, Loader2, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
-import { useTheme } from '@/contexts/theme-context'
+import { useEffect, useState, useCallback, useMemo, useId } from 'react'
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  TseCarregando,
+  TseErro,
+  TseModal,
+  TsePill,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseBotaoNeutroClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
 
 interface Demand {
   id?: string
@@ -29,6 +38,9 @@ interface CityDemandsModalProps {
   isOpen: boolean
   onClose: () => void
   cidade: string
+  /** Quando informado (ex.: veio do modal de lideranças), exibe botão Voltar. */
+  onVoltar?: () => void
+  voltarLabel?: string
 }
 
 function normalizeName(value?: string | null): string {
@@ -47,7 +59,7 @@ function getDemandLiderancaParaFiltro(demand: Demand): string {
   const raw = demand.sheets_data
   if (!raw || typeof raw !== 'object') return ''
   const keys = Object.keys(raw).filter((k) =>
-    /lideran[cç]a|solicitante|nome\s*do\s*solicitante|pedido\s*por|respons[aá]vel/i.test(k.trim())
+    /lideran[cç]a|solicitante|nome\s*do\s*solicitante|pedido\s*por|respons[aá]vel/i.test(k.trim()),
   )
   for (const k of keys) {
     const v = raw[k]
@@ -74,30 +86,16 @@ function nomesLiderancaCombinam(nomeLista: string, nomeDemanda: string | undefin
   return false
 }
 
-function getStatusBadgeClasses(status: string | undefined, isDark: boolean): string {
+function statusPillTom(status: string | undefined): 'verde' | 'amarelo' | 'neutro' {
   const sl = (status || '').toLowerCase().trim()
-  if (sl.includes('resolvido') || sl.includes('concluído') || sl.includes('concluido')) {
-    return isDark
-      ? 'border-emerald-500/45 bg-emerald-950/55 text-emerald-100'
-      : 'border-emerald-300 bg-emerald-100 text-emerald-950'
+  if (sl.includes('resolvido') || sl.includes('concluído') || sl.includes('concluido') || sl.includes('entregue')) {
+    return 'verde'
   }
-  if (sl.includes('andamento') || sl.includes('progresso')) {
-    return isDark
-      ? 'border-amber-500/45 bg-amber-950/60 text-amber-50'
-      : 'border-amber-400 bg-amber-100 text-amber-950'
+  if (sl.includes('andamento') || sl.includes('progresso') || sl.includes('encaminhad')) {
+    return 'amarelo'
   }
-  if (sl.includes('encaminhado') || sl.includes('encaminhada')) {
-    return isDark
-      ? 'border-sky-500/40 bg-sky-950/50 text-sky-100'
-      : 'border-sky-300 bg-sky-50 text-sky-950'
-  }
-  if (sl.includes('nova') || sl.includes('pendente')) {
-    return isDark ? 'border-zinc-500/40 bg-zinc-900/60 text-zinc-200' : 'border-zinc-300 bg-zinc-100 text-zinc-900'
-  }
-  return isDark ? 'border-zinc-600 bg-zinc-900/50 text-zinc-300' : 'border-zinc-300 bg-zinc-50 text-zinc-800'
+  return 'neutro'
 }
-
-
 
 function getSheetsField(demand: Demand, patterns: RegExp[]): string | null {
   const raw = demand.sheets_data
@@ -156,10 +154,7 @@ function getDemandValorNumero(demand: Demand): number {
 
   const demandRecord = demand as unknown as Record<string, unknown>
   const directValue =
-    demandRecord.valor ??
-    demandRecord.value ??
-    demandRecord.custo ??
-    demandRecord.orcamento
+    demandRecord.valor ?? demandRecord.value ?? demandRecord.custo ?? demandRecord.orcamento
 
   return normalizeNumber(directValue)
 }
@@ -171,14 +166,7 @@ function getDemandObservacoes(demand: Demand): string {
     .join(' · ')
 }
 
-type DemandSortCol =
-  | 'status'
-  | 'title'
-  | 'data'
-  | 'lideranca'
-  | 'valor'
-  | 'observacoes'
-
+type DemandSortCol = 'status' | 'title' | 'data' | 'lideranca' | 'valor' | 'observacoes'
 type DemandSortDir = 'asc' | 'desc'
 
 function parseDemandDateMs(dateString?: string): number | null {
@@ -195,7 +183,7 @@ function compareTextPt(a: string, b: string): number {
 function ordenarDemandasPorColuna(
   lista: Demand[],
   col: DemandSortCol,
-  dir: DemandSortDir
+  dir: DemandSortDir,
 ): Demand[] {
   const mult = dir === 'asc' ? 1 : -1
   return [...lista].sort((a, b) => {
@@ -254,16 +242,14 @@ const DEMAND_SORT_COLUMNS: { id: DemandSortCol; label: string; align?: 'right' }
   { id: 'observacoes', label: 'Observações' },
 ]
 
-export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
-  const { appearance } = useTheme()
-  const isDarkAppearance = appearance === 'dark'
-  const isCockpit = false
-  const modalShellClass = isCockpit
-    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.92)_0%,rgba(18,30,38,0.95)_100%)] shadow-[0_24px_64px_rgba(3,12,20,0.42)]'
-    : 'border-card bg-surface'
-  const contentClass = isCockpit
-    ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.025)_0%,rgba(255,255,255,0.012)_100%)]'
-    : 'bg-background'
+export function CityDemandsModal({
+  isOpen,
+  onClose,
+  cidade,
+  onVoltar,
+  voltarLabel = 'Voltar às lideranças',
+}: CityDemandsModalProps) {
+  const tituloId = useId()
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -273,7 +259,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   const fetchDemands = useCallback(async () => {
     if (!cidade) return
-    
+
     setLoading(true)
     setError(null)
 
@@ -321,7 +307,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
           setLiderancasPermitidas([])
         }
       }
-      fetchDemands()
+      void fetchDemands()
     } else {
       setDemands([])
       setError(null)
@@ -331,30 +317,16 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }, [isOpen, cidade, fetchDemands])
 
-  const { demandsFiltradasEOrdenadas, ignorouFiltroLideranca } = useMemo(() => {
-    let filtradas: Demand[]
-    let ignorou = false
-    if (liderancasPermitidas.length === 0) {
-      filtradas = demands
-    } else {
-      const comLideranca = demands.filter((demand) => {
-        const raw = getDemandLiderancaParaFiltro(demand)
-        if (!raw) return true
-        return liderancasPermitidas.some((permitido) =>
-          nomesLiderancaCombinam(permitido, raw)
-        )
-      })
-      if (comLideranca.length === 0 && demands.length > 0) {
-        filtradas = demands
-        ignorou = true
-      } else {
-        filtradas = comLideranca
-      }
-    }
-    return {
-      demandsFiltradasEOrdenadas: ordenarDemandasPorColuna(filtradas, sortCol, sortDir),
-      ignorouFiltroLideranca: ignorou,
-    }
+  const demandsFiltradasEOrdenadas = useMemo(() => {
+    const filtradas =
+      liderancasPermitidas.length === 0
+        ? demands
+        : demands.filter((demand) => {
+            const raw = getDemandLiderancaParaFiltro(demand)
+            if (!raw) return false
+            return liderancasPermitidas.some((permitido) => nomesLiderancaCombinam(permitido, raw))
+          })
+    return ordenarDemandasPorColuna(filtradas, sortCol, sortDir)
   }, [demands, liderancasPermitidas, sortCol, sortDir])
 
   const toggleSort = useCallback(
@@ -366,7 +338,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       setSortCol(col)
       setSortDir('asc')
     },
-    [sortCol]
+    [sortCol],
   )
 
   useEffect(() => {
@@ -378,11 +350,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }, [isOpen])
 
-  if (!isOpen || typeof document === 'undefined') return null
+  if (!isOpen) return null
 
-  const getStatusLabel = (status?: string) => {
-    return status || 'Sem status'
-  }
+  const getStatusLabel = (status?: string) => status || 'Sem status'
 
   const formatValorSemMoeda = (value: number): string => {
     if (!Number.isFinite(value) || value <= 0) return '-'
@@ -393,12 +363,10 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   }
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '-'
+    if (!dateString) return '—'
     try {
       const date = new Date(dateString)
-      if (isNaN(date.getTime())) {
-        return dateString
-      }
+      if (isNaN(date.getTime())) return dateString
       return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -411,208 +379,149 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   const totalValorDemandas = demandsFiltradasEOrdenadas.reduce(
     (sum, demand) => sum + getDemandValorNumero(demand),
-    0
+    0,
   )
 
-  // Obter status únicos para filtro
-  return createPortal(
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-4">
-      <div
-        className={cn(
-          'flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border font-sans',
-          modalShellClass
-        )}
-      >
-        {/* Header Compacto */}
-        <div className={cn('flex items-center justify-between border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-text-primary">
-              {cidade}
-            </h2>
-            <span className="text-xs text-text-secondary">
-              {loading ? '...' : `${demandsFiltradasEOrdenadas.length} demanda${demandsFiltradasEOrdenadas.length !== 1 ? 's' : ''}`}
-            </span>
+  const subtitulo = loading
+    ? 'Carregando…'
+    : `${demandsFiltradasEOrdenadas.length} demanda${demandsFiltradasEOrdenadas.length !== 1 ? 's' : ''}`
+
+  return (
+    <TseModal
+      id={tituloId}
+      titulo={cidade}
+      subtitulo={subtitulo}
+      onClose={onClose}
+      largura="max-w-6xl"
+      rodape={
+        <>
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            {onVoltar ? (
+              <button type="button" onClick={onVoltar} className={tseBotaoNeutroClass}>
+                <ArrowLeft className={tseBotaoIconeClass} aria-hidden />
+                {voltarLabel}
+              </button>
+            ) : null}
+            {!loading && !error && demandsFiltradasEOrdenadas.length > 0 ? (
+              <span className="text-[12px] text-[var(--tse-muted)]">
+                Total em R${' '}
+                <strong className="tabular-nums text-[var(--tse-text)]">
+                  {formatValorSemMoeda(totalValorDemandas)}
+                </strong>
+              </span>
+            ) : null}
           </div>
-          <button
-            onClick={onClose}
-            className={cn('rounded-lg p-1.5 transition-colors', isCockpit ? 'hover:bg-white/10' : 'hover:bg-background')}
-          >
-            <X className="w-4 h-4 text-text-secondary" />
+          <button type="button" onClick={onClose} className={tseBotaoCinzaClass}>
+            Fechar
           </button>
-        </div>
+        </>
+      }
+    >
+      {!loading && !error && liderancasPermitidas.length > 0 ? (
+        <p className="rounded-lg bg-white px-3 py-2 text-[12px] text-[var(--tse-muted)] shadow-sm">
+          Filtrado por {liderancasPermitidas.length} liderança
+          {liderancasPermitidas.length !== 1 ? 's' : ''}
+          {liderancasPermitidas.length <= 3 ? `: ${liderancasPermitidas.join(', ')}` : ''}.
+        </p>
+      ) : null}
 
-        {!loading && !error && demands.length > 0 && liderancasPermitidas.length > 0 ? (
-          <div className={cn('border-b px-4 py-2.5', isCockpit ? 'border-white/10' : 'border-card')}>
-            <p className="text-xs leading-snug text-text-secondary">
-              {ignorouFiltroLideranca ? (
-                <>
-                  Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
-                  exibindo <span className="font-medium text-text-primary">todas as demandas desta cidade</span> na
-                  planilha.
-                </>
-              ) : (
-                <>
-                  Filtrado por {liderancasPermitidas.length} liderança
-                  {liderancasPermitidas.length !== 1 ? 's' : ''}.
-                </>
-              )}
-            </p>
-          </div>
-        ) : null}
-
-        {/* Content — tabela compacta */}
-        <div className={cn('min-h-0 flex-1 overflow-auto', contentClass)}>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 text-accent-gold animate-spin" />
-              <span className="ml-2 text-sm text-text-secondary">Carregando...</span>
-            </div>
-          ) : error ? (
-            <div className="m-3 rounded-lg border border-status-error/30 bg-status-error/10 p-3">
-              <p className="text-xs text-status-error">{error}</p>
-            </div>
-          ) : demandsFiltradasEOrdenadas.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertCircle className="mx-auto mb-2 h-8 w-8 text-text-secondary" />
-              <p className="text-sm text-text-secondary">Nenhuma demanda encontrada</p>
-            </div>
-          ) : (
-            <table className="w-full min-w-[920px] border-collapse text-left text-xs">
-              <thead
-                className={cn(
-                  'sticky top-0 z-10 border-b',
-                  isCockpit
-                    ? 'border-white/10 bg-[rgba(18,30,38,0.98)]'
-                    : isDarkAppearance
-                      ? 'border-white/10 bg-bg-app'
-                      : 'border-card bg-surface',
-                )}
-              >
-                <tr className="text-[11px] font-medium uppercase tracking-wide text-text-secondary">
-                  {DEMAND_SORT_COLUMNS.map((col) => {
-                    const active = sortCol === col.id
-                    const SortIcon = !active ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown
-                    const thClass =
-                      col.id === 'title'
-                        ? 'min-w-[220px] px-3 py-2.5'
-                        : col.id === 'lideranca'
-                          ? 'min-w-[140px] px-3 py-2.5'
-                          : col.id === 'observacoes'
-                            ? 'min-w-[180px] px-3 py-2.5'
-                            : 'whitespace-nowrap px-3 py-2.5'
-                    return (
-                      <th key={col.id} className={cn(thClass, col.align === 'right' && 'text-right')}>
-                        <button
-                          type="button"
-                          onClick={() => toggleSort(col.id)}
-                          className={cn(
-                            'inline-flex max-w-full items-center gap-1 font-medium uppercase tracking-wide transition-colors',
-                            col.align === 'right' && 'ml-auto flex-row-reverse',
-                            active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary',
-                          )}
-                          title={
-                            active
-                              ? sortDir === 'asc'
-                                ? 'Ordenado A→Z — clique para Z→A'
-                                : 'Ordenado Z→A — clique para A→Z'
-                              : 'Ordenar A→Z'
-                          }
-                          aria-label={`Ordenar por ${col.label}`}
-                        >
-                          <span className="truncate">{col.label}</span>
-                          <SortIcon
-                            className={cn('h-3 w-3 shrink-0', active ? 'opacity-100' : 'opacity-45')}
-                            aria-hidden
-                          />
-                          {active ? (
-                            <span className="sr-only">{sortDir === 'asc' ? 'A a Z' : 'Z a A'}</span>
-                          ) : null}
-                        </button>
-                      </th>
-                    )
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {demandsFiltradasEOrdenadas.map((demand, index) => {
-                  const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
-                  const valorNum = getDemandValorNumero(demand)
-                  const refLinha = getDemandObservacoes(demand)
-
+      {loading ? (
+        <TseCarregando texto="Carregando demandas…" className="min-h-[20vh]" />
+      ) : error ? (
+        <TseErro>{error}</TseErro>
+      ) : demandsFiltradasEOrdenadas.length === 0 ? (
+        <TseVazio>Nenhuma demanda encontrada</TseVazio>
+      ) : (
+        <div className={tseTabela.container} data-tse-tabela="">
+          <table className={cn(tseTabela.table, 'min-w-[920px]')}>
+            <thead className={tseTabela.thead}>
+              <tr>
+                {DEMAND_SORT_COLUMNS.map((col) => {
+                  const active = sortCol === col.id
+                  const SortIcon = !active ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown
                   return (
-                    <tr
-                      key={demand.id || `demand-${index}`}
+                    <th
+                      key={col.id}
                       className={cn(
-                        'border-b align-top transition-colors',
-                        isCockpit
-                          ? 'border-white/8 hover:bg-white/[0.04]'
-                          : isDarkAppearance
-                            ? 'border-white/8 hover:bg-white/[0.04]'
-                            : 'border-card/80 hover:bg-[#fff1ed]/55',
+                        tseTabela.th,
+                        col.align === 'right' && 'text-right',
+                        col.id === 'title' && 'min-w-[220px]',
+                        col.id === 'lideranca' && 'min-w-[140px]',
+                        col.id === 'observacoes' && 'min-w-[180px]',
                       )}
                     >
-                      <td className="px-3 py-2">
-                        <span
-                          className={cn(
-                            'inline-flex max-w-[9.5rem] truncate rounded-md border px-1.5 py-0.5 text-[10px] font-medium leading-none',
-                            getStatusBadgeClasses(demand.status, isDarkAppearance),
-                          )}
-                          title={getStatusLabel(demand.status)}
-                        >
-                          {getStatusLabel(demand.status)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="line-clamp-2 text-[13px] font-medium leading-snug text-text-primary">
-                          {demand.title}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-text-secondary">
-                        {formatDate(demand.data_demanda)}
-                      </td>
-                      <td className="px-3 py-2 text-text-primary">
-                        <span className="line-clamp-2" title={liderancaExibicao || undefined}>
-                          {liderancaExibicao || '—'}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-text-primary">
-                        {valorNum > 0 ? `R$ ${formatValorSemMoeda(valorNum)}` : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-text-muted">
-                        <span className="line-clamp-2" title={refLinha || undefined}>
-                          {refLinha || '—'}
-                        </span>
-                      </td>
-                    </tr>
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.id)}
+                        className={cn(
+                          'inline-flex max-w-full items-center gap-1 font-bold uppercase tracking-wide transition-colors',
+                          col.align === 'right' && 'ml-auto flex-row-reverse',
+                          active
+                            ? 'text-[var(--tse-text)]'
+                            : 'text-[var(--tse-muted)] hover:text-[var(--tse-text)]',
+                        )}
+                        title={
+                          active
+                            ? sortDir === 'asc'
+                              ? 'Ordenado A→Z — clique para Z→A'
+                              : 'Ordenado Z→A — clique para A→Z'
+                            : 'Ordenar A→Z'
+                        }
+                        aria-label={`Ordenar por ${col.label}`}
+                      >
+                        <span className="truncate">{col.label}</span>
+                        <SortIcon
+                          className={cn('h-3 w-3 shrink-0', active ? 'opacity-100' : 'opacity-45')}
+                          aria-hidden
+                        />
+                        {active ? (
+                          <span className="sr-only">{sortDir === 'asc' ? 'A a Z' : 'Z a A'}</span>
+                        ) : null}
+                      </button>
+                    </th>
                   )
                 })}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </tr>
+            </thead>
+            <tbody>
+              {demandsFiltradasEOrdenadas.map((demand, index) => {
+                const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
+                const valorNum = getDemandValorNumero(demand)
+                const refLinha = getDemandObservacoes(demand)
 
-        {!loading && !error && demandsFiltradasEOrdenadas.length > 0 && (
-          <div
-            className={cn(
-              'flex items-center justify-end border-t px-4 py-3',
-              isCockpit ? 'border-white/10 bg-white/[0.02]' : isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/50',
-            )}
-          >
-            <span className="text-sm text-text-secondary">
-              Total em R${' '}
-              <span
-                className={cn(
-                  'text-base font-bold tabular-nums tracking-tight text-text-primary',
-                  isDarkAppearance ? 'text-zinc-50' : undefined,
-                )}
-              >
-                {formatValorSemMoeda(totalValorDemandas)}
-              </span>
-            </span>
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body
+                return (
+                  <tr key={demand.id || `demand-${index}`} className={tseTabela.tr}>
+                    <td className={tseTabela.td}>
+                      <TsePill tom={statusPillTom(demand.status)} className="max-w-[10rem] truncate">
+                        {getStatusLabel(demand.status)}
+                      </TsePill>
+                    </td>
+                    <td className={cn(tseTabela.td, 'font-semibold')}>
+                      <span className="line-clamp-2 leading-snug">{demand.title}</span>
+                    </td>
+                    <td className={cn(tseTabela.td, 'whitespace-nowrap tabular-nums text-[var(--tse-muted)]')}>
+                      {formatDate(demand.data_demanda)}
+                    </td>
+                    <td className={tseTabela.td}>
+                      <span className="line-clamp-2" title={liderancaExibicao || undefined}>
+                        {liderancaExibicao || '—'}
+                      </span>
+                    </td>
+                    <td className={cn(tseTabela.td, 'whitespace-nowrap text-right tabular-nums')}>
+                      {valorNum > 0 ? `R$ ${formatValorSemMoeda(valorNum)}` : '—'}
+                    </td>
+                    <td className={cn(tseTabela.td, 'text-[var(--tse-muted)]')}>
+                      <span className="line-clamp-2" title={refLinha || undefined}>
+                        {refLinha || '—'}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </TseModal>
   )
 }

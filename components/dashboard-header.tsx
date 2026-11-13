@@ -11,8 +11,6 @@ import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
-import { DASHBOARD_TOPBAR_H_CLASS } from '@/lib/dashboard-chrome-layout'
-import { isWarRoomPage } from '@/lib/war-room-clean-route'
 import { AGENDA_HREF } from '@/lib/resumo-eleicoes-hub-route'
 import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
 import { TopbarSystemSearch } from '@/components/dashboard/topbar-system-search'
@@ -90,15 +88,14 @@ export function DashboardHeader() {
   const topbarExtras = useDashboardTopbarExtras()
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
-  const isWarRoom = isWarRoomPage(p)
-  /** OPÇÃO B: topbar amarelo TSE nas telas do dashboard (exceto War Room / glass). */
-  const opcaoB = !isWarRoom && !isGradientHome
+  /** OPÇÃO B: topbar amarelo TSE (Termômetro incluso; sem chrome gelo). */
+  const opcaoB = !isGradientHome
 
-  if (!showTopbar && !isWarRoom && !opcaoB) {
+  if (!showTopbar && !opcaoB) {
     return null
   }
 
-  const mobileAmberHeader = !isGradientHome && !isWarRoom
+  const mobileAmberHeader = !isGradientHome
   const lightBrand = isGradientHome
 
   return (
@@ -107,37 +104,28 @@ export function DashboardHeader() {
       data-topbar-opcao={opcaoB ? 'b' : undefined}
       className={cn(
         'sticky top-0 z-30',
-        isWarRoom &&
-          'wr-topbar-clean border-b border-[color-mix(in_srgb,var(--wr-slate,#424E5C)_12%,transparent)] bg-[var(--wr-header-bg,#FFFFFF)]',
         isGradientHome
           ? 'bg-transparent backdrop-blur-md'
-          : !isWarRoom &&
-              cn(
-                'lg:bg-[rgb(var(--bg-sidebar))]',
-                isRepublicanosPremium && 'republicanos-premium-header',
-                mobileAmberHeader && dashboardMobilePageHeaderClass,
-              ),
+          : cn(
+              'lg:bg-[rgb(var(--bg-sidebar))]',
+              isRepublicanosPremium && 'republicanos-premium-header',
+              mobileAmberHeader && dashboardMobilePageHeaderClass,
+            ),
       )}
     >
       <div
         className={cn(
           'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-5',
-          isWarRoom
-            ? cn(DASHBOARD_TOPBAR_H_CLASS, 'box-border overflow-hidden px-3 sm:px-4 lg:px-5')
-            : isGradientHome
-              ? 'h-12 lg:h-14'
-              : 'h-16',
+          isGradientHome ? 'h-12 lg:h-14' : 'h-16',
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
           {/* Marca no topbar só quando a zona da sidebar não está à vista */}
-          <TopbarBrandBlock
-            className={cn('shrink-0', opcaoB ? 'lg:hidden' : isWarRoom ? 'lg:hidden' : undefined)}
-          />
+          <TopbarBrandBlock className={cn('shrink-0', opcaoB ? 'lg:hidden' : undefined)} />
           <span
             className={cn(
               'hidden h-6 w-px shrink-0 bg-[#333333]/25 sm:block',
-              opcaoB ? 'lg:hidden' : isWarRoom ? 'lg:hidden' : undefined,
+              opcaoB ? 'lg:hidden' : undefined,
             )}
             aria-hidden
           />
@@ -146,11 +134,9 @@ export function DashboardHeader() {
               <h1
                 className={cn(
                   'truncate font-semibold tracking-tight',
-                  isWarRoom
-                    ? 'wr-topbar-clean__title text-base text-[var(--wr-black,#000)] sm:text-lg'
-                    : lightBrand
-                      ? 'text-sm text-white max-lg:hidden sm:text-base'
-                      : 'text-[15px] text-[#333333] sm:text-base',
+                  lightBrand
+                    ? 'text-sm text-white max-lg:hidden sm:text-base'
+                    : 'text-[15px] text-[#333333] sm:text-base',
                   mobileAmberHeader && 'max-lg:text-[#333333]',
                 )}
                 title={pageTitle}
@@ -176,9 +162,7 @@ export function DashboardHeader() {
               <Bell className="h-4 w-4" strokeWidth={2} aria-hidden />
             </Link>
           ) : null}
-          {isWarRoom ? null : (
-            <UserMenu amberMobileChrome={mobileAmberHeader} avatarOnly={opcaoB} />
-          )}
+          <UserMenu amberMobileChrome={mobileAmberHeader} avatarOnly={opcaoB} />
         </div>
       </div>
     </header>

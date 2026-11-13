@@ -1,9 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ExternalLink,
-  Loader2,
   RefreshCw,
   Landmark,
   Wallet,
@@ -26,6 +25,15 @@ import {
   type EmendasComparativoPayload,
 } from '@/lib/war-room/emendas-comparativo-pi'
 import { cn } from '@/lib/utils'
+import {
+  TseCarregando,
+  TseErro,
+  TseRank,
+  TseSegmentado,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseCardClass,
+} from '@/components/tse/tse-ui'
 
 const ANO_BOTOES: EmendasComparativoAnoKey[] = [...EMENDAS_COMPARATIVO_ANOS_MANDATO].reverse()
 
@@ -83,7 +91,7 @@ function DeputadoRow({
       onClick={onSelect}
       aria-pressed={selected}
     >
-      <span className="wr-emendas-cmp__rank tabular-nums">{String(dep.rank).padStart(2, '0')}</span>
+      <TseRank posicao={dep.rank} />
       <span className="wr-emendas-cmp__avatar">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={dep.foto} alt="" width={40} height={40} loading="lazy" />
@@ -101,6 +109,32 @@ function DeputadoRow({
           {ordenacao !== 'pago' ? ` · pago ${formatEmendaBrlCompact(dep.valorPago)}` : ''}
         </span>
       </span>
+    </button>
+  )
+}
+
+function AnoChip({
+  pressed,
+  onClick,
+  children,
+}: {
+  pressed: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        'rounded-md border px-2.5 py-1 text-[12px] font-semibold transition-colors',
+        pressed
+          ? 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-strong)] text-[var(--tse-text)]'
+          : 'border-[var(--tse-border)] bg-white text-[var(--tse-muted)] hover:bg-[var(--tse-bar)]',
+      )}
+    >
+      {children}
     </button>
   )
 }
@@ -202,51 +236,40 @@ export function WarRoomCopilotoEmendasComparativoView() {
     : [...anosSelecionados].sort().join(' · ')
 
   return (
-    <div className="wr-emendas-cmp">
-      <header className="wr-emendas-cmp__head">
+    <div className="wr-emendas-cmp flex flex-col gap-4" data-tse-emendas-cmp="">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="wr-emendas-cmp__title">Comparativo · Federais do Piauí</h3>
-          <p className="wr-emendas-cmp__sub">
+          <h3 className="text-[15px] font-bold text-[var(--tse-text)]">
+            Comparativo · Federais do Piauí
+          </h3>
+          <p className="mt-0.5 max-w-3xl text-[13px] text-[var(--tse-muted)]">
             {periodoLabel} · valor pago em emendas individuais (Pix + projeto definido). A cor mede
             magnitude, não celebração do repasse. Selecione um ou mais anos.
           </p>
         </div>
-        <div className="wr-emendas-cmp__head-actions">
-          <div className="wr-emendas-cmp__anos" role="group" aria-label="Anos do mandato">
-            <button
-              type="button"
-              aria-pressed={mandatoCompleto}
-              className={cn(
-                'wr-emendas-cmp__ano',
-                mandatoCompleto && 'wr-emendas-cmp__ano--on',
-              )}
-              onClick={selecionarMandato}
-            >
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Anos do mandato">
+            <AnoChip pressed={mandatoCompleto} onClick={selecionarMandato}>
               Mandato
-            </button>
-            {ANO_BOTOES.map((ano) => {
-              const on = anosSelecionados.includes(ano)
-              return (
-                <button
-                  key={ano}
-                  type="button"
-                  aria-pressed={on}
-                  className={cn('wr-emendas-cmp__ano', on && 'wr-emendas-cmp__ano--on')}
-                  onClick={() => toggleAno(ano)}
-                >
-                  {ano}
-                </button>
-              )
-            })}
+            </AnoChip>
+            {ANO_BOTOES.map((ano) => (
+              <AnoChip
+                key={ano}
+                pressed={anosSelecionados.includes(ano)}
+                onClick={() => toggleAno(ano)}
+              >
+                {ano}
+              </AnoChip>
+            ))}
           </div>
           <button
             type="button"
-            className="wr-copiloto-redes__ghost-btn"
+            className={tseBotaoCinzaClass}
             onClick={() => void load()}
             disabled={loading}
           >
             <RefreshCw
-              className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
+              className={cn(tseBotaoIconeClass, loading && 'animate-spin')}
               strokeWidth={1.5}
               aria-hidden
             />
@@ -256,110 +279,105 @@ export function WarRoomCopilotoEmendasComparativoView() {
       </header>
 
       {loading && !data ? (
-        <div className="wr-emendas-cmp__state">
-          <Loader2 className="h-5 w-5 animate-spin" strokeWidth={1.5} aria-hidden />
-          Carregando ranking…
-        </div>
+        <TseCarregando texto="Carregando ranking…" className="min-h-[30vh]" />
       ) : error && !data ? (
-        <div className="wr-emendas-cmp__state">
-          <p>{error}</p>
-          <button type="button" className="wr-copiloto-view__retry" onClick={() => void load()}>
+        <div className="flex flex-col items-start gap-3">
+          <TseErro>{error}</TseErro>
+          <button type="button" className={tseBotaoCinzaClass} onClick={() => void load()}>
             Tentar de novo
           </button>
         </div>
       ) : data ? (
         <>
-          <div className="wr-emendas-cmp__kpis" role="list">
-            <article className="wr-emendas-cmp__kpi" role="listitem">
-              <span className="wr-emendas-cmp__kpi-ico">
+          <div
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+            role="list"
+            aria-label="Indicadores do comparativo"
+          >
+            <article className={cn(tseCardClass, '!p-3')} role="listitem">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--tse-yellow-soft)] text-[var(--tse-yellow)]">
                 <Wallet size={14} strokeWidth={2.2} aria-hidden />
               </span>
-              <div>
-                <p className="wr-emendas-cmp__kpi-label">Valor pago</p>
-                <p className="wr-emendas-cmp__kpi-val tabular-nums">
-                  {formatEmendaBrlCompact(data.kpis.valorPago)}
-                </p>
-              </div>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                Valor pago
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tse-text)]">
+                {formatEmendaBrlCompact(data.kpis.valorPago)}
+              </p>
             </article>
-            <article className="wr-emendas-cmp__kpi" role="listitem">
-              <span className="wr-emendas-cmp__kpi-ico">
+            <article className={cn(tseCardClass, '!p-3')} role="listitem">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--tse-yellow-soft)] text-[var(--tse-yellow)]">
                 <Banknote size={14} strokeWidth={2.2} aria-hidden />
               </span>
-              <div>
-                <p className="wr-emendas-cmp__kpi-label">Emendas Pix</p>
-                <p className="wr-emendas-cmp__kpi-val tabular-nums">
-                  {formatEmendaBrlCompact(data.kpis.valorPix)}
-                </p>
-              </div>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                Emendas Pix
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tse-text)]">
+                {formatEmendaBrlCompact(data.kpis.valorPix)}
+              </p>
             </article>
-            <article className="wr-emendas-cmp__kpi" role="listitem">
-              <span className="wr-emendas-cmp__kpi-ico">
+            <article className={cn(tseCardClass, '!p-3')} role="listitem">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--tse-yellow-soft)] text-[var(--tse-yellow)]">
                 <Landmark size={14} strokeWidth={2.2} aria-hidden />
               </span>
-              <div>
-                <p className="wr-emendas-cmp__kpi-label">Projeto definido</p>
-                <p className="wr-emendas-cmp__kpi-val tabular-nums">
-                  {formatEmendaBrlCompact(data.kpis.valorProjeto)}
-                </p>
-              </div>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                Projeto definido
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tse-text)]">
+                {formatEmendaBrlCompact(data.kpis.valorProjeto)}
+              </p>
             </article>
-            <article className="wr-emendas-cmp__kpi" role="listitem">
-              <span className="wr-emendas-cmp__kpi-ico">
+            <article className={cn(tseCardClass, '!p-3')} role="listitem">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--tse-yellow-soft)] text-[var(--tse-yellow)]">
                 <Users size={14} strokeWidth={2.2} aria-hidden />
               </span>
-              <div>
-                <p className="wr-emendas-cmp__kpi-label">Parlamentares</p>
-                <p className="wr-emendas-cmp__kpi-val tabular-nums">
-                  {data.kpis.parlamentares}
-                  <span> · {data.kpis.qtdEmendas} emendas</span>
-                </p>
-              </div>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                Parlamentares
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tse-text)]">
+                {data.kpis.parlamentares}
+                <span className="text-[12px] font-semibold text-[var(--tse-muted)]">
+                  {' '}
+                  · {data.kpis.qtdEmendas} emendas
+                </span>
+              </p>
             </article>
-            <article className="wr-emendas-cmp__kpi" role="listitem">
-              <span className="wr-emendas-cmp__kpi-ico">
+            <article className={cn(tseCardClass, '!p-3')} role="listitem">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--tse-yellow-soft)] text-[var(--tse-yellow)]">
                 <Target size={14} strokeWidth={2.2} aria-hidden />
               </span>
-              <div>
-                <p className="wr-emendas-cmp__kpi-label">Média / emenda</p>
-                <p className="wr-emendas-cmp__kpi-val tabular-nums">
-                  {formatEmendaBrlCompact(data.kpis.valorMedio)}
-                </p>
-              </div>
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                Média / emenda
+              </p>
+              <p className="mt-0.5 text-[18px] font-bold tabular-nums text-[var(--tse-text)]">
+                {formatEmendaBrlCompact(data.kpis.valorMedio)}
+              </p>
             </article>
           </div>
 
-          <p className="wr-emendas-cmp__disclaimer">{data.disclaimer}</p>
+          <p className="text-[12px] leading-relaxed text-[var(--tse-muted)]">{data.disclaimer}</p>
 
-          <div className="wr-emendas-cmp__body">
-            <section className="wr-emendas-cmp__ranking" aria-label="Ranking de deputados">
-              <header className="wr-emendas-cmp__section-head">
-                <div className="wr-emendas-cmp__section-head-main">
-                  <h4>Ranking — bancada PI</h4>
-                  <span>{rankingOrdenado.length} deputados</span>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.9fr)]">
+            <section className={cn(tseCardClass, '!p-0')} aria-label="Ranking de deputados">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tse-border)] px-4 py-3">
+                <div>
+                  <h4 className="text-[15px] font-bold text-[var(--tse-text)]">
+                    Ranking — bancada PI
+                  </h4>
+                  <span className="text-[12px] text-[var(--tse-muted)]">
+                    {rankingOrdenado.length} deputados
+                  </span>
                 </div>
-                <div
-                  className="wr-emendas-cmp__sort"
-                  role="tablist"
-                  aria-label="Ordenar ranking por"
-                >
-                  {ordenacaoOpcoes.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={ordenacao === opt.id}
-                      className={cn(
-                        'wr-emendas-cmp__sort-btn',
-                        ordenacao === opt.id && 'wr-emendas-cmp__sort-btn--on',
-                      )}
-                      onClick={() => setOrdenacao(opt.id)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-1 text-[13px] font-semibold text-[var(--tse-text)]">
+                  Ordenar por
+                  <TseSegmentado
+                    opcoes={ordenacaoOpcoes}
+                    valor={ordenacao}
+                    onChange={setOrdenacao}
+                  />
                 </div>
               </header>
-              <div className="wr-emendas-cmp__list">
+              <div className="flex flex-col gap-1 p-2">
                 {rankingOrdenado.map((dep) => (
                   <DeputadoRow
                     key={dep.id}
@@ -373,51 +391,59 @@ export function WarRoomCopilotoEmendasComparativoView() {
               </div>
             </section>
 
-            <aside className="wr-emendas-cmp__detail" aria-label="Detalhe do parlamentar">
+            <aside className={tseCardClass} aria-label="Detalhe do parlamentar">
               {selected ? (
                 <>
-                  <div className="wr-emendas-cmp__detail-hero">
+                  <div className="wr-emendas-cmp__detail-hero flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={selected.foto} alt="" width={64} height={64} />
                     <div>
-                      <p className="wr-emendas-cmp__detail-rank">#{selected.rank}</p>
-                      <h4>{selected.nome}</h4>
-                      <p>{selected.partido} · PI</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                        #{selected.rank}
+                      </p>
+                      <h4 className="text-[16px] font-bold text-[var(--tse-text)]">{selected.nome}</h4>
+                      <p className="text-[13px] text-[var(--tse-muted)]">
+                        {selected.partido} · PI
+                      </p>
                     </div>
                   </div>
-                  <dl className="wr-emendas-cmp__detail-stats">
+                  <dl className="mt-4 space-y-2 text-[13px]">
                     {(selected.valorIndicado ?? 0) > 0 ? (
-                      <div>
-                        <dt>Indicado</dt>
-                        <dd className="tabular-nums">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-[var(--tse-muted)]">Indicado</dt>
+                        <dd className="font-bold tabular-nums">
                           {formatEmendaBrl(selected.valorIndicado ?? 0)}
                         </dd>
                       </div>
                     ) : null}
-                    <div>
-                      <dt>Pago</dt>
-                      <dd className="tabular-nums">{formatEmendaBrl(selected.valorPago)}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-[var(--tse-muted)]">Pago</dt>
+                      <dd className="font-bold tabular-nums">{formatEmendaBrl(selected.valorPago)}</dd>
                     </div>
-                    <div>
-                      <dt>Empenhado</dt>
-                      <dd className="tabular-nums">{formatEmendaBrl(selected.valorEmpenhado)}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-[var(--tse-muted)]">Empenhado</dt>
+                      <dd className="font-bold tabular-nums">
+                        {formatEmendaBrl(selected.valorEmpenhado)}
+                      </dd>
                     </div>
-                    <div>
-                      <dt>Pix</dt>
-                      <dd className="tabular-nums">{formatEmendaBrl(selected.valorPix)}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-[var(--tse-muted)]">Pix</dt>
+                      <dd className="font-bold tabular-nums">{formatEmendaBrl(selected.valorPix)}</dd>
                     </div>
-                    <div>
-                      <dt>Projeto</dt>
-                      <dd className="tabular-nums">{formatEmendaBrl(selected.valorProjeto)}</dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-[var(--tse-muted)]">Projeto</dt>
+                      <dd className="font-bold tabular-nums">
+                        {formatEmendaBrl(selected.valorProjeto)}
+                      </dd>
                     </div>
                   </dl>
-                  <div className="wr-emendas-cmp__munis">
-                    <header>
-                      <MapPin size={14} strokeWidth={2.2} aria-hidden />
+                  <div className="wr-emendas-cmp__munis mt-4 border-t border-[var(--tse-border)] pt-3">
+                    <header className="mb-2 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+                      <MapPin size={14} className="text-[var(--tse-yellow)]" strokeWidth={2.2} aria-hidden />
                       <span>Top municípios (nomeados)</span>
                     </header>
                     {selected.municipiosTop.length === 0 ? (
-                      <p className="wr-emendas-cmp__empty">
+                      <p className="text-[13px] text-[var(--tse-muted)]">
                         Sem município nominado no CSV (múltiplo / UF / nacional).
                       </p>
                     ) : (
@@ -435,25 +461,23 @@ export function WarRoomCopilotoEmendasComparativoView() {
                   </div>
                 </>
               ) : (
-                <p className="wr-emendas-cmp__empty">Selecione um deputado no ranking.</p>
+                <p className="text-[13px] text-[var(--tse-muted)]">
+                  Selecione um deputado no ranking.
+                </p>
               )}
             </aside>
           </div>
 
-          <footer className="wr-emendas-cmp__foot">
+          <footer className="wr-emendas-cmp__foot flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--tse-muted)]">
             <span>
               Fonte:{' '}
               <a href={data.fonteUrl} target="_blank" rel="noreferrer">
                 Portal da Transparência
-                <ExternalLink className="inline h-3 w-3" strokeWidth={1.5} aria-hidden />
+                <ExternalLink className="ml-0.5 inline h-3 w-3" strokeWidth={1.5} aria-hidden />
               </a>
               {' · '}
               Elenco:{' '}
-              <a
-                href="https://dadosabertos.camara.leg.br"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href="https://dadosabertos.camara.leg.br" target="_blank" rel="noreferrer">
                 Câmara dos Deputados
               </a>
             </span>

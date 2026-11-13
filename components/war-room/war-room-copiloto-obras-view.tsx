@@ -2,21 +2,16 @@
 
 import { MapaObrasPanel } from '@/components/territorio-campo/mapa-obras-panel'
 
-/** Copiloto · Obras — mapa/lista (fonte Sheets Demandas). */
+/** Copiloto · Obras — mapa/lista (fonte Sheets Demandas), pele TSE. */
 export function WarRoomCopilotoObrasView() {
   return (
-    <div className="wr-copiloto-obras wr-copiloto-reveal">
-      <header
-        className="wr-copiloto-obras__toolbar wr-copiloto-reveal__card"
-        style={{ ['--wr-reveal-i' as string]: 0 }}
-      >
-        <div className="wr-copiloto-obras__toolbar-meta">
-          <h2 className="wr-copiloto-obras__title">Obras</h2>
-          <p className="wr-copiloto-obras__hint">Mapa · Lista e status</p>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-3" data-tse-obras="">
+      <header>
+        <h2 className="text-[18px] font-bold text-[var(--tse-text)]">Obras</h2>
+        <p className="mt-0.5 text-[13px] text-[var(--tse-muted)]">Mapa · Lista e status</p>
       </header>
 
-      <div className="wr-copiloto-obras__body wr-copiloto-reveal__board">
+      <div className="min-h-0 flex-1">
         <MapaObrasPanel embedded />
       </div>
     </div>

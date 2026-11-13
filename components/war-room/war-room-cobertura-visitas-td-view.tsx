@@ -23,6 +23,16 @@ import {
 } from '@/lib/war-room/cobertura-visitas-td'
 import { exportCoberturaAnexoPdf } from '@/lib/war-room/cobertura-visitas-td-pdf'
 import { cn } from '@/lib/utils'
+import {
+  TseCarregando,
+  TseTabs,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseCardClass,
+  tseTabela,
+  type TseAba,
+} from '@/components/tse/tse-ui'
 import '@/app/dashboard/shared/cobertura-cx-chrome.css'
 
 /** Agenda futura considerada para status “agendada” (além da janela de 15 dias do home). */
@@ -65,13 +75,24 @@ function formatVisitasCount(n: number): string {
 
 function CityRow({ row, tone }: { row: CoberturaCidadeRow; tone: 'sem' | 'agendada' | 'visitada' }) {
   return (
-    <li className={cn('wr-cob-td__city', `wr-cob-td__city--${tone}`)}>
-      <span className="wr-cob-td__city-name">{row.municipio}</span>
-      <span className="wr-cob-td__city-peso tabular-nums">{formatPeso(row.pesoPct)}</span>
-      <span className="wr-cob-td__city-visitas tabular-nums">
+    <li
+      className={cn(
+        'wr-cob-td__city grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.5fr_1fr] items-center gap-2 border-t border-[#EEEEEE] px-3 py-2 text-[13px]',
+        `wr-cob-td__city--${tone}`,
+      )}
+    >
+      <span className="wr-cob-td__city-name truncate font-semibold text-[var(--tse-text)]">
+        {row.municipio}
+      </span>
+      <span className="wr-cob-td__city-peso tabular-nums text-[var(--tse-muted)]">
+        {formatPeso(row.pesoPct)}
+      </span>
+      <span className="wr-cob-td__city-visitas tabular-nums text-[var(--tse-muted)]">
         {formatVisitasCount(row.visitasNoJanela)}
       </span>
-      <span className="wr-cob-td__city-status">{cityStatusLabel(row, tone)}</span>
+      <span className="wr-cob-td__city-status text-[12px] font-semibold">
+        {cityStatusLabel(row, tone)}
+      </span>
     </li>
   )
 }
@@ -92,21 +113,31 @@ function CityGroup({
   statusHeader: string
 }) {
   return (
-    <section className={cn('wr-cob-td__group', `wr-cob-td__group--${tone}`)}>
-      <header className="wr-cob-td__group-head">
-        <h3 className="wr-cob-td__group-title">
+    <section
+      className={cn(
+        'wr-cob-td__group mt-4 overflow-hidden rounded-xl bg-white shadow-sm',
+        `wr-cob-td__group--${tone}`,
+      )}
+    >
+      <header className="wr-cob-td__group-head border-b border-[var(--tse-border)] bg-[var(--tse-bar)] px-4 py-2.5">
+        <h3 className="wr-cob-td__group-title text-[13px] font-bold text-[var(--tse-text)]">
           {title}
-          <span className="wr-cob-td__group-count">
+          <span className="wr-cob-td__group-count ml-2 text-[12px] font-semibold text-[var(--tse-muted)]">
             {count}
             {cities.length > 0 ? ` · ${formatPeso(pesoPct)}` : ''}
           </span>
         </h3>
       </header>
       {cities.length === 0 ? (
-        <p className="wr-cob-td__empty">Nenhuma cidade nesta categoria.</p>
+        <p className="wr-cob-td__empty px-4 py-6 text-center text-[13px] text-[var(--tse-muted)]">
+          Nenhuma cidade nesta categoria.
+        </p>
       ) : (
         <ul className="wr-cob-td__city-list">
-          <li className="wr-cob-td__city-list-head" aria-hidden>
+          <li
+            className="wr-cob-td__city-list-head grid grid-cols-[minmax(0,1.4fr)_0.6fr_0.5fr_1fr] gap-2 bg-[var(--tse-bar)] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]"
+            aria-hidden
+          >
             <span>Cidade</span>
             <span>Peso</span>
             <span>Visitas</span>
@@ -124,36 +155,41 @@ function CityGroup({
 function TdDetail({ td, totalTds }: { td: CoberturaTdRow; totalTds: number }) {
   return (
     <section className="wr-cob-td__detail" aria-labelledby={`wr-cob-td-${td.rank}`}>
-      <p className="wr-cob-td__detail-eyebrow">
+      <p className="wr-cob-td__detail-eyebrow text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
         Território {padRank(td.rank)} de {padRank(totalTds)} · por peso eleitoral
       </p>
-      <h2 id={`wr-cob-td-${td.rank}`} className="wr-cob-td__detail-title">
+      <h2
+        id={`wr-cob-td-${td.rank}`}
+        className="wr-cob-td__detail-title mt-1 text-[18px] font-bold text-[var(--tse-text)]"
+      >
         {td.territorio}
       </h2>
-      <div className="wr-cob-td__detail-kpis">
-        <div className="wr-cob-td__detail-kpi">
-          <strong>{td.municipios}</strong>
-          <span>municípios</span>
+      <div className="wr-cob-td__detail-kpis mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi !p-3')}>
+          <strong className="block text-[18px] tabular-nums">{td.municipios}</strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">municípios</span>
         </div>
-        <div className="wr-cob-td__detail-kpi">
-          <strong>{formatPeso(td.pesoPct)}</strong>
-          <span>do peso estadual</span>
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi !p-3')}>
+          <strong className="block text-[18px] tabular-nums">{formatPeso(td.pesoPct)}</strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">do peso estadual</span>
         </div>
-        <div className="wr-cob-td__detail-kpi wr-cob-td__detail-kpi--ok">
-          <strong>{td.visitadas}</strong>
-          <span>visitadas</span>
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi wr-cob-td__detail-kpi--ok !p-3')}>
+          <strong className="block text-[18px] tabular-nums">{td.visitadas}</strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">visitadas</span>
         </div>
-        <div className="wr-cob-td__detail-kpi wr-cob-td__detail-kpi--warn">
-          <strong>{td.agendadas}</strong>
-          <span>agendadas</span>
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi wr-cob-td__detail-kpi--warn !p-3')}>
+          <strong className="block text-[18px] tabular-nums">{td.agendadas}</strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">agendadas</span>
         </div>
-        <div className="wr-cob-td__detail-kpi wr-cob-td__detail-kpi--bad">
-          <strong>{td.semCobertura}</strong>
-          <span>sem cobertura</span>
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi wr-cob-td__detail-kpi--bad !p-3')}>
+          <strong className="block text-[18px] tabular-nums">{td.semCobertura}</strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">sem cobertura</span>
         </div>
-        <div className="wr-cob-td__detail-kpi">
-          <strong>{formatMeta(td.eleitoresSemCobertura)}</strong>
-          <span>eleitores sem cobertura</span>
+        <div className={cn(tseCardClass, 'wr-cob-td__detail-kpi !p-3')}>
+          <strong className="block text-[18px] tabular-nums">
+            {formatMeta(td.eleitoresSemCobertura)}
+          </strong>
+          <span className="text-[11px] text-[var(--tse-muted)]">eleitores sem cobertura</span>
         </div>
       </div>
 
@@ -199,6 +235,30 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
       ? model.territorios.find((t) => t.rank === subTab) ?? null
       : null
 
+  const subAbas = useMemo((): readonly TseAba<string>[] => {
+    return [
+      { id: 'resumo', label: 'Resumo' },
+      ...model.territorios.map((td) => ({
+        id: `td:${td.rank}`,
+        label: `${padRank(td.rank)} ${td.territorio}`,
+      })),
+      { id: 'anexo', label: 'Anexo' },
+    ]
+  }, [model.territorios])
+
+  const subAtiva = typeof subTab === 'number' ? `td:${subTab}` : subTab
+
+  const handleSubChange = (id: string) => {
+    if (id === 'resumo' || id === 'anexo') {
+      setSubTab(id)
+      return
+    }
+    if (id.startsWith('td:')) {
+      const rank = Number(id.slice(3))
+      if (Number.isFinite(rank)) setSubTab(rank)
+    }
+  }
+
   const handleExportAnexoPdf = () => {
     if (pdfBusy || model.anexoSemCobertura.length === 0) return
     setPdfBusy(true)
@@ -211,69 +271,108 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
   }
 
   return (
-    <div className="wr-cob-td">
+    <div className="wr-cob-td flex flex-col gap-4" data-tse-cobertura="">
       <header className="wr-cob-td__hero">
-        <h1 className="wr-cob-td__title">Cobertura por território</h1>
-        <p className="wr-cob-td__sub">
+        <h1 className="wr-cob-td__title text-[18px] font-bold text-[var(--tse-text)]">
+          Cobertura por território
+        </h1>
+        <p className="wr-cob-td__sub mt-0.5 text-[13px] text-[var(--tse-muted)]">
           {model.cidadesRanking} cidades · {model.territorios.length} TDs · {model.atualizadoEm}
         </p>
       </header>
 
-      <div className="wr-cob-td__kpis" role="group" aria-label="Resumo de cobertura">
-        <article className="wr-cob-td__kpi">
-          <span className="wr-cob-td__kpi-label">Cidades no ranking</span>
-          <strong className="wr-cob-td__kpi-val">{model.cidadesRanking}</strong>
-          <span className="wr-cob-td__kpi-hint">{model.cidadesRanking} municípios mapeados</span>
+      <div
+        className="wr-cob-td__kpis grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        role="group"
+        aria-label="Resumo de cobertura"
+      >
+        <article className={cn(tseCardClass, 'wr-cob-td__kpi')}>
+          <span className="wr-cob-td__kpi-label text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+            Cidades no ranking
+          </span>
+          <strong className="wr-cob-td__kpi-val mt-1 block text-[28px] font-bold tabular-nums text-[var(--tse-text)]">
+            {model.cidadesRanking}
+          </strong>
+          <span className="wr-cob-td__kpi-hint mt-1 block text-[12px] text-[var(--tse-muted)]">
+            {model.cidadesRanking} municípios mapeados
+          </span>
         </article>
-        <article className="wr-cob-td__kpi">
-          <span className="wr-cob-td__kpi-label">Cobertas (≤{model.janelaDias} dias)</span>
-          <strong className="wr-cob-td__kpi-val">{model.cobertas}</strong>
-          <span className="wr-cob-td__kpi-hint">{formatPeso(model.pesoCobertasPct)} do peso total</span>
+        <article className={cn(tseCardClass, 'wr-cob-td__kpi')}>
+          <span className="wr-cob-td__kpi-label text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+            Cobertas (≤{model.janelaDias} dias)
+          </span>
+          <strong className="wr-cob-td__kpi-val mt-1 block text-[28px] font-bold tabular-nums text-[var(--tse-olive)]">
+            {model.cobertas}
+          </strong>
+          <span className="wr-cob-td__kpi-hint mt-1 block text-[12px] text-[var(--tse-muted)]">
+            {formatPeso(model.pesoCobertasPct)} do peso total
+          </span>
         </article>
-        <article className="wr-cob-td__kpi">
-          <span className="wr-cob-td__kpi-label">Agendadas</span>
-          <strong className="wr-cob-td__kpi-val">{model.agendadas}</strong>
-          <span className="wr-cob-td__kpi-hint">
+        <article className={cn(tseCardClass, 'wr-cob-td__kpi')}>
+          <span className="wr-cob-td__kpi-label text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+            Agendadas
+          </span>
+          <strong className="wr-cob-td__kpi-val mt-1 block text-[28px] font-bold tabular-nums text-[var(--tse-gold-text)]">
+            {model.agendadas}
+          </strong>
+          <span className="wr-cob-td__kpi-hint mt-1 block text-[12px] text-[var(--tse-muted)]">
             fora do prazo ou nunca visitadas, com data marcada
           </span>
         </article>
-        <article className="wr-cob-td__kpi">
-          <span className="wr-cob-td__kpi-label">Sem cobertura</span>
-          <strong className="wr-cob-td__kpi-val">{model.semCobertura}</strong>
-          <span className="wr-cob-td__kpi-hint">
+        <article className={cn(tseCardClass, 'wr-cob-td__kpi')}>
+          <span className="wr-cob-td__kpi-label text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+            Sem cobertura
+          </span>
+          <strong className="wr-cob-td__kpi-val mt-1 block text-[28px] font-bold tabular-nums text-[#b45309]">
+            {model.semCobertura}
+          </strong>
+          <span className="wr-cob-td__kpi-hint mt-1 block text-[12px] text-[var(--tse-muted)]">
             {formatPeso(model.pesoSemCoberturaPct)} do peso · {formatMeta(model.eleitoresSemCobertura)}{' '}
             eleitores
           </span>
         </article>
       </div>
 
-      <section className="wr-cob-td__weight" aria-label="Peso eleitoral coberto x descoberto">
-        <h2 className="wr-cob-td__weight-title">
+      <section
+        className={cn(tseCardClass, 'wr-cob-td__weight')}
+        aria-label="Peso eleitoral coberto x descoberto"
+      >
+        <h2 className="wr-cob-td__weight-title text-[15px] font-bold text-[var(--tse-text)]">
           Peso eleitoral coberto x descoberto — cobertura válida por {model.janelaDias} dias
         </h2>
-        <div className="wr-cob-td__weight-bar" role="img" aria-label="Distribuição de peso">
-          <span className="wr-cob-td__weight-seg wr-cob-td__weight-seg--ok" style={{ width: `${barOk}%` }} />
+        <div
+          className="wr-cob-td__weight-bar mt-3 flex h-3 overflow-hidden rounded-full bg-[var(--tse-zero)]"
+          role="img"
+          aria-label="Distribuição de peso"
+        >
           <span
-            className="wr-cob-td__weight-seg wr-cob-td__weight-seg--warn"
+            className="wr-cob-td__weight-seg wr-cob-td__weight-seg--ok h-full"
+            style={{ width: `${barOk}%` }}
+          />
+          <span
+            className="wr-cob-td__weight-seg wr-cob-td__weight-seg--warn h-full"
             style={{ width: `${barWarn}%` }}
           />
-          <span className="wr-cob-td__weight-seg wr-cob-td__weight-seg--bad" style={{ width: `${barBad}%` }} />
+          <span
+            className="wr-cob-td__weight-seg wr-cob-td__weight-seg--bad h-full"
+            style={{ width: `${barBad}%` }}
+          />
         </div>
-        <ul className="wr-cob-td__weight-legend">
-          <li>
-            <span className="wr-cob-td__dot wr-cob-td__dot--ok" />
+        <ul className="wr-cob-td__weight-legend mt-3 space-y-1.5 text-[13px] text-[var(--tse-text)]">
+          <li className="flex items-center gap-2">
+            <span className="wr-cob-td__dot wr-cob-td__dot--ok inline-block h-2.5 w-2.5 rounded-full" />
             Visitadas (dentro de {model.janelaDias} dias) — {formatPeso(model.pesoCobertasPct)} do peso
           </li>
-          <li>
-            <span className="wr-cob-td__dot wr-cob-td__dot--warn" />
+          <li className="flex items-center gap-2">
+            <span className="wr-cob-td__dot wr-cob-td__dot--warn inline-block h-2.5 w-2.5 rounded-full" />
             Agendadas — {formatPeso(model.pesoAgendadasPct)} do peso
           </li>
-          <li>
-            <span className="wr-cob-td__dot wr-cob-td__dot--bad" />
+          <li className="flex items-center gap-2">
+            <span className="wr-cob-td__dot wr-cob-td__dot--bad inline-block h-2.5 w-2.5 rounded-full" />
             Sem cobertura — {formatPeso(model.pesoSemCoberturaPct)} do peso
           </li>
         </ul>
-        <p className="wr-cob-td__note">
+        <p className="wr-cob-td__note mt-3 text-[12px] leading-relaxed text-[var(--tse-muted)]">
           Janela de cobertura: {model.janelaDias} dias. Uma cidade só conta como “visitada” se a última
           visita ocorreu nos últimos {model.janelaDias} dias (a partir de {model.atualizadoEm} — visitas
           antes de {model.cutoffLabel} não contam). Cidade com visita mais antiga que isso entra em “Sem
@@ -284,79 +383,40 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
       </section>
 
       <div className="wr-cob-td__subtabs-wrap">
-        <div
-          className="wr-cob-td__subtabs"
-          role="tablist"
-          aria-label="Territórios de Desenvolvimento"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'resumo'}
-            className={cn(
-              'wr-cob-td__subtab',
-              subTab === 'resumo' && 'wr-cob-td__subtab--on',
-            )}
-            onClick={() => setSubTab('resumo')}
-          >
-            Resumo
-          </button>
-          {model.territorios.map((td) => (
-            <button
-              key={td.territorio}
-              type="button"
-              role="tab"
-              aria-selected={subTab === td.rank}
-              title={td.territorio}
-              className={cn(
-                'wr-cob-td__subtab',
-                subTab === td.rank && 'wr-cob-td__subtab--on',
-              )}
-              onClick={() => setSubTab(td.rank)}
-            >
-              <span className="wr-cob-td__subtab-rank">{padRank(td.rank)}</span>
-              <span className="wr-cob-td__subtab-name">{td.territorio}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'anexo'}
-            className={cn(
-              'wr-cob-td__subtab',
-              subTab === 'anexo' && 'wr-cob-td__subtab--on',
-            )}
-            onClick={() => setSubTab('anexo')}
-          >
-            Anexo
-          </button>
-        </div>
+        <TseTabs abas={subAbas} ativa={subAtiva} onChange={handleSubChange} />
       </div>
 
       {subTab === 'resumo' ? (
-        <section className="wr-cob-td__table-wrap" aria-labelledby="wr-cob-td-table-title">
-          <h2 id="wr-cob-td-table-title" className="wr-cob-td__section-title">
+        <section
+          className="wr-cob-td__table-wrap"
+          aria-labelledby="wr-cob-td-table-title"
+          data-tse-tabela=""
+        >
+          <h2
+            id="wr-cob-td-table-title"
+            className="wr-cob-td__section-title mb-2 text-[15px] font-bold text-[var(--tse-text)]"
+          >
             Territórios ordenados por peso eleitoral
           </h2>
-          <div className="wr-cob-td__table-scroll">
-            <table className="wr-cob-td__table">
-              <thead>
+          <div className={cn(tseTabela.container, 'wr-cob-td__table-scroll')}>
+            <table className={cn(tseTabela.table, 'wr-cob-td__table')}>
+              <thead className={tseTabela.thead}>
                 <tr>
-                  <th>#</th>
-                  <th>Território</th>
-                  <th>Municípios</th>
-                  <th>Peso %</th>
-                  <th>Visitadas</th>
-                  <th>Agendadas</th>
-                  <th>Sem cobertura</th>
-                  <th>Eleitores sem cobertura</th>
+                  <th className={tseTabela.th}>#</th>
+                  <th className={tseTabela.th}>Território</th>
+                  <th className={tseTabela.th}>Municípios</th>
+                  <th className={tseTabela.th}>Peso %</th>
+                  <th className={tseTabela.th}>Visitadas</th>
+                  <th className={tseTabela.th}>Agendadas</th>
+                  <th className={tseTabela.th}>Sem cobertura</th>
+                  <th className={tseTabela.th}>Eleitores sem cobertura</th>
                 </tr>
               </thead>
               <tbody>
                 {model.territorios.map((td) => (
-                  <tr key={td.territorio}>
-                    <td>{padRank(td.rank)}</td>
-                    <td>
+                  <tr key={td.territorio} className={tseTabela.tr}>
+                    <td className={tseTabela.td}>{padRank(td.rank)}</td>
+                    <td className={tseTabela.td}>
                       <button
                         type="button"
                         className="wr-cob-td__td-link"
@@ -365,12 +425,20 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
                         {td.territorio}
                       </button>
                     </td>
-                    <td>{td.municipios}</td>
-                    <td>{formatPeso(td.pesoPct)}</td>
-                    <td className="wr-cob-td__num--ok">{td.visitadas}</td>
-                    <td className="wr-cob-td__num--warn">{td.agendadas}</td>
-                    <td className="wr-cob-td__num--bad">{td.semCobertura}</td>
-                    <td>{formatMeta(td.eleitoresSemCobertura)}</td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>{td.municipios}</td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>{formatPeso(td.pesoPct)}</td>
+                    <td className={cn(tseTabela.td, 'wr-cob-td__num--ok tabular-nums')}>
+                      {td.visitadas}
+                    </td>
+                    <td className={cn(tseTabela.td, 'wr-cob-td__num--warn tabular-nums')}>
+                      {td.agendadas}
+                    </td>
+                    <td className={cn(tseTabela.td, 'wr-cob-td__num--bad tabular-nums')}>
+                      {td.semCobertura}
+                    </td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>
+                      {formatMeta(td.eleitoresSemCobertura)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -386,13 +454,16 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
       ) : null}
 
       {subTab === 'anexo' ? (
-        <section className="wr-cob-td__anexo" aria-labelledby="wr-cob-td-anexo">
-          <div className="wr-cob-td__anexo-head">
+        <section className="wr-cob-td__anexo" aria-labelledby="wr-cob-td-anexo" data-tse-tabela="">
+          <div className="wr-cob-td__anexo-head mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="wr-cob-td-anexo" className="wr-cob-td__section-title">
+              <h2
+                id="wr-cob-td-anexo"
+                className="wr-cob-td__section-title text-[15px] font-bold text-[var(--tse-text)]"
+              >
                 Anexo · Sem cobertura válida
               </h2>
-              <p className="wr-cob-td__anexo-sub">
+              <p className="wr-cob-td__anexo-sub mt-0.5 text-[13px] text-[var(--tse-muted)]">
                 {model.anexoSemCobertura.length} municípios sem visita nos últimos{' '}
                 {model.janelaDias} dias
                 {model.agendadas > 0
@@ -403,85 +474,87 @@ function CoberturaBody({ model }: { model: CoberturaVisitasTdModel }) {
             </div>
             <button
               type="button"
-              className="wr-cob-td__pdf-btn"
+              className={cn(tseBotaoCinzaClass, 'wr-cob-td__pdf-btn')}
               disabled={pdfBusy || model.anexoSemCobertura.length === 0}
               onClick={handleExportAnexoPdf}
               aria-label="Gerar PDF do anexo"
               title="PDF profissional (header, KPIs e peso eleitoral)"
             >
               {pdfBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} aria-hidden />
+                <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
               ) : (
-                <FileDown className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                <FileDown className={tseBotaoIconeClass} aria-hidden />
               )}
               {pdfBusy ? 'Gerando…' : 'Gerar PDF'}
             </button>
           </div>
-          <div className="wr-cob-td__table-scroll">
-            <table className="wr-cob-td__table wr-cob-td__table--anexo">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Município</th>
-                  <th>Território</th>
-                  <th>Meta</th>
-                  <th>Peso %</th>
-                  <th>Eleitores</th>
-                  <th>Última visita</th>
-                  <th>Próxima visita</th>
-                </tr>
-              </thead>
-              <tbody>
-                {model.anexoSemCobertura.map((c, i) => (
-                  <tr key={c.municipioKey}>
-                    <td>{i + 1}</td>
-                    <td>{c.municipio}</td>
-                    <td>
-                      {c.territorio ? (
-                        <button
-                          type="button"
-                          className="wr-cob-td__td-link"
-                          onClick={() => {
-                            const td = model.territorios.find((t) => t.territorio === c.territorio)
-                            if (td) setSubTab(td.rank)
-                          }}
-                        >
-                          {c.territorio}
-                        </button>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>{formatMeta(c.meta)}</td>
-                    <td>{formatPeso(c.pesoPct)}</td>
-                    <td>{formatMeta(c.eleitores)}</td>
-                    <td>{formatUltimaVisitaLabel(c)}</td>
-                    <td>{formatProximaAgendaLabel(c)}</td>
+          {model.anexoSemCobertura.length === 0 ? (
+            <TseVazio>Nenhum município sem cobertura válida.</TseVazio>
+          ) : (
+            <div className={cn(tseTabela.container, 'wr-cob-td__table-scroll')}>
+              <table className={cn(tseTabela.table, 'wr-cob-td__table wr-cob-td__table--anexo')}>
+                <thead className={tseTabela.thead}>
+                  <tr>
+                    <th className={tseTabela.th}>#</th>
+                    <th className={tseTabela.th}>Município</th>
+                    <th className={tseTabela.th}>Território</th>
+                    <th className={tseTabela.th}>Meta</th>
+                    <th className={tseTabela.th}>Peso %</th>
+                    <th className={tseTabela.th}>Eleitores</th>
+                    <th className={tseTabela.th}>Última visita</th>
+                    <th className={tseTabela.th}>Próxima visita</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3}>
-                    Total · {model.anexoSemCobertura.length} cidades
-                  </td>
-                  <td>
-                    {formatMeta(model.anexoSemCobertura.reduce((s, c) => s + c.meta, 0))}
-                  </td>
-                  <td>
-                    {formatPeso(
-                      model.anexoSemCobertura.reduce((s, c) => s + c.pesoPct, 0),
-                    )}
-                  </td>
-                  <td>
-                    {formatMeta(model.anexoSemCobertura.reduce((s, c) => s + c.eleitores, 0))}
-                  </td>
-                  <td />
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {model.anexoSemCobertura.map((c, i) => (
+                    <tr key={c.municipioKey} className={tseTabela.tr}>
+                      <td className={tseTabela.td}>{i + 1}</td>
+                      <td className={cn(tseTabela.td, 'font-semibold')}>{c.municipio}</td>
+                      <td className={tseTabela.td}>
+                        {c.territorio ? (
+                          <button
+                            type="button"
+                            className="wr-cob-td__td-link"
+                            onClick={() => {
+                              const td = model.territorios.find((t) => t.territorio === c.territorio)
+                              if (td) setSubTab(td.rank)
+                            }}
+                          >
+                            {c.territorio}
+                          </button>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className={cn(tseTabela.td, 'tabular-nums')}>{formatMeta(c.meta)}</td>
+                      <td className={cn(tseTabela.td, 'tabular-nums')}>{formatPeso(c.pesoPct)}</td>
+                      <td className={cn(tseTabela.td, 'tabular-nums')}>{formatMeta(c.eleitores)}</td>
+                      <td className={tseTabela.td}>{formatUltimaVisitaLabel(c)}</td>
+                      <td className={tseTabela.td}>{formatProximaAgendaLabel(c)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-[var(--tse-border)] bg-[var(--tse-bar)] font-bold">
+                    <td className={tseTabela.td} colSpan={3}>
+                      Total · {model.anexoSemCobertura.length} cidades
+                    </td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>
+                      {formatMeta(model.anexoSemCobertura.reduce((s, c) => s + c.meta, 0))}
+                    </td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>
+                      {formatPeso(model.anexoSemCobertura.reduce((s, c) => s + c.pesoPct, 0))}
+                    </td>
+                    <td className={cn(tseTabela.td, 'tabular-nums')}>
+                      {formatMeta(model.anexoSemCobertura.reduce((s, c) => s + c.eleitores, 0))}
+                    </td>
+                    <td className={tseTabela.td} />
+                    <td className={tseTabela.td} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </section>
       ) : null}
     </div>
@@ -571,20 +644,17 @@ export function WarRoomCoberturaVisitasTdView({ municipios, loading = false }: P
   )
 
   if (loading && municipios.length === 0) {
-    return (
-      <div className="wr-copiloto-view__state">
-        <Loader2 className="h-5 w-5 animate-spin text-[#e8a825]" strokeWidth={1.5} />
-        <span>Carregando cobertura de visitas…</span>
-      </div>
-    )
+    return <TseCarregando texto="Carregando cobertura de visitas…" className="min-h-[30vh]" />
   }
 
   if (!loading && model.cidadesRanking === 0) {
     return (
-      <div className="wr-copiloto-view__state">
-        <MapPin className="h-5 w-5 text-[var(--palette-aux)]" strokeWidth={1.5} aria-hidden />
-        <span>Nenhuma cidade com meta de votos no ranking.</span>
-      </div>
+      <TseVazio>
+        <span className="inline-flex items-center justify-center gap-2">
+          <MapPin className="h-5 w-5 text-[var(--tse-yellow)]" strokeWidth={1.5} aria-hidden />
+          Nenhuma cidade com meta de votos no ranking.
+        </span>
+      </TseVazio>
     )
   }
 

@@ -5,7 +5,25 @@ import {
   IconFileTypePdf,
   IconFileTypeXls,
 } from '@tabler/icons-react'
-import { AlertTriangle, ArrowDown, ArrowUp, BarChart3, Calendar, ChevronsUpDown, Loader2, Minus, Search, Send, TrendingDown, TrendingUp, Trophy, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Calendar,
+  ChevronsUpDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Minus,
+  Search,
+  Send,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  X,
+} from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnimatedCounter } from '@/hooks/use-animated-counter'
@@ -72,6 +90,18 @@ import {
   obterVotosFederal2022TotaisMunicipio,
 } from '@/lib/jadyel-federal-2022-pi-votos'
 import { cn } from '@/lib/utils'
+import {
+  TseBusca,
+  TseFilterBar,
+  TseMenu,
+  TseMenuItem,
+  TsePillSelect,
+  TseSegmentado,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseTabela,
+} from '@/components/tse/tse-ui'
 
 type SortCol =
   | 'cidade'
@@ -1211,50 +1241,179 @@ export function WarRoomExpectativaRankingModal({
 
   if (!mounted) return null
 
-  const panel = (
-        <div
-          role={isPage ? 'region' : 'dialog'}
-          aria-modal={isPage ? undefined : true}
-          aria-labelledby={tituloId}
-          className={
-            isPage
-              ? 'wr-expectativa-ranking-modal__page-panel'
-              : 'wr-visita-modal__panel wr-expectativa-ranking-modal__panel'
-          }
-        >
-        {!isPage ? (
-          <header className="wr-visita-modal__head">
-            <div className="wr-visita-modal__head-main min-w-0">
-              <span className="wr-visita-modal__icon" aria-hidden>
-                <BarChart3 className="h-4 w-4" strokeWidth={1.5} />
-              </span>
-              <div className="min-w-0">
-                <p className="wr-visita-modal__eyebrow">War Room · Expectativa</p>
-                <h2 id={tituloId} className="wr-visita-modal__title truncate">
-                  Ranking completo ({municipios.length})
-                </h2>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="wr-visita-modal__close"
-              aria-label="Fechar"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-          </header>
-        ) : (
-          <h2 id={tituloId} className="sr-only">
-            Ranking completo ({municipios.length})
-          </h2>
-        )}
+  const contagemMunicipios =
+    loadingEmendas && !isDigital ? (
+      <span className="inline-flex items-center gap-1.5">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--tse-yellow)]" strokeWidth={1.5} />
+        Emendas…
+      </span>
+    ) : (
+      `${filtradas.length.toLocaleString('pt-BR')} município${filtradas.length === 1 ? '' : 's'}`
+    )
 
-        <div
-          className={cn(
-            'wr-expectativa-ranking-modal__toolbar',
-            isPage && 'wr-expectativa-ranking-modal__toolbar--as-header',
+  const toolbarPage = (
+    <TseFilterBar>
+      <div className="flex flex-col gap-1 text-[13px] font-semibold">
+        Visão
+        <TseSegmentado
+          opcoes={CIDADES_VISAO_OPCOES}
+          valor={visao}
+          onChange={(id) => trocarVisao(id)}
+        />
+      </div>
+      {isDigital ? (
+        <div className="flex flex-col gap-1 text-[13px] font-semibold">
+          Período
+          <TseSegmentado
+            opcoes={CIDADES_DIGITAL_PERIOD_OPTIONS.map((opt) => ({
+              id: String(opt.days),
+              label: opt.label,
+            }))}
+            valor={String(digitalPeriodDays)}
+            onChange={(id) => setDigitalPeriodDays(Number(id) as CidadesDigitalPeriodDays)}
+          />
+        </div>
+      ) : null}
+      <TsePillSelect
+        rotulo="Meta"
+        value={filtroExpectativa}
+        onChange={(e) => setFiltroExpectativa(e.target.value as FiltroExpectativa)}
+      >
+        {FILTRO_EXPECTATIVA_OPCOES.map((opcao) => (
+          <option key={opcao.id} value={opcao.id}>
+            {opcao.label}
+          </option>
+        ))}
+      </TsePillSelect>
+      {!isDigital ? (
+        <>
+          <TsePillSelect
+            rotulo="Pesquisas"
+            value={filtroPesquisas}
+            onChange={(e) => setFiltroPesquisas(e.target.value as FiltroBinario)}
+          >
+            {FILTRO_PESQUISAS_OPCOES.map((opcao) => (
+              <option key={opcao.id} value={opcao.id}>
+                {opcao.label}
+              </option>
+            ))}
+          </TsePillSelect>
+          <TsePillSelect
+            rotulo="Emendas"
+            value={filtroEmendas}
+            onChange={(e) => setFiltroEmendas(e.target.value as FiltroBinario)}
+          >
+            {FILTRO_EMENDAS_OPCOES.map((opcao) => (
+              <option key={opcao.id} value={opcao.id}>
+                {opcao.label}
+              </option>
+            ))}
+          </TsePillSelect>
+          <TsePillSelect
+            rotulo="Obras"
+            value={filtroObras}
+            onChange={(e) => setFiltroObras(e.target.value as FiltroBinario)}
+          >
+            {FILTRO_OBRAS_OPCOES.map((opcao) => (
+              <option key={opcao.id} value={opcao.id}>
+                {opcao.label}
+              </option>
+            ))}
+          </TsePillSelect>
+          <TsePillSelect
+            rotulo="Visitas"
+            value={filtroVisitas}
+            onChange={(e) => setFiltroVisitas(e.target.value as FiltroVisitas)}
+          >
+            {FILTRO_VISITAS_OPCOES.map((opcao) => (
+              <option key={opcao.id} value={opcao.id}>
+                {opcao.label}
+              </option>
+            ))}
+          </TsePillSelect>
+        </>
+      ) : null}
+      <TseBusca
+        value={busca}
+        onChange={setBusca}
+        placeholder="Buscar município…"
+        className="w-56"
+      />
+      <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+        <span className="text-[12px] font-semibold tabular-nums text-[var(--tse-muted)]">
+          {contagemMunicipios}
+        </span>
+        <button
+          type="button"
+          disabled={filtradas.length === 0 || exportBusy !== 'idle'}
+          onClick={() => exportar('xlsx')}
+          className={tseBotaoCinzaClass}
+          title="Excel"
+        >
+          {exportBusy === 'xlsx' ? (
+            <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
+          ) : (
+            <FileSpreadsheet className={tseBotaoIconeClass} aria-hidden />
           )}
+          Excel
+        </button>
+        <button
+          type="button"
+          disabled={filtradas.length === 0 || exportBusy !== 'idle'}
+          onClick={() => exportar('pdf')}
+          className={tseBotaoCinzaClass}
+          title="PDF"
+        >
+          {exportBusy === 'pdf' ? (
+            <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} aria-hidden />
+          ) : (
+            <FileText className={tseBotaoIconeClass} aria-hidden />
+          )}
+          PDF
+        </button>
+        <TseMenu
+          icone={Download}
+          rotulo="Exportar"
+          ocupado={exportBusy !== 'idle'}
+          rotuloOcupado="Exportando…"
+          largura="w-56"
+        >
+          {(fechar) => (
+            <>
+              <TseMenuItem
+                titulo="CSV"
+                descricao="Planilha simples"
+                onClick={() => {
+                  fechar()
+                  exportar('csv')
+                }}
+              />
+              <TseMenuItem
+                titulo="Excel (.xlsx)"
+                descricao="Planilha formatada"
+                onClick={() => {
+                  fechar()
+                  exportar('xlsx')
+                }}
+              />
+              <TseMenuItem
+                titulo="PDF"
+                descricao="Documento para impressão"
+                onClick={() => {
+                  fechar()
+                  exportar('pdf')
+                }}
+              />
+            </>
+          )}
+        </TseMenu>
+      </div>
+    </TseFilterBar>
+  )
+
+  const toolbarModal = (
+        <div
+          className="wr-expectativa-ranking-modal__toolbar"
           role="search"
           aria-label="Filtros do ranking"
         >
@@ -1437,14 +1596,7 @@ export function WarRoomExpectativaRankingModal({
 
           <div className="wr-expectativa-ranking-modal__toolbar-end">
             <span className="wr-expectativa-ranking-modal__count tabular-nums">
-              {loadingEmendas && !isDigital ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                  Emendas…
-                </span>
-              ) : (
-                `${filtradas.length.toLocaleString('pt-BR')} município${filtradas.length === 1 ? '' : 's'}`
-              )}
+              {contagemMunicipios}
             </span>
             <div className="wr-expectativa-ranking-modal__export" role="group" aria-label="Exportar">
               <button
@@ -1492,9 +1644,65 @@ export function WarRoomExpectativaRankingModal({
             </div>
           </div>
         </div>
+  )
 
-        <div className="wr-expectativa-ranking-modal__table-wrap">
-          <table className="wr-expectativa-ranking-modal__table">
+  const panel = (
+        <div
+          role={isPage ? 'region' : 'dialog'}
+          aria-modal={isPage ? undefined : true}
+          aria-labelledby={tituloId}
+          data-tse-cidades={isPage ? '' : undefined}
+          className={
+            isPage
+              ? 'flex flex-col gap-3'
+              : 'wr-visita-modal__panel wr-expectativa-ranking-modal__panel'
+          }
+        >
+        {!isPage ? (
+          <header className="wr-visita-modal__head">
+            <div className="wr-visita-modal__head-main min-w-0">
+              <span className="wr-visita-modal__icon" aria-hidden>
+                <BarChart3 className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <div className="min-w-0">
+                <p className="wr-visita-modal__eyebrow">War Room · Expectativa</p>
+                <h2 id={tituloId} className="wr-visita-modal__title truncate">
+                  Ranking completo ({municipios.length})
+                </h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="wr-visita-modal__close"
+              aria-label="Fechar"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </header>
+        ) : (
+          <h2 id={tituloId} className="sr-only">
+            Ranking completo ({municipios.length})
+          </h2>
+        )}
+
+        {isPage ? toolbarPage : toolbarModal}
+
+        <div
+          className={
+            isPage
+              ? cn(tseTabela.container, 'wr-expectativa-ranking-modal__table-wrap')
+              : 'wr-expectativa-ranking-modal__table-wrap'
+          }
+          data-tse-tabela={isPage ? '' : undefined}
+        >
+          <table
+            className={
+              isPage
+                ? cn(tseTabela.table, 'wr-expectativa-ranking-modal__table wr-expectativa-ranking-modal__table--tse')
+                : 'wr-expectativa-ranking-modal__table'
+            }
+          >
             <thead>
               <tr className="wr-expectativa-ranking-modal__group-row">
                 <th
@@ -1990,11 +2198,16 @@ export function WarRoomExpectativaRankingModal({
                     <button
                       type="button"
                       className={cn(
-                        'wr-expectativa-ranking-modal__flag',
-                        'wr-expectativa-ranking-modal__flag--btn',
-                        row.temEmendas
-                          ? 'wr-expectativa-ranking-modal__flag--sim'
-                          : 'wr-expectativa-ranking-modal__flag--nao',
+                        isPage
+                          ? 'inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-bold tabular-nums'
+                          : 'wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--btn',
+                        isPage
+                          ? row.temEmendas
+                            ? 'bg-[var(--tse-green)] text-white'
+                            : 'bg-[var(--tse-bar)] font-semibold text-[var(--tse-muted)]'
+                          : row.temEmendas
+                            ? 'wr-expectativa-ranking-modal__flag--sim'
+                            : 'wr-expectativa-ranking-modal__flag--nao',
                       )}
                       aria-label={`Ver emendas de ${row.municipio}`}
                       onClick={(e) => {
@@ -2010,11 +2223,16 @@ export function WarRoomExpectativaRankingModal({
                     <button
                       type="button"
                       className={cn(
-                        'wr-expectativa-ranking-modal__flag',
-                        'wr-expectativa-ranking-modal__flag--btn',
-                        row.temObras
-                          ? 'wr-expectativa-ranking-modal__flag--sim'
-                          : 'wr-expectativa-ranking-modal__flag--nao',
+                        isPage
+                          ? 'inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-bold tabular-nums'
+                          : 'wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--btn',
+                        isPage
+                          ? row.temObras
+                            ? 'bg-[var(--tse-green)] text-white'
+                            : 'bg-[var(--tse-bar)] font-semibold text-[var(--tse-muted)]'
+                          : row.temObras
+                            ? 'wr-expectativa-ranking-modal__flag--sim'
+                            : 'wr-expectativa-ranking-modal__flag--nao',
                       )}
                       aria-label={`Ver obras de ${row.municipio}`}
                       onClick={(e) => {
@@ -2045,9 +2263,15 @@ export function WarRoomExpectativaRankingModal({
                       {row.precisaVisita && row.visitaAlertaNivel ? (
                         <span
                           className={cn(
-                            'wr-expectativa-ranking-modal__visita-alerta',
-                            row.visitaAlertaNivel === 'prioridade' &&
-                              'wr-expectativa-ranking-modal__visita-alerta--prioridade',
+                            isPage
+                              ? 'inline-flex h-6 w-6 items-center justify-center rounded-full'
+                              : 'wr-expectativa-ranking-modal__visita-alerta',
+                            isPage
+                              ? row.visitaAlertaNivel === 'prioridade'
+                                ? 'bg-[var(--tse-yellow)] text-[var(--tse-text)]'
+                                : 'bg-[var(--tse-bar)] text-[var(--tse-muted)]'
+                              : row.visitaAlertaNivel === 'prioridade' &&
+                                  'wr-expectativa-ranking-modal__visita-alerta--prioridade',
                           )}
                           aria-label={`Precisa visitar ${row.municipio}: ${tituloVisitaAlerta(row.visitaAlertaNivel)}`}
                         >
@@ -2068,7 +2292,11 @@ export function WarRoomExpectativaRankingModal({
                     {row.temAgendaProxima ? (
                       <button
                         type="button"
-                        className="wr-expectativa-ranking-modal__comunicar-btn"
+                        className={
+                          isPage
+                            ? 'inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#E8E8E8] text-[var(--tse-yellow)] hover:bg-[#DDDDDD]'
+                            : 'wr-expectativa-ranking-modal__comunicar-btn'
+                        }
                         title={`Comunicar líderes · ${row.municipio}`}
                         aria-label={`Comunicar líderes em ${row.municipio}`}
                         onClick={(e) => {
@@ -2084,7 +2312,13 @@ export function WarRoomExpectativaRankingModal({
                         <Send className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                       </button>
                     ) : (
-                      <span className="wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao">
+                      <span
+                        className={
+                          isPage
+                            ? 'text-[var(--tse-muted)]'
+                            : 'wr-expectativa-ranking-modal__flag wr-expectativa-ranking-modal__flag--nao'
+                        }
+                      >
                         —
                       </span>
                     )}
@@ -2213,7 +2447,13 @@ export function WarRoomExpectativaRankingModal({
             ) : null}
           </table>
           {filtradas.length === 0 ? (
-            <p className="wr-visita-modal__state">Nenhum município encontrado.</p>
+            isPage ? (
+              <div className="p-4">
+                <TseVazio>Nenhum município encontrado.</TseVazio>
+              </div>
+            ) : (
+              <p className="wr-visita-modal__state">Nenhum município encontrado.</p>
+            )
           ) : null}
         </div>
       </div>

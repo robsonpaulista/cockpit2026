@@ -1,11 +1,8 @@
 'use client'
 
-import { Instagram, Loader2, RefreshCw, X } from 'lucide-react'
-import '@/app/dashboard/war-room/radar-competitivo-ios.css'
-import '@/app/dashboard/war-room/war-room-redes-hud.css'
+import { Instagram, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { createPortal } from 'react-dom'
 import {
   fetchInstagramData,
   fetchInstagramHistory,
@@ -30,6 +27,16 @@ import {
   type CopilotoRedesPeriod,
 } from '@/lib/war-room/redes-copiloto'
 import { cn } from '@/lib/utils'
+import {
+  TseCarregando,
+  TseErro,
+  TseFilterBar,
+  TseModal,
+  TseSegmentado,
+  TseVazio,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+} from '@/components/tse/tse-ui'
 
 function formatLastUpdateLabel(date: Date): string {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -130,19 +137,15 @@ export function WarRoomCopilotoRedesView() {
   }, [])
 
   if (loading && !metrics) {
-    return (
-      <div className="wr-copiloto-view__state">
-        <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" strokeWidth={1.5} />
-        <span>Carregando Redes Sociais…</span>
-      </div>
-    )
+    return <TseCarregando texto="Carregando Redes Sociais…" className="min-h-[30vh]" />
   }
 
   if (!configured) {
     return (
-      <div className="wr-copiloto-view__state">
-        <p>{error || 'Instagram Pessoal não configurado'}</p>
-        <Link href="/dashboard/conteudo/redes" className="wr-copiloto-view__retry">
+      <div className="flex flex-col items-start gap-3">
+        <TseVazio>{error || 'Instagram Pessoal não configurado'}</TseVazio>
+        <Link href="/dashboard/conteudo/redes" className={tseBotaoCinzaClass}>
+          <Instagram className={tseBotaoIconeClass} strokeWidth={1.5} aria-hidden />
           Configurar em Redes
         </Link>
       </div>
@@ -151,9 +154,9 @@ export function WarRoomCopilotoRedesView() {
 
   if (error && !metrics) {
     return (
-      <div className="wr-copiloto-view__state">
-        <p>{error}</p>
-        <button type="button" className="wr-copiloto-view__retry" onClick={() => void load()}>
+      <div className="flex flex-col items-start gap-3">
+        <TseErro>{error}</TseErro>
+        <button type="button" className={tseBotaoCinzaClass} onClick={() => void load()}>
           Tentar de novo
         </button>
       </div>
@@ -161,58 +164,51 @@ export function WarRoomCopilotoRedesView() {
   }
 
   return (
-    <div className="wr-copiloto-redes wr-copiloto-redes--page wr-copiloto-reveal rc-ios rc-ios--game wr-redes-game">
-      <header
-        className="wr-copiloto-redes__toolbar wr-copiloto-reveal__card"
-        style={{ ['--wr-reveal-i' as string]: 0 }}
-      >
-        <nav className="wr-copiloto-redes__period-tabs" aria-label="Período">
-          {COPILOTO_REDES_PERIOD_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={cn(
-                'wr-copiloto-redes__period-tab',
-                period === opt.value && 'wr-copiloto-redes__period-tab--active',
-              )}
-              onClick={() => setPeriod(opt.value)}
-              aria-pressed={period === opt.value}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="wr-copiloto-redes__toolbar-actions">
-          <p className="wr-copiloto-redes__last-update">
-            <span className="wr-copiloto-redes__last-update-label">Última atualização:</span>{' '}
-            <span className="wr-copiloto-redes__last-update-value">
-              {lastUpdatedAt ? formatLastUpdateLabel(lastUpdatedAt) : '—'}
-            </span>
+    <div className="flex flex-col gap-4" data-tse-redes="">
+      <TseFilterBar>
+        <div>
+          <h2 className="text-[18px] font-bold text-[var(--tse-text)]">Redes Sociais</h2>
+          <p className="mt-0.5 text-[13px] text-[var(--tse-muted)]">
+            Instagram · desempenho e evolução
           </p>
-
-          <Link href="/dashboard/conteudo/redes" className="wr-copiloto-redes__ghost-btn">
-            <Instagram className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+        </div>
+        <div className="flex flex-col gap-1 text-[13px] font-semibold text-[var(--tse-text)]">
+          Período
+          <TseSegmentado
+            opcoes={COPILOTO_REDES_PERIOD_OPTIONS.map((opt) => ({
+              id: opt.value,
+              label: opt.label,
+            }))}
+            valor={period}
+            onChange={setPeriod}
+          />
+        </div>
+        <p className="text-[12px] text-[var(--tse-muted)]">
+          <span className="font-semibold">Atualizado:</span>{' '}
+          {lastUpdatedAt ? formatLastUpdateLabel(lastUpdatedAt) : '—'}
+        </p>
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <Link href="/dashboard/conteudo/redes" className={tseBotaoCinzaClass}>
+            <Instagram className={tseBotaoIconeClass} strokeWidth={1.5} aria-hidden />
             Instagram
           </Link>
-
           <button
             type="button"
-            className="wr-copiloto-redes__ghost-btn"
+            className={tseBotaoCinzaClass}
             onClick={() => {
               void load()
             }}
             disabled={loading}
           >
             <RefreshCw
-              className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
+              className={cn(tseBotaoIconeClass, loading && 'animate-spin')}
               strokeWidth={1.5}
               aria-hidden
             />
             Atualizar
           </button>
         </div>
-      </header>
+      </TseFilterBar>
 
       <WarRoomRedesHud
         periodLabel={periodLabel}
@@ -220,56 +216,26 @@ export function WarRoomCopilotoRedesView() {
         onVisitsDoubleClick={() => setVisitasManualOpen(true)}
       />
 
-      {visitasManualOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <div className="wr-visita-modal" role="presentation">
-              <button
-                type="button"
-                className="wr-visita-modal__backdrop"
-                aria-label="Fechar"
-                onClick={() => setVisitasManualOpen(false)}
-              />
-              <div
-                className="wr-visita-modal__panel wr-copiloto-redes__visitas-manual-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={visitasManualModalTitleId}
-              >
-                <header className="wr-visita-modal__head">
-                  <div className="wr-visita-modal__head-main min-w-0">
-                    <p className="wr-visita-modal__eyebrow">Meta Insights · Instagram</p>
-                    <h2 id={visitasManualModalTitleId} className="wr-visita-modal__title">
-                      Visitas ao perfil
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    className="wr-visita-modal__close"
-                    aria-label="Fechar"
-                    onClick={() => setVisitasManualOpen(false)}
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                  </button>
-                </header>
-
-                <div className="wr-copiloto-redes__visitas-manual-body">
-                  <p className="wr-copiloto-redes__visitas-manual-hint">
-                    Informe um valor por dia (últimos {periodLabel}). Os indicadores atualizam ao
-                    salvar.
-                  </p>
-                  <WarRoomRedesVisitasManualForm
-                    embedded
-                    dates={visitDayKeys}
-                    initialByDate={manualVisitsByDate}
-                    formatDateLabel={formatVisitDayLabel}
-                    onSaved={handleManualVisitsSaved}
-                  />
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+      {visitasManualOpen ? (
+        <TseModal
+          id={visitasManualModalTitleId}
+          titulo="Visitas ao perfil"
+          subtitulo={`Meta Insights · Instagram · últimos ${periodLabel}`}
+          onClose={() => setVisitasManualOpen(false)}
+          largura="max-w-2xl"
+        >
+          <p className="text-[13px] text-[var(--tse-muted)]">
+            Informe um valor por dia (últimos {periodLabel}). Os indicadores atualizam ao salvar.
+          </p>
+          <WarRoomRedesVisitasManualForm
+            embedded
+            dates={visitDayKeys}
+            initialByDate={manualVisitsByDate}
+            formatDateLabel={formatVisitDayLabel}
+            onSaved={handleManualVisitsSaved}
+          />
+        </TseModal>
+      ) : null}
     </div>
   )
 }

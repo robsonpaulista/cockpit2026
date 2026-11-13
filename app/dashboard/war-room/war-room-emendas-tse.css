@@ -1,0 +1,119 @@
+/**
+ * Aba Emendas · Comparativo PI (Termômetro) — pele TSE.
+ * Escopo: [data-tse-emendas-cmp]
+ */
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--tse-zero, #d9d9d9);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tse-yellow, #ebb402);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__row {
+  display: grid;
+  grid-template-columns: 2rem 2.5rem minmax(0, 1fr) minmax(7rem, 1.2fr);
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__row:hover {
+  background: var(--tse-yellow-soft, #fff8d6);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__row--on {
+  border-color: var(--tse-yellow, #ebb402);
+  background: var(--tse-yellow-soft, #fff8d6);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__avatar img,
+[data-tse-emendas-cmp] .wr-emendas-cmp__detail-hero img {
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--tse-bar, #f9f9f9);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__who {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__who strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tse-text, #333);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__who em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--tse-muted, #717171);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__metrics {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__pago {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tse-text, #333);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__meta {
+  font-size: 11px;
+  color: var(--tse-muted, #717171);
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__munis ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__munis li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid #eee;
+  font-size: 13px;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__munis li:first-child {
+  border-top: 0;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__foot a {
+  color: var(--tse-olive, #6a8421);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+[data-tse-emendas-cmp] .wr-emendas-cmp__foot a:hover {
+  text-decoration: underline;
+}
+
+[data-tse-emendas-cmp] .text-\[\#f04b23\],
+[data-tse-emendas-cmp] .text-\[\#F04B23\] {
+  color: var(--tse-yellow, #ebb402) !important;
+}

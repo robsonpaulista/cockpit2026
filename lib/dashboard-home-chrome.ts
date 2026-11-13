@@ -4,10 +4,12 @@ export function isDashboardHomePath(pathname: string): boolean {
   return n === '/dashboard'
 }
 
-/** War Room / Copiloto — sidebar glass gelo. A home (/dashboard) usa o chrome TSE padrão. */
-export function isIceGlassSidebarPath(pathname: string): boolean {
-  const n = (pathname || '').replace(/\/$/, '') || '/dashboard'
-  return n === '/dashboard/war-room' || n.startsWith('/dashboard/war-room/')
+/**
+ * Sidebar glass gelo — legado.
+ * Termômetro (/dashboard/war-room) usa chrome TSE padrão (OPÇÃO B).
+ */
+export function isIceGlassSidebarPath(_pathname: string): boolean {
+  return false
 }
 
 export {

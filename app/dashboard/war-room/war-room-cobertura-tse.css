@@ -1,0 +1,88 @@
+/**
+ * Aba Cobertura (Termômetro) — pele TSE sobre a hierarquia wr-cob-td.
+ * Escopo: [data-tse-cobertura] apenas.
+ */
+
+[data-tse-cobertura] .wr-cob-td__weight-seg--ok,
+[data-tse-cobertura] .wr-cob-td__dot--ok {
+  background: var(--tse-green, #9eb737) !important;
+}
+
+[data-tse-cobertura] .wr-cob-td__weight-seg--warn,
+[data-tse-cobertura] .wr-cob-td__dot--warn {
+  background: var(--tse-yellow, #ebb402) !important;
+}
+
+[data-tse-cobertura] .wr-cob-td__weight-seg--bad,
+[data-tse-cobertura] .wr-cob-td__dot--bad {
+  background: #b45309 !important;
+}
+
+[data-tse-cobertura] .wr-cob-td__num--ok {
+  color: var(--tse-olive, #6a8421) !important;
+  font-weight: 700;
+}
+
+[data-tse-cobertura] .wr-cob-td__num--warn {
+  color: var(--tse-gold-text, #b8960b) !important;
+  font-weight: 700;
+}
+
+[data-tse-cobertura] .wr-cob-td__num--bad {
+  color: #b45309 !important;
+  font-weight: 700;
+}
+
+[data-tse-cobertura] .wr-cob-td__group--sem {
+  border-left: 3px solid #b45309;
+}
+
+[data-tse-cobertura] .wr-cob-td__group--agendada {
+  border-left: 3px solid var(--tse-yellow, #ebb402);
+}
+
+[data-tse-cobertura] .wr-cob-td__group--visitada {
+  border-left: 3px solid var(--tse-green, #9eb737);
+}
+
+[data-tse-cobertura] .wr-cob-td__city--sem .wr-cob-td__city-status {
+  color: #b45309;
+}
+
+[data-tse-cobertura] .wr-cob-td__city--agendada .wr-cob-td__city-status {
+  color: var(--tse-gold-text, #b8960b);
+}
+
+[data-tse-cobertura] .wr-cob-td__city--visitada .wr-cob-td__city-status {
+  color: var(--tse-olive, #6a8421);
+}
+
+[data-tse-cobertura] .wr-cob-td__detail-kpi--ok strong {
+  color: var(--tse-olive, #6a8421);
+}
+
+[data-tse-cobertura] .wr-cob-td__detail-kpi--warn strong {
+  color: var(--tse-gold-text, #b8960b);
+}
+
+[data-tse-cobertura] .wr-cob-td__detail-kpi--bad strong {
+  color: #b45309;
+}
+
+[data-tse-cobertura] .wr-cob-td__td-link {
+  color: var(--tse-olive, #6a8421);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+[data-tse-cobertura] .wr-cob-td__td-link:hover {
+  text-decoration: underline;
+}
+
+/* Neutraliza coral legado */
+[data-tse-cobertura] .text-\[\#f04b23\],
+[data-tse-cobertura] .text-\[\#F04B23\],
+[data-tse-cobertura] [class*='text-[#f04b23]'],
+[data-tse-cobertura] [class*='text-[#F04B23]'] {
+  color: var(--tse-yellow, #ebb402) !important;
+}

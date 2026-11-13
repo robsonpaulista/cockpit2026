@@ -15,9 +15,24 @@ import { WarRoomCopilotoRedesView } from '@/components/war-room/war-room-copilot
 import { WarRoomCopilotoRelatorioView } from '@/components/war-room/war-room-copiloto-relatorio-view'
 import { WarRoomCopilotoCoberturaView } from '@/components/war-room/war-room-copiloto-cobertura-view'
 import { useWarRoomViewMode } from '@/components/war-room/war-room-view-mode-context'
+import {
+  TseTabs,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  type TseAba,
+} from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
 
 type CopilotoTab = 'cidades' | 'cobertura' | 'obras' | 'emendas' | 'redes' | 'relatorio'
+
+const COPILOTO_ABAS: readonly TseAba<CopilotoTab>[] = [
+  { id: 'cidades', label: 'Cidades' },
+  { id: 'cobertura', label: 'Cobertura' },
+  { id: 'obras', label: 'Obras' },
+  { id: 'emendas', label: 'Emendas' },
+  { id: 'redes', label: 'Redes Sociais' },
+  { id: 'relatorio', label: 'Relatório' },
+] as const
 
 /**
  * Visão Copiloto — Cidades, Cobertura, Obras, Emendas, Redes e Relatório.
@@ -55,77 +70,10 @@ export function WarRoomCopilotoView() {
   }, [loadAgendaProximos])
 
   return (
-    <div className="wr-copiloto-view">
-      <nav className="wr-copiloto-tabs" aria-label="Seções do Copiloto">
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'cidades' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'cidades'}
-          onClick={() => setTab('cidades')}
-        >
-          Cidades
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'cobertura' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'cobertura'}
-          onClick={() => setTab('cobertura')}
-        >
-          Cobertura
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'obras' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'obras'}
-          onClick={() => setTab('obras')}
-        >
-          Obras
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'emendas' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'emendas'}
-          onClick={() => setTab('emendas')}
-        >
-          Emendas
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'redes' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'redes'}
-          onClick={() => setTab('redes')}
-        >
-          Redes Sociais
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'wr-copiloto-tabs__btn wr-copiloto-press',
-            tab === 'relatorio' && 'wr-copiloto-tabs__btn--active',
-          )}
-          aria-pressed={tab === 'relatorio'}
-          onClick={() => setTab('relatorio')}
-        >
-          Relatório
-        </button>
-      </nav>
+    <div className="flex flex-col gap-4">
+      <TseTabs abas={COPILOTO_ABAS} ativa={tab} onChange={setTab} />
 
-      <div key={tab} className="wr-copiloto-view__panel">
+      <div key={tab} className="min-w-0">
         {tab === 'obras' ? (
           <WarRoomCopilotoObrasView />
         ) : tab === 'emendas' ? (
@@ -137,18 +85,14 @@ export function WarRoomCopilotoView() {
         ) : tab === 'cobertura' ? (
           <WarRoomCopilotoCoberturaView municipios={municipios} loading={loading} />
         ) : loading && municipios.length === 0 ? (
-          <div className="wr-copiloto-view__state">
-            <Loader2 className="h-5 w-5 animate-spin text-[var(--wr-accent,#F04B23)]" strokeWidth={1.5} />
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-16 text-[13px] text-[var(--tse-muted)] shadow-sm">
+            <Loader2 className={cn(tseBotaoIconeClass, 'animate-spin')} strokeWidth={1.5} />
             <span>Carregando ranking do Copiloto…</span>
           </div>
         ) : error && municipios.length === 0 ? (
-          <div className="wr-copiloto-view__state">
-            <p>{error}</p>
-            <button
-              type="button"
-              className="wr-copiloto-view__retry wr-copiloto-press"
-              onClick={() => void recarregar()}
-            >
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-16 text-center shadow-sm">
+            <p className="text-[13px] text-[var(--tse-text)]">{error}</p>
+            <button type="button" className={tseBotaoCinzaClass} onClick={() => void recarregar()}>
               Tentar de novo
             </button>
           </div>

@@ -1,0 +1,9 @@
+/**
+ * Aba Redes (Termômetro) — ajustes pontuais após reformulação TSE.
+ * O HUD principal não depende mais do chrome wr-rs / game.
+ */
+
+[data-tse-redes] .text-\[\#f04b23\],
+[data-tse-redes] .text-\[\#F04B23\] {
+  color: var(--tse-yellow, #ebb402) !important;
+}

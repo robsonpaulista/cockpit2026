@@ -263,12 +263,12 @@ function Faixa({
     <section className="flex flex-wrap items-center gap-x-10 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
       <div className="min-w-[200px] flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[20px] font-bold uppercase">{titulo}</div>
-          <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
+          <div className="text-[15px] font-bold text-[var(--tse-text)]">{titulo}</div>
+          <span className="inline-flex rounded-full bg-[var(--tse-green)] px-2.5 py-0.5 text-[11px] font-bold text-white">
             {selo}
           </span>
         </div>
-        <div className="text-[14px] text-[var(--tse-muted)]">{resumo}</div>
+        <div className="mt-0.5 text-[13px] text-[var(--tse-muted)]">{resumo}</div>
       </div>
       {children}
     </section>
@@ -278,8 +278,12 @@ function Faixa({
 function Numero({ valor, rotulo }: { valor: ReactNode; rotulo: ReactNode }) {
   return (
     <div className="text-right">
-      <div className="text-[26px] font-black leading-tight tabular-nums">{valor}</div>
-      <div className="text-[13px] text-[var(--tse-muted)]">{rotulo}</div>
+      <div className="text-[20px] font-bold leading-tight tabular-nums text-[var(--tse-text)]">
+        {valor}
+      </div>
+      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--tse-muted)]">
+        {rotulo}
+      </div>
     </div>
   )
 }
@@ -314,11 +318,15 @@ function CartaoTipo({
         style={{ boxShadow: `inset 4px 0 0 ${cor}` }}
       >
         <div className="flex items-center gap-2">
-          <Icone className="h-5 w-5 text-[var(--tse-muted)]" />
-          <div className="text-[15px] font-bold uppercase tracking-wide">{titulo}</div>
+          <Icone className="h-4 w-4 text-[var(--tse-yellow)]" />
+          <div className="text-[13px] font-bold uppercase tracking-wide text-[var(--tse-text)]">
+            {titulo}
+          </div>
         </div>
         {registros > 0 ? (
-          <div className="text-[12px] text-[var(--tse-muted)]">{plural(registros, 'registro', 'registros')}</div>
+          <div className="text-[11px] font-semibold text-[var(--tse-muted)]">
+            {plural(registros, 'registro', 'registros')}
+          </div>
         ) : null}
       </div>
 
@@ -330,12 +338,14 @@ function CartaoTipo({
             {comRegistro.map((a) => (
               <div key={String(a.ano)} className="px-4 py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <div className="text-[18px] font-black leading-none tabular-nums">{a.ano}</div>
+                  <div className="text-[14px] font-bold leading-none tabular-nums text-[var(--tse-text)]">
+                    {a.ano}
+                  </div>
                   <div className="ml-auto whitespace-nowrap text-[13px]">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
                       Subtotal {a.ano}{' '}
                     </span>
-                    <span className="font-bold tabular-nums">
+                    <span className="font-semibold tabular-nums">
                       {a.semValor && a.total === 0 ? 'Sem valor informado' : formatRelatorioBrl(a.total)}
                     </span>
                   </div>
@@ -361,9 +371,11 @@ function CartaoTipo({
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t-2 border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-3">
-            <span className="text-[13px] font-bold uppercase tracking-wide">{rotuloTotal}</span>
-            <span className="ml-auto whitespace-nowrap text-[18px] font-black tabular-nums">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)] px-4 py-2.5">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
+              {rotuloTotal}
+            </span>
+            <span className="ml-auto whitespace-nowrap text-[15px] font-bold tabular-nums text-[var(--tse-text)]">
               {formatRelatorioBrl(totalGeral)}
             </span>
           </div>

@@ -35,6 +35,15 @@ import {
 import { chromeButtonClass, chromeFilterChipClass } from '@/lib/button-chrome'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
+import {
+  TseErro,
+  TsePillSelect,
+  TseSegmentado,
+  tseBotaoCinzaClass,
+  tseBotaoIconeClass,
+  tseCardClass,
+  tseLinkAcaoClass,
+} from '@/components/tse/tse-ui'
 
 const MapaObrasLeaflet = dynamic(
   () => import('@/components/mapa-obras-leaflet').then((mod) => mod.MapaObrasLeaflet),
@@ -228,8 +237,19 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
 
   if (loading && !splashConcluido && visaoPainel === 'mapa') {
     return (
-      <div className={cn(splashShellClass, 'items-center justify-center bg-bg-surface text-sm text-text-muted')}>
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
+      <div
+        className={cn(
+          splashShellClass,
+          'items-center justify-center text-sm',
+          embedded
+            ? 'rounded-2xl bg-white text-[var(--tse-muted)] shadow-sm'
+            : 'bg-bg-surface text-text-muted',
+        )}
+      >
+        <Loader2
+          className={cn('mr-2 h-5 w-5 animate-spin', embedded && 'text-[var(--tse-yellow)]')}
+          aria-hidden
+        />
         Carregando obras…
       </div>
     )
@@ -247,50 +267,78 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
 
   const chipClass = (active: boolean) =>
     embedded
-      ? cn('wr-copiloto-filter-chip', active && 'wr-copiloto-filter-chip--active')
+      ? cn(
+          'rounded-md border px-2.5 py-1 text-[12px] font-semibold transition-colors',
+          active
+            ? 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-strong)] text-[var(--tse-text)]'
+            : 'border-[var(--tse-border)] bg-white text-[var(--tse-muted)] hover:bg-[var(--tse-bar)]',
+        )
       : chromeFilterChipClass(active)
-  const actionBtnClass = embedded ? 'wr-copiloto-redes__ghost-btn' : chromeButtonClass
+  const actionBtnClass = embedded ? tseBotaoCinzaClass : chromeButtonClass
   const selectClass = embedded
-    ? 'wr-copiloto-filter-select max-w-[9rem] truncate sm:max-w-[11rem]'
+    ? 'max-w-[11rem] truncate rounded-md border border-[var(--tse-border)] bg-white px-2 py-1 text-[13px] text-[var(--tse-text)] outline-none focus:border-[var(--tse-yellow)]'
     : 'max-w-[9rem] truncate rounded-lg border border-card bg-bg-app px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-[11rem]'
 
-  const filtrosMapa = (
-    <div
-      className={cn(
-        'border-b border-card px-4 py-3',
-        isNativeFullscreen ? 'shrink-0 bg-bg-surface' : 'bg-bg-app/40'
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        {OBRA_MAPA_TEMAS.map((tema) => (
-          <button
-            key={tema.id}
-            type="button"
-            onClick={() => onTemaChange(tema.id)}
-            className={chipClass(temaAtivo === tema.id)}
-          >
-            {tema.label}
-            <span className="ml-1 tabular-nums opacity-70">
-              ({tema.id === 'todos' ? totalObrasTemas : contagemPorTema[tema.id as (typeof OBRA_MAPA_TEMAS_OBRA)[number]] ?? 0})
-            </span>
-          </button>
-        ))}
+  const filtrosMapaInner = (
+    <div className="flex flex-wrap items-center gap-2">
+      {OBRA_MAPA_TEMAS.map((tema) => (
+        <button
+          key={tema.id}
+          type="button"
+          onClick={() => onTemaChange(tema.id)}
+          className={chipClass(temaAtivo === tema.id)}
+        >
+          {tema.label}
+          <span className="ml-1 tabular-nums opacity-70">
+            ({tema.id === 'todos' ? totalObrasTemas : contagemPorTema[tema.id as (typeof OBRA_MAPA_TEMAS_OBRA)[number]] ?? 0})
+          </span>
+        </button>
+      ))}
 
-        <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+      <span
+        className={cn(
+          'hidden h-4 w-px shrink-0 sm:block',
+          embedded ? 'bg-[var(--tse-border)]' : 'bg-border-card opacity-60',
+        )}
+        aria-hidden
+      />
 
-        {FILTROS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFiltroFase(f.id)}
-            className={chipClass(filtroFase === f.id)}
-          >
-            {f.label}
-          </button>
-        ))}
+      {FILTROS.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          onClick={() => setFiltroFase(f.id)}
+          className={chipClass(filtroFase === f.id)}
+        >
+          {f.label}
+        </button>
+      ))}
 
-        <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+      <span
+        className={cn(
+          'hidden h-4 w-px shrink-0 sm:block',
+          embedded ? 'bg-[var(--tse-border)]' : 'bg-border-card opacity-60',
+        )}
+        aria-hidden
+      />
 
+      {embedded ? (
+        <TsePillSelect
+          rotulo="Município"
+          value={filtroMunicipio}
+          onChange={(e) => {
+            setFiltroMunicipio(e.target.value)
+            setSelectedMarcadorKey(null)
+          }}
+        >
+          <option value="">Todos ({municipiosDisponiveis.length})</option>
+          {municipiosDisponiveis.map((municipio) => (
+            <option key={municipio} value={municipio}>
+              {municipio}
+            </option>
+          ))}
+        </TsePillSelect>
+      ) : (
         <label className="flex min-w-0 items-center gap-1.5">
           <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-text-secondary">
             Município
@@ -312,7 +360,27 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
             ))}
           </select>
         </label>
-      </div>
+      )}
+    </div>
+  )
+
+  const filtrosMapa = embedded ? (
+    <div
+      className={cn(
+        'border-b border-[var(--tse-border)] px-4 py-3',
+        isNativeFullscreen && 'shrink-0 bg-white',
+      )}
+    >
+      {filtrosMapaInner}
+    </div>
+  ) : (
+    <div
+      className={cn(
+        'border-b border-card px-4 py-3',
+        isNativeFullscreen ? 'shrink-0 bg-bg-surface' : 'bg-bg-app/40',
+      )}
+    >
+      {filtrosMapaInner}
     </div>
   )
 
@@ -325,28 +393,19 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
         )}
       >
         {embedded ? (
-          <nav className="wr-copiloto-redes__period-tabs" aria-label="Visão de obras">
-            <button
-              type="button"
-              onClick={() => setVisaoPainel('lista')}
-              className={cn(
-                'wr-copiloto-redes__period-tab',
-                visaoPainel === 'lista' && 'wr-copiloto-redes__period-tab--active',
-              )}
-            >
-              Lista e status
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisaoPainel('mapa')}
-              className={cn(
-                'wr-copiloto-redes__period-tab',
-                visaoPainel === 'mapa' && 'wr-copiloto-redes__period-tab--active',
-              )}
-            >
-              Mapa
-            </button>
-          </nav>
+          <div className="flex flex-col gap-1 text-[13px] font-semibold text-[var(--tse-text)]">
+            Visão
+            <TseSegmentado
+              opcoes={
+                [
+                  { id: 'lista', label: 'Lista e status' },
+                  { id: 'mapa', label: 'Mapa' },
+                ] as const
+              }
+              valor={visaoPainel}
+              onChange={setVisaoPainel}
+            />
+          </div>
         ) : (
           <>
             <button
@@ -380,38 +439,76 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
         <MapaObrasKpiStrip totais={totais} tema={temaAtivo} />
       </section>
 
-      <div className="rounded-xl border border-card bg-bg-surface p-4">
+      <div
+        className={
+          embedded
+            ? tseCardClass
+            : 'rounded-xl border border-card bg-bg-surface p-4'
+        }
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-text-primary">{temaConfig.titulo}</h2>
-            <p className={cn('mt-1 max-w-2xl', typographyBodyMutedClass)}>{temaConfig.descricao}</p>
+            <h2
+              className={cn(
+                'text-base font-semibold',
+                embedded ? 'text-[var(--tse-text)]' : 'text-text-primary',
+              )}
+            >
+              {temaConfig.titulo}
+            </h2>
+            <p
+              className={cn(
+                'mt-1 max-w-2xl',
+                embedded ? 'text-[13px] text-[var(--tse-muted)]' : typographyBodyMutedClass,
+              )}
+            >
+              {temaConfig.descricao}
+            </p>
           </div>
           <button type="button" onClick={() => void carregar()} className={actionBtnClass} disabled={loading}>
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
+            {loading ? (
+              <Loader2 className={cn(embedded ? tseBotaoIconeClass : 'h-3.5 w-3.5', 'animate-spin')} aria-hidden />
+            ) : (
+              <RefreshCw className={embedded ? tseBotaoIconeClass : 'h-3.5 w-3.5'} aria-hidden />
+            )}
             Atualizar
           </button>
         </div>
       </div>
 
-      {error ? <p className="text-sm text-status-danger">{error}</p> : null}
+      {error ? (
+        embedded ? (
+          <TseErro>{error}</TseErro>
+        ) : (
+          <p className="text-sm text-status-danger">{error}</p>
+        )
+      ) : null}
 
       <div
         ref={mapContainerRef}
         className={cn(
-          'overflow-hidden rounded-xl border border-card bg-bg-surface',
-          '[&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:rounded-none [&:fullscreen]:border-none [&:fullscreen]:bg-bg-surface'
+          embedded
+            ? 'overflow-hidden rounded-2xl bg-white shadow-sm'
+            : 'overflow-hidden rounded-xl border border-card bg-bg-surface',
+          '[&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:rounded-none [&:fullscreen]:border-none [&:fullscreen]:bg-bg-surface',
         )}
       >
         <div
           className={cn(
-            'border-b border-card px-4 py-3',
-            isNativeFullscreen && 'shrink-0 bg-bg-surface'
+            'px-4 py-3',
+            embedded ? 'border-b border-[var(--tse-border)]' : 'border-b border-card',
+            isNativeFullscreen && (embedded ? 'shrink-0 bg-white' : 'shrink-0 bg-bg-surface'),
           )}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
+            <div
+              className={cn(
+                'flex items-center gap-2 text-sm font-medium',
+                embedded ? 'text-[var(--tse-text)]' : 'text-text-primary',
+              )}
+            >
               <MapPinned
-                className={cn('h-4 w-4', embedded ? 'text-[var(--wr-text-secondary,#52524f)]' : 'text-accent-gold')}
+                className={cn('h-4 w-4', embedded ? 'text-[var(--tse-yellow)]' : 'text-accent-gold')}
                 aria-hidden
               />
               {temaAtivo === 'todos'
@@ -438,7 +535,12 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-app hover:text-text-primary"
+                className={cn(
+                  'rounded-lg p-2 transition-colors',
+                  embedded
+                    ? 'text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]'
+                    : 'text-text-secondary hover:bg-bg-app hover:text-text-primary',
+                )}
                 title={isNativeFullscreen ? 'Sair da tela cheia' : 'Expandir mapa em tela cheia'}
                 disabled={!isNativeFullscreen && (loading || marcadoresFiltrados.length === 0)}
               >
@@ -450,7 +552,12 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
               </button>
             </div>
           </div>
-          <p className={cn('mt-1.5', typographyBodyMutedClass)}>
+          <p
+            className={cn(
+              'mt-1.5',
+              embedded ? 'text-[12px] text-[var(--tse-muted)]' : typographyBodyMutedClass,
+            )}
+          >
             Passe o mouse para ver o resumo · clique no pin para detalhes
           </p>
         </div>
@@ -472,7 +579,11 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
               <button
                 type="button"
                 onClick={() => setVisaoPainel('lista')}
-                className="inline-flex items-center gap-1 text-[rgb(var(--color-primary))] hover:underline"
+                className={
+                  embedded
+                    ? tseLinkAcaoClass
+                    : 'inline-flex items-center gap-1 text-[rgb(var(--color-primary))] hover:underline'
+                }
               >
                 Informar status na lista de obras
               </button>
@@ -497,35 +608,77 @@ export function MapaObrasPanel({ embedded = false }: MapaObrasPanelProps = {}) {
       </div>
 
       {marcadorSelecionado ? (
-        <div className="rounded-xl border border-card bg-bg-surface p-4">
+        <div
+          className={
+            embedded ? tseCardClass : 'rounded-xl border border-card bg-bg-surface p-4'
+          }
+        >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-text-primary">{marcadorSelecionado.municipio}</h3>
-              <p className={typographyBodyMutedClass}>
+              <h3
+                className={cn(
+                  'text-sm font-semibold',
+                  embedded ? 'text-[var(--tse-text)]' : 'text-text-primary',
+                )}
+              >
+                {marcadorSelecionado.municipio}
+              </h3>
+              <p
+                className={
+                  embedded ? 'text-[12px] text-[var(--tse-muted)]' : typographyBodyMutedClass
+                }
+              >
                 {obraMapaTemaConfig(marcadorSelecionado.tema).label} · {marcadorSelecionado.total} obra(s) ·{' '}
                 {OBRA_FASE_LABEL[marcadorSelecionado.fase]}
               </p>
             </div>
             <button
               type="button"
-              className="text-xs text-text-muted hover:text-text-primary"
+              className={
+                embedded
+                  ? tseLinkAcaoClass
+                  : 'text-xs text-text-muted hover:text-text-primary'
+              }
               onClick={() => setSelectedMarcadorKey(null)}
             >
               Limpar seleção
             </button>
           </div>
 
-          <ul className="mt-3 divide-y divide-card border-t border-card">
+          <ul
+            className={cn(
+              'mt-3 divide-y border-t',
+              embedded ? 'divide-[#EEEEEE] border-[var(--tse-border)]' : 'divide-card border-card',
+            )}
+          >
             {marcadorSelecionado.obras.map((obra) => (
               <li key={obra.id} className="py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-text-primary">{obra.obra ?? 'Obra sem nome'}</p>
-                    <p className={typographyBodyMutedClass}>
+                    <p
+                      className={cn(
+                        'text-sm font-medium',
+                        embedded ? 'text-[var(--tse-text)]' : 'text-text-primary',
+                      )}
+                    >
+                      {obra.obra ?? 'Obra sem nome'}
+                    </p>
+                    <p
+                      className={
+                        embedded ? 'text-[12px] text-[var(--tse-muted)]' : typographyBodyMutedClass
+                      }
+                    >
                       {obra.orgao ?? 'Órgão não informado'} · {obra.status ?? 'Sem status'}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm tabular-nums text-text-secondary">{formatCurrency(valorExibidoMapaObra(obra))}</p>
+                  <p
+                    className={cn(
+                      'shrink-0 text-sm tabular-nums',
+                      embedded ? 'text-[var(--tse-muted)]' : 'text-text-secondary',
+                    )}
+                  >
+                    {formatCurrency(valorExibidoMapaObra(obra))}
+                  </p>
                 </div>
                 <div className="mt-3">
                   {!obra.id.startsWith('jad-') ? (
