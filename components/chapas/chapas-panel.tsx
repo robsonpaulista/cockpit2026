@@ -21,6 +21,10 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { CHAPA_ESTADUAL_HREF, CHAPA_FEDERAL_HREF } from '@/lib/resumo-eleicoes-hub-route'
+import {
+  corTextoSobrePartido,
+  estiloCabecalhoPartido,
+} from '@/lib/partido-cores'
 
 function ChapasSectionTitle({
   icon: Icon,
@@ -1622,12 +1626,15 @@ export function ChapasPanel({
                 const votosProjetados = getVotosProjetados(partido.candidatos, partido.nome)
                 const feedbackVagasChip = feedbackSegundaVagaPorPartido[partido.nome]
 
+                const estiloPartido = estiloCabecalhoPartido(partido.nome)
+
                 return (
                   <div
                     key={partido.nome}
                     data-chapas-partido-card
                     className={cn(
                       innerPanelClass,
+                      'overflow-hidden',
                       `w-full flex flex-col ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
                         atingiuMinimo ? 'border-border-card' : 'border-status-error/50 bg-status-error/5'
                       }`
@@ -1636,26 +1643,29 @@ export function ChapasPanel({
                     {modoImpressao ? (
                       <div
                         data-chapas-partido-titulo-pdf
-                        className={`w-full py-2.5 px-3 font-bold text-base mb-3 rounded text-center break-words whitespace-normal ${
+                        className="mb-3 w-full break-words whitespace-normal rounded px-3 py-2.5 text-center text-base font-bold text-text-primary"
+                        style={
                           atingiuMinimo
-                            ? 'bg-bg-surface text-text-primary'
-                            : 'bg-status-error/10 text-status-error'
-                        }`}
+                            ? { backgroundColor: estiloPartido.softBg }
+                            : undefined
+                        }
                       >
                         {partido.nome}
                       </div>
                     ) : (
-                    <div className={`w-full py-2 px-3 font-bold text-sm mb-3 rounded text-center ${
-                      atingiuMinimo 
-                        ? 'bg-bg-surface text-text-primary' 
-                        : 'bg-status-error/10 text-status-error'
-                    }`}>
+                    <div
+                      className={cn(
+                        'mb-3 w-full rounded-md px-3 py-2 text-center text-sm font-semibold',
+                        atingiuMinimo ? 'text-text-primary' : 'bg-status-error/10 text-status-error',
+                      )}
+                      style={atingiuMinimo ? { backgroundColor: estiloPartido.softBg } : undefined}
+                    >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 text-text-secondary">
                           <button
                             type="button"
                             onClick={() => handleMoverPartido(partido.nome, 'esquerda')}
-                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded p-1 transition-colors hover:bg-black/5 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                             title="Mover partido para a esquerda"
                             disabled={posicaoAtualNaOrdem <= 0}
                           >
@@ -1664,15 +1674,23 @@ export function ChapasPanel({
                           <button
                             type="button"
                             onClick={() => handleMoverPartido(partido.nome, 'direita')}
-                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="rounded p-1 transition-colors hover:bg-black/5 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                             title="Mover partido para a direita"
                             disabled={posicaoAtualNaOrdem >= partidos.length - 1}
                           >
                             <ChevronRight className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <span className="px-2 truncate">{partido.nome}</span>
-                        <div className="flex items-center gap-1">
+                        <span
+                          className="inline-flex max-w-[55%] truncate rounded-md px-2.5 py-1 text-[12px] font-bold tracking-wide"
+                          style={{
+                            backgroundColor: estiloPartido.accent,
+                            color: corTextoSobrePartido(estiloPartido.accent),
+                          }}
+                        >
+                          {partido.nome}
+                        </span>
+                        <div className="flex items-center gap-0.5 text-text-secondary">
                           <button
                             type="button"
                             onClick={() => {
@@ -1680,7 +1698,7 @@ export function ChapasPanel({
                                 handleExcluirPartido(partido.nome)
                               }
                             }}
-                            className="text-status-error hover:text-status-error/80 transition-colors p-1"
+                            className="rounded p-1 text-status-error transition-colors hover:bg-status-error/10"
                             title="Remover partido"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1688,7 +1706,7 @@ export function ChapasPanel({
                           <button
                             type="button"
                             onClick={() => handleAbrirEditarPartido(partido.nome)}
-                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
+                            className="rounded p-1 transition-colors hover:bg-black/5 hover:text-text-primary"
                             title="Editar nome do partido"
                           >
                             <PenSquare className="h-3.5 w-3.5" />
@@ -1696,7 +1714,7 @@ export function ChapasPanel({
                           <button
                             type="button"
                             onClick={() => togglePartidoVisibilidade(partido.nome)}
-                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
+                            className="rounded p-1 transition-colors hover:bg-black/5 hover:text-text-primary"
                             title={partidosOcultos[partido.nome] ? 'Mostrar partido' : 'Ocultar partido'}
                           >
                             {partidosOcultos[partido.nome] ? (
@@ -1709,7 +1727,7 @@ export function ChapasPanel({
                             <button
                               type="button"
                               onClick={() => setOpenAnaliseRepublicanos(true)}
-                              className={cn('text-text-primary transition-colors p-1', accentHoverTextClass)}
+                              className="rounded p-1 transition-colors hover:bg-black/5 hover:text-text-primary"
                             >
                               <Info className="h-3.5 w-3.5" />
                             </button>
@@ -2370,14 +2388,40 @@ export function ChapasPanel({
                               }))
                             ).filter(item => item.candidatos.length > 0)
 
-                            return partidosOrdenados.map(({ nome: partido, candidatos }) => (
-                              <div key={partido} className={innerPanelClass}>
-                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-border-card'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-text-primary'}`}>{partido}</div>
+                            return partidosOrdenados.map(({ nome: partido, candidatos }) => {
+                              const estilo = estiloCabecalhoPartido(partido)
+                              return (
+                              <div
+                                key={partido}
+                                className={cn(innerPanelClass, 'overflow-hidden border-border-card')}
+                              >
+                                <div
+                                  className="mb-2 flex items-center justify-center rounded-md px-2 py-2"
+                                  style={{ backgroundColor: estilo.softBg }}
+                                >
+                                  <span
+                                    className="inline-flex rounded-md px-2.5 py-1 text-[12px] font-bold tracking-wide"
+                                    style={{
+                                      backgroundColor: estilo.accent,
+                                      color: corTextoSobrePartido(estilo.accent),
+                                    }}
+                                  >
+                                    {partido}
+                                  </span>
+                                </div>
                                 <div className="space-y-2">
                                   {candidatos.map((candidato, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 bg-background rounded text-xs">
+                                    <div key={index} className="flex items-center justify-between rounded bg-background p-2 text-xs">
                                       <div className="flex items-center gap-2">
-                                        <span className={cn('font-bold', accentTextClass)}>#{candidato.posicao}</span>
+                                        <span
+                                          className="inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-[10px] font-bold"
+                                          style={{
+                                            backgroundColor: estilo.softBg,
+                                            color: estilo.accent,
+                                          }}
+                                        >
+                                          #{candidato.posicao}
+                                        </span>
                                         <span className="font-medium">{candidato.nome}</span>
                                       </div>
                                       <div className="text-right">
@@ -2390,7 +2434,8 @@ export function ChapasPanel({
                                   ))}
                                 </div>
                               </div>
-                            ))
+                              )
+                            })
                           } catch (error) {
                             return (
                               <div className="col-span-full py-4 text-center text-status-error">

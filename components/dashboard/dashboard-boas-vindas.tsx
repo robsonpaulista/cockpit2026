@@ -1,6 +1,6 @@
 'use client'
 
-import { PanelLeft, LogOut, Loader2 } from 'lucide-react'
+import { LogOut, Loader2 } from 'lucide-react'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import { APP_BRAND_MANDATO_SUBTITLE } from '@/lib/sidebar-brand-styles'
 import { cn } from '@/lib/utils'
@@ -97,19 +97,6 @@ export function DashboardBoasVindas({
               <span className="font-bold text-[var(--tse-gold-text)]">{perfil}</span>
             </p>
           ) : null}
-
-          <div className="mt-8 flex gap-3 rounded-xl border border-[var(--tse-border)] bg-[var(--tse-bar)] px-4 py-4 sm:px-5 sm:py-5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--tse-yellow-soft)]">
-              <PanelLeft className="h-5 w-5 text-[var(--tse-gold-text)]" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[14px] font-bold text-[var(--tse-text)]">Navegação pelo menu lateral</p>
-              <p className="mt-1 text-[14px] leading-relaxed text-[var(--tse-muted)]">
-                Use o menu à esquerda para abrir a página desejada. O bloco de acesso rápido reúne os
-                módulos mais utilizados; as demais áreas aparecem conforme as permissões da sua conta.
-              </p>
-            </div>
-          </div>
 
           {semModulos ? (
             <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-[13px] text-red-800">

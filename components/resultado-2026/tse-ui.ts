@@ -36,37 +36,8 @@ export const TERRITORIO_CORES = [
   '#2B3D26',
 ] as const
 
-/**
- * Cores oficiais dos partidos (sigla como vem do TSE), conforme a predefinição
- * "Cor de partido político/BRA" da Wikipédia. Democrata (ex-PMB) não tem cor lá; usa o azul da marca.
- */
-export const CORES_PARTIDOS: Record<string, string> = {
-  AVANTE: '#2EABB1',
-  CIDADANIA: '#EC008C',
-  DC: '#C89721',
-  DEMOCRATA: '#3B82F6',
-  MDB: '#009959',
-  MISSÃO: '#FCBE26',
-  MOBILIZA: '#DD3333',
-  NOVO: '#EC671C',
-  PCDOB: '#800314',
-  PCO: '#9F030A',
-  PDT: '#FE8E6D',
-  PL: '#30306C',
-  PODE: '#00D663',
-  PP: '#54B8EA',
-  PSB: '#FFCC00',
-  PSD: '#0067A5',
-  PSDB: '#0F2BC5',
-  PSOL: '#68018D',
-  PT: '#C0122D',
-  PV: '#01652F',
-  REDE: '#3CA08C',
-  REPUBLICANOS: '#F3C300',
-  SOLIDARIEDADE: '#F37021',
-  UNIÃO: '#00A0DF',
-  UP: '#000000',
-}
+/** Reexporta o catálogo compartilhado (Chapas, Resultado 2026, etc.). */
+export { CORES_PARTIDOS } from '@/lib/partido-cores'
 
 /** Cor do i-ésimo vencedor; além da paleta fixa, matizes espaçados pelo ângulo áureo. */
 export function corTerritorio(i: number): string {

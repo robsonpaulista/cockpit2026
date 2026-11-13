@@ -32,8 +32,8 @@ export type SidebarQuickAccessItem = {
 
 /**
  * Ordem do Acesso rápido:
- * 1) Resultado 2026 no topo
- * 2) Fluxo operacional: Agenda → Atendimentos → Lideranças → Emendas → Instagram → Radar → Proposições → Chapas
+ * 1) Resultado 2026 → Chapas → Pesquisas no topo
+ * 2) Fluxo operacional: Agenda → Atendimentos → Lideranças → Emendas → Instagram → Radar → Proposições
  * 3) Demais módulos em ordem alfabética (pt-BR)
  */
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
@@ -43,6 +43,20 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     href: RESULTADO_2026_HREF,
     icon: 'Vote',
     pageKey: 'resultado-2026',
+  },
+  {
+    id: 'quick-chapas',
+    label: 'Chapas',
+    href: CHAPA_FEDERAL_HREF,
+    icon: 'Vote',
+    pageKey: 'chapas',
+  },
+  {
+    id: 'quick-pesquisas',
+    label: 'Pesquisas de Opinião',
+    href: '/dashboard/pesquisa',
+    icon: 'BarChart3',
+    pageKey: 'pesquisa',
   },
   {
     id: 'quick-agenda',
@@ -94,13 +108,6 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'proposicoes',
   },
   {
-    id: 'quick-chapas',
-    label: 'Chapas',
-    href: CHAPA_FEDERAL_HREF,
-    icon: 'Vote',
-    pageKey: 'chapas',
-  },
-  {
     id: 'quick-arena',
     label: 'Arena',
     href: '/dashboard/mobilizacao',
@@ -134,13 +141,6 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     href: '/dashboard/oportunidades-federais',
     icon: 'Landmark',
     pageKey: 'oportunidades-federais',
-  },
-  {
-    id: 'quick-pesquisas',
-    label: 'Pesquisas de Opinião',
-    href: '/dashboard/pesquisa',
-    icon: 'BarChart3',
-    pageKey: 'pesquisa',
   },
   {
     id: 'quick-termometro',
