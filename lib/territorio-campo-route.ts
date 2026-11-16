@@ -38,3 +38,26 @@ export function territorioCampoHref(tab: TerritorioCampoTab = TERRITORIO_CAMPO_T
   }
   return `${TERRITORIO_CAMPO_HREF}?tab=${tab}`
 }
+
+/** Sub-abas internas de Visitas (Agenda de campo × Cobertura 2026). */
+export const TERRITORIO_VISITAS_SUB_AGENDA = 'agenda' as const
+export const TERRITORIO_VISITAS_SUB_COBERTURA_2026 = 'cobertura-2026' as const
+
+export type TerritorioVisitasSubTab =
+  | typeof TERRITORIO_VISITAS_SUB_AGENDA
+  | typeof TERRITORIO_VISITAS_SUB_COBERTURA_2026
+
+export function parseTerritorioVisitasSubTab(
+  value: string | null | undefined,
+): TerritorioVisitasSubTab {
+  if (value === TERRITORIO_VISITAS_SUB_COBERTURA_2026) return TERRITORIO_VISITAS_SUB_COBERTURA_2026
+  return TERRITORIO_VISITAS_SUB_AGENDA
+}
+
+/** Mantém `tab=visitas` e grava/limpa `visitas=` (agenda = default, omitido). */
+export function territorioVisitasHref(sub: TerritorioVisitasSubTab = TERRITORIO_VISITAS_SUB_AGENDA): string {
+  if (sub === TERRITORIO_VISITAS_SUB_AGENDA) {
+    return territorioCampoHref(TERRITORIO_CAMPO_TAB_VISITAS)
+  }
+  return `${TERRITORIO_CAMPO_HREF}?tab=${TERRITORIO_CAMPO_TAB_VISITAS}&visitas=${sub}`
+}

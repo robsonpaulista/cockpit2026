@@ -59,6 +59,14 @@ function isWithinLastDays(dateStr: string, days: number): boolean {
   return visitDate >= cutoff
 }
 
+/** Inclusivo: visita em `dateStr` a partir de `sinceKey` (YYYY-MM-DD). */
+function isOnOrAfterSince(dateStr: string, sinceKey: string): boolean {
+  const normalized = parseDateOnly(dateStr)
+  const since = parseDateOnly(sinceKey)
+  if (!normalized || !since) return false
+  return normalized >= since
+}
+
 function isWithinDayWindow(dateStr: string, days: number, offsetDays: number): boolean {
   const normalized = parseDateOnly(dateStr)
   if (!normalized || days <= 0) return true
@@ -110,6 +118,7 @@ function weekBucketIndex(
  *   `days=N` janela
  *   `offsetDays=M` desloca a janela para trás (ex.: days=30&offsetDays=30 → 31–60)
  *   `weeks=K` compara K semanas (days = K×7); inclui `visitasPorSemana` (0 = semana atual)
+ *   `since=YYYY-MM-DD` só check-ins nesta data ou depois (tem prioridade sobre days/offset)
  */
 export async function GET(request: Request) {
   try {
@@ -129,6 +138,9 @@ export async function GET(request: Request) {
     const offsetDays =
       weeks > 0 ? 0 : Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0
     const useWeekBuckets = weeks > 1
+    const sinceRaw = searchParams.get('since') ?? ''
+    const sinceKey =
+      !useWeekBuckets && /^\d{4}-\d{2}-\d{2}$/.test(sinceRaw.trim()) ? sinceRaw.trim() : null
 
     const { data: agendasRaw, error } = await supabase
       .from('agendas')
@@ -180,6 +192,9 @@ export async function GET(request: Request) {
           const bucket = weekBucketIndex(refDate, weekSize, weeks)
           if (bucket == null) continue
           weekHits[bucket] = (weekHits[bucket] ?? 0) + 1
+          checkinsNoRecorte += 1
+        } else if (sinceKey) {
+          if (!isOnOrAfterSince(refDate, sinceKey)) continue
           checkinsNoRecorte += 1
         } else if (days > 0) {
           if (offsetDays > 0) {
@@ -298,9 +313,10 @@ export async function GET(request: Request) {
       foraDoMapaTd,
       totalVisitas,
       totalPorSemana,
-      days: days > 0 ? days : null,
+      days: sinceKey ? null : days > 0 ? days : null,
       weeks: useWeekBuckets ? weeks : null,
-      offsetDays: offsetDays > 0 ? offsetDays : null,
+      offsetDays: sinceKey ? null : offsetDays > 0 ? offsetDays : null,
+      since: sinceKey,
     })
   } catch (e) {
     if (isSupabaseNetworkError(e)) {
