@@ -5,16 +5,22 @@ import { APP_BRAND_MANDATO_SUBTITLE, brandWordmarkClass } from '@/lib/sidebar-br
 export function TopbarBrandBlock({
   className,
   compact = false,
+  size = 'sm',
 }: {
   className?: string
   /** Só o selo CX (sidebar recolhida). */
   compact?: boolean
+  /** `lg` para hero (ex.: boas-vindas). */
+  size?: 'sm' | 'lg'
 }) {
+  const grande = size === 'lg'
+
   if (compact) {
     return (
       <span
         className={cn(
-          'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#333333]',
+          'inline-flex shrink-0 items-center justify-center rounded-full bg-[#333333]',
+          grande ? 'h-10 w-10' : 'h-7 w-7',
           className,
         )}
         aria-label="Cockpit X"
@@ -22,7 +28,7 @@ export function TopbarBrandBlock({
         data-topbar-brand="cx"
       >
         <span
-          className="text-[10px] leading-none tracking-tight"
+          className={cn('leading-none tracking-tight', grande ? 'text-[13px]' : 'text-[10px]')}
           style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
         >
           <span data-cx-mark="cockpit" className="text-[var(--cockpit-top-bg,#EBB402)]">
@@ -38,17 +44,20 @@ export function TopbarBrandBlock({
 
   return (
     <div
-      className={cn('flex min-w-0 items-center gap-2', className)}
+      className={cn('flex min-w-0 items-center', grande ? 'gap-3' : 'gap-2', className)}
       data-brand-wordmark="cockpit-x"
       data-topbar-brand="full"
     >
       <span
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#333333]"
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center rounded-full bg-[#333333]',
+          grande ? 'h-12 w-12' : 'h-8 w-8',
+        )}
         aria-hidden
         data-topbar-brand="cx"
       >
         <span
-          className="text-[11px] leading-none tracking-tight"
+          className={cn('leading-none tracking-tight', grande ? 'text-[15px]' : 'text-[11px]')}
           style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
         >
           <span data-cx-mark="cockpit" className="text-[var(--cockpit-top-bg,#EBB402)]">
@@ -59,9 +68,13 @@ export function TopbarBrandBlock({
           </span>
         </span>
       </span>
-      <span className="min-w-0 flex flex-col justify-center leading-none">
+      <span className="min-w-0 flex flex-col justify-center leading-none text-left">
         <span
-          className={cn(brandWordmarkClass, 'truncate text-[13px] text-[#333333]')}
+          className={cn(
+            brandWordmarkClass,
+            'truncate text-[#333333]',
+            grande ? 'text-[22px] sm:text-[26px]' : 'text-[13px]',
+          )}
           aria-label="Cockpit X"
           style={{ fontFamily: 'var(--font-michroma), ui-sans-serif, system-ui, sans-serif' }}
         >
@@ -71,7 +84,10 @@ export function TopbarBrandBlock({
           </span>
         </span>
         <span
-          className="mt-0.5 truncate text-[8px] font-semibold uppercase tracking-[0.12em] text-black"
+          className={cn(
+            'truncate font-semibold uppercase tracking-[0.12em] text-black',
+            grande ? 'mt-1.5 text-[10px] sm:text-[11px]' : 'mt-0.5 text-[8px]',
+          )}
           data-topbar-brand="subtitle"
         >
           {APP_BRAND_MANDATO_SUBTITLE}

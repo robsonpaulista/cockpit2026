@@ -1,9 +1,11 @@
 'use client'
 
 import { LogOut, Loader2 } from 'lucide-react'
+import { CockpitMostrador } from '@/components/home/cockpit-mostrador'
+import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
-import { APP_BRAND_MANDATO_SUBTITLE } from '@/lib/sidebar-brand-styles'
 import { cn } from '@/lib/utils'
+import '@/components/home/cockpit-home.css'
 
 const PERFIS: Record<string, string> = {
   candidato: 'Candidato',
@@ -71,22 +73,24 @@ export function DashboardBoasVindas({
     >
       <section
         className={cn(
-          'flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded-2xl bg-white shadow-sm',
+          'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm',
           'px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12',
         )}
         aria-labelledby="boas-vindas-titulo"
       >
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--tse-gold-text)]">
-            Cockpit X · {APP_BRAND_MANDATO_SUBTITLE}
-          </p>
+        <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+          <CockpitMostrador tom="claro" />
+        </div>
+
+        <div className="relative z-[1] mx-auto flex w-full max-w-[min(22rem,58%)] flex-1 flex-col items-center justify-center overflow-y-auto text-center sm:max-w-[min(24rem,52%)]">
+          <TopbarBrandBlock size="lg" className="justify-center" />
           <h1
             id="boas-vindas-titulo"
-            className="mt-3 text-[28px] font-bold leading-tight tracking-tight text-[var(--tse-text)] sm:text-[34px]"
+            className="mt-6 text-[26px] font-bold leading-tight tracking-tight text-[var(--tse-text)] sm:text-[30px]"
           >
             Bem-vindo(a), {saudacao}.
           </h1>
-          <p className="mt-4 max-w-2xl text-[16px] leading-relaxed text-[var(--tse-muted)] sm:text-[17px]">
+          <p className="mt-4 text-[15px] leading-relaxed text-[var(--tse-muted)] sm:text-[16px]">
             Sua sessão está ativa. Selecione no menu lateral o módulo que deseja consultar — painéis,
             indicadores e ferramentas liberados para o seu perfil.
           </p>
@@ -99,7 +103,7 @@ export function DashboardBoasVindas({
           ) : null}
 
           {semModulos ? (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-[13px] text-red-800">
+            <div className="mt-6 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-left text-[13px] text-red-800">
               <p className="font-bold">Nenhum módulo liberado</p>
               <p className="mt-1 leading-relaxed">
                 Sua conta ainda não possui páginas habilitadas. Solicite à coordenação o ajuste das

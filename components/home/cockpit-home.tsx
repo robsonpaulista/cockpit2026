@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, X } from 'lucide-react'
+import { CockpitMostrador } from '@/components/home/cockpit-mostrador'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import { useLoginCockpit } from '@/hooks/use-login-cockpit'
 import { cn } from '@/lib/utils'
@@ -12,24 +13,6 @@ const EASE = [0.22, 1, 0.36, 1] as const
 const LETRAS = 'COCKPIT'.split('')
 /** Momento (s) em que a revelação da marca termina e as ações aparecem. */
 const FIM_REVELACAO = 1.75
-
-type Traco = { x1: number; y1: number; x2: number; y2: number; longo: boolean }
-
-const arred = (n: number) => Math.round(n * 100) / 100
-
-const TRACOS_MOSTRADOR: Traco[] = Array.from({ length: 72 }, (_, i) => {
-  const a = (i * 5 * Math.PI) / 180
-  const longo = i % 6 === 0
-  const r1 = 196
-  const r2 = longo ? 180 : 189
-  return {
-    x1: arred(200 + r1 * Math.sin(a)),
-    y1: arred(200 - r1 * Math.cos(a)),
-    x2: arred(200 + r2 * Math.sin(a)),
-    y2: arred(200 - r2 * Math.cos(a)),
-    longo,
-  }
-})
 
 const campoClass =
   'h-9 w-full rounded-lg border border-[var(--tse-border)] bg-white px-3 text-[13px] text-[var(--tse-text)] outline-none transition placeholder:text-[var(--tse-zero)] focus:border-[var(--tse-text)] focus:ring-4 focus:ring-[var(--tse-yellow-soft)]'
@@ -54,28 +37,6 @@ function useRelogioBrasilia(): string | null {
   }, [])
 
   return hora
-}
-
-function Mostrador() {
-  return (
-    <div className="ch-home__mostrador" aria-hidden>
-      <svg className="ch-home__mostrador-giro" viewBox="0 0 400 400" fill="none">
-        <circle cx="200" cy="200" r="198" stroke="currentColor" strokeWidth="1" />
-        {TRACOS_MOSTRADOR.map((t, i) => (
-          <line
-            key={i}
-            x1={t.x1}
-            y1={t.y1}
-            x2={t.x2}
-            y2={t.y2}
-            stroke="currentColor"
-            strokeWidth={t.longo ? 1.6 : 0.8}
-          />
-        ))}
-        <circle cx="200" cy="200" r="150" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 6" />
-      </svg>
-    </div>
-  )
 }
 
 type CartaoLoginProps = {
@@ -258,7 +219,7 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.6, ease: EASE }}
         >
-          <Mostrador />
+          <CockpitMostrador />
         </motion.div>
         <div className="ch-home__brilho" />
       </div>

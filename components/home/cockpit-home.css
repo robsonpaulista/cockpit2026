@@ -49,6 +49,13 @@
   aspect-ratio: 1 / 1;
   transform: translate(-50%, -50%);
   color: #ffffff;
+  pointer-events: none;
+}
+
+.ch-home__mostrador--claro {
+  top: 50%;
+  width: min(72vmin, 640px);
+  color: var(--tse-text, #333333);
 }
 
 .ch-home__mostrador svg {
@@ -61,6 +68,10 @@
 .ch-home__mostrador-giro {
   opacity: 0.4;
   animation: ch-giro 180s linear infinite;
+}
+
+.ch-home__mostrador--claro .ch-home__mostrador-giro {
+  opacity: 0.38;
 }
 
 .ch-home__brilho {
