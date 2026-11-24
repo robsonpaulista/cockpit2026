@@ -1,11 +1,9 @@
 'use client'
 
 import { LogOut, Loader2 } from 'lucide-react'
-import { CockpitMostrador } from '@/components/home/cockpit-mostrador'
 import { TopbarBrandBlock } from '@/components/dashboard/topbar-brand-block'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import { cn } from '@/lib/utils'
-import '@/components/home/cockpit-home.css'
 
 const PERFIS: Record<string, string> = {
   candidato: 'Candidato',
@@ -78,19 +76,15 @@ export function DashboardBoasVindas({
         )}
         aria-labelledby="boas-vindas-titulo"
       >
-        <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-          <CockpitMostrador tom="claro" />
-        </div>
-
-        <div className="relative z-[1] mx-auto flex w-full max-w-[min(22rem,58%)] flex-1 flex-col items-center justify-center overflow-y-auto text-center sm:max-w-[min(24rem,52%)]">
+        <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center overflow-y-auto text-center">
           <TopbarBrandBlock size="lg" className="justify-center" />
           <h1
             id="boas-vindas-titulo"
-            className="mt-6 text-[26px] font-bold leading-tight tracking-tight text-[var(--tse-text)] sm:text-[30px]"
+            className="mt-6 text-[28px] font-bold leading-tight tracking-tight text-[var(--tse-text)] sm:text-[34px]"
           >
             Bem-vindo(a), {saudacao}.
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-[var(--tse-muted)] sm:text-[16px]">
+          <p className="mt-4 text-[16px] leading-relaxed text-[var(--tse-muted)] sm:text-[17px]">
             Sua sessão está ativa. Selecione no menu lateral o módulo que deseja consultar — painéis,
             indicadores e ferramentas liberados para o seu perfil.
           </p>

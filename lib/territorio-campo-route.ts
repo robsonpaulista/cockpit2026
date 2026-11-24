@@ -61,3 +61,30 @@ export function territorioVisitasHref(sub: TerritorioVisitasSubTab = TERRITORIO_
   }
   return `${TERRITORIO_CAMPO_HREF}?tab=${TERRITORIO_CAMPO_TAB_VISITAS}&visitas=${sub}`
 }
+
+/** Sub-abas internas de Lideranças (Cadastro × Dep. estadual 2026). */
+export const TERRITORIO_LIDERANCAS_SUB_CADASTRO = 'cadastro' as const
+export const TERRITORIO_LIDERANCAS_SUB_DEP_ESTADUAL_2026 = 'dep-estadual-2026' as const
+
+export type TerritorioLiderancasSubTab =
+  | typeof TERRITORIO_LIDERANCAS_SUB_CADASTRO
+  | typeof TERRITORIO_LIDERANCAS_SUB_DEP_ESTADUAL_2026
+
+export function parseTerritorioLiderancasSubTab(
+  value: string | null | undefined,
+): TerritorioLiderancasSubTab {
+  if (value === TERRITORIO_LIDERANCAS_SUB_DEP_ESTADUAL_2026) {
+    return TERRITORIO_LIDERANCAS_SUB_DEP_ESTADUAL_2026
+  }
+  return TERRITORIO_LIDERANCAS_SUB_CADASTRO
+}
+
+/** Mantém `tab=liderancas` e grava/limpa `liderancas=` (cadastro = default, omitido). */
+export function territorioLiderancasHref(
+  sub: TerritorioLiderancasSubTab = TERRITORIO_LIDERANCAS_SUB_CADASTRO,
+): string {
+  if (sub === TERRITORIO_LIDERANCAS_SUB_CADASTRO) {
+    return territorioCampoHref(TERRITORIO_CAMPO_TAB_LIDERANCAS)
+  }
+  return `${TERRITORIO_CAMPO_HREF}?tab=${TERRITORIO_CAMPO_TAB_LIDERANCAS}&liderancas=${sub}`
+}

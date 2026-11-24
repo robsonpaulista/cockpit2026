@@ -123,13 +123,6 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'ficha-atendimento',
   },
   {
-    id: 'quick-juridico',
-    label: 'Jurídico',
-    href: '/dashboard/juridico',
-    icon: 'Scale',
-    pageKey: 'juridico',
-  },
-  {
     id: 'quick-obras',
     label: 'Obras',
     href: '/dashboard/obras',
@@ -185,7 +178,6 @@ export function isSidebarQuickAccessActive(item: SidebarQuickAccessItem, pathnam
     case 'quick-emendas':
     case 'quick-oportunidades-federais':
     case 'quick-ficha-atendimento':
-    case 'quick-juridico':
     case 'quick-obras':
     case 'quick-proposicoes':
       return pathname === item.href || pathname.startsWith(`${item.href}/`)

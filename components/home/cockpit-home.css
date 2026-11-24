@@ -91,7 +91,7 @@
   display: flex;
   align-items: center;
   gap: 0.3em;
-  margin: 0;
+  margin: 0 0 0.55rem;
   font-family: var(--font-michroma), ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.25rem, 3.4vw, 2.5rem);
   font-weight: 400;
@@ -99,14 +99,21 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #ffffff;
-  text-shadow: 0 10px 34px color-mix(in srgb, var(--tse-gold-text) 45%, transparent);
   user-select: none;
 }
 
-.ch-home__mascara {
+.ch-home__letra {
   display: inline-block;
-  overflow: hidden;
-  padding: 0.06em 0;
+  will-change: opacity, color, text-shadow;
+}
+
+.ch-home__x {
+  display: inline-block;
+  letter-spacing: 0;
+  color: var(--tse-text);
+  text-shadow: none;
+  position: relative;
+  z-index: 1;
 }
 
 .ch-home__x-wrap {
@@ -115,45 +122,49 @@
   place-items: center;
 }
 
-.ch-home__x {
-  display: inline-block;
-  letter-spacing: 0;
-  color: var(--tse-text);
-  text-shadow: none;
-}
-
-.ch-home__onda {
+/* Flash curto quando o X “liga”. */
+.ch-home__x-flash {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 1.5em;
-  height: 1.5em;
-  margin: -0.75em 0 0 -0.75em;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  width: 1.7em;
+  height: 1.7em;
+  margin: -0.85em 0 0 -0.85em;
   border-radius: 50%;
   pointer-events: none;
-  animation: ch-onda 1.3s cubic-bezier(0.22, 1, 0.36, 1) 1.05s both;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(235, 180, 2, 0.45) 38%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.35);
+  animation: ch-x-flash 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .ch-home__linha {
   position: relative;
   display: block;
-  align-self: stretch;
+  width: min(18rem, 72vw);
   height: 2px;
-  margin-top: 0.6rem;
   transform-origin: center;
-  background: linear-gradient(90deg, transparent, #ffffff 16%, #ffffff 84%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--tse-yellow) 55%, #fff) 18%,
+    #ffffff 50%,
+    color-mix(in srgb, var(--tse-yellow) 55%, #fff) 82%,
+    transparent
+  );
 }
 
 .ch-home__linha::after {
   content: '';
   position: absolute;
   left: 50%;
-  top: 0;
-  width: 1.6rem;
-  height: 100%;
-  transform: translateX(-50%);
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
   background: var(--tse-text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tse-yellow) 70%, #fff);
 }
 
 .ch-home__pulso {
@@ -189,14 +200,18 @@
   }
 }
 
-@keyframes ch-onda {
-  from {
-    transform: scale(0.2);
-    opacity: 0.9;
-  }
-  to {
-    transform: scale(2.8);
+@keyframes ch-x-flash {
+  0% {
     opacity: 0;
+    transform: scale(0.35);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.65);
   }
 }
 
@@ -218,7 +233,8 @@
     animation: none;
   }
 
-  .ch-home__brilho {
+  .ch-home__brilho,
+  .ch-home__x-flash {
     display: none;
   }
 }

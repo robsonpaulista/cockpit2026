@@ -3,7 +3,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, X } from 'lucide-react'
-import { CockpitMostrador } from '@/components/home/cockpit-mostrador'
 import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 import { useLoginCockpit } from '@/hooks/use-login-cockpit'
 import { cn } from '@/lib/utils'
@@ -11,8 +10,13 @@ import './cockpit-home.css'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const LETRAS = 'COCKPIT'.split('')
+/** Linha abre → letras acendem → X entra. */
+const ATRASO_LINHA = 0.12
+const ATRASO_IGNICAO = 0.45
+const PASSO_LETRA = 0.1
+const ATRASO_X = ATRASO_IGNICAO + LETRAS.length * PASSO_LETRA + 0.08
 /** Momento (s) em que a revelação da marca termina e as ações aparecem. */
-const FIM_REVELACAO = 1.75
+const FIM_REVELACAO = ATRASO_X + 0.55
 
 const campoClass =
   'h-9 w-full rounded-lg border border-[var(--tse-border)] bg-white px-3 text-[13px] text-[var(--tse-text)] outline-none transition placeholder:text-[var(--tse-zero)] focus:border-[var(--tse-text)] focus:ring-4 focus:ring-[var(--tse-yellow-soft)]'
@@ -211,18 +215,7 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
 
   return (
     <Raiz className="ch-home" style={TSE_TOKENS}>
-      <div className="ch-home__fundo" aria-hidden>
-        <div className="ch-home__grade" />
-        <motion.div
-          className="absolute inset-0"
-          initial={inicial({ opacity: 0, scale: 0.92 })}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.6, ease: EASE }}
-        >
-          <CockpitMostrador />
-        </motion.div>
-        <div className="ch-home__brilho" />
-      </div>
+      <div className="ch-home__fundo" aria-hidden />
 
       <motion.header
         className="relative z-10 flex items-center justify-between px-5 pt-4 sm:px-7 sm:pt-5"
@@ -243,29 +236,50 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-10">
         <motion.div layout={!reduzir} transition={{ duration: 0.5, ease: EASE }} className="flex flex-col items-center text-center">
+          {/* Marca acima; horizonte abre sob o nome; depois ignição e X. */}
           <h1 className="ch-home__marca" aria-label="Cockpit X">
             <span className="inline-flex" aria-hidden>
               {LETRAS.map((letra, i) => (
-                <span key={i} className="ch-home__mascara">
-                  <motion.span
-                    className="inline-block"
-                    initial={inicial({ y: '115%' })}
-                    animate={{ y: '0%' }}
-                    transition={{ delay: 0.35 + i * 0.055, duration: 0.85, ease: EASE }}
-                  >
-                    {letra}
-                  </motion.span>
-                </span>
+                <motion.span
+                  key={i}
+                  className="ch-home__letra"
+                  initial={
+                    inicial({
+                      opacity: 0.12,
+                      color: 'rgba(51,51,51,0.35)',
+                      textShadow: '0 0 0 transparent',
+                    }) || { opacity: 1 }
+                  }
+                  animate={{
+                    opacity: 1,
+                    color: '#ffffff',
+                    textShadow: '0 0 18px rgba(255,255,255,0.55), 0 8px 28px rgba(184,150,11,0.45)',
+                  }}
+                  transition={{
+                    delay: reduzir ? 0 : ATRASO_IGNICAO + i * PASSO_LETRA,
+                    duration: 0.28,
+                    ease: EASE,
+                  }}
+                >
+                  {letra}
+                </motion.span>
               ))}
             </span>
             <span className="ch-home__x-wrap" aria-hidden>
-              {!reduzir ? <span className="ch-home__onda" /> : null}
+              {!reduzir ? (
+                <span className="ch-home__x-flash" style={{ animationDelay: `${ATRASO_X}s` }} />
+              ) : null}
               <motion.span
                 className="ch-home__x"
-                initial={inicial({ opacity: 0, scale: 0.2, rotate: -135 })}
+                initial={inicial({ opacity: 0, scale: 0.35, rotate: -90 })}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 whileHover={reduzir ? undefined : { rotate: 90 }}
-                transition={{ delay: 0.95, type: 'spring', stiffness: 240, damping: 15 }}
+                transition={{
+                  delay: reduzir ? 0 : ATRASO_X,
+                  type: 'spring',
+                  stiffness: 260,
+                  damping: 16,
+                }}
               >
                 X
               </motion.span>
@@ -274,9 +288,9 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
 
           <motion.span
             className="ch-home__linha"
-            initial={inicial({ scaleX: 0 })}
-            animate={{ scaleX: 1 }}
-            transition={{ delay: 0.1, duration: 1.1, ease: EASE }}
+            initial={inicial({ scaleX: 0, opacity: 0.4 })}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ delay: ATRASO_LINHA, duration: 0.75, ease: EASE }}
             aria-hidden
           />
 
@@ -284,7 +298,7 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
             className="mt-3 text-[clamp(0.8125rem,1.2vw,0.875rem)] font-semibold tracking-[-0.005em] text-[var(--tse-text)]"
             initial={inicial({ opacity: 0, y: 10 })}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.35, duration: 0.7, ease: EASE }}
+            transition={{ delay: FIM_REVELACAO - 0.15, duration: 0.55, ease: EASE }}
           >
             Assuma o controle do seu mandato.
           </motion.p>
@@ -292,7 +306,7 @@ export function CockpitHome({ loginInicial = false, onEntrar }: CockpitHomeProps
             className="mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--ch-tinta-suave)]"
             initial={inicial({ opacity: 0, y: 8 })}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5, duration: 0.7, ease: EASE }}
+            transition={{ delay: FIM_REVELACAO, duration: 0.55, ease: EASE }}
           >
             Comando · Dep. Federal Jadyel Alencar
           </motion.p>
