@@ -336,6 +336,7 @@ export function FichaLiderancaResumo({
   const dados = useMemo(
     () =>
       montarDadosFichaLideranca({
+        municipio,
         resultadosEleicao,
         limitesDb,
         propostasFns,
@@ -652,6 +653,43 @@ export function FichaLiderancaResumo({
                     </tbody>
                   </table>
                 ))}
+
+                <table className="mb-0.5 w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className={headCell} colSpan={3}>
+                        Programa
+                      </th>
+                    </tr>
+                    <tr>
+                      <th className={headCell} />
+                      <th className={cn(headCell, 'text-center')}>MAC</th>
+                      <th className={cn(headCell, 'text-center')}>PAP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <CelulaDupla
+                      label="Limite (teto)"
+                      mac={formatarMoedaFicha(dados.resumoPrograma.mac.limite)}
+                      pap={formatarMoedaFicha(dados.resumoPrograma.pap.limite)}
+                    />
+                    <CelulaDupla
+                      label="Propostas"
+                      mac={formatarMoedaFicha(dados.resumoPrograma.mac.propostas)}
+                      pap={formatarMoedaFicha(dados.resumoPrograma.pap.propostas)}
+                    />
+                    <CelulaDupla
+                      label="Saldo"
+                      mac={formatarSaldoFicha(dados.resumoPrograma.mac.saldo)}
+                      pap={formatarSaldoFicha(dados.resumoPrograma.pap.saldo)}
+                    />
+                    <CelulaDupla
+                      label="A pagar"
+                      mac={formatarMoedaFicha(dados.resumoPrograma.mac.valorPagar)}
+                      pap={formatarMoedaFicha(dados.resumoPrograma.pap.valorPagar)}
+                    />
+                  </tbody>
+                </table>
 
                 <table className="w-full border-collapse">
                   <tbody>

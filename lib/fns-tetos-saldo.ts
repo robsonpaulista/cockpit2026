@@ -84,3 +84,19 @@ export function calcularResumoSuas(
     saldo,
   }
 }
+
+/** Tetos de recurso PROGRAMA (PRT-10169), separados de emendas PAP/MAC. */
+export function calcularResumoPrograma(
+  propostas: PropostaFns[],
+  limite: number | null,
+  programa: 'PAP' | 'MAC',
+): ResumoTeto {
+  const isTipo = programa === 'MAC' ? isPropostaTipoMac : isPropostaTipoPap
+  const lista = propostas.filter(
+    (p) => p.dsTipoRecurso === 'PROGRAMA' && isTipo(p.coTipoProposta),
+  )
+  const propostasValor = lista.reduce((acc, p) => acc + (p.vlProposta || 0), 0)
+  const valorPagar = lista.reduce((acc, p) => acc + (p.vlPagar || 0), 0)
+  const saldo = limite != null ? limite - propostasValor : null
+  return { limite, propostas: propostasValor, valorPagar, saldo }
+}

@@ -35,6 +35,17 @@ function formatarInputMoeda(n: number): string {
   return Math.round(n).toLocaleString('pt-BR')
 }
 
+function SecaoTeto({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="border-b border-[#E6E6E3] pb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--tse-muted)]">
+        {titulo}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 /** Limite, propostas e saldo, com a barra de quanto do teto já foi usado. */
 function ResumoModalidade({ titulo, resumo }: { titulo?: string; resumo: ResumoTeto | null }) {
   const limite = resumo?.limite ?? null
@@ -111,7 +122,7 @@ function ResumoSuasEditavel({
   )
 }
 
-function BlocoPrograma({
+function BlocoColuna({
   sigla,
   nome,
   detalhe,
@@ -139,10 +150,16 @@ export type ResumosMacPapModalidade = {
   pap: Record<ModalidadeLimite, ResumoTeto | null>
 }
 
-/** PAP e MAC (individual e coletiva) e SUAS lado a lado. */
+export type ResumosPrograma = {
+  pap: ResumoTeto | null
+  mac: ResumoTeto | null
+}
+
+/** Três colunas: PAP e MAC (emendas + PROGRAMA) e SUAS. */
 export function FichaAtendimentoTetosBloco({
   municipio,
   resumos,
+  resumosPrograma,
   resumoSuas,
   populacao,
   classificacaoSuas,
@@ -150,6 +167,7 @@ export function FichaAtendimentoTetosBloco({
 }: {
   municipio: string | null
   resumos: ResumosMacPapModalidade
+  resumosPrograma?: ResumosPrograma | null
   resumoSuas: ResumoTeto | null
   populacao: number | null
   classificacaoSuas: { porte: string; valorFormatado: string }
@@ -157,23 +175,43 @@ export function FichaAtendimentoTetosBloco({
 }) {
   return (
     <TseCard
-      titulo="Tetos MAC, PAP e SUAS"
-      subtitulo={`Individual e coletiva por programa${exercicioAtivo ? ` · exercício ${exercicioAtivo}` : ''}`}
+      titulo="Tetos por programa"
+      subtitulo={`Emendas (individual/coletiva), PROGRAMA e SUAS${exercicioAtivo ? ` · exercício ${exercicioAtivo}` : ''}`}
     >
       <div className="mt-4">
         {!municipio ? (
           <TseVazio>Selecione um município para carregar os tetos.</TseVazio>
         ) : (
-          <div className="grid min-w-0 gap-4 md:grid-cols-3">
-            <BlocoPrograma sigla="PAP" nome="Atenção Primária">
-              <ResumoModalidade titulo="Individual" resumo={resumos.pap.individual} />
-              <ResumoModalidade titulo="Coletiva" resumo={resumos.pap.coletiva} />
-            </BlocoPrograma>
-            <BlocoPrograma sigla="MAC" nome="Média e Alta Complexidade">
-              <ResumoModalidade titulo="Individual" resumo={resumos.mac.individual} />
-              <ResumoModalidade titulo="Coletiva" resumo={resumos.mac.coletiva} />
-            </BlocoPrograma>
-            <BlocoPrograma
+          <div className="grid min-w-0 gap-4 lg:grid-cols-3">
+            <BlocoColuna sigla="PAP" nome="Atenção Primária">
+              <SecaoTeto titulo="Emendas">
+                <div className="space-y-4">
+                  <ResumoModalidade titulo="Individual" resumo={resumos.pap.individual} />
+                  <ResumoModalidade titulo="Coletiva" resumo={resumos.pap.coletiva} />
+                </div>
+              </SecaoTeto>
+              {resumosPrograma ? (
+                <SecaoTeto titulo="Programa">
+                  <ResumoModalidade resumo={resumosPrograma.pap} />
+                </SecaoTeto>
+              ) : null}
+            </BlocoColuna>
+
+            <BlocoColuna sigla="MAC" nome="Média e Alta Complexidade">
+              <SecaoTeto titulo="Emendas">
+                <div className="space-y-4">
+                  <ResumoModalidade titulo="Individual" resumo={resumos.mac.individual} />
+                  <ResumoModalidade titulo="Coletiva" resumo={resumos.mac.coletiva} />
+                </div>
+              </SecaoTeto>
+              {resumosPrograma ? (
+                <SecaoTeto titulo="Programa">
+                  <ResumoModalidade resumo={resumosPrograma.mac} />
+                </SecaoTeto>
+              ) : null}
+            </BlocoColuna>
+
+            <BlocoColuna
               sigla="SUAS"
               nome="Assistência Social"
               detalhe={
@@ -190,7 +228,7 @@ export function FichaAtendimentoTetosBloco({
               ) : (
                 <ResumoSuasEditavel resumo={resumoSuas} municipio={municipio} />
               )}
-            </BlocoPrograma>
+            </BlocoColuna>
           </div>
         )}
       </div>

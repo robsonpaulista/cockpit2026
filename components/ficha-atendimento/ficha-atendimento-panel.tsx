@@ -26,10 +26,12 @@ import { URL_CONSULTA_FNS } from '@/lib/fns-proposta-normalize'
 import {
   calcularResumoMac,
   calcularResumoPap,
+  calcularResumoPrograma,
   calcularResumoSuas,
   filtrarPropostasFns,
   type PropostaFns,
 } from '@/lib/fns-tetos-saldo'
+import { getValorLimitePrograma } from '@/lib/limites-programa'
 import { classificaPorteSuasFromFaixas } from '@/lib/suas-porte'
 import type { LimitesMunicipioResponse } from '@/lib/limites-tetos-types'
 import { getPopulacaoMunicipio, type MunicipioPopulacao } from '@/lib/populacao-ibge-local'
@@ -46,7 +48,11 @@ import {
   type EmendaSuas,
   type EmendaSuasForm,
 } from '@/lib/services/ficha-atendimento-client'
-import { FichaAtendimentoTetosBloco, type ResumosMacPapModalidade } from './tetos-bloco'
+import {
+  FichaAtendimentoTetosBloco,
+  type ResumosMacPapModalidade,
+  type ResumosPrograma,
+} from './tetos-bloco'
 import { FichaAtendimentoEditarLimites } from './editar-limites-modal'
 import { FichaAtendimentoResultadosEleicao } from './resultados-eleicao'
 import { FichaLiderancaResumo } from './lideranca-resumo-modal'
@@ -239,6 +245,22 @@ export function FichaAtendimentoPanel() {
     return calcularResumoSuas(classificacaoSuas.valorNumerico, propostas, pagar)
   }, [classificacaoSuas.valorNumerico, emendasSuas])
 
+  const resumosPrograma = useMemo((): ResumosPrograma | null => {
+    if (!municipioSel) return null
+    return {
+      pap: calcularResumoPrograma(
+        propostasFns,
+        getValorLimitePrograma(municipioSel, 'PAP'),
+        'PAP',
+      ),
+      mac: calcularResumoPrograma(
+        propostasFns,
+        getValorLimitePrograma(municipioSel, 'MAC'),
+        'MAC',
+      ),
+    }
+  }, [municipioSel, propostasFns])
+
   const carregando = loadingFns || loadingSuas || loadingLimites
 
   const handleRefresh = () => {
@@ -339,8 +361,8 @@ export function FichaAtendimentoPanel() {
       {!municipioSel ? (
         <div className="mt-5">
           <TseVazio>
-            Selecione um município para ver os tetos MAC, PAP e SUAS, as propostas do FNS, os resultados eleitorais e as
-            emendas do mandato.
+            Selecione um município para ver os tetos MAC, PAP, PROGRAMA e SUAS, as propostas do FNS, os resultados
+            eleitorais e as emendas do mandato.
           </TseVazio>
         </div>
       ) : (
@@ -348,6 +370,7 @@ export function FichaAtendimentoPanel() {
           <FichaAtendimentoTetosBloco
             municipio={municipioSel}
             resumos={resumosMacPap}
+            resumosPrograma={resumosPrograma}
             resumoSuas={resumoSuas}
             populacao={populacao}
             classificacaoSuas={classificacaoSuas}

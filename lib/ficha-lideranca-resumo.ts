@@ -2,12 +2,14 @@ import type { ModalidadeLimite } from '@/lib/emenda-modalidade'
 import {
   calcularResumoMac,
   calcularResumoPap,
+  calcularResumoPrograma,
   calcularResumoSuas,
   filtrarPropostasFns,
   type PropostaFns,
   type ResumoTeto,
 } from '@/lib/fns-tetos-saldo'
 import type { EmendaRegistro } from '@/lib/emendas-filtro'
+import { getValorLimitePrograma } from '@/lib/limites-programa'
 import type { LimitesMunicipioResponse } from '@/lib/limites-tetos-types'
 import {
   filtrarDeputadoEstadual2026,
@@ -58,6 +60,7 @@ export type ResumosPorModalidade = Record<ModalidadeLimite, ResumoTeto>
 export interface DadosFichaLideranca {
   resumoMac: ResumosPorModalidade
   resumoPap: ResumosPorModalidade
+  resumoPrograma: { pap: ResumoTeto; mac: ResumoTeto }
   resumoSuas: ResumoTeto
   classificacaoSuas: ClassificacaoSuas
   populacao: number | null
@@ -185,6 +188,7 @@ export function listarLinhasPropostasFns(propostas: PropostaFns[]): LinhaRecurso
 }
 
 export function montarDadosFichaLideranca(params: {
+  municipio: string
   resultadosEleicao: ResultadoEleicao[]
   limitesDb: LimitesMunicipioResponse | null
   propostasFns: PropostaFns[]
@@ -223,6 +227,18 @@ export function montarDadosFichaLideranca(params: {
         propostas,
         limites?.pap?.coletiva?.valor ?? null,
         'coletiva',
+      ),
+    },
+    resumoPrograma: {
+      pap: calcularResumoPrograma(
+        params.propostasFns,
+        getValorLimitePrograma(params.municipio, 'PAP'),
+        'PAP',
+      ),
+      mac: calcularResumoPrograma(
+        params.propostasFns,
+        getValorLimitePrograma(params.municipio, 'MAC'),
+        'MAC',
       ),
     },
     resumoSuas: calcularResumoSuas(tetoSuas, params.totalSuasPropostas, params.totalSuasPagar),
