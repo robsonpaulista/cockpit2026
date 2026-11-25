@@ -6,7 +6,7 @@ export const MODALIDADES_LIMITE: ModalidadeLimite[] = ['individual', 'coletiva']
 
 export const MODALIDADE_LIMITE_LABEL: Record<ModalidadeLimite, string> = {
   individual: 'Individual',
-  coletiva: 'Coletiva',
+  coletiva: 'Coletivas',
 }
 
 export function isModalidadeLimite(v: string): v is ModalidadeLimite {

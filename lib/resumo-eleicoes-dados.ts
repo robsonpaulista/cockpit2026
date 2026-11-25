@@ -31,6 +31,10 @@ export interface PartidoResumoEleicao {
 }
 
 export const CANDIDATO_FEDERAL_DESTAQUE = 'JADYEL DA JUPI'
+/** Nº de urna do federal em destaque nas tabelas 2026 (Jadyel). */
+export const CANDIDATO_FEDERAL_NUMERO_2026 = '1000'
+
+export type AnoVotacaoPartido = '2024' | '2026'
 
 export function parseVotosEleicao(value: string): number {
   const parsed = Number.parseInt(value || '0', 10)
@@ -107,6 +111,18 @@ export function filtrarDeputadoEstadual2022(dados: ResultadoEleicao[]): Resultad
 export function filtrarDeputadoFederal2022(dados: ResultadoEleicao[]): ResultadoEleicao[] {
   return dados
     .filter((item) => includesNormalizedCargo(item.cargo, 'federal') && item.anoEleicao === '2022')
+    .sort((a, b) => parseVotosEleicao(b.quantidadeVotosNominais) - parseVotosEleicao(a.quantidadeVotosNominais))
+}
+
+export function filtrarDeputadoEstadual2026(dados: ResultadoEleicao[]): ResultadoEleicao[] {
+  return dados
+    .filter((item) => includesNormalizedCargo(item.cargo, 'estadual') && item.anoEleicao === '2026')
+    .sort((a, b) => parseVotosEleicao(b.quantidadeVotosNominais) - parseVotosEleicao(a.quantidadeVotosNominais))
+}
+
+export function filtrarDeputadoFederal2026(dados: ResultadoEleicao[]): ResultadoEleicao[] {
+  return dados
+    .filter((item) => includesNormalizedCargo(item.cargo, 'federal') && item.anoEleicao === '2026')
     .sort((a, b) => parseVotosEleicao(b.quantidadeVotosNominais) - parseVotosEleicao(a.quantidadeVotosNominais))
 }
 
@@ -400,15 +416,28 @@ export function movimentosCandidatos(
   }
 }
 
-export function agruparPartido2024(dados: ResultadoEleicao[]): PartidoResumoEleicao[] {
+/**
+ * Agrega votos por partido no município.
+ * 2026: só cargos de deputado; 2024: vereador + prefeito (sem vice).
+ */
+export function agruparPartidoPorAno(
+  dados: ResultadoEleicao[],
+  ano: AnoVotacaoPartido,
+): PartidoResumoEleicao[] {
   const grouped = new Map<string, PartidoResumoEleicao>()
 
   for (const item of dados) {
-    if (item.anoEleicao !== '2024') continue
+    const cargo = item.cargo
+    const entra =
+      ano === '2026'
+        ? item.anoEleicao === '2026' && includesNormalizedCargo(cargo, 'deputado')
+        : item.anoEleicao === '2024' &&
+          (includesNormalizedCargo(cargo, 'vereador') ||
+            (includesNormalizedCargo(cargo, 'prefeito') && !includesNormalizedCargo(cargo, 'vice')))
+    if (!entra) continue
     const key = item.partido || '-'
     const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
     current.votos += parseVotosEleicao(item.quantidadeVotosNominais)
-    // Prefeito e vereador entram — só se eleitos de fato (não "Não eleito").
     if (isSituacaoEleito(item.situacao)) {
       current.eleitos += 1
     }
@@ -416,4 +445,8 @@ export function agruparPartido2024(dados: ResultadoEleicao[]): PartidoResumoElei
   }
 
   return Array.from(grouped.values()).sort((a, b) => b.votos - a.votos)
+}
+
+export function agruparPartido2024(dados: ResultadoEleicao[]): PartidoResumoEleicao[] {
+  return agruparPartidoPorAno(dados, '2024')
 }

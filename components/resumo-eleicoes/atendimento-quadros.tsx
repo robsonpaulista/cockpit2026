@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, UserPlus } from 'lucide-react'
+import { FotoCandidato } from '@/components/candidatos/foto-candidato'
 import { TsePill, tseLinkAcaoClass } from '@/components/tse/tse-ui'
 import {
   parseVotosEleicao,
   siglaSituacao,
+  type AnoVotacaoPartido,
   type EstreanteCandidato,
   type MovimentoCandidato,
   type MovimentosCandidatos,
@@ -254,58 +255,6 @@ function Quadro({
   )
 }
 
-function FotoCandidato({ ano, sq }: { ano: string; sq: string }) {
-  const [falhou, setFalhou] = useState<boolean>(false)
-  const [ampliada, setAmpliada] = useState<{ top: number; left: number } | null>(null)
-  const miniaturaRef = useRef<HTMLImageElement>(null)
-  const sequencial = sq.trim()
-  if (falhou || (ano !== '2024' && ano !== '2026') || !/^\d{10,14}$/.test(sequencial)) return null
-
-  const src = `/api/candidatos-foto/${ano}/${sequencial}`
-  const ampliar = () => {
-    const caixa = miniaturaRef.current?.getBoundingClientRect()
-    if (!caixa) return
-    const largura = 138
-    const altura = 192
-    const margem = 8
-    let left = caixa.right + margem
-    let top = caixa.top - margem
-    if (left + largura > window.innerWidth - margem) left = Math.max(margem, caixa.left - largura - margem)
-    if (top + altura > window.innerHeight - margem) top = window.innerHeight - altura - margem
-    if (top < margem) top = margem
-    setAmpliada({ top, left })
-  }
-
-  return (
-    <>
-      <img
-        ref={miniaturaRef}
-        src={src}
-        alt=""
-        width={20}
-        height={20}
-        loading="lazy"
-        decoding="async"
-        onError={() => setFalhou(true)}
-        onMouseEnter={ampliar}
-        onMouseLeave={() => setAmpliada(null)}
-        className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-[#EEEEEE]"
-      />
-      {ampliada
-        ? createPortal(
-            <span
-              className="pointer-events-none fixed z-[200] overflow-hidden rounded-lg bg-white shadow-[0_16px_40px_-16px_rgba(2,43,58,0.45)] ring-1 ring-[#EEEEEE]"
-              style={{ top: ampliada.top, left: ampliada.left }}
-            >
-              <img src={src} alt="" className="block h-48 w-auto max-w-none" />
-            </span>,
-            document.body,
-          )
-        : null}
-    </>
-  )
-}
-
 function classeLinha(selecionada: boolean, destaque: boolean): string {
   return cn(
     'border-t border-[#EEEEEE] transition-colors',
@@ -446,7 +395,7 @@ export function QuadroCandidatos({
 
 export type PartidoQuadro = { partido: string; votos: number; eleitos: number }
 
-export type AnoVotacaoPartido = '2024' | '2026'
+export type { AnoVotacaoPartido }
 
 const ANOS_VOTACAO_PARTIDO: readonly AnoVotacaoPartido[] = ['2024', '2026']
 
@@ -511,7 +460,7 @@ export function QuadroPartidos({
   const visiveis = itens.slice((pagina - 1) * porPagina, pagina * porPagina)
   return (
     <Quadro
-      titulo="Votação por Partido"
+      titulo="Votos por Partido"
       extra={<SeletorAnoPartido ano={ano} onChange={onAno} />}
       qtdSelecionados={Object.keys(selecao).length}
       votosSelecionados={Object.values(selecao).reduce((a, b) => a + b, 0)}

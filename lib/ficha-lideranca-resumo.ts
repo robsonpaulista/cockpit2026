@@ -10,8 +10,8 @@ import {
 import type { EmendaRegistro } from '@/lib/emendas-filtro'
 import type { LimitesMunicipioResponse } from '@/lib/limites-tetos-types'
 import {
-  filtrarDeputadoEstadual2022,
-  filtrarDeputadoFederal2022,
+  filtrarDeputadoEstadual2026,
+  filtrarDeputadoFederal2026,
   filtrarPrefeito2024,
   filtrarVereador2024,
   includesNormalizedCargo,
@@ -101,21 +101,35 @@ export function situacaoEleicaoCandidato(item: ResultadoEleicao): string {
   return 'Oposição'
 }
 
+/**
+ * % dos votos do cargo no município.
+ * Prioriza o cálculo sobre a lista local (mais confiável); o campo da planilha
+ * às vezes vem como fração (0,0994 = 9,94%) e não como percentual.
+ */
 export function percentualVotosCandidato(
   candidato: ResultadoEleicao,
   listaMesmoCargo: ResultadoEleicao[],
 ): string {
-  const raw = candidato.percentualVotosValidos?.trim()
-  if (raw) {
-    return raw.includes('%') ? raw : `${raw}%`
-  }
-  const total = listaMesmoCargo.reduce(
+  const votos = parseVotosEleicao(candidato.quantidadeVotosNominais)
+  const totalLista = listaMesmoCargo.reduce(
     (acc, c) => acc + parseVotosEleicao(c.quantidadeVotosNominais),
     0,
   )
-  const votos = parseVotosEleicao(candidato.quantidadeVotosNominais)
-  if (total <= 0) return '—'
-  return `${((votos / total) * 100).toFixed(2).replace('.', ',')}%`
+  if (totalLista > 0 && votos >= 0) {
+    return `${((votos / totalLista) * 100).toFixed(2).replace('.', ',')}%`
+  }
+
+  const raw = candidato.percentualVotosValidos?.trim()
+  if (!raw) return '—'
+
+  const numerico = Number.parseFloat(raw.replace('%', '').replace(',', '.').trim())
+  if (!Number.isFinite(numerico)) {
+    return raw.includes('%') ? raw : `${raw}%`
+  }
+
+  // Fração 0–1 (ex.: 0,0994) → percentual; valores > 1 já estão em %.
+  const pct = numerico > 0 && numerico <= 1 ? numerico * 100 : numerico
+  return `${pct.toFixed(2).replace('.', ',')}%`
 }
 
 export function agruparEmendasPorExercicio(emendas: EmendaRegistro[]): TotaisEmendaExercicio[] {
@@ -217,8 +231,8 @@ export function montarDadosFichaLideranca(params: {
     exercicioAtivo,
     prefeitos: filtrarPrefeito2024(params.resultadosEleicao),
     vereadores: filtrarVereador2024(params.resultadosEleicao),
-    depFederal: filtrarDeputadoFederal2022(params.resultadosEleicao),
-    depEstadual: filtrarDeputadoEstadual2022(params.resultadosEleicao),
+    depFederal: filtrarDeputadoFederal2026(params.resultadosEleicao),
+    depEstadual: filtrarDeputadoEstadual2026(params.resultadosEleicao),
     emendasMunicipio: params.emendasMunicipio,
     propostasFns: propostas,
     linhasFns: listarLinhasPropostasFns(params.propostasFns),

@@ -216,14 +216,13 @@ export function TseDado({ rotulo, valor, sufixo }: { rotulo: ReactNode; valor: R
   )
 }
 
-/** Barra grossa com o percentual escrito dentro. */
+/** Barra grossa com o percentual centrado sobre a faixa (não corta em % baixos). */
 export function TseBarraRotulo({ pct, rotulo }: { pct: number; rotulo: ReactNode }) {
+  const largura = Math.min(100, Math.max(0, pct))
   return (
-    <div className="mt-2 h-4 overflow-hidden rounded bg-[var(--tse-zero)]">
-      <div
-        className="flex h-full items-center justify-center bg-[var(--tse-green)] text-[10px] font-bold text-[var(--tse-text)]"
-        style={{ width: `${Math.min(100, Math.max(pct, 8))}%` }}
-      >
+    <div className="relative mt-2 h-4 overflow-hidden rounded bg-[var(--tse-zero)]">
+      <div className="h-full bg-[var(--tse-green)]" style={{ width: `${largura}%` }} />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[var(--tse-text)]">
         {rotulo}
       </div>
     </div>

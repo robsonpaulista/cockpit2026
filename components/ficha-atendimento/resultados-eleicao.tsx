@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
+import { FotoCandidato } from '@/components/candidatos/foto-candidato'
 import {
   TseCard,
   TseCarregando,
@@ -14,15 +15,16 @@ import {
 } from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
 import {
-  agruparPartido2024,
-  CANDIDATO_FEDERAL_DESTAQUE,
-  filtrarDeputadoEstadual2022,
-  filtrarDeputadoFederal2022,
+  agruparPartidoPorAno,
+  CANDIDATO_FEDERAL_NUMERO_2026,
+  filtrarDeputadoEstadual2026,
+  filtrarDeputadoFederal2026,
   filtrarPrefeito2024,
   filtrarVereador2024,
   isSituacaoEleito,
   parseVotosEleicao,
   siglaSituacao,
+  type AnoVotacaoPartido,
   type PartidoResumoEleicao,
   type ResultadoEleicao,
 } from '@/lib/resumo-eleicoes-dados'
@@ -36,6 +38,7 @@ import { fetchFotosCandidatos, fetchResultadosEleicaoCidade } from '@/lib/servic
 import { FichaCandidatoFotoModal } from './candidato-foto-modal'
 
 const ITEMS_PER_PAGE = 10
+const ANOS_PARTIDO: readonly AnoVotacaoPartido[] = ['2024', '2026']
 
 const thClass = 'px-1.5 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]'
 const tdClass = 'px-1.5 py-1.5'
@@ -88,6 +91,7 @@ function Paginacao({
 /** Tabela compacta de um cargo, com título e paginação. */
 function Quadro({
   titulo,
+  extra,
   cabecalho,
   rodape,
   totalItems,
@@ -96,6 +100,7 @@ function Quadro({
   children,
 }: {
   titulo: string
+  extra?: ReactNode
   cabecalho: ReactNode
   rodape: ReactNode
   totalItems: number
@@ -105,7 +110,10 @@ function Quadro({
 }) {
   return (
     <div className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-white ring-1 ring-[#EEEEEE]">
-      <h3 className="px-3 pb-2 pt-3 text-[13px] font-bold">{titulo}</h3>
+      <div className="flex items-center justify-between gap-2 px-3 pb-2 pt-3">
+        <h3 className="text-[13px] font-bold">{titulo}</h3>
+        {extra}
+      </div>
       <table className="w-full table-fixed text-[12px]" data-tse-tabela>
         <thead className="bg-[var(--tse-bar)] text-left">{cabecalho}</thead>
         <tbody>{children}</tbody>
@@ -118,12 +126,45 @@ function Quadro({
   )
 }
 
+function SeletorAnoPartido({
+  ano,
+  onChange,
+}: {
+  ano: AnoVotacaoPartido
+  onChange: (ano: AnoVotacaoPartido) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Eleição da votação por partido"
+      className="flex shrink-0 rounded-md bg-[var(--tse-bar)] p-0.5 text-[11px] font-bold"
+    >
+      {ANOS_PARTIDO.map((opcao) => (
+        <button
+          key={opcao}
+          type="button"
+          aria-pressed={ano === opcao}
+          onClick={() => onChange(opcao)}
+          className={cn(
+            'rounded px-1.5 py-0.5 tabular-nums',
+            ano === opcao
+              ? 'bg-[var(--tse-yellow-strong)] text-[var(--tse-text)]'
+              : 'text-[var(--tse-muted)] hover:text-[var(--tse-text)]',
+          )}
+        >
+          {opcao}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function TabelaCandidatos({
   titulo,
   itens,
   page,
   onPageChange,
-  destaqueNome,
+  destacar,
   colunaExtra,
   cargoFoto,
   onDuploCliqueCandidato,
@@ -133,7 +174,7 @@ function TabelaCandidatos({
   itens: ResultadoEleicao[]
   page: number
   onPageChange: (p: number) => void
-  destaqueNome?: string
+  destacar?: (item: ResultadoEleicao) => boolean
   colunaExtra?: 'situacao' | 'partido'
   cargoFoto?: CargoFotoCandidato
   onDuploCliqueCandidato?: (item: ResultadoEleicao, cargo: CargoFotoCandidato) => void
@@ -178,10 +219,10 @@ function TabelaCandidatos({
       }
     >
       {paginated(itens, page).map((item) => {
-        const destaque =
-          destaqueNome && item.nomeUrnaCandidato?.trim().toUpperCase() === destaqueNome.trim().toUpperCase()
+        const destaque = destacar?.(item) ?? false
         const situacao = siglaSituacao(item.situacao)
         const rotulo = `${item.nomeUrnaCandidato}${item.partido ? ` (${item.partido})` : ''}`
+        const mostrarAvatar = item.anoEleicao === '2024' || item.anoEleicao === '2026'
         return (
           <tr
             key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
@@ -196,17 +237,22 @@ function TabelaCandidatos({
             }}
           >
             <td className={cn(tdClass, 'min-w-0')}>
-              {comFicha && cargoFoto && onVerFicha ? (
-                <button
-                  type="button"
-                  onClick={() => onVerFicha(item, cargoFoto)}
-                  className="block w-full truncate text-left font-semibold text-[var(--tse-olive)] hover:underline"
-                >
-                  {item.nomeUrnaCandidato}
-                </button>
-              ) : (
-                <div className="truncate">{item.nomeUrnaCandidato}</div>
-              )}
+              <div className="flex min-w-0 items-center gap-1.5">
+                {mostrarAvatar ? (
+                  <FotoCandidato ano={item.anoEleicao} sq={item.sequencialCandidato} />
+                ) : null}
+                {comFicha && cargoFoto && onVerFicha ? (
+                  <button
+                    type="button"
+                    onClick={() => onVerFicha(item, cargoFoto)}
+                    className="min-w-0 truncate text-left font-semibold text-[var(--tse-olive)] hover:underline"
+                  >
+                    {item.nomeUrnaCandidato}
+                  </button>
+                ) : (
+                  <div className="min-w-0 truncate">{item.nomeUrnaCandidato}</div>
+                )}
+              </div>
             </td>
             {colunaExtra === 'partido' ? (
               <td className={cn(tdClass, colunaPartidoClass, 'truncate text-[11px] text-[var(--tse-muted)]')}>
@@ -232,10 +278,14 @@ function TabelaCandidatos({
 
 function TabelaPartidos({
   itens,
+  ano,
+  onAno,
   page,
   onPageChange,
 }: {
   itens: PartidoResumoEleicao[]
+  ano: AnoVotacaoPartido
+  onAno: (ano: AnoVotacaoPartido) => void
   page: number
   onPageChange: (p: number) => void
 }) {
@@ -243,7 +293,8 @@ function TabelaPartidos({
   const totalEleitos = itens.reduce((acc, item) => acc + item.eleitos, 0)
   return (
     <Quadro
-      titulo="Votação por partido 2024"
+      titulo="Votos por Partido"
+      extra={<SeletorAnoPartido ano={ano} onChange={onAno} />}
       totalItems={itens.length}
       page={page}
       onPageChange={onPageChange}
@@ -282,7 +333,7 @@ const PAGES_INICIAIS = {
   deputado_federal: 1,
   prefeito_2024: 1,
   vereador_2024: 1,
-  partido_2024: 1,
+  partido: 1,
 }
 
 type Paginas = typeof PAGES_INICIAIS
@@ -302,12 +353,19 @@ export function FichaAtendimentoResultadosEleicao({
   const [error, setError] = useState<string | null>(null)
   const [cidadeApi, setCidadeApi] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState<Paginas>(PAGES_INICIAIS)
+  const [anoPartido, setAnoPartido] = useState<AnoVotacaoPartido>('2026')
   const [fotos, setFotos] = useState<CandidatoFotoDivulgacand[]>([])
   const [fotoModal, setFotoModal] = useState<{ candidato: ResultadoEleicao; cargo: CargoFotoCandidato } | null>(null)
 
   const fotosMap = useMemo(() => buildFotosMap(fotos), [fotos])
 
   const setPage = (key: PageKey, page: number) => setCurrentPage((prev) => ({ ...prev, [key]: page }))
+
+  const definirAnoPartido = (ano: AnoVotacaoPartido) => {
+    if (ano === anoPartido) return
+    setAnoPartido(ano)
+    setPage('partido', 1)
+  }
 
   const carregarFotos = useCallback(async (nomeCidade: string) => {
     setFotos(nomeCidade.trim() ? await fetchFotosCandidatos(nomeCidade) : [])
@@ -324,6 +382,7 @@ export function FichaAtendimentoResultadosEleicao({
     setLoading(true)
     setError(null)
     setCurrentPage(PAGES_INICIAIS)
+    setAnoPartido('2026')
     try {
       const [eleicao, fotosCidade] = await Promise.all([
         fetchResultadosEleicaoCidade(alvo),
@@ -346,11 +405,11 @@ export function FichaAtendimentoResultadosEleicao({
     void carregar(municipio)
   }, [municipio, carregar])
 
-  const deputadoEstadual = useMemo(() => filtrarDeputadoEstadual2022(dados), [dados])
-  const deputadoFederal = useMemo(() => filtrarDeputadoFederal2022(dados), [dados])
+  const deputadoEstadual = useMemo(() => filtrarDeputadoEstadual2026(dados), [dados])
+  const deputadoFederal = useMemo(() => filtrarDeputadoFederal2026(dados), [dados])
   const prefeito = useMemo(() => filtrarPrefeito2024(dados), [dados])
   const vereador = useMemo(() => filtrarVereador2024(dados), [dados])
-  const partidos = useMemo(() => agruparPartido2024(dados), [dados])
+  const partidos = useMemo(() => agruparPartidoPorAno(dados, anoPartido), [dados, anoPartido])
 
   const fotoExistenteModal = useMemo(() => {
     if (!fotoModal) return null
@@ -365,7 +424,9 @@ export function FichaAtendimentoResultadosEleicao({
       subtitulo={
         <>
           {cidadeApi ? `Planilha de votação · ${cidadeApi}` : 'Mesma base do Resumo por cidade'}
-          {onVerFicha ? ' · Prefeito e vereador: clique no nome para a ficha resumo, duplo clique na linha para a foto DivulgaCand' : ''}
+          {onVerFicha
+            ? ' · Prefeito e vereador: clique no nome para a ficha resumo, duplo clique na linha para a foto DivulgaCand'
+            : ''}
         </>
       }
       acao={
@@ -388,17 +449,19 @@ export function FichaAtendimentoResultadosEleicao({
         ) : (
           <div className="grid min-w-0 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.8fr)]">
             <TabelaCandidatos
-              titulo="Deputado Estadual 2022"
+              titulo="Deputado Estadual 2026"
               itens={deputadoEstadual}
               page={currentPage.deputado_estadual}
               onPageChange={(p) => setPage('deputado_estadual', p)}
+              colunaExtra="situacao"
             />
             <TabelaCandidatos
-              titulo="Deputado Federal 2022"
+              titulo="Deputado Federal 2026"
               itens={deputadoFederal}
               page={currentPage.deputado_federal}
               onPageChange={(p) => setPage('deputado_federal', p)}
-              destaqueNome={CANDIDATO_FEDERAL_DESTAQUE}
+              colunaExtra="situacao"
+              destacar={(item) => item.numeroUrna?.trim() === CANDIDATO_FEDERAL_NUMERO_2026}
             />
             <TabelaCandidatos
               titulo="Prefeito 2024"
@@ -422,8 +485,10 @@ export function FichaAtendimentoResultadosEleicao({
             />
             <TabelaPartidos
               itens={partidos}
-              page={currentPage.partido_2024}
-              onPageChange={(p) => setPage('partido_2024', p)}
+              ano={anoPartido}
+              onAno={definirAnoPartido}
+              page={currentPage.partido}
+              onPageChange={(p) => setPage('partido', p)}
             />
           </div>
         )}
