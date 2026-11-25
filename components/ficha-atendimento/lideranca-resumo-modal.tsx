@@ -667,10 +667,6 @@ export function FichaLiderancaResumo({
                         ) : null}
                       </td>
                     </tr>
-                    <tr>
-                      <td className={cn(cell, 'bg-slate-50 font-medium')}>Saldo SUAS</td>
-                      <td className={cell}>{formatarSaldoFicha(dados.resumoSuas.saldo)}</td>
-                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -685,7 +681,7 @@ export function FichaLiderancaResumo({
               {propostasExAtivo.length > 0 ? (
                 <div className="mb-4">
                   <h3 className="mb-1 border border-slate-300 bg-[var(--tse-yellow-soft)] px-2 py-1.5 text-xs font-bold uppercase">
-                    Propostas FNS ({exFns}) — MAC / PAP
+                    Propostas FNS ({exFns})
                   </h3>
                   <table className="w-full border-collapse">
                     <thead>
@@ -711,7 +707,7 @@ export function FichaLiderancaResumo({
                     <tfoot>
                       <tr className="bg-slate-50 font-semibold">
                         <td className={cell} colSpan={2}>
-                          Total propostas (exc. PROGRAMA)
+                          Total propostas (inclui PROGRAMA)
                         </td>
                         <td className={cn(cell, 'text-right tabular-nums')}>
                           {formatarMoedaFicha(

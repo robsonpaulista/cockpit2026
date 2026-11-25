@@ -173,7 +173,7 @@ export function totaisEmendasFichaPorExercicio(
 }
 
 export function listarLinhasPropostasFns(propostas: PropostaFns[]): LinhaRecursoFns[] {
-  return filtrarPropostasFns(propostas)
+  return propostas
     .map((p) => ({
       descricao: p.coTipoProposta || p.nuProposta,
       tipoRecurso: p.dsTipoRecurso || '—',
