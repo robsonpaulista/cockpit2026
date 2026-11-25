@@ -1,7 +1,7 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { TseBarraRotulo, TseCard, TseVazio } from '@/components/tse/tse-ui'
+import { useEffect, useState, type ReactNode } from 'react'
+import { TseBarraRotulo, TseCard, TseVazio, tseCampoClass } from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
 import type { ModalidadeLimite } from '@/lib/emenda-modalidade'
 import type { ResumoTeto } from '@/lib/fns-tetos-saldo'
@@ -21,6 +21,20 @@ function LinhaTeto({ rotulo, valor, className }: { rotulo: string; valor: string
 const corSaldo = (saldo: number | null): string | undefined =>
   saldo == null ? undefined : saldo < 0 ? 'text-red-600' : saldo > 0 ? 'text-[var(--tse-olive)]' : undefined
 
+function parseMoedaInput(value: string): number {
+  const limpo = value
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+  const n = Number.parseFloat(limpo)
+  return Number.isFinite(n) ? n : 0
+}
+
+function formatarInputMoeda(n: number): string {
+  return Math.round(n).toLocaleString('pt-BR')
+}
+
 /** Limite, propostas e saldo, com a barra de quanto do teto já foi usado. */
 function ResumoModalidade({ titulo, resumo }: { titulo?: string; resumo: ResumoTeto | null }) {
   const limite = resumo?.limite ?? null
@@ -34,6 +48,60 @@ function ResumoModalidade({ titulo, resumo }: { titulo?: string; resumo: ResumoT
       <dl className="mt-1 divide-y divide-[#EEEEEE]">
         <LinhaTeto rotulo="Limite" valor={formatarMoedaFicha(limite)} />
         <LinhaTeto rotulo="Propostas" valor={formatarMoedaFicha(resumo?.propostas)} />
+        <LinhaTeto rotulo="Saldo" valor={formatarMoedaFicha(saldo)} className={corSaldo(saldo)} />
+      </dl>
+      {usado != null ? (
+        <TseBarraRotulo pct={Math.min(usado, 100)} rotulo={`${usado.toFixed(0)}% usado`} />
+      ) : null}
+    </div>
+  )
+}
+
+/** SUAS: limite fixo, propostas editáveis, saldo = limite − propostas. */
+function ResumoSuasEditavel({
+  resumo,
+  municipio,
+}: {
+  resumo: ResumoTeto
+  municipio: string
+}) {
+  const limite = resumo.limite
+  const [propostasTexto, setPropostasTexto] = useState<string>(() =>
+    formatarInputMoeda(resumo.propostas),
+  )
+
+  useEffect(() => {
+    setPropostasTexto(formatarInputMoeda(resumo.propostas))
+  }, [municipio, resumo.propostas])
+
+  const propostas = parseMoedaInput(propostasTexto)
+  const saldo = limite != null ? limite - propostas : null
+  const usado = limite != null && limite > 0 ? (propostas / limite) * 100 : null
+
+  return (
+    <div>
+      <dl className="mt-1 divide-y divide-[#EEEEEE]">
+        <LinhaTeto rotulo="Limite" valor={formatarMoedaFicha(limite)} />
+        <div className="flex items-center justify-between gap-2 py-1 text-[13px]">
+          <dt className="shrink-0 text-[var(--tse-muted)]">Propostas</dt>
+          <dd className="min-w-0 flex-1">
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-[11px] font-semibold text-[var(--tse-muted)]">R$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                aria-label="Valor de propostas SUAS"
+                value={propostasTexto}
+                onChange={(e) => setPropostasTexto(e.target.value)}
+                onBlur={() => setPropostasTexto(formatarInputMoeda(propostas))}
+                className={cn(
+                  tseCampoClass,
+                  'h-8 max-w-[9.5rem] text-right font-bold tabular-nums',
+                )}
+              />
+            </div>
+          </dd>
+        </div>
         <LinhaTeto rotulo="Saldo" valor={formatarMoedaFicha(saldo)} className={corSaldo(saldo)} />
       </dl>
       {usado != null ? (
@@ -120,7 +188,7 @@ export function FichaAtendimentoTetosBloco({
               {resumoSuas?.limite == null ? (
                 <div className="text-[13px] text-[var(--tse-muted)]">População não encontrada (IBGE).</div>
               ) : (
-                <ResumoModalidade resumo={resumoSuas} />
+                <ResumoSuasEditavel resumo={resumoSuas} municipio={municipio} />
               )}
             </BlocoPrograma>
           </div>

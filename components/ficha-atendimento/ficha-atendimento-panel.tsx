@@ -185,7 +185,8 @@ export function FichaAtendimentoPanel() {
     void loadFns(municipioSel, exercicioAtivo)
   }, [municipioSel, exercicioAtivo, loadFns])
 
-  const propostasFnsFiltradas = useMemo(() => filtrarPropostasFns(propostasFns), [propostasFns])
+  /** Tetos MAC/PAP seguem sem PROGRAMA; a lista de propostas mostra todos os tipos. */
+  const propostasFnsParaTetos = useMemo(() => filtrarPropostasFns(propostasFns), [propostasFns])
 
   const populacao = municipioSel ? getPopulacaoMunicipio(populacaoLista, municipioSel) : null
   const classificacaoSuas = useMemo(() => {
@@ -200,7 +201,7 @@ export function FichaAtendimentoPanel() {
   }, [limitesDb, populacao])
 
   const linhasTabela = useMemo((): LinhaProposta[] => {
-    const fns: LinhaProposta[] = propostasFnsFiltradas.map((p) => ({ ...p, origem: 'FNS' }))
+    const fns: LinhaProposta[] = propostasFns.map((p) => ({ ...p, origem: 'FNS' }))
     const suas: LinhaProposta[] = emendasSuas.map((e) => ({
       nuProposta: `SUAS-${e.id.slice(0, 8)}`,
       municipio: e.municipio,
@@ -216,21 +217,21 @@ export function FichaAtendimentoPanel() {
     }))
     const tempo = (d: string | undefined) => (d ? new Date(d).getTime() : 0)
     return [...fns, ...suas].sort((a, b) => tempo(b.dtCadastramento) - tempo(a.dtCadastramento))
-  }, [propostasFnsFiltradas, emendasSuas, exercicioAtivo])
+  }, [propostasFns, emendasSuas, exercicioAtivo])
 
   const resumosMacPap = useMemo((): ResumosMacPapModalidade => {
     const valor = (tipo: 'mac' | 'pap', mod: 'individual' | 'coletiva') => limitesDb?.[tipo]?.[mod]?.valor ?? null
     return {
       mac: {
-        individual: calcularResumoMac(linhasTabela, valor('mac', 'individual'), 'individual'),
-        coletiva: calcularResumoMac(linhasTabela, valor('mac', 'coletiva'), 'coletiva'),
+        individual: calcularResumoMac(propostasFnsParaTetos, valor('mac', 'individual'), 'individual'),
+        coletiva: calcularResumoMac(propostasFnsParaTetos, valor('mac', 'coletiva'), 'coletiva'),
       },
       pap: {
-        individual: calcularResumoPap(linhasTabela, valor('pap', 'individual'), 'individual'),
-        coletiva: calcularResumoPap(linhasTabela, valor('pap', 'coletiva'), 'coletiva'),
+        individual: calcularResumoPap(propostasFnsParaTetos, valor('pap', 'individual'), 'individual'),
+        coletiva: calcularResumoPap(propostasFnsParaTetos, valor('pap', 'coletiva'), 'coletiva'),
       },
     }
-  }, [linhasTabela, limitesDb])
+  }, [propostasFnsParaTetos, limitesDb])
 
   const resumoSuas = useMemo(() => {
     const propostas = emendasSuas.reduce((acc, e) => acc + (e.valor_proposta || 0), 0)
@@ -369,7 +370,7 @@ export function FichaAtendimentoPanel() {
 
           <TseCard
             titulo="Propostas e lançamentos"
-            subtitulo={`FNS (exceto PROGRAMA) e SUAS local${exercicioAtivo ? ` · exercício ${exercicioAtivo} ao vivo no FNS` : ''}`}
+            subtitulo={`FNS (inclui PROGRAMA) e SUAS local${exercicioAtivo ? ` · exercício ${exercicioAtivo} ao vivo no FNS` : ''}`}
             acao={
               <button
                 type="button"
@@ -534,7 +535,7 @@ export function FichaAtendimentoPanel() {
           candidato={fichaLideranca.candidato}
           cargo={fichaLideranca.cargo}
           limitesDb={limitesDb}
-          propostasFns={propostasFnsFiltradas}
+          propostasFns={propostasFns}
           emendasSuas={emendasSuas}
           populacao={populacao}
           classificacaoSuas={classificacaoSuas}
