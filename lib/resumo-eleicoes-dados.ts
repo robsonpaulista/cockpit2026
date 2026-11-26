@@ -450,3 +450,96 @@ export function agruparPartidoPorAno(
 export function agruparPartido2024(dados: ResultadoEleicao[]): PartidoResumoEleicao[] {
   return agruparPartidoPorAno(dados, '2024')
 }
+
+export interface HistoricoEleitoralItem {
+  anoEleicao: string
+  cargo: string
+  numeroUrna: string
+  partido: string
+  votos: number
+  situacaoLabel: 'Eleito' | 'Suplente' | 'Não eleito' | '—'
+  situacaoTom: 'amarelo' | 'verde' | 'neutro'
+  situacaoOriginal: string
+}
+
+function normalizarNomeHistorico(valor: string): string {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase()
+}
+
+export function classificarSituacaoHistorico(situacao: string): {
+  label: 'Eleito' | 'Suplente' | 'Não eleito' | '—'
+  tom: 'amarelo' | 'verde' | 'neutro'
+} {
+  if (isSituacaoEleito(situacao)) return { label: 'Eleito', tom: 'amarelo' }
+  const texto = String(situacao ?? '').trim()
+  if (/suplente/i.test(texto)) return { label: 'Suplente', tom: 'verde' }
+  if (!texto || texto.startsWith('#')) return { label: '—', tom: 'neutro' }
+  return { label: 'Não eleito', tom: 'neutro' }
+}
+
+/**
+ * Extrai o histórico eleitoral de um candidato nos resultados do município
+ * (ex.: 2020, 2022, 2024, 2026), casando por nome civil e fallback por nome de urna.
+ */
+export function extrairHistoricoEleitoralCandidato(
+  candidato: Pick<ResultadoEleicao, 'nomeCandidato' | 'nomeUrnaCandidato' | 'numeroUrna'>,
+  dadosMunicipio: ResultadoEleicao[],
+): HistoricoEleitoralItem[] {
+  const civilAlvo = normalizarNomeHistorico(candidato.nomeCandidato)
+  const urnaAlvo = normalizarNomeHistorico(
+    nomeCandidatoResumoExibicao(candidato.nomeUrnaCandidato, candidato.numeroUrna),
+  )
+  if (!civilAlvo && !urnaAlvo) return []
+
+  const porAnoCargo = new Map<string, HistoricoEleitoralItem>()
+
+  for (const item of dadosMunicipio) {
+    const ano = String(item.anoEleicao ?? '').trim()
+    if (!ano) continue
+
+    const civilItem = normalizarNomeHistorico(item.nomeCandidato)
+    const urnaItem = normalizarNomeHistorico(
+      nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna),
+    )
+
+    const bate =
+      civilAlvo && civilItem
+        ? civilItem === civilAlvo
+        : Boolean(urnaAlvo && urnaItem && urnaItem === urnaAlvo) ||
+          Boolean(civilAlvo && urnaItem && urnaItem === civilAlvo) ||
+          Boolean(urnaAlvo && civilItem && civilItem === urnaAlvo)
+
+    if (!bate) continue
+
+    const cargoNorm = normalizarNomeHistorico(item.cargo)
+    const chave = `${ano}|${cargoNorm}`
+    const votos = parseVotosEleicao(item.quantidadeVotosNominais)
+    const sit = classificarSituacaoHistorico(item.situacao)
+    const existente = porAnoCargo.get(chave)
+
+    if (!existente || votos > existente.votos) {
+      porAnoCargo.set(chave, {
+        anoEleicao: ano,
+        cargo: item.cargo || '—',
+        numeroUrna: item.numeroUrna || '—',
+        partido: item.partido || '—',
+        votos,
+        situacaoLabel: sit.label,
+        situacaoTom: sit.tom,
+        situacaoOriginal: item.situacao || '',
+      })
+    }
+  }
+
+  return Array.from(porAnoCargo.values()).sort((a, b) => {
+    const cmpAno = a.anoEleicao.localeCompare(b.anoEleicao)
+    if (cmpAno !== 0) return cmpAno
+    return b.votos - a.votos
+  })
+}

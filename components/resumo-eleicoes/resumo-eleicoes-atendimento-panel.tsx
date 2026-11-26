@@ -18,6 +18,8 @@ import {
   PainelVotacaoCandidatoResumo,
   isMesmoCandidatoResumo,
 } from '@/components/painel-votacao-candidato-resumo'
+import { resumoTemVotacaoSecao } from '@/lib/candidato-votacao-secao-match'
+import { HistoricoEleitoralCandidato } from './historico-eleitoral-candidato'
 import {
   nomeCandidatoResumoExibicao,
   isSituacaoEleito,
@@ -2433,16 +2435,28 @@ export function ResumoEleicoesAtendimentoPanel() {
           ) : null}
 
           {candidatoDistribuicao && municipioAtivo ? (
-            <PainelVotacaoCandidatoResumo
-              ref={painelSecaoRef}
-              candidato={candidatoDistribuicao}
-              municipio={municipioAtivo}
-              depEstadualLideranca={depEstadualLiderancaCidade}
-              liderancasDetalhe={resumoCidade?.liderancasDetalhe ?? []}
-              cenarioVotos={cenarioVotos}
-              labelExpectativa={labelCenarioAtivo}
-              onClose={() => setCandidatoDistribuicao(null)}
-            />
+            <>
+              {resumoTemVotacaoSecao(candidatoDistribuicao) ? (
+                <PainelVotacaoCandidatoResumo
+                  ref={painelSecaoRef}
+                  candidato={candidatoDistribuicao}
+                  municipio={municipioAtivo}
+                  depEstadualLideranca={depEstadualLiderancaCidade}
+                  onClose={() => setCandidatoDistribuicao(null)}
+                />
+              ) : null}
+              <HistoricoEleitoralCandidato
+                ref={resumoTemVotacaoSecao(candidatoDistribuicao) ? undefined : painelSecaoRef}
+                candidato={candidatoDistribuicao}
+                municipio={municipioAtivo}
+                dadosMunicipio={dados}
+                onClose={
+                  resumoTemVotacaoSecao(candidatoDistribuicao)
+                    ? undefined
+                    : () => setCandidatoDistribuicao(null)
+                }
+              />
+            </>
           ) : null}
         </>
       ) : null}

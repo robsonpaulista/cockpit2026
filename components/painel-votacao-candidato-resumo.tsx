@@ -129,9 +129,9 @@ export function BotaoNomeCandidatoDistribuicao({
   const nomeExibicao = nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna)
   const compararJadyel = isVereadorResumo2024(item)
 
-  if (!temSecao || !habilitado) {
+  if (!habilitado) {
     return (
-      <span title={temSecao && !habilitado ? 'Selecione uma cidade para ver votação por seção' : undefined}>
+      <span title="Selecione uma cidade para ver detalhes do candidato">
         {nomeExibicao}
       </span>
     )
@@ -149,10 +149,14 @@ export function BotaoNomeCandidatoDistribuicao({
       )}
       title={
         ativo
-          ? 'Ocultar votação por seção'
-          : compararJadyel
-            ? 'Ver votação por seção comparada com Jadyel Alencar e dep. estadual da liderança'
-            : 'Ver votação por seção (bairro, local e seção)'
+          ? temSecao
+            ? 'Ocultar votação por seção'
+            : 'Ocultar histórico eleitoral'
+          : !temSecao
+            ? 'Ver histórico eleitoral do candidato'
+            : compararJadyel
+              ? 'Ver votação por seção comparada com Jadyel Alencar e dep. estadual da liderança'
+              : 'Ver votação por seção (bairro, local e seção)'
       }
       aria-pressed={ativo}
     >
