@@ -377,6 +377,57 @@ export function parseGp1UltimasBoxes(html: string, opts: FonteOpts): PortalNotic
   return itens
 }
 
+/** `DD/MM/AAAA HH:MM` (horário de Brasília, UTC-3) → ISO. */
+function parseDataLabelBr(label: string | null): string | null {
+  const m = label?.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/)
+  if (!m) return null
+  const [, dd, mm, yyyy, hh = '00', min = '00'] = m
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:00-03:00`
+}
+
+/**
+ * Portal R10 (blogs e colunas): `div.post-link > h2 > a` seguido de `<time>DD/MM/AAAA HH:MM</time>`.
+ */
+export function parsePostLinkCards(html: string, opts: FonteOpts): PortalNoticiaItem[] {
+  let origin = 'https://' + opts.fonteDominio.replace(/^www\./, '')
+  try {
+    origin = new URL(opts.fonteUrl).origin
+  } catch {
+    /* keep fallback */
+  }
+
+  const itens: PortalNoticiaItem[] = []
+  const seen = new Set<string>()
+  const re =
+    /<div class="post-link">\s*<h2>\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>\s*<time>([^<]*)<\/time>/gi
+
+  for (const match of html.matchAll(re)) {
+    let url: string
+    try {
+      url = new URL(match[1].trim(), origin).toString().split('#')[0]
+    } catch {
+      continue
+    }
+    const title = stripTags(match[2])
+    if (!title || seen.has(url)) continue
+    seen.add(url)
+
+    const publishedLabel = stripTags(match[3]) || null
+    itens.push({
+      articleId: articleIdFromUrl(url, String(itens.length + 1)),
+      title,
+      url,
+      summary: null,
+      publishedAt: parseDataLabelBr(publishedLabel),
+      publishedLabel,
+      category: null,
+      ...opts,
+    })
+  }
+
+  return itens
+}
+
 export function parseListagemPortal(html: string, opts: FonteOpts): PortalNoticiaItem[] {
   const listagem = parseListagemInterna(html, opts)
   if (listagem.length > 0) return listagem
@@ -386,7 +437,9 @@ export function parseListagemPortal(html: string, opts: FonteOpts): PortalNotici
   if (nextCards.length > 0) return nextCards
   const diario = parseDiarioNoticiaCards(html, opts)
   if (diario.length > 0) return diario
-  return parseWordPressEntryTitles(html, opts)
+  const wordpress = parseWordPressEntryTitles(html, opts)
+  if (wordpress.length > 0) return wordpress
+  return parsePostLinkCards(html, opts)
 }
 
 export async function fetchListagemPortal(opts: {

@@ -337,6 +337,22 @@ export const RADAR_224_FONTES_SEED: RadarFonte[] = [
     coberturaResumo: 'Alta expectativa · baixa cobertura local cadastrada',
   },
 
+  // ——— Portais municipais (listagem própria) ———
+  {
+    id: 'portal-r10-joaquim-pires',
+    nome: 'R10 · Joaquim Pires',
+    camada: 'local',
+    selo: 'Portal local',
+    url: 'https://www.portalr10.com/blogs-e-colunas/joaquim-pires-pi/',
+    urlListagem: 'https://www.portalr10.com/blogs-e-colunas/joaquim-pires-pi/',
+    dominio: 'portalr10.com',
+    nota: 80,
+    status: 'ativa',
+    territorios: ['Cocais'],
+    municipiosPrioritarios: ['JOAQUIM PIRES'],
+    coberturaResumo: 'Portal R10 — blogs e colunas com notícias de Joaquim Pires',
+  },
+
   // ——— Oficiais (fluxo separado) ———
   {
     id: 'oficial-governo-pi',
