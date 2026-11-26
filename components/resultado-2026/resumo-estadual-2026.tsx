@@ -26,6 +26,63 @@ function ehCargoFederal(cargo: string): boolean {
   return /federal/i.test(cargo)
 }
 
+type CorPartido = { bg: string; texto: string }
+
+const CORES_PARTIDOS: Record<string, CorPartido> = {
+  PT: { bg: '#C4122F', texto: '#FFFFFF' },
+  MDB: { bg: '#009739', texto: '#FFFFFF' },
+  PP: { bg: '#1B4D89', texto: '#FFFFFF' },
+  PSD: { bg: '#00529B', texto: '#FFFFFF' },
+  PL: { bg: '#16366B', texto: '#FFFFFF' },
+  PSDB: { bg: '#005CA9', texto: '#FFFFFF' },
+  REPUBLICANOS: { bg: '#EBB402', texto: '#FFFFFF' },
+  UNIAO: { bg: '#254AA5', texto: '#FFFFFF' },
+  PDT: { bg: '#D71920', texto: '#FFFFFF' },
+  PV: { bg: '#00873E', texto: '#FFFFFF' },
+  PODE: { bg: '#2B9E47', texto: '#FFFFFF' },
+  AVANTE: { bg: '#E85D04', texto: '#FFFFFF' },
+  NOVO: { bg: '#EA580C', texto: '#FFFFFF' },
+  PSOL: { bg: '#6A2C91', texto: '#FFFFFF' },
+  MOBILIZA: { bg: '#C8102E', texto: '#FFFFFF' },
+  CIDADANIA: { bg: '#D91E63', texto: '#FFFFFF' },
+  REDE: { bg: '#00A859', texto: '#FFFFFF' },
+  PCDOB: { bg: '#B71C1C', texto: '#FFFFFF' },
+  UP: { bg: '#9E1B1B', texto: '#FFFFFF' },
+  PCO: { bg: '#8B0000', texto: '#FFFFFF' },
+  DC: { bg: '#0057A3', texto: '#FFFFFF' },
+  DEMOCRATA: { bg: '#004F9F', texto: '#FFFFFF' },
+  MISSAO: { bg: '#EAB308', texto: '#1F2937' },
+  PSB: { bg: '#E30613', texto: '#FFFFFF' },
+  SOLIDARIEDADE: { bg: '#EA580C', texto: '#FFFFFF' },
+  PRD: { bg: '#1B365D', texto: '#FFFFFF' },
+  AGIR: { bg: '#0284C7', texto: '#FFFFFF' },
+}
+
+const COR_PARTIDO_PADRAO: CorPartido = { bg: '#F4F4F0', texto: '#333333' }
+
+function corDoPartido(sigla: string): CorPartido {
+  const chave = sigla
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '')
+  return CORES_PARTIDOS[chave] ?? COR_PARTIDO_PADRAO
+}
+
+/** Selo preenchido com a cor oficial do partido e a sigla em destaque. */
+function SeloPartido({ sigla }: { sigla: string }) {
+  const cor = corDoPartido(sigla)
+  return (
+    <span
+      className="flex h-7 w-full items-center justify-center rounded-md px-1.5 text-[10px] font-extrabold tracking-tight"
+      style={{ backgroundColor: cor.bg, color: cor.texto }}
+    >
+      <span className="truncate">{sigla}</span>
+    </span>
+  )
+}
+
 function IndicadorSituacaoMinimo({ situacao }: { situacao?: string }) {
   const s = siglaSituacao2026(situacao)
   return (
@@ -534,8 +591,8 @@ export function ResumoEstadual2026({
                   p.eleitos > 0 ? 'border-[#E5E5DF] bg-white' : 'border-[#F0F0EC] bg-[#FAFAF8] opacity-75',
                 )}
               >
-                <span className="truncate text-[11px] font-extrabold text-[var(--tse-text)]">{p.partido}</span>
-                <span className="mt-0.5 text-[10px] tabular-nums text-[var(--tse-muted)]">
+                <SeloPartido sigla={p.partido} />
+                <span className="mt-1.5 w-full text-center text-[9px] tabular-nums text-[var(--tse-muted)]">
                   {p.eleitos > 0 ? `${p.eleitos} eleito${p.eleitos > 1 ? 's' : ''}` : `${p.candidatos} cand.`}
                 </span>
               </button>

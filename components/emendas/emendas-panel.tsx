@@ -30,7 +30,6 @@ import {
   TseVazio,
   tseBotaoCinzaClass,
   tseBotaoIconeClass,
-  tseBotaoPrimarioClass,
   tseLinkAcaoClass,
   tseTabela,
 } from '@/components/tse/tse-ui'
@@ -344,9 +343,10 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
           ))}
         </TsePillSelect>
         <TsePillSelect
-          rotulo="Município / beneficiário"
+          rotulo="Município"
           value={filtroMunicipio}
           onChange={(e) => setFiltroMunicipio(e.target.value)}
+          selectClassName="max-w-[180px] truncate"
         >
           <option value="">Todos</option>
           {municipios.map((m) => (
@@ -355,30 +355,35 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
             </option>
           ))}
         </TsePillSelect>
-        <div className="flex flex-col gap-1 text-[13px] font-semibold">
+        <div className="inline-flex items-center gap-2 whitespace-nowrap text-[12px] font-semibold text-[var(--tse-muted)]">
           Status
           <TseSegmentado opcoes={OPCOES_STATUS} valor={filtroStatus} onChange={setFiltroStatus} />
         </div>
-        <TseBusca value={busca} onChange={setBusca} placeholder="Buscar emenda ou objeto…" className="w-64" />
+        <TseBusca value={busca} onChange={setBusca} placeholder="Buscar emenda ou objeto…" className="w-52" />
         {filtrosAtivos ? (
           <button type="button" onClick={limparFiltros} className={tseLinkAcaoClass}>
-            Limpar filtros
+            Limpar
           </button>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+        <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             onClick={() => void carregar()}
             disabled={loading}
-            title="Recarregar emendas do banco"
-            className={tseBotaoCinzaClass}
+            title="Atualizar emendas"
+            aria-label="Atualizar emendas"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)] disabled:opacity-50"
           >
-            <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} aria-hidden />
-            Atualizar
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} aria-hidden />
           </button>
-          <button type="button" onClick={() => setModal({ tipo: 'nova' })} className={tseBotaoPrimarioClass}>
+          <button
+            type="button"
+            onClick={() => setModal({ tipo: 'nova' })}
+            title="Nova emenda"
+            aria-label="Nova emenda"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--tse-olive)] text-white transition-opacity hover:opacity-90"
+          >
             <Plus className="h-4 w-4" aria-hidden />
-            Nova emenda
           </button>
         </div>
       </TseFilterBar>
@@ -389,8 +394,8 @@ export function EmendasPanel({ variant = 'page' }: { variant?: EmendasPanelVaria
         </div>
       ) : null}
 
-      <section className="mt-4 rounded-2xl bg-white px-5 py-4 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]">
+      <section className="mt-4 rounded-[10px] border border-[#EAEAE5] bg-white px-5 py-3.5 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0 xl:divide-x xl:divide-[#F0F0EC]">
           <BlocoTotal rotulo="Emendas" valor={filtradas.length.toLocaleString('pt-BR')}>
             <p className="mt-2 text-[11px] text-[var(--tse-muted)]">
               {filtrosAtivos ? `de ${rows.length.toLocaleString('pt-BR')} cadastradas` : 'cadastradas'} ·{' '}

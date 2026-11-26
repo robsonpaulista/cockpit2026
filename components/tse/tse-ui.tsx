@@ -19,30 +19,30 @@ import { TSE_TOKENS } from '@/components/tse/tse-tokens'
 /* Classes reutilizáveis (padrão da página de resultado 2026) */
 
 export const tseControleClass =
-  'h-8 rounded-md border border-[var(--tse-border)] bg-white px-2 text-[13px] outline-none focus:border-[var(--tse-yellow)]'
+  'h-8 rounded-lg border border-[#E5E5DF] bg-white px-2.5 text-[12.5px] text-[var(--tse-text)] outline-none transition-colors hover:border-[#D5D5CD] focus:border-[var(--tse-olive)]'
 export const tseBotaoCinzaClass =
-  'flex h-8 items-center gap-1.5 rounded-md bg-[#E8E8E8] px-3 text-[13px] font-semibold text-[var(--tse-text)] hover:bg-[#DDDDDD] disabled:opacity-60'
-export const tseBotaoIconeClass = 'h-4 w-4 text-[var(--tse-yellow)]'
+  'inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 text-[12px] font-semibold text-[var(--tse-text)] transition-colors hover:bg-[#F7F7F4] disabled:opacity-50'
+export const tseBotaoIconeClass = 'h-3.5 w-3.5 text-[var(--tse-muted)]'
 export const tseBotaoPrimarioClass =
-  'flex h-8 items-center justify-center gap-1.5 rounded-md bg-[var(--tse-olive)] px-3 text-[13px] font-bold text-white hover:bg-[#58701B] disabled:opacity-60'
+  'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-[var(--tse-olive)] px-3 text-[12px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50'
 export const tseCampoClass =
-  'h-9 w-full rounded-md border border-[var(--tse-border)] bg-white px-2.5 text-[13px] text-[var(--tse-text)] outline-none focus:border-[var(--tse-yellow)]'
+  'h-9 w-full rounded-lg border border-[#E5E5DF] bg-white px-2.5 text-[12.5px] text-[var(--tse-text)] outline-none transition-colors hover:border-[#D5D5CD] focus:border-[var(--tse-olive)]'
 export const tseRotuloCampoClass = 'mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]'
 export const tseBotaoContornoClass =
-  'rounded-md border border-[var(--tse-olive)] bg-white px-5 py-2 text-[13px] font-bold uppercase tracking-wide text-[var(--tse-olive)] hover:bg-[var(--tse-olive)] hover:text-white'
+  'rounded-lg border border-[var(--tse-olive)] bg-white px-4 py-1.5 text-[12px] font-bold text-[var(--tse-olive)] transition-colors hover:bg-[var(--tse-olive)] hover:text-white'
 export const tseBotaoNeutroClass =
-  'inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide hover:border-[var(--tse-olive)]'
+  'inline-flex items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--tse-text)] transition-colors hover:bg-[#F7F7F4]'
 export const tseLinkAcaoClass =
-  'text-[12px] font-bold uppercase tracking-wide text-[var(--tse-olive)] hover:underline'
-export const tseCardClass = 'rounded-2xl bg-white p-4 shadow-sm'
+  'text-[12px] font-semibold text-[var(--tse-olive)] hover:underline'
+export const tseCardClass = 'rounded-[10px] border border-[#EAEAE5] bg-white p-4 shadow-sm'
 
 export const tseTabela = {
-  container: 'overflow-x-auto rounded-xl bg-white shadow-sm',
+  container: 'overflow-x-auto rounded-[10px] border border-[#EAEAE5] bg-white shadow-sm',
   table: 'w-full text-[13px]',
-  thead: 'bg-[var(--tse-bar)] text-left text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]',
+  thead: 'bg-[#FAFAF8] text-left text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]',
   th: 'px-3 py-2.5',
-  tr: 'border-t border-[#EEEEEE]',
-  trClicavel: 'group cursor-pointer border-t border-[#EEEEEE] hover:bg-[var(--tse-yellow-soft)]',
+  tr: 'border-t border-[#F2F2EE]',
+  trClicavel: 'group cursor-pointer border-t border-[#F2F2EE] transition-colors hover:bg-[#FAFAF8]',
   td: 'px-3 py-2',
 } as const
 
@@ -60,7 +60,7 @@ export function TsePage({ children, className }: { children: ReactNode; classNam
 
 export function TseFilterBar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-8 rounded-2xl bg-white px-6 py-3 shadow-sm">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[10px] border border-[#EAEAE5] bg-white px-4 py-2.5 shadow-sm">
       {children}
     </div>
   )
@@ -92,17 +92,18 @@ export function TseSelectGrande({
   )
 }
 
-/** Select secundário em pílula amarela com rótulo acima (zona, cargo, cenário). */
+/** Select secundário em linha única com rótulo lateral (zona, cargo, cenário). */
 export function TsePillSelect({
   rotulo,
   children,
-  layout = 'coluna',
+  layout = 'linha',
+  selectClassName,
   ...props
-}: SelectProps & { rotulo: string; children: ReactNode; layout?: 'coluna' | 'linha' }) {
+}: SelectProps & { rotulo: string; children: ReactNode; layout?: 'coluna' | 'linha'; selectClassName?: string }) {
   return (
     <label
       className={cn(
-        'text-[13px] font-semibold',
+        'text-[12px] font-semibold text-[var(--tse-muted)]',
         layout === 'coluna' ? 'flex flex-col' : 'inline-flex items-center gap-2 whitespace-nowrap',
       )}
     >
@@ -110,22 +111,25 @@ export function TsePillSelect({
       <span className="relative">
         <select
           {...props}
-          className="cursor-pointer appearance-none rounded-md bg-[var(--tse-yellow-strong)] py-0.5 pl-2 pr-7 text-sm font-bold text-[var(--tse-text)] outline-none"
+          className={cn(
+            'cursor-pointer appearance-none rounded-md bg-[var(--tse-yellow-strong)] py-0.5 pl-2.5 pr-7 text-[13px] font-bold text-[var(--tse-text)] outline-none',
+            selectClassName,
+          )}
         >
           {children}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tse-text)]" />
       </span>
     </label>
   )
 }
 
-/** Valor fixo em pílula amarela com rótulo acima (ex.: turno). */
+/** Valor fixo em linha única (ex.: turno). */
 export function TsePillValor({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col text-[13px] font-semibold">
+    <div className="inline-flex items-center gap-2 whitespace-nowrap text-[12px] font-semibold text-[var(--tse-muted)]">
       {rotulo}
-      <span className="mt-0.5 w-fit rounded-md bg-[var(--tse-yellow-strong)] px-2.5 py-0.5 text-sm font-bold">
+      <span className="w-fit rounded-md bg-[var(--tse-yellow-strong)] px-2.5 py-0.5 text-[13px] font-bold text-[var(--tse-text)]">
         {children}
       </span>
     </div>
@@ -147,8 +151,9 @@ export function TseTabs<T extends string>({
 }) {
   return (
     <div
+      role="tablist"
       className={cn(
-        'flex flex-wrap gap-6 border-b border-[var(--tse-border)] text-[12px] font-bold uppercase tracking-wide',
+        'inline-flex max-w-full flex-wrap items-center gap-1 rounded-[10px] border border-[#E6E6DF] bg-[#F2F2ED] p-1',
         className,
       )}
     >
@@ -158,15 +163,19 @@ export function TseTabs<T extends string>({
           <button
             key={a.id}
             type="button"
-            aria-pressed={ativo}
+            role="tab"
+            aria-selected={ativo}
             onClick={() => onChange(a.id)}
             className={cn(
-              '-mb-px border-b-2 pb-2 transition',
+              'relative inline-flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12.5px] tracking-[-0.01em] transition-all duration-150',
               ativo
-                ? 'border-[var(--tse-yellow)] text-[var(--tse-gold-text)]'
-                : 'border-transparent text-[var(--tse-muted)] hover:text-[var(--tse-text)]',
+                ? 'bg-white font-semibold text-[var(--tse-text)] shadow-[0_1px_2px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04]'
+                : 'font-medium text-[var(--tse-muted)] hover:bg-white/60 hover:text-[var(--tse-text)]',
             )}
           >
+            {ativo ? (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+            ) : null}
             {a.label}
           </button>
         )
@@ -520,18 +529,20 @@ export function TseBusca({
 }) {
   return (
     <div className="relative">
+      <Search
+        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tse-muted)]"
+        aria-hidden
+      />
       <input
+        type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'h-8 rounded-md border border-[var(--tse-border)] bg-white pl-3 pr-9 text-[13px] outline-none focus:border-[var(--tse-yellow)]',
+          'h-8 rounded-lg border border-[#E5E5DF] bg-[#FAFAF8] pl-8 pr-3 text-[12.5px] text-[var(--tse-text)] outline-none transition-colors placeholder:text-[var(--tse-muted)] hover:border-[#D5D5CD] focus:border-[var(--tse-olive)] focus:bg-white',
           className,
         )}
       />
-      <span className="pointer-events-none absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-md bg-[var(--tse-yellow-strong)]">
-        <Search className="h-4 w-4 text-[var(--tse-text)]" />
-      </span>
     </div>
   )
 }
@@ -546,23 +557,26 @@ export function TseSegmentado<T extends string>({
   onChange: (id: T) => void
 }) {
   return (
-    <div className="flex overflow-hidden rounded-md border border-[var(--tse-border)] text-[13px] font-semibold">
-      {opcoes.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          aria-pressed={o.id === valor}
-          onClick={() => onChange(o.id)}
-          className={cn(
-            'px-3 py-1.5',
-            o.id === valor
-              ? 'bg-[var(--tse-yellow-strong)] text-[var(--tse-text)]'
-              : 'bg-white text-[var(--tse-muted)] hover:bg-[var(--tse-bar)]',
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="inline-flex flex-wrap items-center gap-0.5 rounded-[8px] border border-[#E6E6DF] bg-[#F2F2ED] p-0.5 text-[12px]">
+      {opcoes.map((o) => {
+        const ativo = o.id === valor
+        return (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={ativo}
+            onClick={() => onChange(o.id)}
+            className={cn(
+              'rounded-[6px] px-2.5 py-1 tracking-[-0.01em] transition-all duration-150',
+              ativo
+                ? 'bg-white font-semibold text-[var(--tse-text)] shadow-[0_1px_2px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04]'
+                : 'font-medium text-[var(--tse-muted)] hover:bg-white/60 hover:text-[var(--tse-text)]',
+            )}
+          >
+            {o.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
