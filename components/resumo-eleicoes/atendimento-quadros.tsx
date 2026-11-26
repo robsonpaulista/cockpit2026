@@ -1,7 +1,21 @@
 'use client'
 
 import { type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, UserPlus } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
+  UserPlus,
+  Users,
+  Vote,
+  type LucideIcon,
+} from 'lucide-react'
 import { FotoCandidato } from '@/components/candidatos/foto-candidato'
 import { TsePill, tseLinkAcaoClass } from '@/components/tse/tse-ui'
 import {
@@ -25,23 +39,55 @@ const fmtPct = (n: number): string => `${n.toFixed(1).replace('.', ',')}%`
 function Kpi({
   rotulo,
   valor,
+  icone: Icone,
+  destaqueAmarelo = false,
   selo,
   children,
 }: {
   rotulo: string
   valor: string
+  icone: LucideIcon
+  destaqueAmarelo?: boolean
   selo?: ReactNode
   children?: ReactNode
 }) {
   return (
-    <div className="min-w-0 xl:px-4 xl:first:pl-0 xl:last:pr-0">
-      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">{rotulo}</p>
-      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+    <div
+      className={cn(
+        'flex min-w-0 flex-col rounded-xl border px-3.5 py-3 transition-colors',
+        destaqueAmarelo
+          ? 'border-[#EFE2B2] bg-[var(--tse-yellow-soft)]/55'
+          : 'border-[#ECECE7] bg-[#FAFAF8]',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--tse-muted)]">
+          {rotulo}
+        </p>
+        <span
+          className={cn(
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
+            destaqueAmarelo
+              ? 'bg-[var(--tse-yellow)]/25 text-[var(--tse-text)]'
+              : 'bg-white text-[var(--tse-gold-text)] ring-1 ring-[#ECECE7]',
+          )}
+          aria-hidden
+        >
+          <Icone className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         {/* div, não span: o CSS global do war-room força 13px em todo p/span dentro de main */}
-        <div className="text-[22px] font-bold leading-none tabular-nums">{valor}</div>
+        <div className="text-[24px] font-extrabold leading-none tracking-tight tabular-nums text-[var(--tse-text)]">
+          {valor}
+        </div>
         {selo}
       </div>
-      {children ? <div className="mt-0.5 text-[11px] leading-snug text-[var(--tse-muted)]">{children}</div> : null}
+      {children ? (
+        <div className="mt-2 border-t border-[#ECECE7]/80 pt-1.5 text-[11px] leading-snug text-[var(--tse-muted)]">
+          {children}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -52,7 +98,7 @@ function SeloVariacao({ pct, titulo }: { pct: number; titulo: string }) {
     <span
       title={titulo}
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+        'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums',
         pct > 0 && 'bg-[color-mix(in_srgb,var(--tse-olive)_14%,white)] text-[var(--tse-olive)]',
         pct < 0 && 'bg-red-50 text-red-700',
         pct === 0 && 'bg-[var(--tse-bar)] text-[var(--tse-muted)]',
@@ -66,8 +112,9 @@ function SeloVariacao({ pct, titulo }: { pct: number; titulo: string }) {
 
 export function AtendimentoDadosGerais({
   fonte,
+  populacao,
+  porteMunicipio,
   eleitores,
-  alcancePct,
   votos2022,
   votos2026,
   rotuloCenario,
@@ -78,8 +125,9 @@ export function AtendimentoDadosGerais({
   onAlternarCenario,
 }: {
   fonte: ReactNode
+  populacao: number | null
+  porteMunicipio?: string | null
   eleitores: number | null
-  alcancePct: number | null
   votos2022: number
   votos2026: number | null
   rotuloCenario: string
@@ -96,49 +144,69 @@ export function AtendimentoDadosGerais({
   const pctVsExpectativa = votos2026 !== null ? variacao(votos2026, votosCenario) : null
   const saldoVsExpectativa = votos2026 !== null ? votos2026 - votosCenario : 0
   return (
-    <section className="mt-3 rounded-2xl bg-white px-4 py-2.5 shadow-sm">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-[13px] font-bold">Dados Gerais</h2>
-        <div className="flex flex-wrap items-center gap-3">
+    <section className="mt-3 rounded-2xl border border-[#EAEAE5] bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="h-4 w-1 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+          <h2 className="text-[14px] font-bold text-[var(--tse-text)]">Dados Gerais</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
           {onAlternarCenario ? (
             <button
               type="button"
               onClick={onAlternarCenario}
-              className={tseLinkAcaoClass}
+              className="rounded-lg border border-[#E5E5DF] bg-[#FAFAF8] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-olive)] transition-colors hover:border-[var(--tse-yellow)] hover:bg-[var(--tse-yellow-soft)]"
               aria-expanded={!cenarioOculto}
             >
-              {cenarioOculto ? 'Mostrar' : 'Ocultar'}
+              {cenarioOculto ? 'Mostrar expectativa' : 'Ocultar expectativa'}
             </button>
           ) : null}
-          <p className="text-[10px] font-semibold text-[var(--tse-muted)]">{fonte}</p>
+          <span className="rounded-full bg-[var(--tse-bar)] px-2.5 py-1 text-[10px] font-semibold text-[var(--tse-muted)]">
+            {fonte}
+          </span>
         </div>
       </div>
       <div
         className={cn(
-          'mt-2 grid gap-3 sm:grid-cols-2 xl:gap-0 xl:divide-x xl:divide-[#EEEEEE]',
-          cenarioOculto ? 'xl:grid-cols-3' : 'xl:grid-cols-4',
+          'mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4',
+          !cenarioOculto && 'xl:grid-cols-5',
         )}
       >
-        <Kpi rotulo="Eleitores" valor={eleitores !== null ? fmt(eleitores) : '—'}>
-          {alcancePct !== null ? (
-            <>
-              <span className={destaque}>{fmtPct(alcancePct)}</span> do eleitorado na expectativa
-            </>
+        <Kpi
+          rotulo="População"
+          valor={populacao !== null ? fmt(populacao) : '—'}
+          icone={Users}
+        >
+          {porteMunicipio ? (
+            <span className="inline-flex items-center rounded-md bg-[var(--tse-yellow-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--tse-text)]">
+              {porteMunicipio}
+            </span>
           ) : (
-            'Eleitorado não informado'
+            'Censo / IBGE'
           )}
         </Kpi>
+
+        <Kpi
+          rotulo="Eleitores"
+          valor={eleitores !== null ? fmt(eleitores) : '—'}
+          icone={Vote}
+        />
+
         <Kpi
           rotulo="Votos 2026 · Jadyel"
           valor={votos2026 !== null ? fmt(votos2026) : '—'}
+          icone={BarChart3}
+          destaqueAmarelo
           selo={pctVs2022 !== null ? <SeloVariacao pct={pctVs2022} titulo="Em relação a 2022" /> : null}
         >
           <span className={destaque}>{fmt(votos2022)}</span> votos em 2022
         </Kpi>
+
         {cenarioOculto ? null : (
           <Kpi
             rotulo={rotuloCenario}
             valor={fmt(votosCenario)}
+            icone={Target}
             selo={
               pctVsExpectativa !== null ? (
                 <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
@@ -157,7 +225,8 @@ export function AtendimentoDadosGerais({
             )}
           </Kpi>
         )}
-        <Kpi rotulo="Lideranças" valor={fmt(liderancas)}>
+
+        <Kpi rotulo="Lideranças" valor={fmt(liderancas)} icone={UserCheck}>
           <div className="flex flex-wrap items-center gap-3">{acoesLiderancas}</div>
         </Kpi>
       </div>

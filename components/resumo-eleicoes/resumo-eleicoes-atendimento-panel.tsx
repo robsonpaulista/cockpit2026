@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
 import { RefreshCw, Crown, FileText, Loader2, MapPin, MapPinned, Newspaper } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
+import { fetchPopulacaoIbge } from '@/lib/services/ficha-atendimento-client'
+import { getPopulacaoMunicipio, type MunicipioPopulacao } from '@/lib/populacao-ibge-local'
+import { classificaPorteSuasFromFaixas } from '@/lib/suas-porte'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
 import type { AIAgentPageContext } from '@/components/ai-agent'
@@ -402,6 +405,41 @@ export function ResumoEleicoesAtendimentoPanel() {
   }, [visaoTodasCidades, cidadeFiltroLista, cidade])
 
   /** Eleitorado TSE (lib/eleitores-piaui.json) — sempre derivado do município ativo, não do state cacheado. */
+  const [populacaoLista, setPopulacaoLista] = useState<MunicipioPopulacao[]>([])
+
+  useEffect(() => {
+    let ativo = true
+    void fetchPopulacaoIbge()
+      .then((lista) => {
+        if (ativo) setPopulacaoLista(lista)
+      })
+      .catch(() => {
+        if (ativo) setPopulacaoLista([])
+      })
+    return () => {
+      ativo = false
+    }
+  }, [])
+
+  const populacaoMunicipioAtivo = useMemo((): number | null => {
+    if (populacaoLista.length === 0) return null
+    if (municipioAtivo) return getPopulacaoMunicipio(populacaoLista, municipioAtivo)
+    if (visaoTodasCidades && buscaIniciada && cidades.length > 0) {
+      let total = 0
+      for (const nome of cidades) {
+        const pop = getPopulacaoMunicipio(populacaoLista, nome)
+        if (pop != null) total += pop
+      }
+      return total > 0 ? total : null
+    }
+    return null
+  }, [populacaoLista, municipioAtivo, visaoTodasCidades, buscaIniciada, cidades])
+
+  const porteMunicipioAtivo = useMemo((): string | null => {
+    if (!municipioAtivo || populacaoMunicipioAtivo == null) return null
+    return classificaPorteSuasFromFaixas(populacaoMunicipioAtivo).porte
+  }, [municipioAtivo, populacaoMunicipioAtivo])
+
   const eleitoresMunicipioAtivo = useMemo((): number | null => {
     if (municipioAtivo) return getEleitoradoByCity(municipioAtivo)
     if (visaoTodasCidades && buscaIniciada && cidades.length > 0) {
@@ -2318,8 +2356,9 @@ export function ResumoEleicoesAtendimentoPanel() {
           {resumoCidade ? (
             <AtendimentoDadosGerais
               fonte={`${visaoTodasCidades ? 'Todas as cidades' : municipioAtivo || cidade} · ${labelCenarioAtivo}`}
+              populacao={populacaoMunicipioAtivo}
+              porteMunicipio={porteMunicipioAtivo}
               eleitores={eleitoresMunicipioAtivo}
-              alcancePct={percentualAlcance !== null ? Math.min(100, Math.max(0, percentualAlcance)) : null}
               votos2022={votosJadyel2022}
               votos2026={votosJadyel2026}
               rotuloCenario={labelCenarioAtivo}
