@@ -2358,39 +2358,58 @@ export function ResumoEleicoesAtendimentoPanel() {
   return (
     <TsePage>
       <section className="overflow-hidden rounded-[10px] border border-[#EAEAE5] bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2">
-          <TseSelectGrande
-            icone={MapPin}
-            rotulo="Cidade"
-            value={cidade}
-            onChange={(e) => {
-              const next = e.target.value
-              setCidade(next)
-              setCidadeFiltroLista(null)
-              setDadosCidadeFiltro([])
-              syncCidadeHub(next)
-            }}
-            disabled={loadingCidades}
-          >
-            <option value="">{loadingCidades ? 'Carregando municípios…' : 'Selecione um município'}</option>
-            <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
-            {cidades.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </TseSelectGrande>
-          <TsePillSelect
-            rotulo="Visão de votos 2026"
-            layout="linha"
-            value={cenarioVotos}
-            onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-          >
-            <option value="legado_anterior">Anterior / Legado</option>
-            <option value="aferido_jadyel">Aferido (Jadyel)</option>
-            <option value="promessa_lideranca">Prometido (liderança)</option>
-          </TsePillSelect>
-          <div className="flex items-center gap-1 lg:ml-auto">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2.5 px-4 py-2.5">
+          <div className="min-w-0">
+            <TseSelectGrande
+              icone={MapPin}
+              rotulo="Cidade"
+              value={cidade}
+              onChange={(e) => {
+                const next = e.target.value
+                setCidade(next)
+                setCidadeFiltroLista(null)
+                setDadosCidadeFiltro([])
+                syncCidadeHub(next)
+              }}
+              disabled={loadingCidades}
+            >
+              <option value="">{loadingCidades ? 'Carregando municípios…' : 'Selecione um município'}</option>
+              <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
+              {cidades.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </TseSelectGrande>
+            {dados.length > 0 && resumoCidade && (porteMunicipioAtivo || populacaoMunicipioAtivo !== null || eleitoresMunicipioAtivo !== null) ? (
+              <p className="mt-0.5 pl-7 text-[12px] leading-tight text-[var(--tse-muted)]">
+                {[
+                  porteMunicipioAtivo,
+                  populacaoMunicipioAtivo !== null
+                    ? `${populacaoMunicipioAtivo.toLocaleString('pt-BR')} habitantes`
+                    : null,
+                  eleitoresMunicipioAtivo !== null
+                    ? `${eleitoresMunicipioAtivo.toLocaleString('pt-BR')} eleitores`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
+            <TsePillSelect
+              rotulo="Visão de votos 2026"
+              layout="linha"
+              value={cenarioVotos}
+              onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+            >
+              <option value="legado_anterior">Anterior / Legado</option>
+              <option value="aferido_jadyel">Aferido (Jadyel)</option>
+              <option value="promessa_lideranca">Prometido (liderança)</option>
+            </TsePillSelect>
+            <span className="hidden h-5 w-px bg-[#ECECE6] sm:inline-block" aria-hidden />
+            <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={buscarDados}
@@ -2425,18 +2444,15 @@ export function ResumoEleicoesAtendimentoPanel() {
             <Link href={secaoHref} title="Por seção" aria-label="Por seção" className={botaoIconeTopoClass}>
               <MapPinned className="h-4 w-4" aria-hidden />
             </Link>
+            </div>
           </div>
         </div>
 
         {dados.length > 0 && resumoCidade ? (
           <AtendimentoDadosGerais
-            populacao={populacaoMunicipioAtivo}
-            porteMunicipio={porteMunicipioAtivo}
             rendaPerCapita={rendaPerCapitaAtivo}
             taxaUrbana={taxaUrbanaAtivo}
             taxaRural={taxaRuralAtivo}
-            indicadoresIbge={indicadoresIbgeAtivo}
-            eleitores={eleitoresMunicipioAtivo}
             votos2022={votosJadyel2022}
             votos2026={votosJadyel2026}
             rotuloCenario={labelCenarioAtivo}

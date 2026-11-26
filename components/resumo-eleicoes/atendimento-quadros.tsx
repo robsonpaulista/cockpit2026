@@ -99,12 +99,9 @@ export type IndicadorIbge = {
 }
 
 export function AtendimentoDadosGerais({
-  populacao,
-  porteMunicipio,
   rendaPerCapita,
   taxaUrbana,
   taxaRural,
-  eleitores,
   votos2022,
   votos2026,
   rotuloCenario,
@@ -113,14 +110,10 @@ export function AtendimentoDadosGerais({
   acoesLiderancas,
   cenarioOculto = false,
   onAlternarCenario,
-  indicadoresIbge = [],
 }: {
-  populacao: number | null
-  porteMunicipio?: string | null
   rendaPerCapita?: string | null
   taxaUrbana?: string | null
   taxaRural?: string | null
-  eleitores: number | null
   votos2022: number
   votos2026: number | null
   rotuloCenario: string
@@ -130,7 +123,6 @@ export function AtendimentoDadosGerais({
   /** Expectativa 2026 começa oculta; o link em Votos 2026 revela ou esconde a coluna. */
   cenarioOculto?: boolean
   onAlternarCenario?: () => void
-  indicadoresIbge?: IndicadorIbge[]
 }) {
   const destaque = 'font-semibold text-[var(--tse-text)]'
   const variacao = (atual: number, base: number): number | null => (base > 0 ? ((atual - base) / base) * 100 : null)
@@ -140,85 +132,70 @@ export function AtendimentoDadosGerais({
   const liderancasFmt = liderancas > 0 && liderancas < 10 ? String(liderancas).padStart(2, '0') : fmt(liderancas)
 
   return (
-    <>
-      <div
-        className={cn(
-          'grid grid-cols-1 divide-y divide-[#F0F0EC] border-t border-[#F0F0EC] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-[#F0F0EC]',
-          !cenarioOculto && 'xl:grid-cols-5',
-        )}
+    <div
+      className={cn(
+        'grid grid-cols-1 divide-y divide-[#F0F0EC] border-t border-[#F0F0EC] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-[#F0F0EC]',
+        !cenarioOculto && 'xl:grid-cols-5',
+      )}
+    >
+      <CelulaIndicador rotulo="Renda per capita" valor={rendaPerCapita ?? '—'}>
+        <p className="truncate">Censo 2022 · IBGE</p>
+      </CelulaIndicador>
+
+      <CelulaIndicador rotulo="Ocupação" valor={taxaUrbana ? `${taxaUrbana} urb.` : '—'}>
+        <p className="truncate">{taxaRural ? `${taxaRural} rural` : 'Urbana / Rural · IBGE'}</p>
+      </CelulaIndicador>
+
+      <CelulaIndicador
+        rotulo="Votos 2026 · Jadyel"
+        assinaturaAmarela
+        valor={votos2026 !== null ? fmt(votos2026) : '—'}
+        selo={pctVs2022 !== null ? <SeloVariacao pct={pctVs2022} titulo="Em relação a 2022" /> : null}
       >
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+          <span>
+            <span className={destaque}>{fmt(votos2022)}</span> em 2022
+          </span>
+          {onAlternarCenario ? (
+            <button
+              type="button"
+              onClick={onAlternarCenario}
+              aria-expanded={!cenarioOculto}
+              className="font-bold text-[var(--tse-olive)] hover:underline"
+            >
+              {cenarioOculto ? 'Ver expectativa' : 'Ocultar expectativa'}
+            </button>
+          ) : null}
+        </div>
+      </CelulaIndicador>
+
+      {cenarioOculto ? null : (
         <CelulaIndicador
-          rotulo="População"
-          rotuloExtra={porteMunicipio}
-          valor={populacao !== null ? fmt(populacao) : '—'}
+          rotulo={rotuloCenario}
+          valor={fmt(votosCenario)}
+          selo={
+            pctVsExpectativa !== null ? (
+              <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
+            ) : null
+          }
         >
-          <p className="truncate">
-            {rendaPerCapita ? (
-              <>
-                Renda p/c <span className={destaque}>{rendaPerCapita}</span>
-              </>
-            ) : null}
-            {rendaPerCapita && taxaUrbana && taxaRural ? ' · ' : null}
-            {taxaUrbana && taxaRural ? `${taxaUrbana} urb. · ${taxaRural} rur.` : null}
-            {!rendaPerCapita && !(taxaUrbana && taxaRural) ? 'Censo / IBGE' : null}
-          </p>
+          {votos2026 === null ? (
+            <p>Aguardando resultado 2026</p>
+          ) : saldoVsExpectativa === 0 ? (
+            <p>Igual à expectativa</p>
+          ) : (
+            <p>
+              <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
+              {saldoVsExpectativa > 0 ? 'acima' : 'abaixo'}
+            </p>
+          )}
         </CelulaIndicador>
+      )}
 
-        <CelulaIndicador rotulo="Eleitores" valor={eleitores !== null ? fmt(eleitores) : '—'}>
-          <p className="truncate">Cadastro eleitoral · TSE</p>
-        </CelulaIndicador>
-
-        <CelulaIndicador
-          rotulo="Votos 2026 · Jadyel"
-          assinaturaAmarela
-          valor={votos2026 !== null ? fmt(votos2026) : '—'}
-          selo={pctVs2022 !== null ? <SeloVariacao pct={pctVs2022} titulo="Em relação a 2022" /> : null}
-        >
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-            <span>
-              <span className={destaque}>{fmt(votos2022)}</span> em 2022
-            </span>
-            {onAlternarCenario ? (
-              <button
-                type="button"
-                onClick={onAlternarCenario}
-                aria-expanded={!cenarioOculto}
-                className="font-bold text-[var(--tse-olive)] hover:underline"
-              >
-                {cenarioOculto ? 'Ver expectativa' : 'Ocultar expectativa'}
-              </button>
-            ) : null}
-          </div>
-        </CelulaIndicador>
-
-        {cenarioOculto ? null : (
-          <CelulaIndicador
-            rotulo={rotuloCenario}
-            valor={fmt(votosCenario)}
-            selo={
-              pctVsExpectativa !== null ? (
-                <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
-              ) : null
-            }
-          >
-            {votos2026 === null ? (
-              <p>Aguardando resultado 2026</p>
-            ) : saldoVsExpectativa === 0 ? (
-              <p>Igual à expectativa</p>
-            ) : (
-              <p>
-                <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
-                {saldoVsExpectativa > 0 ? 'acima' : 'abaixo'}
-              </p>
-            )}
-          </CelulaIndicador>
-        )}
-
-        <CelulaIndicador rotulo="Lideranças" valor={liderancasFmt}>
-          <div className="flex flex-wrap items-center gap-3">{acoesLiderancas}</div>
-        </CelulaIndicador>
-      </div>
-    </>
+      <CelulaIndicador rotulo="Lideranças" valor={liderancasFmt}>
+        <div className="flex flex-wrap items-center gap-3">{acoesLiderancas}</div>
+      </CelulaIndicador>
+    </div>
   )
 }
 
