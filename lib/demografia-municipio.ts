@@ -40,12 +40,46 @@ export type DemografiaMunicipioRow = {
     taxa_rural: number | null
     nota_fonte?: string | null
   }
+  /** Atlas DH 2010 (Ipeadata). Mantido para os demais painéis; o card de Atendimento usa `renda_censo_2022`. */
   renda_vulnerabilidade: {
     renda_per_capita: number | null
     percentual_vulneraveis_pobreza: number | null
     fonte?: string | null
     ano_referencia?: number | null
   }
+  /** Censo 2022: rendimento domiciliar per capita (tabelas SIDRA 10295 e 10296). */
+  renda_censo_2022?: RendaCenso2022 | null
+  /** Censo 2022: saneamento dos domicílios (tabelas SIDRA 6803, 6892 e 6805). */
+  saneamento_censo_2022?: SaneamentoCenso2022 | null
+  /** Censo 2022: pessoas com deficiência (SIDRA 10125). */
+  deficiencia_censo_2022?: DeficienciaCenso2022 | null
+}
+
+export type DeficienciaCenso2022 = {
+  ano_referencia: number
+  pessoas_2_anos_ou_mais: number | null
+  pessoas_com_deficiencia: number | null
+  fonte?: string | null
+}
+
+export type SaneamentoCenso2022 = {
+  ano_referencia: number
+  domicilios_total: number | null
+  domicilios_sem_ligacao_rede_agua: number | null
+  domicilios_lixo_coletado: number | null
+  domicilios_esgoto_adequado: number | null
+  fonte?: string | null
+}
+
+export type RendaCenso2022 = {
+  ano_referencia: number
+  moradores_total: number | null
+  renda_media_domiciliar_pc: number | null
+  renda_mediana_domiciliar_pc: number | null
+  moradores_ate_quarto_sm: number | null
+  moradores_quarto_a_meio_sm: number | null
+  moradores_sem_rendimento: number | null
+  fonte?: string | null
 }
 
 export type IndicadoresDemograficosPct = {

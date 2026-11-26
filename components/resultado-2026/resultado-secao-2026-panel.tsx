@@ -62,6 +62,7 @@ import {
   MapaVotosMunicipios2026,
   type MapaVotosMunicipios2026Handle,
 } from "./mapa-votos-municipios-2026";
+import { ResumoEstadual2026 } from "./resumo-estadual-2026";
 import { Territorio2026 } from "./territorio-2026";
 import {
   CandidatosTodosTabela,
@@ -80,6 +81,7 @@ import {
 } from "./tse-ui";
 
 type Visao =
+  | "resumo"
   | "municipios"
   | "locais"
   | "secoes"
@@ -147,6 +149,7 @@ const ehDobradinha = (candidatos: ResultadoSecao2026Payload["candidatos"], i: nu
 const MAX_COMPARADOS = CANDIDATO_CORES.length;
 
 const VISOES: { id: Visao; label: string }[] = [
+  { id: "resumo", label: "Resumo estadual" },
   { id: "municipios", label: "Municípios" },
   { id: "locais", label: "Locais de votação" },
   { id: "secoes", label: "Seções" },
@@ -169,7 +172,7 @@ export function ResultadoSecao2026Panel() {
   const [error, setError] = useState<string | null>(null);
   const [municipio, setMunicipio] = useState<string | null>(null);
   const [zona, setZona] = useState<number | null>(null);
-  const [visao, setVisao] = useState<Visao>("municipios");
+  const [visao, setVisao] = useState<Visao>("resumo");
   const [modoMunicipios, setModoMunicipios] = useState<ModoMunicipios>("tabela");
   const [ordem, setOrdem] = useState<Ordem>("votos");
   const [busca, setBusca] = useState<string>("");
@@ -649,6 +652,7 @@ export function ResultadoSecao2026Panel() {
 
   return (
     <TsePage>
+        {visao === "resumo" ? null : (
         <TseFilterBar>
           {emCargoEstadual ? (
             <TsePillSelect
@@ -731,6 +735,7 @@ export function ResultadoSecao2026Panel() {
 
           <TsePillValor rotulo="Turno">{meta.turno}º</TsePillValor>
         </TseFilterBar>
+        )}
 
         {emComparativo ? (
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -741,22 +746,26 @@ export function ResultadoSecao2026Panel() {
               return (
                 <span
                   key={c.id}
-                  className="inline-flex items-center gap-2 rounded-md border py-2 pl-4 pr-2 text-[14px] font-bold uppercase tracking-wide text-white"
-                  style={{ backgroundColor: cor, borderColor: cor }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#E5E5DF] bg-white py-1.5 pl-3 pr-2 text-[13px] font-bold text-[var(--tse-text)] shadow-xs"
                   title={n === 0 ? "Referência: base das diferenças no comparativo por seção" : undefined}
                 >
-                  {c.nome}
-                  <span className="text-[11px] font-semibold normal-case opacity-80">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: cor }}
+                    aria-hidden
+                  />
+                  {nomeProprio(c.nome)}
+                  <span className="text-[11px] font-semibold text-[var(--tse-muted)]">
                     {abreviarCargo(c.cargo)}
                   </span>
                   {n === 0 && comparados.length > 1 ? (
-                    <span className="rounded bg-white/25 px-1.5 py-px text-[10px] font-black">REF.</span>
+                    <span className="rounded bg-[#F4F4F0] px-1.5 py-px text-[10px] font-bold text-[var(--tse-muted)]">REF.</span>
                   ) : null}
                   <button
                     type="button"
                     onClick={() => removerComparado(i)}
                     aria-label={`Remover ${nomeProprio(c.nome)}`}
-                    className="rounded p-0.5 hover:bg-white/25"
+                    className="rounded p-0.5 text-[var(--tse-muted)] transition-colors hover:bg-[#F4F4F0] hover:text-[var(--tse-text)]"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -808,7 +817,7 @@ export function ResultadoSecao2026Panel() {
                     key={c.id}
                     type="button"
                     onClick={() => adicionarComparado(i)}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#CFCFCF] bg-white px-2.5 py-0.5 font-semibold hover:border-[var(--tse-olive)]"
+                    className="inline-flex items-center gap-1 rounded-full border border-[#E5E5DF] bg-white px-2.5 py-0.5 font-semibold hover:border-[var(--tse-olive)]"
                   >
                     <Plus className="h-3 w-3" />
                     {nomeProprio(c.nome)}
@@ -819,9 +828,43 @@ export function ResultadoSecao2026Panel() {
           </div>
         ) : null}
 
-        <TseTabs className="mt-5" abas={VISOES} ativa={visao} onChange={trocarVisao} />
+        <TseTabs className={visao === "resumo" ? "" : "mt-5"} abas={VISOES} ativa={visao} onChange={trocarVisao} />
 
-        {emTerritorio ? (
+        {visao === "resumo" ? (
+          <div className="mt-5">
+            <ResumoEstadual2026
+              payload={payload}
+              onAbrirCandidato={(idx) => {
+                setTodos(false);
+                setCandidatoIdx(idx);
+                setMunicipio(null);
+                setZona(null);
+                setLocalSel(null);
+                setBusca("");
+                setLimite(PAGE_SIZE);
+                setVisao("municipios");
+              }}
+              onAbrirMunicipio={(codigo) => {
+                setMunicipio(codigo);
+                setZona(null);
+                setLocalSel(null);
+                setBusca("");
+                setLimite(PAGE_SIZE);
+                setVisao("locais");
+              }}
+              onAbrirTodosMunicipios={() => {
+                setTodos(true);
+                setMunicipio(null);
+                setZona(null);
+                setLocalSel(null);
+                setBusca("");
+                setLimite(PAGE_SIZE);
+                setVisao("municipios");
+              }}
+              onAbrirTerritorio={() => trocarVisao("territorio")}
+            />
+          </div>
+        ) : emTerritorio ? (
           <div className="mt-5">
             <Territorio2026
               payload={payload}

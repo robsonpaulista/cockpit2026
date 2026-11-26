@@ -429,15 +429,26 @@ export function LiderancasCadastroPanel() {
         <main className="min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <TseSegmentado opcoes={FILTRO_OPCOES} valor={filtroLideranca} onChange={setFiltroLideranca} />
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <TseBusca value={busca} onChange={setBusca} placeholder="Buscar liderança ou cargo" />
-              <button type="button" onClick={() => void carregar()} disabled={loading} className={tseBotaoCinzaClass}>
-                <RefreshCw className={cn(tseBotaoIconeClass, loading && 'animate-spin')} />
-                Atualizar
+              <button
+                type="button"
+                onClick={() => void carregar()}
+                disabled={loading}
+                title="Atualizar lideranças"
+                aria-label="Atualizar lideranças"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)] disabled:opacity-50"
+              >
+                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} aria-hidden />
               </button>
-              <button type="button" onClick={abrirSeletorCidade} className={tseBotaoPrimarioClass}>
-                <Plus className="h-4 w-4" />
-                Nova liderança
+              <button
+                type="button"
+                onClick={abrirSeletorCidade}
+                title="Nova liderança"
+                aria-label="Nova liderança"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--tse-olive)] text-white transition-opacity hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
               </button>
             </div>
           </div>
@@ -448,25 +459,29 @@ export function LiderancasCadastroPanel() {
             </div>
           ) : null}
 
-          <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+          <section className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-[#EAEAE5] bg-white px-5 py-3.5 shadow-sm">
             <div className="min-w-[180px] flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xl font-bold uppercase">Lideranças</p>
-                <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
-                  {escopoLabel}
-                </span>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+                <p className="text-[11px] font-semibold text-[var(--tse-muted)]">Lideranças · {escopoLabel}</p>
               </div>
-              <p className="text-[15px] text-[var(--tse-muted)]">
+              <p className="mt-1 text-[14px] font-bold text-[var(--tse-text)]">
                 {fmt(rowsFiltradas.length)} lideranças em {fmt(cidadesCount)} {cidadesCount === 1 ? 'cidade' : 'cidades'}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-black">{fmt(kpiExpectativa)}</p>
-              <p className="text-[13px] text-[var(--tse-muted)]">expectativa</p>
-            </div>
-            <div className="text-right">
-              <p className="text-3xl font-black">{fmt(kpiRevisaoFinal)}</p>
-              <p className="text-[13px] text-[var(--tse-muted)]">revisão final</p>
+            <div className="flex items-center divide-x divide-[#F0F0EC]">
+              <div className="px-4 text-right first:pl-0">
+                <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+                  {fmt(kpiExpectativa)}
+                </p>
+                <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">expectativa</p>
+              </div>
+              <div className="px-4 text-right last:pr-0">
+                <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+                  {fmt(kpiRevisaoFinal)}
+                </p>
+                <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">revisão final</p>
+              </div>
             </div>
           </section>
 
@@ -545,7 +560,7 @@ export function LiderancasCadastroPanel() {
                             return (
                               <tr
                                 key={lideranca.id}
-                                className={cn('border-t border-[#EEEEEE]', editando && 'bg-[var(--tse-yellow-soft)]')}
+                                className={cn('border-t border-[#F2F2EE]', editando && 'bg-[var(--tse-yellow-soft)]')}
                               >
                                 {celula(lideranca, 'nome', lideranca.nome || '—', {
                                   rotulo: 'Nome da liderança',

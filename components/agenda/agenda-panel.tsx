@@ -19,8 +19,6 @@ import {
   TsePage,
   TseSelectGrande,
   TseVazio,
-  tseBotaoCinzaClass,
-  tseBotaoIconeClass,
   tseBotaoPrimarioClass,
   tseCardClass,
   tseControleClass,
@@ -280,26 +278,28 @@ export function AgendaPanel() {
           </div>
         ) : null}
 
-        <section className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-white px-5 py-4 shadow-sm">
+        <section className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-[#EAEAE5] bg-white px-5 py-3.5 shadow-sm">
           <div className="min-w-[180px] flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xl font-bold uppercase">Agenda</p>
-              <span className="inline-flex rounded-full bg-[var(--tse-green)] px-3 py-0.5 text-[12px] font-bold text-white">
-                {escopo}
-              </span>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+              <p className="text-[11px] font-semibold text-[var(--tse-muted)]">Agenda · {escopo}</p>
             </div>
-            <p className="text-[15px] text-[var(--tse-muted)]">
+            <p className="mt-1 text-[14px] font-bold text-[var(--tse-text)]">
               {plural(doPeriodo.length, 'compromisso', 'compromissos')} · {plural(diasComAgenda, 'dia', 'dias')}
             </p>
           </div>
-          {(['aguardando', 'atendido', 'sem-marcacao'] as const).map((id) => (
-            <div key={id} className="text-right">
-              <p className="text-3xl font-black">{fmt(qtdSituacao(id))}</p>
-              <p className="text-[13px] lowercase text-[var(--tse-muted)]">
-                {AGENDA_SITUACOES.find((s) => s.id === id)?.label}
-              </p>
-            </div>
-          ))}
+          <div className="flex items-center divide-x divide-[#F0F0EC]">
+            {(['aguardando', 'atendido', 'sem-marcacao'] as const).map((id) => (
+              <div key={id} className="px-4 text-right first:pl-0 last:pr-0">
+                <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+                  {fmt(qtdSituacao(id))}
+                </p>
+                <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">
+                  {AGENDA_SITUACOES.find((s) => s.id === id)?.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
@@ -369,16 +369,27 @@ export function AgendaPanel() {
             {!configCarregada ? 'Carregando…' : config ? config.calendarId : 'Não configurado'}
           </p>
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex items-center gap-1">
           {config ? (
             <>
-              <button type="button" onClick={agenda.atualizar} disabled={atualizando || carregando} className={tseBotaoCinzaClass}>
-                <RefreshCw className={cn(tseBotaoIconeClass, atualizando && 'animate-spin')} />
-                Atualizar
+              <button
+                type="button"
+                onClick={agenda.atualizar}
+                disabled={atualizando || carregando}
+                title="Atualizar agenda"
+                aria-label="Atualizar agenda"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)] disabled:opacity-50"
+              >
+                <RefreshCw className={cn('h-4 w-4', atualizando && 'animate-spin')} aria-hidden />
               </button>
-              <button type="button" onClick={() => setTelaCheia(true)} className={tseBotaoCinzaClass}>
-                <Maximize2 className={tseBotaoIconeClass} />
-                Tela cheia
+              <button
+                type="button"
+                onClick={() => setTelaCheia(true)}
+                title="Tela cheia"
+                aria-label="Tela cheia"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)]"
+              >
+                <Maximize2 className="h-4 w-4" aria-hidden />
               </button>
             </>
           ) : null}
@@ -386,10 +397,11 @@ export function AgendaPanel() {
             type="button"
             onClick={() => setMostrarConfig(true)}
             disabled={!configCarregada}
-            className={tseBotaoCinzaClass}
+            title={config ? 'Reconfigurar Google Calendar' : 'Configurar Google Calendar'}
+            aria-label={config ? 'Reconfigurar Google Calendar' : 'Configurar Google Calendar'}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)] disabled:opacity-50"
           >
-            <Settings className={tseBotaoIconeClass} />
-            {config ? 'Reconfigurar' : 'Configurar'}
+            <Settings className="h-4 w-4" aria-hidden />
           </button>
         </div>
       </TseFilterBar>
@@ -409,9 +421,14 @@ export function AgendaPanel() {
                   {temFiltros ? ' com os filtros aplicados' : ''}
                 </p>
               </div>
-              <button type="button" onClick={() => setTelaCheia(false)} className={tseBotaoCinzaClass}>
-                <X className={tseBotaoIconeClass} />
-                Fechar
+              <button
+                type="button"
+                onClick={() => setTelaCheia(false)}
+                title="Fechar tela cheia"
+                aria-label="Fechar tela cheia"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)]"
+              >
+                <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
             <div className="mt-5">

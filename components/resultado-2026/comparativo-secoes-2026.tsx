@@ -391,7 +391,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
       return [
         <td
           key={`${chave}-v${p}`}
-          className={`border-l border-[#EEEEEE] px-3 py-1.5 text-right tabular-nums ${
+          className={`border-l border-[#F2F2EE] px-3 py-1.5 text-right tabular-nums ${
             par.parceiro ? 'font-semibold' : 'text-[var(--tse-muted)]'
           }`}
         >
@@ -506,7 +506,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
         </div>
 
         {blocos.map(({ p, comVoto, semVoto, distribuicao }) => (
-          <div key={p} className="mt-5 border-t border-[#EEEEEE] pt-4">
+          <div key={p} className="mt-5 border-t border-[#F2F2EE] pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="flex items-center gap-2 text-[14px] font-bold uppercase tracking-wide">
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: corCandidato(0) }} />
@@ -552,7 +552,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
                     className={`rounded-xl border-2 p-3 text-left transition-colors ${
                       ativo
                         ? 'border-[var(--tse-yellow)] bg-[var(--tse-yellow-soft)]'
-                        : 'border-[#EEEEEE] bg-white hover:border-[var(--tse-gold)]'
+                        : 'border-[#F2F2EE] bg-white hover:border-[var(--tse-gold)]'
                     }`}
                   >
                     <p className="text-[12px] font-semibold text-[var(--tse-muted)]">{faixa.rotulo}</p>
@@ -669,7 +669,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
           <button
             type="button"
             onClick={exportar}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-[#E8E8E8] px-3 text-[13px] font-semibold hover:bg-[#DDDDDD]"
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 text-[12px] font-semibold text-[var(--tse-text)] hover:bg-[#F7F7F4]"
           >
             <Download className="h-4 w-4 text-[var(--tse-yellow)]" />
             Exportar CSV
@@ -681,7 +681,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
               aria-haspopup="menu"
               aria-expanded={menuPdf}
               onClick={() => setMenuPdf((v) => !v)}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-[#E8E8E8] px-3 text-[13px] font-semibold hover:bg-[#DDDDDD] disabled:opacity-60"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 text-[12px] font-semibold text-[var(--tse-text)] hover:bg-[#F7F7F4] disabled:opacity-60"
             >
               {gerandoPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[var(--tse-yellow)]" />
@@ -717,7 +717,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
                     type="button"
                     role="menuitem"
                     onClick={() => void exportarPdf('completo')}
-                    className="block w-full border-t border-[#EEEEEE] px-3 py-2.5 text-left hover:bg-[var(--tse-yellow-soft)]"
+                    className="block w-full border-t border-[#F2F2EE] px-3 py-2.5 text-left hover:bg-[var(--tse-yellow-soft)]"
                   >
                     <span className="block text-[13px] font-bold">Todas as seções do filtro</span>
                     <span className="block text-[11px] text-[var(--tse-muted)]">
@@ -758,7 +758,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
         </dl>
         <div className="mt-4 grid gap-3 md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
           {resumo.porPar.map((r) => (
-            <div key={r.p} className="rounded-xl border border-[#EEEEEE] p-3 text-[12px]">
+            <div key={r.p} className="rounded-xl border border-[#F2F2EE] p-3 text-[12px]">
               <p className="flex items-center gap-1.5 text-[13px] font-bold">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: corCandidato(0) }} />
                 {nomeGeral} ×
@@ -866,7 +866,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
           <button
             type="button"
             onClick={() => setAbertos(new Set(grupos.map((g) => g.key)))}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#E5E5DF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
           >
             <ChevronsUpDown className="h-4 w-4 text-[var(--tse-gold-text)]" />
             Expandir tudo
@@ -874,7 +874,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
           <button
             type="button"
             onClick={() => setAbertos(new Set())}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#E5E5DF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
           >
             <ChevronsDownUp className="h-4 w-4 text-[var(--tse-gold-text)]" />
             Recolher tudo
@@ -971,7 +971,7 @@ export function ComparativoSecoes2026({ payload, secoes, indices, escopoLabel }:
                   ? g.secoes.map((l) => (
                       <tr
                         key={l.key}
-                        className={`border-t border-[#EEEEEE] ${marcadas.has(l.key) ? 'bg-[var(--tse-yellow-soft)]' : 'hover:bg-[#FDFDF8]'}`}
+                        className={`border-t border-[#F2F2EE] ${marcadas.has(l.key) ? 'bg-[var(--tse-yellow-soft)]' : 'hover:bg-[#FDFDF8]'}`}
                       >
                         <td className="px-3 py-1.5">
                           <input

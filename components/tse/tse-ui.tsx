@@ -77,7 +77,7 @@ export function TseSelectGrande({
 }: SelectProps & { icone: ComponentType<{ className?: string }>; rotulo: string; children: ReactNode }) {
   return (
     <label className="flex items-center gap-2">
-      <Icone className="h-6 w-6 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" />
+      <Icone className="h-5 w-5 text-[var(--tse-yellow)]" />
       <span className="sr-only">{rotulo}</span>
       <span className="relative">
         <select
@@ -96,10 +96,16 @@ export function TseSelectGrande({
 export function TsePillSelect({
   rotulo,
   children,
+  layout = 'coluna',
   ...props
-}: SelectProps & { rotulo: string; children: ReactNode }) {
+}: SelectProps & { rotulo: string; children: ReactNode; layout?: 'coluna' | 'linha' }) {
   return (
-    <label className="flex flex-col text-[13px] font-semibold">
+    <label
+      className={cn(
+        'text-[13px] font-semibold',
+        layout === 'coluna' ? 'flex flex-col' : 'inline-flex items-center gap-2 whitespace-nowrap',
+      )}
+    >
       {rotulo}
       <span className="relative">
         <select

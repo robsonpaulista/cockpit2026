@@ -184,7 +184,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
       const temFilhos = no.filhos.length > 0
       const codigoMunicipio = no.nivel === 'municipio' ? no.key.slice(1) : null
       return (
-        <tr key={no.key} className={`border-t border-[#EEEEEE] ${NIVEL_ESTILO[no.nivel]}`}>
+        <tr key={no.key} className={`border-t border-[#F2F2EE] ${NIVEL_ESTILO[no.nivel]}`}>
           <td className="py-1.5 pr-3" style={{ paddingLeft: 10 + profundidade * 22 }}>
             <div className="flex items-start gap-1.5">
               {temFilhos ? (
@@ -380,7 +380,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
           <button
             type="button"
             onClick={() => setExpandidos(coletarChaves(arvore, NIVEIS_EXPANDIR_TUDO, new Set()))}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#E5E5DF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
           >
             <ChevronsUpDown className="h-4 w-4 text-[var(--tse-gold-text)]" />
             Expandir até locais
@@ -388,7 +388,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
           <button
             type="button"
             onClick={() => setExpandidos(new Set())}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CFCFCF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#E5E5DF] bg-white px-3 py-1.5 hover:border-[var(--tse-olive)]"
           >
             <ChevronsDownUp className="h-4 w-4 text-[var(--tse-gold-text)]" />
             Recolher tudo
@@ -426,7 +426,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
           <button
             type="button"
             onClick={exportar}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-[#E8E8E8] px-3 text-[13px] font-semibold hover:bg-[#DDDDDD]"
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 text-[12px] font-semibold text-[var(--tse-text)] hover:bg-[#F7F7F4]"
           >
             <Download className="h-4 w-4 text-[var(--tse-yellow)]" />
             Exportar seções
@@ -438,7 +438,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
               aria-haspopup="menu"
               aria-expanded={menuPdf}
               onClick={() => setMenuPdf((v) => !v)}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-[#E8E8E8] px-3 text-[13px] font-semibold hover:bg-[#DDDDDD] disabled:opacity-60"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E5DF] bg-white px-3 text-[12px] font-semibold text-[var(--tse-text)] hover:bg-[#F7F7F4] disabled:opacity-60"
             >
               {gerandoPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin text-[var(--tse-yellow)]" />
@@ -474,7 +474,7 @@ export function ComparativoLocais2026({ payload, secoes, indices: selecionados, 
                     type="button"
                     role="menuitem"
                     onClick={() => void exportarPdf('completo')}
-                    className="block w-full border-t border-[#EEEEEE] px-3 py-2.5 text-left hover:bg-[var(--tse-yellow-soft)]"
+                    className="block w-full border-t border-[#F2F2EE] px-3 py-2.5 text-left hover:bg-[var(--tse-yellow-soft)]"
                   >
                     <span className="block text-[13px] font-bold">Completo até seções</span>
                     <span className="block text-[11px] text-[var(--tse-muted)]">

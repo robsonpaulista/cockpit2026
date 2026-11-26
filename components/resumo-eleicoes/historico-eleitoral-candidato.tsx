@@ -54,14 +54,14 @@ export const HistoricoEleitoralCandidato = forwardRef<
           {historico.length === 0 ? (
             <TseVazio>Nenhuma candidatura encontrada no histórico deste município.</TseVazio>
           ) : (
-            <div className={tseTabela.wrap}>
+            <div className={tseTabela.container}>
               <table className={tseTabela.table} data-tse-tabela="">
-                <thead>
-                  <tr className={tseTabela.theadRow}>
+                <thead className={tseTabela.thead}>
+                  <tr>
                     <th className={tseTabela.th}>Ano</th>
                     <th className={tseTabela.th}>Cargo</th>
                     <th className={tseTabela.th}>Partido</th>
-                    <th className={tseTabela.thNum}>Votos</th>
+                    <th className={cn(tseTabela.th, 'text-right')}>Votos</th>
                     <th className={tseTabela.th}>Situação</th>
                   </tr>
                 </thead>
@@ -76,13 +76,13 @@ export const HistoricoEleitoralCandidato = forwardRef<
                       </td>
                       <td className={tseTabela.td}>{item.cargo}</td>
                       <td className={cn(tseTabela.td, 'font-semibold')}>{item.partido}</td>
-                      <td className={cn(tseTabela.tdNum, 'font-bold')}>
+                      <td className={cn(tseTabela.td, 'text-right font-bold')}>
                         {item.votos.toLocaleString('pt-BR')}
                       </td>
                       <td className={tseTabela.td}>
-                        <TsePill tom={item.situacaoTom} title={item.situacaoOriginal || undefined}>
-                          {item.situacaoLabel}
-                        </TsePill>
+                        <span title={item.situacaoOriginal || undefined}>
+                          <TsePill tom={item.situacaoTom}>{item.situacaoLabel}</TsePill>
+                        </span>
                       </td>
                     </tr>
                   ))}

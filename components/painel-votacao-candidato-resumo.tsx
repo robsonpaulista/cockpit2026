@@ -15,7 +15,7 @@ import { SeletorCandidatoComBusca } from '@/components/seletor-candidato-com-bus
 import type { DistribuicaoCandidatoBweb } from '@/lib/candidato-distribuicao-bweb'
 import { chaveMatchFromResumo, encontrarIdCandidatoMatriz, resumoTemVotacaoSecao } from '@/lib/candidato-votacao-secao-match'
 import type { ResultadoEleicao } from '@/lib/resumo-eleicoes-dados'
-import { nomeCandidatoResumoExibicao, parseVotosEleicao } from '@/lib/resumo-eleicoes-dados'
+import { nomeCandidatoResumoExibicao } from '@/lib/resumo-eleicoes-dados'
 import { cn } from '@/lib/utils'
 import type { VotacaoSecaoItem } from '@/lib/votacao-secao'
 import { serializarAnosVotacaoSecao, serializarCargosComparacao } from '@/lib/votacao-secao'
@@ -187,7 +187,6 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
     const [candidatosSecao, setCandidatosSecao] = useState<CandidatoMatrizColuna[]>([])
     const [depEstadualSelecionadoId, setDepEstadualSelecionadoId] = useState<string>('')
     const [municipioResolvido, setMunicipioResolvido] = useState(municipio)
-    const [totalSecoes, setTotalSecoes] = useState(0)
     const [jadyelNome, setJadyelNome] = useState<string | null>(null)
     const [liderancaSelecionadaKey, setLiderancaSelecionadaKey] = useState<string>('')
     const [metasManuais, setMetasManuais] = useState<AtendimentoMetaTerritorioMap>({})
@@ -425,7 +424,6 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
 
             const secoesMulti = (dataSecoes.secoes ?? []) as VotacaoSecaoItem[]
             setSecoes(secoesMulti)
-            setTotalSecoes(Number(dataSecoes.resumo?.totalSecoes ?? secoesMulti.length))
 
             const todos = listarCandidatosSecao(secoesMulti, [...CARGOS_COMPARACAO_VEREADOR_TRIPLA])
             const jadyel = encontrarJadyelDepFederal(todos)
@@ -441,7 +439,6 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
           } else {
             const secoesUnico = (dataDist.secoes ?? []) as VotacaoSecaoItem[]
             setSecoes(secoesUnico)
-            setTotalSecoes(Number(dataDist.resumoSecao?.totalSecoes ?? 0))
             setVereadorId(typeof dataDist.candidatoId === 'string' ? dataDist.candidatoId : null)
           }
         } catch (e: unknown) {
@@ -528,8 +525,6 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
       [paresPorSecao],
     )
 
-    const votosResumo = parseVotosEleicao(candidato.quantidadeVotosNominais)
-
     return (
       <section
         ref={ref}
@@ -537,57 +532,36 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
         aria-label="Votação por seção do candidato"
       >
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EEEEEE] px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--tse-muted)]">
-              Votação por seção
-              {compararComReferentes && (jadyelNome || depEstadualSelecionado) ? ' · comparativo' : ''}
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+            <h2 className="text-[14px] font-bold text-[var(--tse-text)]">Votação por seção</h2>
+            <p className="text-[12px] text-[var(--tse-muted)]">
+              {chave?.dsCargo ?? candidato.cargo} · {chave?.ano ?? candidato.anoEleicao} · nº{' '}
+              <span className="tabular-nums">{candidato.numeroUrna}</span>
+              {compararComReferentes && jadyelNome ? (
+                <>
+                  {' '}
+                  · vs. <strong className="font-semibold text-[var(--tse-text)]">{jadyelNome}</strong>
+                </>
+              ) : null}
             </p>
-            <h2 className="truncate text-[17px] font-bold">
-              {nomeCandidatoResumoExibicao(candidato.nomeUrnaCandidato, candidato.numeroUrna)}
-            </h2>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[var(--tse-muted)]">
-              <span>
-                {chave?.dsCargo ?? candidato.cargo} · {chave?.ano ?? candidato.anoEleicao}
-              </span>
-              <span className="tabular-nums">nº {candidato.numeroUrna}</span>
-              <span className="inline-flex items-center gap-0.5">
-                <MapPin className="h-3 w-3 fill-[var(--tse-yellow)] text-[var(--tse-yellow)]" />
-                {municipioResolvido}
-              </span>
-            </p>
-            {(jadyelNome || depEstadualSelecionado) && compararComReferentes && (
-              <p className="mt-1 text-[11px] text-[var(--tse-muted)]">
-                Comparando com{' '}
-                {jadyelNome ? (
-                  <>
-                    <strong className="text-[var(--tse-text)]">{jadyelNome}</strong> (Dep. Federal 2026)
-                  </>
-                ) : null}
-                {jadyelNome && depEstadualSelecionado ? ' · ' : null}
-                {depEstadualSelecionado ? (
-                  <>
-                    <strong className="text-[var(--tse-text)]">{depEstadualSelecionado.nmVotavel}</strong>{' '}
-                    (Dep. Estadual 2026)
-                  </>
-                ) : null}
-              </p>
-            )}
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             {!loading && distribuicao?.encontrado && (
               <Link href={urlSecaoCandidato(municipioResolvido, distribuicao)} className={tseLinkAcaoClass}>
                 Página completa
                 <ArrowUpRight className="ml-0.5 inline h-3.5 w-3.5" />
               </Link>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
-              aria-label="Fechar painel"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md p-1 text-[var(--tse-muted)] hover:bg-[var(--tse-bar)] hover:text-[var(--tse-text)]"
+                aria-label="Fechar painel"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -607,14 +581,6 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
 
           {!loading && !error && distribuicao && (
             <>
-              <div className="mb-3 grid grid-cols-2 gap-x-5 gap-y-3 rounded-xl bg-[var(--tse-bar)] px-4 py-3 sm:grid-cols-5">
-                <StatBox rotulo="Resumo (planilha)" valor={formatVotos(votosResumo)} />
-                <StatBox rotulo="Bweb (seções)" valor={formatVotos(distribuicao.totalVotos)} />
-                <StatBox rotulo="Seções c/ voto" valor={String(distribuicao.totalSecoesComVoto)} />
-                <StatBox rotulo="Seções no município" valor={String(totalSecoes || matriz?.linhas.length || 0)} />
-                <StatBox rotulo="Bairros" valor={String(distribuicao.bairros.length)} />
-              </div>
-
               {distribuicao.diferencaResumo != null && distribuicao.diferencaResumo !== 0 && (
                 <p className="mb-3 text-[11px] text-[var(--tse-muted)]">
                   Diferença resumo × bweb:{' '}
@@ -706,29 +672,21 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                     <div className="min-w-0">
                       <SeletorCandidatoComBusca
                         id="dep-estadual-comparativo"
-                        label="Dep. Estadual 2026 (comparativo)"
+                        label="Dep. Estadual 2026"
                         value={depEstadualSelecionadoId}
                         onChange={setDepEstadualSelecionadoId}
                         opcoes={depEstaduaisOpcoes}
                         emptyOption={{
                           id: '',
-                          label: 'Nenhum (só vereador e Jadyel)',
+                          label: 'Nenhum',
                         }}
-                        placeholderBusca="Buscar dep. estadual por nome ou número…"
+                        placeholderBusca="Buscar dep. estadual…"
                       />
-                      {nomeDepEstadualPlanilha && (
-                        <p className="mt-1.5 text-[10px] text-[var(--tse-muted)]">
-                          Planilha (liderança):{' '}
-                          <span className="text-[var(--tse-text)]">{nomeDepEstadualPlanilha}</span>
-                          {depPlanilhaNaoEncontrado ? (
-                            <span className="font-bold text-red-700"> — não encontrado; escolha na lista</span>
-                          ) : depEstadualSelecionado &&
-                            depPlanilhaMatch &&
-                            depEstadualSelecionado.id !== depPlanilhaMatch.id ? (
-                            <span> — substituído manualmente</span>
-                          ) : null}
+                      {depPlanilhaNaoEncontrado && nomeDepEstadualPlanilha ? (
+                        <p className="mt-1 text-[10px] font-medium text-red-700">
+                          {nomeDepEstadualPlanilha} não encontrado na base; escolha na lista.
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -759,11 +717,11 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                   matriz={matriz}
                   modoComparar={compararComReferentes && matriz.candidatos.length >= 2}
                   multiAno={compararComReferentes && matriz.candidatos.length >= 2}
-                  destacarSemelhanca={compararComReferentes && matriz.candidatos.length >= 2}
+                  destacarSemelhanca={false}
                   margemSemelhancaPct={Math.round(MARGEM_VOTOS_PARECIDOS * 100)}
                   paresPorSecao={paresPorSecao}
                   totalSecoesSemelhantes={totalSecoesSemelhantes}
-                  mostrarToolbarSemelhanca={compararComReferentes && matriz.candidatos.length >= 2}
+                  mostrarToolbarSemelhanca={false}
                   compacto
                   detalhesExpectativaPorSecao={expectativaResult.detalhesPorSecao}
                   detalhesExpectativaPorBairro={expectativaResult.detalhesPorBairro}

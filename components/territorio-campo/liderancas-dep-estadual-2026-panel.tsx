@@ -11,15 +11,11 @@ import {
   TseBusca,
   TseCarregando,
   TseCarregarMais,
-  TseDado,
-  TseDados,
   TseErro,
-  TsePill,
   TseSegmentado,
   TseStatus,
   TseThOrdenavel,
   TseVazio,
-  tseCardClass,
   tseTabela,
 } from '@/components/tse/tse-ui'
 import type { LiderancaDepEstadual2026Row } from '@/lib/territorio-campo/liderancas-dep-estadual-2026'
@@ -248,23 +244,42 @@ export function LiderancasDepEstadual2026Panel() {
 
   return (
     <div className="mt-4 space-y-4">
-      <section className={tseCardClass}>
-        <h2 className="text-xl font-bold">Dep. estadual 2026</h2>
-        <p className="mt-1 text-[11px] text-[var(--tse-muted)]">
-          Votos nominais do deputado estadual cadastrado na liderança, na cidade dela
-          {municipio ? ` · filtro: ${municipio}` : ''}.
-        </p>
-        <TseDados>
-          <TseDado rotulo="Lideranças" valor={fmt(resumoMunicipio.total)} />
-          <TseDado rotulo="Com dep. estadual" valor={fmt(resumoMunicipio.comDep)} />
-          <TseDado rotulo="Com match 2026" valor={fmt(resumoMunicipio.comMatch)} />
-        </TseDados>
-        {!municipio && meta.total > 0 ? (
-          <p className="mt-3 text-[11px] text-[var(--tse-muted)]">
-            Cadastro completo: {fmt(meta.total)} · {fmt(meta.comDep)} com dep. · {fmt(meta.comMatch)}{' '}
-            casados.
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-[#EAEAE5] bg-white px-5 py-3.5 shadow-sm">
+        <div className="min-w-[200px] flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+            <p className="text-[11px] font-semibold text-[var(--tse-muted)]">
+              Dep. estadual 2026{municipio ? ` · ${municipio}` : ''}
+            </p>
+          </div>
+          <p className="mt-1 text-[13px] font-medium text-[var(--tse-muted)]">
+            Votos nominais do deputado estadual cadastrado na liderança, na cidade dela
+            {!municipio && meta.total > 0
+              ? ` · cadastro: ${fmt(meta.total)} (${fmt(meta.comMatch)} casados)`
+              : ''}
+            .
           </p>
-        ) : null}
+        </div>
+        <div className="flex items-center divide-x divide-[#F0F0EC]">
+          <div className="px-4 text-right first:pl-0">
+            <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+              {fmt(resumoMunicipio.total)}
+            </p>
+            <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">lideranças</p>
+          </div>
+          <div className="px-4 text-right">
+            <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+              {fmt(resumoMunicipio.comDep)}
+            </p>
+            <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">com dep. estadual</p>
+          </div>
+          <div className="px-4 text-right last:pr-0">
+            <p className="text-[22px] font-extrabold leading-none tabular-nums text-[var(--tse-text)]">
+              {fmt(resumoMunicipio.comMatch)}
+            </p>
+            <p className="mt-1 text-[11px] lowercase text-[var(--tse-muted)]">com match 2026</p>
+          </div>
+        </div>
       </section>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -380,7 +395,7 @@ export function LiderancasDepEstadual2026Panel() {
                           {fmt(row.votos2026)}
                         </span>
                       ) : row.depEstadual ? (
-                        <TsePill tom="neutro">Sem match</TsePill>
+                        <span className="text-[11px] font-medium text-[var(--tse-muted)]">Sem match</span>
                       ) : (
                         <span className="text-[var(--tse-zero)]">—</span>
                       )}

@@ -63,7 +63,7 @@ export function AgendaEventosTabela({ eventos, totalPorDia, abertos, onAlternar,
             return (
               <Fragment key={evento.id}>
                 {novoDia && dia != null ? (
-                  <tr className="border-t border-[#EEEEEE] bg-[var(--tse-bar)]">
+                  <tr className="border-t border-[#F2F2EE] bg-[var(--tse-bar)]">
                     <td
                       colSpan={COLUNAS}
                       className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-gold-text)]"

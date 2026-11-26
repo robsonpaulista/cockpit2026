@@ -309,7 +309,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-card bg-surface">
+    <div className="overflow-hidden rounded-[10px] border border-[#EAEAE5] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-card px-4 py-2 text-xs text-text-secondary">
         <span>
           {agrupamento === 'bairro'
@@ -631,7 +631,7 @@ function PilulasSemelhanca({
         {pares.slice(0, 2).map((p) => (
           <span
             key={`${p.idA}-${p.idB}`}
-            className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
+            className="inline-flex shrink-0 rounded-full border border-[#E5E5DF] bg-[#F4F4F0] px-1.5 py-px text-[9px] font-medium text-[var(--tse-text)]"
             title={`${p.nomeA} e ${p.nomeB} — votos semelhantes`}
           >
             {p.nomeA}≈{p.nomeB}
@@ -647,7 +647,7 @@ function PilulasSemelhanca({
       {pares.map((p) => (
         <span
           key={`${p.idA}-${p.idB}`}
-          className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
+          className="inline-flex shrink-0 rounded-full border border-[#E5E5DF] bg-[#F4F4F0] px-1.5 py-px text-[9px] font-medium text-[var(--tse-text)]"
           title={`${p.nomeA} e ${p.nomeB} — votos semelhantes nesta seção`}
         >
           {p.nomeA}≈{p.nomeB}
@@ -661,7 +661,7 @@ function BadgeBairro({ bairro }: { bairro: string | null | undefined }) {
   const nome = bairro?.trim()
   if (!nome) return null
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-text-primary', resumoAmberBadgeClass)}>
+    <span className="inline-flex rounded-full border border-[#E5E5DF] bg-[#F4F4F0] px-2 py-0.5 text-[10px] font-medium text-[var(--tse-text)]">
       {nome}
     </span>
   )
@@ -722,7 +722,7 @@ function CelulasVotosMatriz({
             className={cn(
               'px-2 py-2 text-right tabular-nums',
               expectativa && 'bg-accent-gold/5 font-medium text-text-primary',
-              lider && cn(resumoAmberColHighlightClass, 'font-semibold text-text-primary'),
+              lider && 'bg-[#FFF8D6]/50 font-semibold text-text-primary',
               !qt && 'text-text-secondary/40',
             )}
           >
@@ -778,8 +778,8 @@ function GrupoBairroRows({
     const endereco = localUnico.dsEndereco?.trim()
     const pares = paresPorSecao.get(secao.localId) ?? []
     return (
-      <tr className={resumoAmberGroupRowClass}>
-        <td className={resumoAmberGroupCellClass}>
+      <tr className="border-b border-[#EAEAE5] bg-[#FAFAF8]">
+        <td className="sticky left-0 z-10 bg-[#FAFAF8] px-2 py-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-text-primary">
             <span>{grupo.nmBairro}</span>
             {destacarSemelhanca && <PilulasSemelhanca pares={pares} />}
@@ -815,8 +815,8 @@ function GrupoBairroRows({
 
   return (
     <>
-      <tr className={resumoAmberGroupRowClass}>
-        <td className={resumoAmberGroupCellClass}>
+      <tr className="border-b border-[#EAEAE5] bg-[#FAFAF8]">
+        <td className="sticky left-0 z-10 bg-[#FAFAF8] px-2 py-2">
           <button
             type="button"
             onClick={onToggleBairro}

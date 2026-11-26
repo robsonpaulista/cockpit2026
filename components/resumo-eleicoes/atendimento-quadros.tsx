@@ -4,20 +4,14 @@ import { type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import {
   ArrowDown,
   ArrowUp,
-  BarChart3,
   ChevronLeft,
   ChevronRight,
-  Target,
   TrendingDown,
   TrendingUp,
-  UserCheck,
   UserPlus,
-  Users,
-  Vote,
-  type LucideIcon,
 } from 'lucide-react'
 import { FotoCandidato } from '@/components/candidatos/foto-candidato'
-import { TsePill, tseLinkAcaoClass } from '@/components/tse/tse-ui'
+import { tseLinkAcaoClass } from '@/components/tse/tse-ui'
 import {
   parseVotosEleicao,
   siglaSituacao,
@@ -32,61 +26,49 @@ import { cn } from '@/lib/utils'
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR')
 
-/* Dados Gerais (faixa horizontal) */
+/* Dados Gerais (faixas 2 e 3 do cabeçalho executivo horizontal) */
 
 const fmtPct = (n: number): string => `${n.toFixed(1).replace('.', ',')}%`
 
-function Kpi({
+function CelulaIndicador({
   rotulo,
+  rotuloExtra,
+  assinaturaAmarela = false,
   valor,
-  icone: Icone,
-  destaqueAmarelo = false,
   selo,
   children,
 }: {
   rotulo: string
+  rotuloExtra?: string | null
+  assinaturaAmarela?: boolean
   valor: string
-  icone: LucideIcon
-  destaqueAmarelo?: boolean
   selo?: ReactNode
   children?: ReactNode
 }) {
   return (
-    <div
-      className={cn(
-        'flex min-w-0 flex-col rounded-xl border px-3.5 py-3 transition-colors',
-        destaqueAmarelo
-          ? 'border-[#EFE2B2] bg-[var(--tse-yellow-soft)]/55'
-          : 'border-[#ECECE7] bg-[#FAFAF8]',
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--tse-muted)]">
-          {rotulo}
-        </p>
-        <span
-          className={cn(
-            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-            destaqueAmarelo
-              ? 'bg-[var(--tse-yellow)]/25 text-[var(--tse-text)]'
-              : 'bg-white text-[var(--tse-gold-text)] ring-1 ring-[#ECECE7]',
-          )}
-          aria-hidden
-        >
-          <Icone className="h-3.5 w-3.5" />
-        </span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {/* div, não span: o CSS global do war-room força 13px em todo p/span dentro de main */}
-        <div className="text-[24px] font-extrabold leading-none tracking-tight tabular-nums text-[var(--tse-text)]">
-          {valor}
+    <div className="flex min-w-0 flex-col justify-between px-4 py-2.5">
+      <div>
+        <div className="flex items-center gap-1.5">
+          {assinaturaAmarela ? (
+            <span className="h-2.5 w-0.5 shrink-0 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+          ) : null}
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--tse-muted)]">
+            {rotulo}
+            {rotuloExtra ? (
+              <span className="font-normal normal-case tracking-normal text-[var(--tse-muted)]"> · {rotuloExtra}</span>
+            ) : null}
+          </p>
         </div>
-        {selo}
+        <div className="mt-1 flex flex-wrap items-baseline gap-2">
+          {/* div, não span: o CSS global do war-room força 13px em todo p/span dentro de main */}
+          <div className="text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-[var(--tse-text)]">
+            {valor}
+          </div>
+          {selo}
+        </div>
       </div>
       {children ? (
-        <div className="mt-2 border-t border-[#ECECE7]/80 pt-1.5 text-[11px] leading-snug text-[var(--tse-muted)]">
-          {children}
-        </div>
+        <div className="mt-1 text-[11px] leading-tight text-[var(--tse-muted)]">{children}</div>
       ) : null}
     </div>
   )
@@ -110,10 +92,18 @@ function SeloVariacao({ pct, titulo }: { pct: number; titulo: string }) {
   )
 }
 
+export type IndicadorIbge = {
+  rotulo: string
+  valor: string
+  descricao?: string
+}
+
 export function AtendimentoDadosGerais({
-  fonte,
   populacao,
   porteMunicipio,
+  rendaPerCapita,
+  taxaUrbana,
+  taxaRural,
   eleitores,
   votos2022,
   votos2026,
@@ -123,10 +113,13 @@ export function AtendimentoDadosGerais({
   acoesLiderancas,
   cenarioOculto = false,
   onAlternarCenario,
+  indicadoresIbge = [],
 }: {
-  fonte: ReactNode
   populacao: number | null
   porteMunicipio?: string | null
+  rendaPerCapita?: string | null
+  taxaUrbana?: string | null
+  taxaRural?: string | null
   eleitores: number | null
   votos2022: number
   votos2026: number | null
@@ -134,79 +127,74 @@ export function AtendimentoDadosGerais({
   votosCenario: number
   liderancas: number
   acoesLiderancas?: ReactNode
-  /** Expectativa 2026 começa oculta; o botão revela ou esconde o bloco. */
+  /** Expectativa 2026 começa oculta; o link em Votos 2026 revela ou esconde a coluna. */
   cenarioOculto?: boolean
   onAlternarCenario?: () => void
+  indicadoresIbge?: IndicadorIbge[]
 }) {
-  const destaque = 'font-bold text-[var(--tse-text)]'
+  const destaque = 'font-semibold text-[var(--tse-text)]'
   const variacao = (atual: number, base: number): number | null => (base > 0 ? ((atual - base) / base) * 100 : null)
   const pctVs2022 = votos2026 !== null ? variacao(votos2026, votos2022) : null
   const pctVsExpectativa = votos2026 !== null ? variacao(votos2026, votosCenario) : null
   const saldoVsExpectativa = votos2026 !== null ? votos2026 - votosCenario : 0
+  const liderancasFmt = liderancas > 0 && liderancas < 10 ? String(liderancas).padStart(2, '0') : fmt(liderancas)
+
   return (
-    <section className="mt-3 rounded-2xl border border-[#EAEAE5] bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <div className="flex items-center gap-2">
-          <span className="h-4 w-1 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
-          <h2 className="text-[14px] font-bold text-[var(--tse-text)]">Dados Gerais</h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          {onAlternarCenario ? (
-            <button
-              type="button"
-              onClick={onAlternarCenario}
-              className="rounded-lg border border-[#E5E5DF] bg-[#FAFAF8] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--tse-olive)] transition-colors hover:border-[var(--tse-yellow)] hover:bg-[var(--tse-yellow-soft)]"
-              aria-expanded={!cenarioOculto}
-            >
-              {cenarioOculto ? 'Mostrar expectativa' : 'Ocultar expectativa'}
-            </button>
-          ) : null}
-          <span className="rounded-full bg-[var(--tse-bar)] px-2.5 py-1 text-[10px] font-semibold text-[var(--tse-muted)]">
-            {fonte}
-          </span>
-        </div>
-      </div>
+    <>
       <div
         className={cn(
-          'mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4',
+          'grid grid-cols-1 divide-y divide-[#F0F0EC] border-t border-[#F0F0EC] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-[#F0F0EC]',
           !cenarioOculto && 'xl:grid-cols-5',
         )}
       >
-        <Kpi
+        <CelulaIndicador
           rotulo="População"
+          rotuloExtra={porteMunicipio}
           valor={populacao !== null ? fmt(populacao) : '—'}
-          icone={Users}
         >
-          {porteMunicipio ? (
-            <span className="inline-flex items-center rounded-md bg-[var(--tse-yellow-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--tse-text)]">
-              {porteMunicipio}
-            </span>
-          ) : (
-            'Censo / IBGE'
-          )}
-        </Kpi>
+          <p className="truncate">
+            {rendaPerCapita ? (
+              <>
+                Renda p/c <span className={destaque}>{rendaPerCapita}</span>
+              </>
+            ) : null}
+            {rendaPerCapita && taxaUrbana && taxaRural ? ' · ' : null}
+            {taxaUrbana && taxaRural ? `${taxaUrbana} urb. · ${taxaRural} rur.` : null}
+            {!rendaPerCapita && !(taxaUrbana && taxaRural) ? 'Censo / IBGE' : null}
+          </p>
+        </CelulaIndicador>
 
-        <Kpi
-          rotulo="Eleitores"
-          valor={eleitores !== null ? fmt(eleitores) : '—'}
-          icone={Vote}
-        />
+        <CelulaIndicador rotulo="Eleitores" valor={eleitores !== null ? fmt(eleitores) : '—'}>
+          <p className="truncate">Cadastro eleitoral · TSE</p>
+        </CelulaIndicador>
 
-        <Kpi
+        <CelulaIndicador
           rotulo="Votos 2026 · Jadyel"
+          assinaturaAmarela
           valor={votos2026 !== null ? fmt(votos2026) : '—'}
-          icone={BarChart3}
-          destaqueAmarelo
           selo={pctVs2022 !== null ? <SeloVariacao pct={pctVs2022} titulo="Em relação a 2022" /> : null}
         >
-          <span className={destaque}>{fmt(votos2022)}</span> votos em 2022
-        </Kpi>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+            <span>
+              <span className={destaque}>{fmt(votos2022)}</span> em 2022
+            </span>
+            {onAlternarCenario ? (
+              <button
+                type="button"
+                onClick={onAlternarCenario}
+                aria-expanded={!cenarioOculto}
+                className="font-bold text-[var(--tse-olive)] hover:underline"
+              >
+                {cenarioOculto ? 'Ver expectativa' : 'Ocultar expectativa'}
+              </button>
+            ) : null}
+          </div>
+        </CelulaIndicador>
 
         {cenarioOculto ? null : (
-          <Kpi
+          <CelulaIndicador
             rotulo={rotuloCenario}
             valor={fmt(votosCenario)}
-            icone={Target}
             selo={
               pctVsExpectativa !== null ? (
                 <SeloVariacao pct={pctVsExpectativa} titulo="Resultado 2026 em relação à expectativa" />
@@ -214,21 +202,59 @@ export function AtendimentoDadosGerais({
             }
           >
             {votos2026 === null ? (
-              'Aguardando resultado 2026'
+              <p>Aguardando resultado 2026</p>
             ) : saldoVsExpectativa === 0 ? (
-              'Resultado igual à expectativa'
+              <p>Igual à expectativa</p>
             ) : (
-              <>
-                Resultado <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
+              <p>
+                <span className={destaque}>{fmt(Math.abs(saldoVsExpectativa))}</span> votos{' '}
                 {saldoVsExpectativa > 0 ? 'acima' : 'abaixo'}
-              </>
+              </p>
             )}
-          </Kpi>
+          </CelulaIndicador>
         )}
 
-        <Kpi rotulo="Lideranças" valor={fmt(liderancas)} icone={UserCheck}>
+        <CelulaIndicador rotulo="Lideranças" valor={liderancasFmt}>
           <div className="flex flex-wrap items-center gap-3">{acoesLiderancas}</div>
-        </Kpi>
+        </CelulaIndicador>
+      </div>
+    </>
+  )
+}
+
+export function AtendimentoPerfilIbgeCard({
+  indicadoresIbge,
+}: {
+  indicadoresIbge: IndicadorIbge[]
+}) {
+  if (indicadoresIbge.length === 0) return null
+  return (
+    <section className="mt-3 rounded-[10px] border border-[#EAEAE5] bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-5">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="h-3 w-0.5 rounded-full bg-[var(--tse-yellow)]" aria-hidden />
+          <div className="leading-tight">
+            <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--tse-muted)]">
+              Perfil IBGE
+            </p>
+            <p className="text-[10px] text-[var(--tse-muted)]">Censo 2022</p>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4',
+            indicadoresIbge.length >= 7 ? 'xl:grid-cols-7' : 'xl:grid-cols-6',
+          )}
+        >
+          {indicadoresIbge.map((item) => (
+            <div key={item.rotulo} title={item.descricao || item.rotulo} className="min-w-0">
+              <div className="text-[14px] font-extrabold leading-tight tracking-tight tabular-nums text-[var(--tse-text)]">
+                {item.valor}
+              </div>
+              <p className="truncate text-[10px] leading-tight text-[var(--tse-muted)]">{item.rotulo}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -302,18 +328,18 @@ function Quadro({
   children: ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col rounded-2xl bg-white p-3 shadow-sm">
+    <section className="flex h-full min-w-0 flex-col rounded-[10px] border border-[#EAEAE5] bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-2 px-1.5">
         <h3 className="text-[14px] font-bold">{titulo}</h3>
         {extra}
       </div>
       <div className="mt-2 min-w-0 flex-1">{children}</div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#EEEEEE] px-1.5 pt-2 text-[11px] text-[var(--tse-muted)]">
-        <span>
-          Selecionados <strong className="text-[var(--tse-text)]">{qtdSelecionados}</strong> · Votos{' '}
+      <div className="mt-auto flex items-center justify-between gap-1.5 whitespace-nowrap border-t border-[#F2F2EE] px-1.5 pt-2 text-[11px] text-[var(--tse-muted)]">
+        <span className="truncate">
+          Seleção <strong className="text-[var(--tse-text)]">{qtdSelecionados}</strong> · Votos{' '}
           <strong className="tabular-nums text-[var(--tse-text)]">{fmt(votosSelecionados)}</strong>
           {qtdSelecionados > 0 ? (
-            <button type="button" onClick={onLimpar} className={cn(tseLinkAcaoClass, 'ml-2 text-[10px]')}>
+            <button type="button" onClick={onLimpar} className={cn(tseLinkAcaoClass, 'ml-1.5 text-[10px]')}>
               Limpar
             </button>
           ) : null}
@@ -326,8 +352,8 @@ function Quadro({
 
 function classeLinha(selecionada: boolean, destaque: boolean): string {
   return cn(
-    'border-t border-[#EEEEEE] transition-colors',
-    selecionada ? 'bg-[var(--tse-yellow-soft)]' : 'hover:bg-[var(--tse-bar)]',
+    'border-t border-[#F2F2EE] transition-colors',
+    selecionada ? 'bg-[var(--tse-yellow-soft)]' : 'hover:bg-[var(--tse-bar)]/70',
     destaque && 'font-bold shadow-[inset_3px_0_0_var(--tse-yellow)]',
   )
 }
@@ -441,15 +467,31 @@ export function QuadroCandidatos({
                 <td className={cn(tdClass, 'text-right tabular-nums')}>{fmt(votos)}</td>
                 {mostrarSituacao ? (
                   <td className={cn(tdClass, 'text-center')} title={item.situacao || undefined}>
-                    <TsePill tom={situacao.tom} className="px-1.5 text-[10px]">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 text-[10px] font-bold',
+                        situacao.tom === 'verde' && 'text-[var(--tse-olive)]',
+                        situacao.tom === 'amarelo' && 'text-[var(--tse-gold-text)]',
+                        situacao.tom === 'neutro' && 'text-[var(--tse-muted)]',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          situacao.tom === 'verde' && 'bg-[var(--tse-olive)]',
+                          situacao.tom === 'amarelo' && 'bg-[var(--tse-yellow)]',
+                          situacao.tom === 'neutro' && 'bg-[#C9C9C2]',
+                        )}
+                        aria-hidden
+                      />
                       {situacao.sigla}
-                    </TsePill>
+                    </span>
                   </td>
                 ) : null}
               </tr>
             )
           })}
-          <tr className="border-t border-[#DDDDDD] bg-[var(--tse-bar)] font-bold">
+          <tr className="border-t border-[#EAEAE5] bg-[var(--tse-bar)]/75 font-bold">
             <td className={tdClass} />
             <td className={cn(tdClass, 'text-[11px] uppercase tracking-wide')}>Total</td>
             <td className={cn(tdClass, colunaPartidoClass)} />
@@ -529,7 +571,7 @@ export function QuadroPartidos({
   const visiveis = itens.slice((pagina - 1) * porPagina, pagina * porPagina)
   return (
     <Quadro
-      titulo="Votos por Partido"
+      titulo="Partido"
       extra={<SeletorAnoPartido ano={ano} onChange={onAno} />}
       qtdSelecionados={Object.keys(selecao).length}
       votosSelecionados={Object.values(selecao).reduce((a, b) => a + b, 0)}
@@ -577,7 +619,7 @@ export function QuadroPartidos({
               </tr>
             )
           })}
-          <tr className="border-t border-[#DDDDDD] bg-[var(--tse-bar)] font-bold">
+          <tr className="border-t border-[#EAEAE5] bg-[var(--tse-bar)]/75 font-bold">
             <td className={tdClass} />
             <td className={cn(tdClass, 'text-[11px] uppercase tracking-wide')}>Total</td>
             <td className={cn(tdClass, 'text-right tabular-nums')}>{fmt(itens.reduce((a, i) => a + i.votos, 0))}</td>
@@ -624,7 +666,7 @@ function ListaMovimentos({
       {itens.length === 0 ? (
         <p className="mt-3 text-[12px] text-[var(--tse-muted)]">Nenhum movimento destacável.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-[#EEEEEE]">
+        <ul className="mt-2 divide-y divide-[#F2F2EE]">
           {itens.map((m) => (
             <li key={m.chave} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
@@ -665,7 +707,7 @@ function ListaEstreantes({ itens }: { itens: EstreanteCandidato[] }) {
       {itens.length === 0 ? (
         <p className="mt-3 text-[12px] text-[var(--tse-muted)]">Nenhum estreante com votação expressiva.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-[#EEEEEE]">
+        <ul className="mt-2 divide-y divide-[#F2F2EE]">
           {itens.map((e) => (
             <li key={e.chave} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0">
@@ -697,7 +739,7 @@ export function QuadroMovimentosCandidatos({
   movimentos: MovimentosCandidatos
 }) {
   return (
-    <section className="mt-3 rounded-2xl bg-white px-5 py-4 shadow-sm">
+    <section className="mt-3 rounded-[10px] border border-[#EAEAE5] bg-white px-5 py-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-bold">Ascensão e queda · {municipio}</h2>
         <p className="text-[10px] font-semibold text-[var(--tse-muted)]">

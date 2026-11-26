@@ -1,4 +1,3 @@
-import { TsePill } from '@/components/tse/tse-ui'
 import { cn } from '@/lib/utils'
 import { rotuloSituacao2026, siglaSituacao2026 } from '@/lib/resultado-situacao-2026'
 
@@ -8,10 +7,26 @@ export function SeloSituacao2026({ situacao, className }: { situacao?: string; c
   const rotulo = rotuloSituacao2026(situacao)
   if (!rotulo || selo.sigla === '—') return null
   return (
-    <span title={rotulo} className="inline-flex shrink-0">
-      <TsePill tom={selo.tom} className={cn('px-1.5 py-0 text-[10px] leading-4', className)}>
-        {selo.sigla}
-      </TsePill>
+    <span
+      title={rotulo}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 text-[10px] font-bold leading-4',
+        selo.tom === 'verde' && 'text-[var(--tse-olive)]',
+        selo.tom === 'amarelo' && 'text-[var(--tse-gold-text)]',
+        selo.tom === 'neutro' && 'text-[var(--tse-muted)]',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'h-1.5 w-1.5 rounded-full',
+          selo.tom === 'verde' && 'bg-[var(--tse-olive)]',
+          selo.tom === 'amarelo' && 'bg-[var(--tse-yellow)]',
+          selo.tom === 'neutro' && 'bg-[#C9C9C2]',
+        )}
+        aria-hidden
+      />
+      {selo.sigla}
     </span>
   )
 }

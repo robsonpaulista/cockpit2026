@@ -5,10 +5,14 @@ import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
-import { RefreshCw, Crown, FileText, Loader2, MapPin, MapPinned, Newspaper } from 'lucide-react'
+import { RefreshCw, Crown, FileText, HelpCircle, Loader2, MapPin, MapPinned, Newspaper, X } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { fetchPopulacaoIbge } from '@/lib/services/ficha-atendimento-client'
 import { getPopulacaoMunicipio, type MunicipioPopulacao } from '@/lib/populacao-ibge-local'
+import {
+  getDemografiaMunicipio,
+} from '@/lib/demografia-municipio'
+import { formatarMoedaFicha } from '@/lib/ficha-lideranca-resumo'
 import { classificaPorteSuasFromFaixas } from '@/lib/suas-porte'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -54,6 +58,8 @@ import {
 } from '@/components/resumo-eleicoes/resumo-eleicoes-cidades-tabela'
 import {
   AtendimentoDadosGerais,
+  AtendimentoPerfilIbgeCard,
+  type IndicadorIbge,
   QuadroCandidatos,
   QuadroMovimentosCandidatos,
   QuadroPartidos,
@@ -64,14 +70,11 @@ import { AtendimentoNoticiasTicker } from '@/components/resumo-eleicoes/atendime
 import {
   TseCarregando,
   TseErro,
-  TseFilterBar,
   TseModal,
   TsePage,
   TsePillSelect,
   TseSelectGrande,
   TseVazio,
-  tseBotaoCinzaClass,
-  tseBotaoIconeClass,
   tseBotaoNeutroClass,
   tseBotaoPrimarioClass,
   tseCampoClass,
@@ -167,27 +170,6 @@ const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   prefeito_2024: {},
   vereador_2024: {},
   partido_2026: {},
-}
-
-/** Rola até o elemento no ancestral scrollável do hub (DashboardPageContent). */
-function scrollParaElementoNoDashboard(el: HTMLElement | null) {
-  if (!el) return
-  let parent: HTMLElement | null = el.parentElement
-  while (parent) {
-    const { overflowY } = getComputedStyle(parent)
-    if (
-      (overflowY === 'auto' || overflowY === 'scroll') &&
-      parent.scrollHeight > parent.clientHeight + 1
-    ) {
-      const parentRect = parent.getBoundingClientRect()
-      const elRect = el.getBoundingClientRect()
-      const top = elRect.top - parentRect.top + parent.scrollTop - 16
-      parent.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
-      return
-    }
-    parent = parent.parentElement
-  }
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function parseVotos(value: string): number {
@@ -393,7 +375,6 @@ export function ResumoEleicoesAtendimentoPanel() {
   })
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
   const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
-  const painelSecaoRef = useRef<HTMLElement>(null)
   const resumoCidadeRequestRef = useRef(0)
 
   const visaoTodasCidades = cidade === RESUMO_TODAS_CIDADES
@@ -458,6 +439,118 @@ export function ResumoEleicoesAtendimentoPanel() {
     return dados
   }, [visaoTodasCidades, cidadeFiltroLista, dadosCidadeFiltro, dados])
 
+  /** Dados do Censo 2022 para o cabeçalho executivo: resumo de População e faixa socioeconômica. */
+  const { rendaPerCapitaAtivo, taxaUrbanaAtivo, taxaRuralAtivo, indicadoresIbgeAtivo } = useMemo((): {
+    rendaPerCapitaAtivo: string | null
+    taxaUrbanaAtivo: string | null
+    taxaRuralAtivo: string | null
+    indicadoresIbgeAtivo: IndicadorIbge[]
+  } => {
+    if (!municipioAtivo || visaoTodasCidades) {
+      return {
+        rendaPerCapitaAtivo: null,
+        taxaUrbanaAtivo: null,
+        taxaRuralAtivo: null,
+        indicadoresIbgeAtivo: [],
+      }
+    }
+    const row = getDemografiaMunicipio(municipioAtivo)
+    if (!row) {
+      return {
+        rendaPerCapitaAtivo: null,
+        taxaUrbanaAtivo: null,
+        taxaRuralAtivo: null,
+        indicadoresIbgeAtivo: [],
+      }
+    }
+    const pct = (v: number | null | undefined): string =>
+      v == null || !Number.isFinite(v) ? '—' : `${v.toFixed(1).replace('.', ',')}%`
+
+    const censo = row.renda_censo_2022
+    const rendaPerCapita =
+      censo?.renda_media_domiciliar_pc != null ? formatarMoedaFicha(censo.renda_media_domiciliar_pc) : null
+    const taxaUrbana = row.urbanizacao.taxa_urbana != null ? pct(row.urbanizacao.taxa_urbana) : null
+    const taxaRural = row.urbanizacao.taxa_rural != null ? pct(row.urbanizacao.taxa_rural) : null
+
+    const items: IndicadorIbge[] = []
+
+    const quarto = censo?.moradores_ate_quarto_sm
+    const meio = censo?.moradores_quarto_a_meio_sm
+    const moradoresCenso = censo?.moradores_total
+    if (quarto != null && meio != null && moradoresCenso) {
+      items.push({
+        rotulo: 'Renda até ½ SM',
+        valor: pct(((quarto + meio) / moradoresCenso) * 100),
+        descricao: 'Moradores com rendimento domiciliar per capita de até ½ salário mínimo',
+      })
+    }
+
+    const saneamento = row.saneamento_censo_2022
+    const domicilios = saneamento?.domicilios_total
+    if (saneamento && domicilios) {
+      const semAgua = saneamento.domicilios_sem_ligacao_rede_agua
+      if (semAgua != null) {
+        items.push({
+          rotulo: 'Sem rede de água',
+          valor: pct((semAgua / domicilios) * 100),
+          descricao: 'Domicílios particulares sem ligação à rede geral de distribuição de água',
+        })
+      }
+      const lixo = saneamento.domicilios_lixo_coletado
+      if (lixo != null) {
+        items.push({
+          rotulo: 'Lixo coletado',
+          valor: pct((lixo / domicilios) * 100),
+          descricao: 'Domicílios particulares com coleta de lixo',
+        })
+      }
+      const esgoto = saneamento.domicilios_esgoto_adequado
+      if (esgoto != null) {
+        items.push({
+          rotulo: 'Esgoto adequado',
+          valor: pct((esgoto / domicilios) * 100),
+          descricao: 'Domicílios ligados à rede geral de esgoto, pluvial ou fossa ligada à rede',
+        })
+      }
+    }
+
+    const alfabetizacao = row.alfabetizacao.taxa_15_mais
+    if (alfabetizacao != null) {
+      items.push({
+        rotulo: 'Alfabetização 15+',
+        valor: pct(alfabetizacao),
+        descricao: 'Taxa de alfabetização da população de 15 anos ou mais',
+      })
+    }
+
+    const deficiencia = row.deficiencia_censo_2022
+    const base2mais = deficiencia?.pessoas_2_anos_ou_mais
+    if (deficiencia && base2mais && deficiencia.pessoas_com_deficiencia != null) {
+      items.push({
+        rotulo: 'Pessoas c/ deficiência',
+        valor: pct((deficiencia.pessoas_com_deficiencia / base2mais) * 100),
+        descricao: 'Percentual de pessoas de 2 anos ou mais com deficiência',
+      })
+    }
+
+    const total = row.faixas_etarias.total
+    const idosos = row.faixas_etarias.de_60_ou_mais
+    if (total && idosos != null) {
+      items.push({
+        rotulo: '60 anos ou mais',
+        valor: pct((idosos / total) * 100),
+        descricao: 'Parcela da população com 60 anos ou mais de idade',
+      })
+    }
+
+    return {
+      rendaPerCapitaAtivo: rendaPerCapita,
+      taxaUrbanaAtivo: taxaUrbana,
+      taxaRuralAtivo: taxaRural,
+      indicadoresIbgeAtivo: items,
+    }
+  }, [municipioAtivo, visaoTodasCidades])
+
   const alternarDistribuicaoCandidato = useCallback((item: ResultadoEleicao) => {
     if (!municipioAtivo) return
     setCandidatoDistribuicao((atual) =>
@@ -471,10 +564,11 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   useEffect(() => {
     if (!candidatoDistribuicao) return
-    const timer = window.setTimeout(() => {
-      scrollParaElementoNoDashboard(painelSecaoRef.current)
-    }, 120)
-    return () => window.clearTimeout(timer)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCandidatoDistribuicao(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [candidatoDistribuicao])
 
   const setPage = (key: string, page: number) => {
@@ -2258,73 +2352,123 @@ export function ResumoEleicoesAtendimentoPanel() {
     Boolean(presidenteCamaraNome) &&
     item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
 
+  const botaoIconeTopoClass =
+    'inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F5F5F2] hover:text-[var(--tse-text)] disabled:cursor-not-allowed disabled:opacity-35'
+
   return (
     <TsePage>
-      <TseFilterBar>
-        <TseSelectGrande
-          icone={MapPin}
-          rotulo="Cidade"
-          value={cidade}
-          onChange={(e) => {
-            const next = e.target.value
-            setCidade(next)
-            setCidadeFiltroLista(null)
-            setDadosCidadeFiltro([])
-            syncCidadeHub(next)
-          }}
-          disabled={loadingCidades}
-        >
-          <option value="">{loadingCidades ? 'Carregando municípios…' : 'Selecione um município'}</option>
-          <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
-          {cidades.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </TseSelectGrande>
-        <TsePillSelect
-          rotulo="Visão de votos 2026"
-          value={cenarioVotos}
-          onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-        >
-          <option value="legado_anterior">Anterior / Legado</option>
-          <option value="aferido_jadyel">Aferido (Jadyel)</option>
-          <option value="promessa_lideranca">Prometido (liderança)</option>
-        </TsePillSelect>
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-          <button
-            type="button"
-            onClick={buscarDados}
-            disabled={!cidade || loadingDados}
-            className={tseBotaoPrimarioClass}
+      <section className="overflow-hidden rounded-[10px] border border-[#EAEAE5] bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2">
+          <TseSelectGrande
+            icone={MapPin}
+            rotulo="Cidade"
+            value={cidade}
+            onChange={(e) => {
+              const next = e.target.value
+              setCidade(next)
+              setCidadeFiltroLista(null)
+              setDadosCidadeFiltro([])
+              syncCidadeHub(next)
+            }}
+            disabled={loadingCidades}
           >
-            <RefreshCw className={cn('h-4 w-4', loadingDados && 'animate-spin')} aria-hidden />
-            Buscar
-          </button>
-          <button
-            type="button"
-            onClick={prepararFiltroDemandas}
-            disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
-            className={tseBotaoCinzaClass}
+            <option value="">{loadingCidades ? 'Carregando municípios…' : 'Selecione um município'}</option>
+            <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
+            {cidades.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </TseSelectGrande>
+          <TsePillSelect
+            rotulo="Visão de votos 2026"
+            layout="linha"
+            value={cenarioVotos}
+            onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
           >
-            <FileText className={tseBotaoIconeClass} aria-hidden />
-            Demandas
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNoticiasModal(true)}
-            disabled={!municipioAtivo || loadingDados || !buscaIniciada}
-            className={tseBotaoCinzaClass}
-          >
-            <Newspaper className={tseBotaoIconeClass} aria-hidden />
-            Notícias
-          </button>
-          <Link href={secaoHref} className={tseBotaoCinzaClass}>
-            <MapPinned className={tseBotaoIconeClass} aria-hidden />
-            Por seção
-          </Link>
+            <option value="legado_anterior">Anterior / Legado</option>
+            <option value="aferido_jadyel">Aferido (Jadyel)</option>
+            <option value="promessa_lideranca">Prometido (liderança)</option>
+          </TsePillSelect>
+          <div className="flex items-center gap-1 lg:ml-auto">
+            <button
+              type="button"
+              onClick={buscarDados}
+              disabled={!cidade || loadingDados}
+              title="Buscar / atualizar dados"
+              aria-label="Buscar"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--tse-olive)] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RefreshCw className={cn('h-4 w-4', loadingDados && 'animate-spin')} aria-hidden />
+            </button>
+            <span className="mx-1 h-4 w-px bg-[#ECECE6]" aria-hidden />
+            <button
+              type="button"
+              onClick={prepararFiltroDemandas}
+              disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
+              title="Demandas"
+              aria-label="Demandas"
+              className={botaoIconeTopoClass}
+            >
+              <FileText className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNoticiasModal(true)}
+              disabled={!municipioAtivo || loadingDados || !buscaIniciada}
+              title="Notícias"
+              aria-label="Notícias"
+              className={botaoIconeTopoClass}
+            >
+              <Newspaper className="h-4 w-4" aria-hidden />
+            </button>
+            <Link href={secaoHref} title="Por seção" aria-label="Por seção" className={botaoIconeTopoClass}>
+              <MapPinned className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
         </div>
-      </TseFilterBar>
+
+        {dados.length > 0 && resumoCidade ? (
+          <AtendimentoDadosGerais
+            populacao={populacaoMunicipioAtivo}
+            porteMunicipio={porteMunicipioAtivo}
+            rendaPerCapita={rendaPerCapitaAtivo}
+            taxaUrbana={taxaUrbanaAtivo}
+            taxaRural={taxaRuralAtivo}
+            indicadoresIbge={indicadoresIbgeAtivo}
+            eleitores={eleitoresMunicipioAtivo}
+            votos2022={votosJadyel2022}
+            votos2026={votosJadyel2026}
+            rotuloCenario={labelCenarioAtivo}
+            votosCenario={votosCenarioAtivo}
+            cenarioOculto={labelCenarioAtivo === 'Expectativa 2026' && !expectativaVisivel}
+            onAlternarCenario={
+              labelCenarioAtivo === 'Expectativa 2026'
+                ? () => setExpectativaVisivel((v) => !v)
+                : undefined
+            }
+            liderancas={resumoCidade.liderancas}
+            acoesLiderancas={
+              visaoTodasCidades ? (
+                <span className="text-[11px] text-[var(--tse-muted)]">Total cadastrado</span>
+              ) : (
+                <>
+                  <button type="button" onClick={marcarLiderancasDoCard} className={tseLinkAcaoClass}>
+                    Marcar
+                  </button>
+                  <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={tseLinkAcaoClass}>
+                    Detalhes
+                  </button>
+                </>
+              )
+            }
+          />
+        ) : null}
+      </section>
+
+      {dados.length > 0 && resumoCidade ? (
+        <AtendimentoPerfilIbgeCard indicadoresIbge={indicadoresIbgeAtivo} />
+      ) : null}
 
       {error ? (
         <div className="mt-4">
@@ -2353,39 +2497,6 @@ export function ResumoEleicoesAtendimentoPanel() {
 
       {dados.length > 0 ? (
         <>
-          {resumoCidade ? (
-            <AtendimentoDadosGerais
-              fonte={`${visaoTodasCidades ? 'Todas as cidades' : municipioAtivo || cidade} · ${labelCenarioAtivo}`}
-              populacao={populacaoMunicipioAtivo}
-              porteMunicipio={porteMunicipioAtivo}
-              eleitores={eleitoresMunicipioAtivo}
-              votos2022={votosJadyel2022}
-              votos2026={votosJadyel2026}
-              rotuloCenario={labelCenarioAtivo}
-              votosCenario={votosCenarioAtivo}
-              cenarioOculto={labelCenarioAtivo === 'Expectativa 2026' && !expectativaVisivel}
-              onAlternarCenario={
-                labelCenarioAtivo === 'Expectativa 2026'
-                  ? () => setExpectativaVisivel((v) => !v)
-                  : undefined
-              }
-              liderancas={resumoCidade.liderancas}
-              acoesLiderancas={
-                visaoTodasCidades ? (
-                  <span className="text-[11px] text-[var(--tse-muted)]">Total cadastrado</span>
-                ) : (
-                  <>
-                    <button type="button" onClick={marcarLiderancasDoCard} className={tseLinkAcaoClass}>
-                      Marcar
-                    </button>
-                    <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={tseLinkAcaoClass}>
-                      Detalhes
-                    </button>
-                  </>
-                )
-              }
-            />
-          ) : null}
 
           {municipioAtivo ? <AtendimentoNoticiasTicker municipio={municipioAtivo} /> : null}
 
@@ -2405,12 +2516,30 @@ export function ResumoEleicoesAtendimentoPanel() {
             </p>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[12px] text-[var(--tse-muted)]">
-              Simulação de vereadores: <strong className="text-[var(--tse-text)]">{vereadoresMapeadosCount}</strong> de{' '}
-              <strong className="text-[var(--tse-text)]">{vereador2024Completo.length}</strong> mapeados · clique no nome
-              para ver a votação por seção · botão direito na caixa inclui como liderança
-            </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-[12px] text-[var(--tse-muted)]">
+              <span>
+                Simulação de vereadores: <strong className="text-[var(--tse-text)]">{vereadoresMapeadosCount}</strong> de{' '}
+                <strong className="text-[var(--tse-text)]">{vereador2024Completo.length}</strong> mapeados
+              </span>
+              <span className="group relative inline-flex items-center">
+                <button
+                  type="button"
+                  aria-label="Ajuda sobre interações da tabela"
+                  title="Clique no nome para abrir detalhes no painel lateral · Botão direito na caixa inclui como liderança"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--tse-muted)] transition-colors hover:bg-[#ECECE6] hover:text-[var(--tse-text)] focus:outline-none focus:ring-2 focus:ring-[var(--tse-yellow)]"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                <span
+                  role="tooltip"
+                  className="pointer-events-none invisible absolute left-0 top-full z-30 mt-1.5 w-72 rounded-lg border border-[#E5E5DF] bg-white px-3 py-2 text-[11px] leading-relaxed text-[var(--tse-text)] opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+                >
+                  Clique no nome de qualquer candidato para abrir votação por seção e histórico no painel lateral. Botão
+                  direito na caixa de seleção inclui como liderança.
+                </span>
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => setShowSimulacaoModal(true)}
@@ -2423,7 +2552,7 @@ export function ResumoEleicoesAtendimentoPanel() {
 
           <div
             key={chaveTabelasResultado}
-            className="mt-3 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.8fr)]"
+            className="mt-3 grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.8fr)]"
           >
             <QuadroCandidatos
               titulo="Deputado Estadual 2026"
@@ -2474,28 +2603,56 @@ export function ResumoEleicoesAtendimentoPanel() {
           ) : null}
 
           {candidatoDistribuicao && municipioAtivo ? (
-            <>
-              {resumoTemVotacaoSecao(candidatoDistribuicao) ? (
-                <PainelVotacaoCandidatoResumo
-                  ref={painelSecaoRef}
-                  candidato={candidatoDistribuicao}
-                  municipio={municipioAtivo}
-                  depEstadualLideranca={depEstadualLiderancaCidade}
-                  onClose={() => setCandidatoDistribuicao(null)}
-                />
-              ) : null}
-              <HistoricoEleitoralCandidato
-                ref={resumoTemVotacaoSecao(candidatoDistribuicao) ? undefined : painelSecaoRef}
-                candidato={candidatoDistribuicao}
-                municipio={municipioAtivo}
-                dadosMunicipio={dados}
-                onClose={
-                  resumoTemVotacaoSecao(candidatoDistribuicao)
-                    ? undefined
-                    : () => setCandidatoDistribuicao(null)
-                }
+            <div
+              className="fixed inset-0 z-50 flex justify-end"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Detalhes de ${nomeCandidatoResumoExibicao(candidatoDistribuicao.nomeUrnaCandidato, candidatoDistribuicao.nomeCandidato)}`}
+            >
+              <div
+                className="fixed inset-0 bg-black/20 backdrop-blur-[1px]"
+                onClick={() => setCandidatoDistribuicao(null)}
+                aria-hidden
               />
-            </>
+              <aside className="relative z-10 flex h-full w-full max-w-[1080px] flex-col border-l border-[#E5E5DF] bg-[var(--tse-bg)] shadow-2xl">
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#EAEAE5] bg-white px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--tse-muted)]">
+                      Detalhes do candidato · {municipioAtivo}
+                    </p>
+                    <h2 className="truncate text-[15px] font-bold text-[var(--tse-text)]">
+                      {nomeCandidatoResumoExibicao(
+                        candidatoDistribuicao.nomeUrnaCandidato,
+                        candidatoDistribuicao.nomeCandidato,
+                      )}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCandidatoDistribuicao(null)}
+                    aria-label="Fechar painel lateral"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--tse-muted)] transition-colors hover:bg-[#F4F4F0] hover:text-[var(--tse-text)]"
+                  >
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 pb-6 pt-1">
+                  <HistoricoEleitoralCandidato
+                    candidato={candidatoDistribuicao}
+                    municipio={municipioAtivo}
+                    dadosMunicipio={dados}
+                  />
+                  {resumoTemVotacaoSecao(candidatoDistribuicao) ? (
+                    <PainelVotacaoCandidatoResumo
+                      candidato={candidatoDistribuicao}
+                      municipio={municipioAtivo}
+                      depEstadualLideranca={depEstadualLiderancaCidade}
+                      onClose={() => setCandidatoDistribuicao(null)}
+                    />
+                  ) : null}
+                </div>
+              </aside>
+            </div>
           ) : null}
         </>
       ) : null}

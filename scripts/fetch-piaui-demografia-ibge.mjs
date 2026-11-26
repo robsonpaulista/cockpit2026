@@ -9,7 +9,11 @@
  * - SIDRA Tabela 9543 (Censo 2022: taxa de alfabetização 15+)
  * - SIDRA Tabela 9923 (Censo 2022: população urbana/rural)
  * - SIDRA Tabela 6579 (estimativa populacional mais recente)
- * - Ipeadata OData (IPEA/Atlas DH): ADH_RDPC e ADH_PPOB (municipal)
+ * - SIDRA Tabela 10295 (Censo 2022: rendimento domiciliar per capita médio e mediano)
+ * - SIDRA Tabela 10296 (Censo 2022: moradores por faixas de salário mínimo per capita)
+ * - SIDRA Tabelas 6803, 6892 e 6805 (Censo 2022: domicílios por rede de água, destino do lixo e esgotamento)
+ * - SIDRA Tabela 10125 (Censo 2022: pessoas de 2 anos ou mais, total e com deficiência)
+ * - Ipeadata OData (IPEA/Atlas DH 2010): ADH_RDPC e ADH_PPOB (municipal, legado)
  *
  * Saídas:
  * - data/demografia-municipios-piaui.json
@@ -89,6 +93,39 @@ function parseIntervaloIdade(label) {
 
   if (texto === '100 anos ou mais') return { inicio: 100, fim: 130 }
   return null
+}
+
+function emptyRendaCenso2022() {
+  return {
+    ano_referencia: 2022,
+    moradores_total: null,
+    renda_media_domiciliar_pc: null,
+    renda_mediana_domiciliar_pc: null,
+    moradores_ate_quarto_sm: null,
+    moradores_quarto_a_meio_sm: null,
+    moradores_sem_rendimento: null,
+    fonte: 'sidra_tabelas_10295_10296',
+  }
+}
+
+function emptySaneamentoCenso2022() {
+  return {
+    ano_referencia: 2022,
+    domicilios_total: null,
+    domicilios_sem_ligacao_rede_agua: null,
+    domicilios_lixo_coletado: null,
+    domicilios_esgoto_adequado: null,
+    fonte: 'sidra_tabelas_6803_6892_6805',
+  }
+}
+
+function emptyDeficienciaCenso2022() {
+  return {
+    ano_referencia: 2022,
+    pessoas_2_anos_ou_mais: null,
+    pessoas_com_deficiencia: null,
+    fonte: 'sidra_tabela_10125',
+  }
 }
 
 function emptyDemografia() {
@@ -308,6 +345,121 @@ function extrairEstimativa(rows6579) {
   return { populacao: toInt(row.V), ano: toInt(row.D3N) }
 }
 
+function toNumeroSidra(valor) {
+  const n = Number(String(valor ?? '').replace(',', '.').trim())
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Renda do Censo 2022 por município (todos os municípios em uma chamada por tabela).
+ * - 10295: rendimento médio e mediano domiciliar per capita (R$ nominal mensal)
+ * - 10296: moradores por classes de rendimento domiciliar per capita (salário mínimo)
+ * Retorna Map<codigoIbge, renda_censo_2022>.
+ */
+async function fetchRendaCenso2022Piaui() {
+  const url10295 = `${SIDRA_BASE}/t/10295/n6/all/v/13604,13431,13534/p/2022/c2/6794/c86/95251/c58/95253?formato=json`
+  const url10296 = `${SIDRA_BASE}/t/10296/n6/all/v/13604/p/2022/c2/6794/c86/95251/c386/9680,9681,9682,9692?formato=json`
+  const [raw10295, raw10296] = await Promise.all([fetchJson(url10295), fetchJson(url10296)])
+
+  const mapa = new Map()
+  const obter = (codigo) => {
+    if (!mapa.has(codigo)) mapa.set(codigo, emptyRendaCenso2022())
+    return mapa.get(codigo)
+  }
+
+  for (const row of sidraRows(raw10295)) {
+    const codigo = String(row.D1C || '')
+    if (!codigo.startsWith('22') || codigo.length !== 7) continue
+    const item = obter(codigo)
+    const valor = toNumeroSidra(row.V)
+    if (row.D2C === '13604') item.moradores_total = valor === null ? null : Math.round(valor)
+    else if (row.D2C === '13431') item.renda_media_domiciliar_pc = valor === null ? null : Number(valor.toFixed(2))
+    else if (row.D2C === '13534') item.renda_mediana_domiciliar_pc = valor === null ? null : Number(valor.toFixed(2))
+  }
+
+  for (const row of sidraRows(raw10296)) {
+    const codigo = String(row.D1C || '')
+    if (!codigo.startsWith('22') || codigo.length !== 7) continue
+    const item = obter(codigo)
+    const valor = toNumeroSidra(row.V)
+    const inteiro = valor === null ? null : Math.round(valor)
+    if (row.D6C === '9681') item.moradores_ate_quarto_sm = inteiro
+    else if (row.D6C === '9682') item.moradores_quarto_a_meio_sm = inteiro
+    else if (row.D6C === '9692') item.moradores_sem_rendimento = inteiro
+  }
+
+  return mapa
+}
+
+/**
+ * Saneamento do Censo 2022 por município (contagens de domicílios particulares permanentes ocupados).
+ * - 6803: ligação à rede geral de água (categoria 72153 = não possui ligação)
+ * - 6892: destino do lixo (categoria 2520 = coletado)
+ * - 6805: tipo de esgotamento (categoria 46290 = rede geral, pluvial ou fossa ligada à rede)
+ * Retorna Map<codigoIbge, saneamento_censo_2022>.
+ */
+async function fetchSaneamentoCenso2022Piaui() {
+  const url6803 = `${SIDRA_BASE}/t/6803/n6/all/v/381/p/2022/c1821/72129,72153?formato=json`
+  const url6892 = `${SIDRA_BASE}/t/6892/n6/all/v/381/p/2022/c67/10972,2520?formato=json`
+  const url6805 = `${SIDRA_BASE}/t/6805/n6/all/v/381/p/2022/c11558/46292,46290?formato=json`
+  const [raw6803, raw6892, raw6805] = await Promise.all([
+    fetchJson(url6803),
+    fetchJson(url6892),
+    fetchJson(url6805),
+  ])
+
+  const mapa = new Map()
+  const obter = (codigo) => {
+    if (!mapa.has(codigo)) mapa.set(codigo, emptySaneamentoCenso2022())
+    return mapa.get(codigo)
+  }
+  // Com n6/all o código da categoria aparece em D3C ou D4C (depende da tabela); o ano é D3C/D4C = '2022'.
+  const categoriaDe = (row) => [row.D3C, row.D4C, row.D5C].find((codigo) => codigo && codigo !== '2022')
+  const aplicar = (rows, campo) => {
+    for (const row of sidraRows(rows)) {
+      const codigo = String(row.D1C || '')
+      if (!codigo.startsWith('22') || codigo.length !== 7) continue
+      const categoria = categoriaDe(row)
+      const item = obter(codigo)
+      const valor = toNumeroSidra(row.V)
+      const inteiro = valor === null ? null : Math.round(valor)
+      if (campo === 'total' && categoria === '72129') item.domicilios_total = inteiro
+      else if (campo === 'agua' && categoria === '72153') item.domicilios_sem_ligacao_rede_agua = inteiro
+      else if (campo === 'lixo' && categoria === '2520') item.domicilios_lixo_coletado = inteiro
+      else if (campo === 'esgoto' && categoria === '46290') item.domicilios_esgoto_adequado = inteiro
+    }
+  }
+
+  aplicar(raw6803, 'total')
+  aplicar(raw6803, 'agua')
+  aplicar(raw6892, 'lixo')
+  aplicar(raw6805, 'esgoto')
+  return mapa
+}
+
+/**
+ * Pessoas com deficiência do Censo 2022 por município (SIDRA 10125, sexo total, todas as idades).
+ * Base: pessoas de 2 anos ou mais de idade (variável 11852); numerador: com deficiência (12785).
+ * Retorna Map<codigoIbge, deficiencia_censo_2022>.
+ */
+async function fetchDeficienciaCenso2022Piaui() {
+  const url = `${SIDRA_BASE}/t/10125/n6/all/v/11852,12785/p/2022/c2/6794/c58/95253?formato=json`
+  const raw = await fetchJson(url)
+
+  const mapa = new Map()
+  for (const row of sidraRows(raw)) {
+    const codigo = String(row.D1C || '')
+    if (!codigo.startsWith('22') || codigo.length !== 7) continue
+    if (!mapa.has(codigo)) mapa.set(codigo, emptyDeficienciaCenso2022())
+    const item = mapa.get(codigo)
+    const valor = toNumeroSidra(row.V)
+    const inteiro = valor === null ? null : Math.round(valor)
+    if (row.D2C === '11852') item.pessoas_2_anos_ou_mais = inteiro
+    else if (row.D2C === '12785') item.pessoas_com_deficiencia = inteiro
+  }
+  return mapa
+}
+
 async function fetchMunicipiosPiaui() {
   const url = `${LOCALIDADES_BASE}/estados/22/municipios`
   const data = await fetchJson(url)
@@ -415,6 +567,18 @@ function toCsv(rows) {
     'renda_per_capita',
     'pct_vulneraveis_pobreza',
     'ano_renda_vulnerabilidade',
+    'censo2022_moradores_total',
+    'censo2022_renda_media_pc',
+    'censo2022_renda_mediana_pc',
+    'censo2022_moradores_ate_quarto_sm',
+    'censo2022_moradores_quarto_a_meio_sm',
+    'censo2022_moradores_sem_rendimento',
+    'censo2022_domicilios_total',
+    'censo2022_domicilios_sem_ligacao_rede_agua',
+    'censo2022_domicilios_lixo_coletado',
+    'censo2022_domicilios_esgoto_adequado',
+    'censo2022_pessoas_2_anos_ou_mais',
+    'censo2022_pessoas_com_deficiencia',
   ]
 
   const escape = (value) => {
@@ -459,6 +623,18 @@ function toCsv(rows) {
         row.renda_vulnerabilidade?.renda_per_capita,
         row.renda_vulnerabilidade?.percentual_vulneraveis_pobreza,
         row.renda_vulnerabilidade?.ano_referencia,
+        row.renda_censo_2022?.moradores_total,
+        row.renda_censo_2022?.renda_media_domiciliar_pc,
+        row.renda_censo_2022?.renda_mediana_domiciliar_pc,
+        row.renda_censo_2022?.moradores_ate_quarto_sm,
+        row.renda_censo_2022?.moradores_quarto_a_meio_sm,
+        row.renda_censo_2022?.moradores_sem_rendimento,
+        row.saneamento_censo_2022?.domicilios_total,
+        row.saneamento_censo_2022?.domicilios_sem_ligacao_rede_agua,
+        row.saneamento_censo_2022?.domicilios_lixo_coletado,
+        row.saneamento_censo_2022?.domicilios_esgoto_adequado,
+        row.deficiencia_censo_2022?.pessoas_2_anos_ou_mais,
+        row.deficiencia_censo_2022?.pessoas_com_deficiencia,
       ]
         .map(escape)
         .join(','),
@@ -506,6 +682,33 @@ async function main() {
   }
   console.log(`Municípios encontrados no Piauí: ${municipios.length}`)
 
+  let rendaCensoMap = new Map()
+  try {
+    rendaCensoMap = await fetchRendaCenso2022Piaui()
+    console.log(`Censo 2022 (renda) carregado: ${rendaCensoMap.size} município(s).`)
+  } catch (error) {
+    console.warn(`SIDRA renda Censo 2022 indisponível: ${String(error?.message || error)}`)
+    console.warn('Continuando extração com renda Censo 2022 em branco.')
+  }
+
+  let deficienciaCensoMap = new Map()
+  try {
+    deficienciaCensoMap = await fetchDeficienciaCenso2022Piaui()
+    console.log(`Censo 2022 (deficiência) carregado: ${deficienciaCensoMap.size} município(s).`)
+  } catch (error) {
+    console.warn(`SIDRA deficiência Censo 2022 indisponível: ${String(error?.message || error)}`)
+    console.warn('Continuando extração com deficiência Censo 2022 em branco.')
+  }
+
+  let saneamentoCensoMap = new Map()
+  try {
+    saneamentoCensoMap = await fetchSaneamentoCenso2022Piaui()
+    console.log(`Censo 2022 (saneamento) carregado: ${saneamentoCensoMap.size} município(s).`)
+  } catch (error) {
+    console.warn(`SIDRA saneamento Censo 2022 indisponível: ${String(error?.message || error)}`)
+    console.warn('Continuando extração com saneamento Censo 2022 em branco.')
+  }
+
   const result = []
   const falhas = []
 
@@ -538,6 +741,12 @@ async function main() {
 
     console.log(`Processados ${Math.min(i + concurrency, municipios.length)}/${municipios.length}`)
     await sleep(120)
+  }
+
+  for (const row of result) {
+    row.renda_censo_2022 = rendaCensoMap.get(row.codigo_ibge) || emptyRendaCenso2022()
+    row.saneamento_censo_2022 = saneamentoCensoMap.get(row.codigo_ibge) || emptySaneamentoCenso2022()
+    row.deficiencia_censo_2022 = deficienciaCensoMap.get(row.codigo_ibge) || emptyDeficienciaCenso2022()
   }
 
   const sorted = result.sort((a, b) => a.municipio.localeCompare(b.municipio, 'pt-BR'))
